@@ -11,6 +11,9 @@ import StatusBadge from "../../components/StatusBadge";
 import DataTable, { type Column } from "../../components/data-table/DataTable";
 import { useServerTable } from "../../components/data-table/useServerTable";
 import { downloadBase64, readFileAsBase64 } from "../../components/files";
+import { Add, ArrowLeft, Save } from "@carbon/icons-react";
+
+const FAMILY_SHORT: Record<string, string> = { consultancy: "Consultancy", billing: "Billing", administration: "Administration" };
 
 const today = () => new Date().toISOString().slice(0, 10);
 const KIND_LABEL: Record<string, string> = { letter_out: "Letter (out)", letter_in: "Letter (in)", agreement: "Agreement" };
@@ -35,6 +38,9 @@ function Editor({ doc, projects, onClose }: { doc: DocInput; projects: Project[]
 
   const set = <K extends keyof DocInput>(k: K, v: DocInput[K]) => setD({ ...d, [k]: v });
   const totalPct = d.milestones.reduce((n, m) => n + (parseFloat(m.percent) || 0), 0);
+  const prompts = (d.body.match(/\[\[[^\]]*\]\]/g) ?? []).length;
+  const isHtml = templates.find((t) => t.latest_version_id === d.template_version_id)?.format === "html";
+  const isRecord = templates.find((t) => t.latest_version_id === d.template_version_id)?.layout === "record";
 
   const save = async (): Promise<number | null> => {
     try { const id = await api.docSaveDraft(d); setD({ ...d, id }); setError(""); return id; } catch (e) { setError(errorText(e)); return null; }
@@ -46,41 +52,54 @@ function Editor({ doc, projects, onClose }: { doc: DocInput; projects: Project[]
     <Form className="ao-form" onSubmit={(e) => e.preventDefault()}>
       <Stack gap={5}>
         <h3>{d.id ? "Edit draft" : "New"} {KIND_LABEL[d.kind].toLowerCase()}</h3>
-        <Select id="d-project" labelText={d.kind === "agreement" ? "Project" : "Project (optional)"} value={d.project_id ?? ""}
+        <Select size="sm" id="d-project" labelText={d.kind === "agreement" ? "Project" : "Project (optional)"} value={d.project_id ?? ""}
           onChange={(e) => set("project_id", e.target.value ? Number(e.target.value) : null)}>
           <SelectItem value="" text={d.kind === "agreement" ? "Select a project" : "No project"} />
           {projects.map((p) => <SelectItem key={p.id} value={p.id!} text={`${p.client_name} — ${p.name}`} />)}
         </Select>
         {d.kind === "letter_out" && (
           <>
-            <TextInput id="d-party" labelText="To (defaults to the project's client)" value={d.party_name} onChange={(e) => set("party_name", e.target.value)} />
+            <TextInput size="sm" id="d-party" labelText="To (defaults to the project's client)" value={d.party_name} onChange={(e) => set("party_name", e.target.value)} />
             <TextArea id="d-addr" labelText="Address" rows={2} value={d.party_address} onChange={(e) => set("party_address", e.target.value)} />
           </>
         )}
-        <TextInput id="d-subject" labelText={d.kind === "agreement" ? "Title" : "Subject"} value={d.subject} onChange={(e) => set("subject", e.target.value)} />
-        <TextInput id="d-ref" labelText="Reference" value={d.reference} onChange={(e) => set("reference", e.target.value)} />
-        <TextInput id="d-date" type="date" labelText="Date" value={d.doc_date} onChange={(e) => set("doc_date", e.target.value)} />
-        <Select id="d-template" labelText="Start from template (replaces the text below)" value="" onChange={(e) => {
+        <TextInput size="sm" id="d-subject" labelText={d.kind === "agreement" ? "Title" : isRecord ? "Title (optional; defaults to the template name)" : "Subject"} value={d.subject} onChange={(e) => set("subject", e.target.value)} />
+        <TextInput size="sm" id="d-ref" labelText="Reference" value={d.reference} onChange={(e) => set("reference", e.target.value)} />
+        <TextInput size="sm" id="d-date" type="date" labelText="Date" value={d.doc_date} onChange={(e) => set("doc_date", e.target.value)} />
+        <Select size="sm" id="d-template" labelText="Start from template (replaces the text below)" value="" onChange={(e) => {
           const t = templates.find((x) => x.id === Number(e.target.value));
-          if (t) setD({ ...d, body: t.body, template_version_id: t.latest_version_id });
+          if (t) setD({ ...d, body: t.format === "html" ? "" : t.body, template_version_id: t.latest_version_id });
         }}>
           <SelectItem value="" text="Choose a template…" />
-          {templates.map((t) => <SelectItem key={t.id} value={t.id} text={`${t.name} (v${t.latest_version})`} />)}
+          {templates.map((t) => <SelectItem key={t.id} value={t.id} text={`${FAMILY_SHORT[t.family]}: ${t.name} (v${t.latest_version})`} />)}
         </Select>
-        <div>
-          <strong>Insert a field:</strong>{" "}
-          {fields.map((f) => <Button key={f} kind="ghost" size="sm" onClick={() => set("body", `${d.body}{{${f}}}`)}>{`{{${f}}}`}</Button>)}
-        </div>
-        <TextArea id="d-body" labelText="Text" rows={14} value={d.body} onChange={(e) => set("body", e.target.value)} />
+        {isHtml ? (
+          <InlineNotification
+            kind="info" lowContrast hideCloseButton title="This template controls the layout."
+            subtitle="Write only the text for this document below. The template places it, together with the firm, client, project and fee details."
+          />
+        ) : (
+          <div>
+            <strong>Insert a field:</strong>{" "}
+            {fields.map((f) => <Button key={f} kind="ghost" size="sm" onClick={() => set("body", `${d.body}{{${f}}}`)}>{`{{${f}}}`}</Button>)}
+          </div>
+        )}
+        <TextArea id="d-body" labelText={isHtml ? "Document text (plain paragraphs; separate paragraphs with a blank line)" : "Text"} rows={14} value={d.body} onChange={(e) => set("body", e.target.value)} />
+        {prompts > 0 && (
+          <InlineNotification
+            kind="warning" lowContrast hideCloseButton title={`${prompts} prompt${prompts === 1 ? "" : "s"} in [[double brackets]] still to replace or delete.`}
+            subtitle="A document cannot be issued while any remain."
+          />
+        )}
 
         {d.kind === "agreement" && (
           <>
-            <TextInput id="d-fee" labelText="Agreed professional fee (₹, excluding GST)" value={d.fee} onChange={(e) => set("fee", e.target.value)} />
+            <TextInput size="sm" id="d-fee" labelText="Agreed professional fee (₹, excluding GST)" value={d.fee} onChange={(e) => set("fee", e.target.value)} />
             <h4>Payment milestones</h4>
             {d.milestones.map((m, i) => (
               <div key={i} className="toolbar">
-                <TextInput id={`m-n-${i}`} labelText="Milestone" value={m.name} onChange={(e) => set("milestones", d.milestones.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
-                <TextInput id={`m-p-${i}`} labelText="Share (%)" value={m.percent} onChange={(e) => set("milestones", d.milestones.map((x, j) => (j === i ? { ...x, percent: e.target.value } : x)))} />
+                <TextInput size="sm" id={`m-n-${i}`} labelText="Milestone" value={m.name} onChange={(e) => set("milestones", d.milestones.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
+                <TextInput size="sm" id={`m-p-${i}`} labelText="Share (%)" value={m.percent} onChange={(e) => set("milestones", d.milestones.map((x, j) => (j === i ? { ...x, percent: e.target.value } : x)))} />
                 {d.milestones.length > 1 && <Button kind="ghost" size="sm" onClick={() => set("milestones", d.milestones.filter((_, j) => j !== i))}>Remove</Button>}
               </div>
             ))}
@@ -93,11 +112,11 @@ function Editor({ doc, projects, onClose }: { doc: DocInput; projects: Project[]
 
         {error && <InlineNotification kind="error" title={error} hideCloseButton lowContrast />}
         <div className="toolbar">
-          <Button kind="secondary" onClick={onClose}>Close</Button>
+          <Button size="sm" kind="secondary" onClick={onClose}>Close</Button>
           <div>
-            <Button kind="tertiary" onClick={save}>Save draft</Button>
-            <Button kind="tertiary" onClick={async () => { const id = await save(); if (id == null) return; try { setPdf(await api.docPdf(id)); } catch (e) { setError(errorText(e)); } }}>Preview PDF</Button>
-            <Button onClick={async () => {
+            <Button renderIcon={Save} size="sm" kind="tertiary" onClick={save}>Save draft</Button>
+            <Button size="sm" kind="tertiary" onClick={async () => { const id = await save(); if (id == null) return; try { setPdf(await api.docPdf(id)); } catch (e) { setError(errorText(e)); } }}>Preview PDF</Button>
+            <Button size="sm" onClick={async () => {
               const id = await save();
               if (id == null) return;
               if (!(await confirmDialog("Issue this document? It gets a number and its content can no longer be edited."))) return;
@@ -121,18 +140,18 @@ function InwardForm({ projects, onClose }: { projects: Project[]; onClose: () =>
     }}>
       <Stack gap={5}>
         <h3>Register an inward letter</h3>
-        <TextInput id="in-party" labelText="Received from" value={i.party_name} onChange={(e) => set("party_name", e.target.value)} />
-        <TextInput id="in-subject" labelText="Subject" value={i.subject} onChange={(e) => set("subject", e.target.value)} />
-        <TextInput id="in-ref" labelText="Sender's reference" value={i.reference} onChange={(e) => set("reference", e.target.value)} />
-        <TextInput id="in-date" type="date" labelText="Date received" value={i.doc_date} onChange={(e) => set("doc_date", e.target.value)} />
-        <Select id="in-project" labelText="Project (optional)" value={i.project_id ?? ""} onChange={(e) => set("project_id", e.target.value ? Number(e.target.value) : null)}>
+        <TextInput size="sm" id="in-party" labelText="Received from" value={i.party_name} onChange={(e) => set("party_name", e.target.value)} />
+        <TextInput size="sm" id="in-subject" labelText="Subject" value={i.subject} onChange={(e) => set("subject", e.target.value)} />
+        <TextInput size="sm" id="in-ref" labelText="Sender's reference" value={i.reference} onChange={(e) => set("reference", e.target.value)} />
+        <TextInput size="sm" id="in-date" type="date" labelText="Date received" value={i.doc_date} onChange={(e) => set("doc_date", e.target.value)} />
+        <Select size="sm" id="in-project" labelText="Project (optional)" value={i.project_id ?? ""} onChange={(e) => set("project_id", e.target.value ? Number(e.target.value) : null)}>
           <SelectItem value="" text="No project" />
           {projects.map((p) => <SelectItem key={p.id} value={p.id!} text={`${p.client_name} — ${p.name}`} />)}
         </Select>
         <TextArea id="in-notes" labelText="Remarks" rows={3} value={i.notes} onChange={(e) => set("notes", e.target.value)} />
         <p>After registering, open the entry to attach the scanned letter.</p>
         {error && <InlineNotification kind="error" title={error} hideCloseButton lowContrast />}
-        <div className="toolbar"><Button kind="secondary" onClick={onClose}>Cancel</Button><Button type="submit">Register</Button></div>
+        <div className="toolbar"><Button size="sm" kind="secondary" onClick={onClose}>Cancel</Button><Button renderIcon={Add} size="sm" type="submit">Register</Button></div>
       </Stack>
     </Form>
   );
@@ -164,7 +183,7 @@ function Detail({ id, onClose, onOpen }: { id: number; onClose: () => void; onOp
     <Stack gap={5}>
       <div className="toolbar">
         <h3>{d.number} <Tag type={STATUS_TAG[d.status] ?? "gray"}>{d.status}</Tag></h3>
-        <Button kind="secondary" size="sm" onClick={onClose}>Back</Button>
+        <Button renderIcon={ArrowLeft} kind="secondary" size="sm" onClick={onClose}>Back</Button>
       </div>
       <p>{KIND_LABEL[kind]} · {d.input.doc_date} · {d.input.party_name} · {d.input.subject}{d.input.reference && ` · ${d.input.reference}`}</p>
       {d.input.body && kind === "letter_in" && <p>{d.input.body}</p>}
@@ -270,7 +289,7 @@ export default function DocumentsPage() {
     { id: "subject", header: "Subject", minWidth: 260, sortValue: (r) => r.subject.toLowerCase(), render: (r) => r.subject, csv: (r) => r.subject },
     { id: "project", header: "Project", defaultVisible: false, sortValue: (r) => r.project_name.toLowerCase(), render: (r) => r.project_name, csv: (r) => r.project_name },
     { id: "reference", header: "Reference", defaultVisible: false, render: (r) => r.reference, csv: (r) => r.reference },
-    { id: "status", header: "Status", sortValue: (r) => r.status, render: (r) => <span><StatusBadge status={r.status} />{r.signed && <span style={{ marginLeft: 8, color: "var(--ao-text-secondary)" }}>signed copy on file</span>}</span>, csv: (r) => r.status },
+    { id: "status", header: "Status", sortValue: (r) => r.status, render: (r) => <span><StatusBadge status={r.status} />{r.signed && <span className="ao-muted ao-inline-start">signed copy on file</span>}</span>, csv: (r) => r.status },
   ];
 
   return (
@@ -280,9 +299,9 @@ export default function DocumentsPage() {
         description="Outward and inward letter registers and consultancy agreements. Issued documents are frozen; changes are revisions."
         actions={
           <>
-            <Button kind="tertiary" onClick={() => setView({ type: "inward" })}>Register inward letter</Button>
-            <Button kind="tertiary" onClick={() => setView({ type: "edit", doc: blankDoc("agreement") })}>New agreement</Button>
-            <Button onClick={() => setView({ type: "edit", doc: blankDoc("letter_out") })}>New letter</Button>
+            <Button size="sm" kind="tertiary" onClick={() => setView({ type: "inward" })}>Register inward letter</Button>
+            <Button size="sm" kind="tertiary" onClick={() => setView({ type: "edit", doc: blankDoc("agreement") })}>New agreement</Button>
+            <Button size="sm" onClick={() => setView({ type: "edit", doc: blankDoc("letter_out") })}>New letter</Button>
           </>
         }
       />

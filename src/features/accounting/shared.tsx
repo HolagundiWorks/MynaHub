@@ -68,7 +68,7 @@ export function usePayOptions(allowPayable: boolean) {
 export function PaySelect({ id, label, value, onChange, allowPayable }: { id: string; label: string; value: string; onChange: (v: string) => void; allowPayable: boolean }) {
   const options = usePayOptions(allowPayable);
   return (
-    <Select id={id} labelText={label} value={value} onChange={(e) => onChange(e.target.value)}>
+    <Select size="sm" id={id} labelText={label} value={value} onChange={(e) => onChange(e.target.value)}>
       {options.map((o) => <SelectItem key={o.v} value={o.v} text={o.t} />)}
     </Select>
   );

@@ -9,19 +9,22 @@ use tauri::State;
 pub struct AppState {
     pub db: Mutex<Connection>,
     pub session: Mutex<Option<Session>>,
-    pub files_root: std::path::PathBuf,
+    /// The company file currently open, if any. While none is open `db` holds an empty placeholder.
+    pub company: Mutex<Option<crate::company_file::ActiveCompany>>,
+    /// Per-user app folder (recent companies list). Holds no business data.
+    pub app_dir: std::path::PathBuf,
     /// Inactivity timeout in seconds, loaded from the settings table.
     pub idle_secs: std::sync::atomic::AtomicU64,
 }
 
 impl AppState {
-    pub fn new(conn: Connection, files_root: std::path::PathBuf) -> Self {
+    pub fn new(conn: Connection, app_dir: std::path::PathBuf) -> Self {
         let idle: u64 = conn
             .query_row("SELECT value FROM settings WHERE key = 'idle_secs'", [], |r| r.get::<_, String>(0))
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(auth::DEFAULT_IDLE.as_secs());
-        AppState { db: Mutex::new(conn), session: Mutex::new(None), files_root, idle_secs: std::sync::atomic::AtomicU64::new(idle) }
+        AppState { db: Mutex::new(conn), session: Mutex::new(None), company: Mutex::new(None), app_dir, idle_secs: std::sync::atomic::AtomicU64::new(idle) }
     }
 
     pub fn idle(&self) -> std::time::Duration {
@@ -65,6 +68,7 @@ pub fn require(state: &AppState, perm: Permission) -> Result<i64, String> {
 
 #[derive(Serialize)]
 pub struct AuthStatus {
+    pub company: Option<crate::company_file::CompanySummary>,
     pub setup_required: bool,
     pub locked: bool,
     pub user: Option<SessionInfo>,
@@ -72,6 +76,10 @@ pub struct AuthStatus {
 
 #[tauri::command]
 pub fn auth_status(state: State<AppState>) -> Result<AuthStatus, String> {
+    let company = crate::company_file::active_summary(&state);
+    if company.is_none() {
+        return Ok(AuthStatus { company: None, setup_required: false, locked: false, user: None });
+    }
     let setup_required = {
         let conn = state.db.lock().map_err(|_| INTERNAL)?;
         let n: i64 = conn
@@ -92,7 +100,7 @@ pub fn auth_status(state: State<AppState>) -> Result<AuthStatus, String> {
         ),
         None => (false, None),
     };
-    Ok(AuthStatus { setup_required, locked, user })
+    Ok(AuthStatus { company, setup_required, locked, user })
 }
 
 /// Creates the first (owner) account. Returns the one-time recovery code.
@@ -103,6 +111,15 @@ pub fn auth_setup(
     password: String,
     confirm: String,
 ) -> Result<String, String> {
+    if crate::company_file::active_summary(&state).is_none() {
+        return Err("Open or create a company first.".into());
+    }
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    create_owner(&conn, &username, &password, &confirm)
+}
+
+/// Creates the first owner account in an empty company and returns the one-time recovery code.
+pub fn create_owner(conn: &Connection, username: &str, password: &str, confirm: &str) -> Result<String, String> {
     let username = username.trim().to_string();
     if username.is_empty() {
         return Err("Username is required.".into());
@@ -110,8 +127,7 @@ pub fn auth_setup(
     if password != confirm {
         return Err("Passwords do not match.".into());
     }
-    auth::validate_new_password(&password)?;
-    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    auth::validate_new_password(password)?;
     let n: i64 = conn
         .query_row("SELECT COUNT(*) FROM users", [], |r| r.get(0))
         .map_err(|e| e.to_string())?;
@@ -121,10 +137,10 @@ pub fn auth_setup(
     let recovery = auth::generate_recovery_code();
     conn.execute(
         "INSERT INTO users (username, password_hash, recovery_hash, role) VALUES (?1, ?2, ?3, 'owner')",
-        params![username, auth::hash_password(&password)?, auth::hash_password(&recovery)?],
+        params![username, auth::hash_password(password)?, auth::hash_password(&recovery)?],
     )
     .map_err(|e| e.to_string())?;
-    db::audit(&conn, Some(conn.last_insert_rowid()), "owner_created", "");
+    db::audit(conn, Some(conn.last_insert_rowid()), "owner_created", "");
     Ok(recovery)
 }
 
@@ -174,6 +190,9 @@ pub(crate) fn check_credentials(conn: &Connection, username: &str, password: &st
 
 #[tauri::command]
 pub fn auth_login(state: State<AppState>, username: String, password: String) -> Result<SessionInfo, String> {
+    if crate::company_file::active_summary(&state).is_none() {
+        return Err("Open or create a company first.".into());
+    }
     let (id, uname, role) = {
         let conn = state.db.lock().map_err(|_| INTERNAL)?;
         let r = check_credentials(&conn, username.trim(), &password)?;
@@ -241,6 +260,9 @@ pub struct CompanyProfile {
     pub upi_id: String,
     #[serde(default)]
     pub architect_name: String,
+    /// `classic` or `minimal`: how the firm's details are set at the top of issued documents.
+    #[serde(default)]
+    pub letterhead_style: String,
 }
 
 #[tauri::command]
@@ -248,7 +270,7 @@ pub fn company_get_profile(state: State<AppState>) -> Result<CompanyProfile, Str
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     conn.query_row(
-        "SELECT name, address, email, phone, pan, gstin, coa_registration, bank_details, gst_scheme, upi_id, architect_name FROM company_profile WHERE id = 1",
+        "SELECT name, address, email, phone, pan, gstin, coa_registration, bank_details, gst_scheme, upi_id, architect_name, letterhead_style FROM company_profile WHERE id = 1",
         [],
         |r| {
             Ok(CompanyProfile {
@@ -263,6 +285,7 @@ pub fn company_get_profile(state: State<AppState>) -> Result<CompanyProfile, Str
                 gst_scheme: r.get(8)?,
                 upi_id: r.get(9)?,
                 architect_name: r.get(10)?,
+                letterhead_style: r.get(11)?,
             })
         },
     )
@@ -274,8 +297,8 @@ pub fn company_save_profile(state: State<AppState>, profile: CompanyProfile) -> 
     let uid = require(&state, Permission::ManageSettings)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     conn.execute(
-        "UPDATE company_profile SET name=?1, address=?2, email=?3, phone=?4, pan=?5, gstin=?6, coa_registration=?7, bank_details=?8, gst_scheme=?9, upi_id=?10, architect_name=?11, updated_at=datetime('now') WHERE id=1",
-        params![profile.name, profile.address, profile.email, profile.phone, profile.pan, profile.gstin, profile.coa_registration, profile.bank_details, profile.gst_scheme, profile.upi_id.trim(), profile.architect_name.trim()],
+        "UPDATE company_profile SET name=?1, address=?2, email=?3, phone=?4, pan=?5, gstin=?6, coa_registration=?7, bank_details=?8, gst_scheme=?9, upi_id=?10, architect_name=?11, letterhead_style=?12, updated_at=datetime('now') WHERE id=1",
+        params![profile.name, profile.address, profile.email, profile.phone, profile.pan, profile.gstin, profile.coa_registration, profile.bank_details, profile.gst_scheme, profile.upi_id.trim(), profile.architect_name.trim(), if profile.letterhead_style == "minimal" { "minimal" } else { "classic" }],
     )
     .map_err(|e| e.to_string())?;
     db::audit(&conn, Some(uid), "company_profile_saved", "");

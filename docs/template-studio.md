@@ -1,0 +1,13 @@
+# Template Studio: design decisions and limits
+
+**Engine.** A small purpose-built, logic-less template engine (`src-tauri/src/template_engine.rs`). Placeholders `{{ field }}`, one allow-listed helper per field (`upper`, `lower`, `date`, `default "text"`, `multiline`), `{{#if field}}…{{else}}…{{/if}}` and `{{#each list}}…{{/each}}`. No arithmetic, no expressions, no function calls, no raw-HTML output. Written for this app instead of adding a general engine, so the whole syntax is auditable in one file. Every inserted value is HTML-escaped; free text typed per document is rendered as escaped paragraphs.
+
+**Renderer.** The existing printpdf HTML/CSS renderer (pure Rust, offline) is kept. It was chosen over a browser engine because it is already bundled, needs no external process, embeds fonts, and the preview and the issued PDF come from the same code path. It honours `break-inside: avoid`, widows/orphans, atomic table rows and repeated `<thead>` according to its documentation (`html/mod.rs`); paper and margins are read from the template's `@page` rule because the renderer does not parse `@page` itself.
+
+**Safe by construction.** HTML is checked against a tag and attribute allow-list (no script, iframe, link, form, svg, object, event handlers, remote or file addresses; images only as embedded PNG/JPEG data). CSS blocks `@import`, `@font-face`, remote `url()` and legacy script hooks. Templates run only inside the Rust renderer: they have no access to Tauri commands, the database or the filesystem. Preview is a PDF shown from a local blob, never live template HTML in the app window.
+
+**CSS limits (reported as warnings in the editor).** Not supported by the renderer: grid, transforms, box/text shadows, `position`, `float`, animations, columns, background images, `@media`. Fonts: IBM Plex only (Sans, Medium and SemiBold faces by family name, Serif SemiBold, Mono, Devanagari fallback). Rendering is checked by tests for the built-in templates with a short and a long data profile; pixel-level visual regression is not automated.
+
+**Versions.** Published versions are immutable (database triggers). Work in progress is a separate draft. Restoring an earlier version only copies it into the draft. Built-ins are never edited; copies are. Issued documents store the exact resolved HTML and paper setup, so later template changes never alter them.
+
+**Known gaps.** Invoices, receipts and credit notes still use the built-in billing layout (accounting output was deliberately not moved into user-editable templates). No template package export/import. No DOCX output. The preview uses the system PDF viewer's page and zoom controls rather than custom ones. Scope, appointment and user fields are not yet separate data sources.

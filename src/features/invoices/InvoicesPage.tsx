@@ -16,6 +16,7 @@ import StatusBadge from "../../components/StatusBadge";
 import DataTable, { type Column } from "../../components/data-table/DataTable";
 import { useServerTable } from "../../components/data-table/useServerTable";
 import RowMenu, { type MenuItem } from "../../components/data-table/RowMenu";
+import { Add, Money, Save } from "@carbon/icons-react";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -98,22 +99,22 @@ export default function InvoicesPage() {
       <Form className="ao-form" onSubmit={(e) => e.preventDefault()}>
         <Stack gap={5}>
           <h3>{locked ? `${draft.kind === "proforma" ? "Pro forma" : "Invoice"} ${status?.number}` : `${draft.id ? "Edit" : "New"} ${draft.kind === "proforma" ? "pro forma invoice" : "invoice"}`}</h3>
-          <Select id="i-project" labelText="Project" value={draft.project_id || ""} disabled={locked}
+          <Select size="sm" id="i-project" labelText="Project" value={draft.project_id || ""} disabled={locked}
             onChange={(e) => set("project_id", Number(e.target.value))}>
             <SelectItem value="" text="Select a project" />
             {projects.map((p) => <SelectItem key={p.id} value={p.id!} text={`${p.client_name} — ${p.name}`} />)}
           </Select>
-          <Select id="i-kind" labelText="Document type" value={draft.kind} disabled={locked}
+          <Select size="sm" id="i-kind" labelText="Document type" value={draft.kind} disabled={locked}
             onChange={(e) => set("kind", e.target.value as InvoiceInput["kind"])}>
             <SelectItem value="tax_invoice" text="Invoice" />
             <SelectItem value="proforma" text="Pro forma invoice" />
           </Select>
-          <TextInput id="i-date" type="date" labelText="Invoice date" value={draft.issue_date} readOnly={locked}
+          <TextInput size="sm" id="i-date" type="date" labelText="Invoice date" value={draft.issue_date} readOnly={locked}
             onChange={(e) => set("issue_date", e.target.value)} />
-          <TextInput id="i-due" type="date" labelText="Due date" value={draft.due_date} readOnly={locked}
+          <TextInput size="sm" id="i-due" type="date" labelText="Due date" value={draft.due_date} readOnly={locked}
             onChange={(e) => set("due_date", e.target.value)} />
           {scheme === "regular" && (
-            <Select id="i-gst" labelText="GST (18%)" value={draft.gst_mode === "inter" ? "inter" : "intra"} disabled={locked}
+            <Select size="sm" id="i-gst" labelText="GST (18%)" value={draft.gst_mode === "inter" ? "inter" : "intra"} disabled={locked}
               onChange={(e) => set("gst_mode", e.target.value as InvoiceInput["gst_mode"])}>
               <SelectItem value="intra" text="9% CGST + 9% SGST (same state)" />
               <SelectItem value="inter" text="18% IGST (other state)" />
@@ -134,9 +135,9 @@ export default function InvoicesPage() {
             <TableBody>
               {draft.lines.map((l, i) => (
                 <TableRow key={i}>
-                  <TableCell><TextInput id={`l-d-${i}`} labelText="" hideLabel value={l.description} readOnly={locked} onChange={(e) => setLine(i, "description", e.target.value)} /></TableCell>
-                  <TableCell><TextInput id={`l-q-${i}`} labelText="" hideLabel value={l.qty} readOnly={locked} onChange={(e) => setLine(i, "qty", e.target.value)} /></TableCell>
-                  <TableCell><TextInput id={`l-r-${i}`} labelText="" hideLabel value={l.rate} readOnly={locked} onChange={(e) => setLine(i, "rate", e.target.value)} /></TableCell>
+                  <TableCell><TextInput size="sm" id={`l-d-${i}`} labelText="" hideLabel value={l.description} readOnly={locked} onChange={(e) => setLine(i, "description", e.target.value)} /></TableCell>
+                  <TableCell><TextInput size="sm" id={`l-q-${i}`} labelText="" hideLabel value={l.qty} readOnly={locked} onChange={(e) => setLine(i, "qty", e.target.value)} /></TableCell>
+                  <TableCell><TextInput size="sm" id={`l-r-${i}`} labelText="" hideLabel value={l.rate} readOnly={locked} onChange={(e) => setLine(i, "rate", e.target.value)} /></TableCell>
                   <TableCell>
                     {!locked && draft.lines.length > 1 && (
                       <Button kind="ghost" size="sm" onClick={() => set("lines", draft.lines.filter((_, j) => j !== i))}>Remove</Button>
@@ -166,10 +167,10 @@ export default function InvoicesPage() {
 
           {error && <InlineNotification kind="error" title={error} hideCloseButton lowContrast />}
           <div className="toolbar">
-            <Button kind="secondary" onClick={close}>{locked ? "Back" : "Cancel"}</Button>
+            <Button size="sm" kind="secondary" onClick={close}>{locked ? "Back" : "Cancel"}</Button>
             <div>
-              {!locked && <Button kind="tertiary" onClick={save}>Save draft</Button>}
-              <Button
+              {!locked && <Button renderIcon={Save} size="sm" kind="tertiary" onClick={save}>Save draft</Button>}
+              <Button size="sm"
                 kind="tertiary"
                 onClick={async () => {
                   const id = locked ? draft.id : await save();
@@ -180,7 +181,7 @@ export default function InvoicesPage() {
                 {locked ? "View PDF" : "Preview PDF"}
               </Button>
               {!locked && (
-                <Button
+                <Button size="sm"
                   onClick={async () => {
                     const id = await save();
                     if (id == null) return;
@@ -208,17 +209,17 @@ export default function InvoicesPage() {
 
   const columns: Column<InvoiceRegisterRow>[] = [
     { id: "number", header: "Number", locked: true, minWidth: 150, sortValue: (r) => r.number ?? "~draft",
-      render: (r) => <span>{r.number ?? "Draft"}{r.converted_to && <small style={{ display: "block", color: "var(--ao-text-secondary)" }}>→ {r.converted_to}</small>}{r.from_proforma && <small style={{ display: "block", color: "var(--ao-text-secondary)" }}>from {r.from_proforma}</small>}</span>,
+      render: (r) => <div>{r.number ?? "Draft"}{r.converted_to && <div className="ao-muted">Converted to {r.converted_to}</div>}{r.from_proforma && <div className="ao-muted">From {r.from_proforma}</div>}</div>,
       csv: (r) => r.number ?? "Draft" },
     { id: "type", header: "Type", sortValue: (r) => r.kind, render: (r) => (r.kind === "proforma" ? "Pro forma" : "Invoice"), csv: (r) => r.kind },
-    { id: "party", header: "Client / project", minWidth: 220, sortValue: (r) => r.client_name.toLowerCase(), render: (r) => <span>{r.client_name} <span style={{ color: "var(--ao-text-secondary)" }}>· {r.project_name}</span></span>, csv: (r) => `${r.client_name} - ${r.project_name}` },
+    { id: "party", header: "Client / project", minWidth: 220, sortValue: (r) => r.client_name.toLowerCase(), render: (r) => <span>{r.client_name} <span className="ao-muted">· {r.project_name}</span></span>, csv: (r) => `${r.client_name} - ${r.project_name}` },
     { id: "date", header: "Date", sortValue: (r) => r.issue_date, render: (r) => r.issue_date, csv: (r) => r.issue_date },
     { id: "due", header: "Due", defaultVisible: false, sortValue: (r) => r.due_date || "9999", render: (r) => r.due_date, csv: (r) => r.due_date },
     { id: "total", header: "Gross amount", align: "end", sortValue: (r) => r.total_paise, render: (r) => r.total_display, csv: (r) => r.total_paise / 100 },
     { id: "received", header: "Received", align: "end", sortValue: (r) => r.paid_paise, render: (r) => (isTax(r) ? r.paid_display : ""), csv: (r) => r.paid_paise / 100 },
     { id: "tds", header: "TDS", align: "end", defaultVisible: false, sortValue: (r) => r.tds_paise, render: (r) => (isTax(r) ? r.tds_display : ""), csv: (r) => r.tds_paise / 100 },
     { id: "credited", header: "Credited", align: "end", defaultVisible: false, sortValue: (r) => r.credited_paise, render: (r) => (isTax(r) ? r.credited_display : ""), csv: (r) => r.credited_paise / 100 },
-    { id: "balance", header: "Balance", align: "end", sortValue: (r) => (isTax(r) ? r.balance_paise : -1), render: (r) => (isTax(r) ? <strong style={{ fontWeight: 500 }}>{r.balance_display}</strong> : ""), csv: (r) => (isTax(r) ? r.balance_paise / 100 : "") },
+    { id: "balance", header: "Balance", align: "end", sortValue: (r) => (isTax(r) ? r.balance_paise : -1), render: (r) => (isTax(r) ? <strong>{r.balance_display}</strong> : ""), csv: (r) => (isTax(r) ? r.balance_paise / 100 : "") },
     { id: "status", header: "Status", sortValue: (r) => r.effective_status, render: (r) => <StatusBadge status={r.effective_status} label={statusText[r.effective_status]} />, csv: (r) => r.effective_status },
   ];
 
@@ -248,8 +249,8 @@ export default function InvoicesPage() {
         description="Pro forma and tax invoices, credit notes and payments. Issued documents are never edited; corrections are credit notes or cancellations."
         actions={
           <>
-            <Button kind="tertiary" disabled={projects.length === 0} onClick={() => { setDraft(blank(projects[0]?.id ?? 0, "proforma")); setStatus(null); }}>New pro forma</Button>
-            <Button disabled={projects.length === 0} onClick={() => { setDraft(blank(projects[0]?.id ?? 0)); setStatus(null); }}>New invoice</Button>
+            <Button renderIcon={Add} size="sm" kind="tertiary" disabled={projects.length === 0} onClick={() => { setDraft(blank(projects[0]?.id ?? 0, "proforma")); setStatus(null); }}>New pro forma</Button>
+            <Button renderIcon={Add} size="sm" disabled={projects.length === 0} onClick={() => { setDraft(blank(projects[0]?.id ?? 0)); setStatus(null); }}>New invoice</Button>
           </>
         }
       />
@@ -274,7 +275,7 @@ export default function InvoicesPage() {
         emptyHint={projects.length === 0 ? "Invoices are raised against a project." : "Use New invoice to raise the first one."}
         rowActions={(r) => (
           <>
-            {isTax(r) && r.balance_paise > 0 && <Button kind="ghost" size="sm" onClick={() => setPaying(r)}>Record payment</Button>}{" "}
+            {isTax(r) && r.balance_paise > 0 && <Button renderIcon={Money} kind="ghost" size="sm" onClick={() => setPaying(r)}>Record payment</Button>}{" "}
             <RowMenu items={[{ label: r.status === "draft" ? "Edit draft" : "Open", onClick: () => open(r.id) }, ...menuFor(r)]} />
           </>
         )}

@@ -193,39 +193,33 @@ fn receipt_html(conn: &Connection, receipt_id: i64) -> Result<String, String> {
     let (name, address, pan, gstin): (String, String, String, String) = conn
         .query_row("SELECT name, address, pan, gstin FROM company_profile WHERE id = 1", [], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))
         .map_err(|e| e.to_string())?;
-    let tds_row = if tds > 0 { format!("<tr><td>TDS deducted by payer ({})</td><td>{}</td></tr>", esc(&section), fmt_inr(tds)) } else { String::new() };
+    let tds_row = if tds > 0 { format!("<tr><td>TDS deducted by payer ({})</td><td class=\"num\">{}</td></tr>", esc(&section), fmt_inr(tds)) } else { String::new() };
     let ref_line = if reference.is_empty() { String::new() } else { format!("<br/>Reference / UTR: {}", esc(&reference)) };
     let gst_line = if gstin.is_empty() { String::new() } else { format!("GSTIN: {} &nbsp; ", esc(&gstin)) };
     Ok(format!(
-        r#"<html><head><style>
-        body {{ font-family: DejaVu; font-size: 10px; color: #161616; }}
-        h1 {{ font-size: 18px; margin-bottom: 2px; }}
-        h2 {{ font-size: 14px; margin-bottom: 2px; }}
-        table {{ width: 100%; border-collapse: collapse; margin-top: 8px; }}
-        th, td {{ border: 1px solid #8d8d8d; padding: 4px; }}
-        th {{ background-color: #e0e0e0; }}
-        </style></head><body>
+        r#"<html><head><style>{css}</style></head><body>
         <h1>{name}</h1>
-        <p>{address}<br/>{gst_line}PAN: {pan}</p>
+        <p class="meta">{address}<br/>{gst_line}PAN: {pan}</p>
         <h2>PAYMENT RECEIPT</h2>
-        <p>Receipt no.: {number}<br/>Date: {date}</p>
+        <p>Receipt no.: <span class="id">{number}</span><br/>Date: {date}</p>
         <p>Received with thanks from <strong>{client}</strong> against invoice {inv_no}.<br/>Mode: {mode}{ref_line}</p>
-        <table><tr><td>Amount received</td><td>{amount}</td></tr>{tds_row}<tr><th>Total settled against the invoice</th><th>{total}</th></tr></table>
+        <table class="items"><tr><td>Amount received</td><td class="num">{amount}</td></tr>{tds_row}<tr><th>Total settled against the invoice</th><th class="num">{total}</th></tr></table>
         <p>This is a receipt for the payment above and not a tax invoice.</p>
         </body></html>"#,
+        css = crate::typography::css(),
         name = esc(&name), address = esc(&address), gst_line = gst_line, pan = esc(&pan), number = esc(&number), date = esc(&date),
         client = esc(&client), inv_no = esc(&inv_no), mode = esc(&mode), ref_line = ref_line, amount = fmt_inr(amount), tds_row = tds_row, total = fmt_inr(amount + tds),
     ))
 }
 
 /// The receipt PDF is rendered the first time it is requested and then frozen (stored with its hash).
-pub fn receipt_pdf_bytes(conn: &Connection, files_root: &std::path::Path, receipt_id: i64) -> Result<Vec<u8>, String> {
+pub fn receipt_pdf_bytes(conn: &Connection, receipt_id: i64) -> Result<Vec<u8>, String> {
     use crate::billing::sha2_lite::sha256_hex;
     let stored: Option<(String, String)> = conn
         .query_row("SELECT pdf_key, pdf_sha256 FROM receipt_pdfs WHERE receipt_id = ?1", params![receipt_id], |r| Ok((r.get(0)?, r.get(1)?)))
         .ok();
     if let Some((key, sha)) = stored {
-        let bytes = std::fs::read(files_root.join(key)).map_err(|_| "The stored PDF could not be read.".to_string())?;
+        let bytes = crate::store::get(conn, &key)?;
         if sha256_hex(&bytes) != sha {
             return Err("The stored PDF failed its integrity check.".into());
         }
@@ -234,13 +228,10 @@ pub fn receipt_pdf_bytes(conn: &Connection, files_root: &std::path::Path, receip
     let number: String = conn.query_row("SELECT number FROM receipts WHERE id = ?1", params![receipt_id], |r| r.get(0)).map_err(|_| "Receipt not found.".to_string())?;
     let rendered = crate::pdf::render_html(&receipt_html(conn, receipt_id)?, &crate::pdf::bundled_fonts())?;
     let key = format!("receipt-pdfs/{}.pdf", number.replace('/', "_"));
-    let path = files_root.join(&key);
-    std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
-    if path.exists() {
-        return Err("A PDF for this receipt already exists; refusing to overwrite.".into());
-    }
-    std::fs::write(&path, &rendered.bytes).map_err(|e| e.to_string())?;
-    conn.execute("INSERT INTO receipt_pdfs (receipt_id, pdf_key, pdf_sha256) VALUES (?1,?2,?3)", params![receipt_id, key, sha256_hex(&rendered.bytes)]).map_err(|e| e.to_string())?;
+    let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
+    crate::store::put(&tx, &key, &rendered.bytes)?;
+    tx.execute("INSERT INTO receipt_pdfs (receipt_id, pdf_key, pdf_sha256) VALUES (?1,?2,?3)", params![receipt_id, key, sha256_hex(&rendered.bytes)]).map_err(|e| e.to_string())?;
+    tx.commit().map_err(|e| e.to_string())?;
     Ok(rendered.bytes)
 }
 
@@ -256,7 +247,7 @@ pub fn receipt_pdf(state: State<AppState>, receipt_id: i64) -> Result<String, St
     use base64::Engine;
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
-    Ok(base64::engine::general_purpose::STANDARD.encode(receipt_pdf_bytes(&conn, &state.files_root, receipt_id)?))
+    Ok(base64::engine::general_purpose::STANDARD.encode(receipt_pdf_bytes(&conn, receipt_id)?))
 }
 
 #[tauri::command]
@@ -308,7 +299,7 @@ mod tests {
             lines: vec![LineInput { description: "Fee".into(), qty: "1".into(), rate: "100000".into() }],
         };
         let id = save_draft(&mut c, &input).unwrap();
-        issue(&mut c, &dir, id).unwrap();
+        issue(&mut c, id).unwrap();
         (c, id, dir)
     }
 
@@ -396,10 +387,10 @@ mod tests {
         let (mut c, id, dir) = setup();
         record(&mut c, 1, &rc(id, "1000", "", "")).unwrap();
         let rid = list(&c, id).unwrap()[0].id;
-        let a = receipt_pdf_bytes(&c, &dir, rid).unwrap();
+        let a = receipt_pdf_bytes(&c, rid).unwrap();
         assert!(a.starts_with(b"%PDF"));
         c.execute("UPDATE company_profile SET name = 'Renamed Studio'", []).unwrap();
-        assert_eq!(receipt_pdf_bytes(&c, &dir, rid).unwrap(), a);
+        assert_eq!(receipt_pdf_bytes(&c, rid).unwrap(), a);
         let _ = std::fs::remove_dir_all(dir);
     }
 }

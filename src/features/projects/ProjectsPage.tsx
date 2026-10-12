@@ -6,6 +6,7 @@ import FilterSelect from "../../components/FilterSelect";
 import StatusBadge from "../../components/StatusBadge";
 import DataTable, { type Column } from "../../components/data-table/DataTable";
 import RowMenu from "../../components/data-table/RowMenu";
+import { Edit } from "@carbon/icons-react";
 
 const STATUS_LABEL = { active: "Active", on_hold: "On hold", completed: "Completed" } as const;
 
@@ -33,7 +34,7 @@ export default function ProjectsPage() {
 
   const columns: Column<Project>[] = [
     { id: "code", header: "Code", width: 110, sortValue: (p) => p.code.toLowerCase(), render: (p) => p.code, csv: (p) => p.code },
-    { id: "name", header: "Project", locked: true, minWidth: 200, sortValue: (p) => p.name.toLowerCase(), render: (p) => <strong style={{ fontWeight: 500 }}>{p.name}</strong>, csv: (p) => p.name },
+    { id: "name", header: "Project", locked: true, minWidth: 200, sortValue: (p) => p.name.toLowerCase(), render: (p) => <strong>{p.name}</strong>, csv: (p) => p.name },
     { id: "client", header: "Client", sortValue: (p) => p.client_name.toLowerCase(), render: (p) => p.client_name, csv: (p) => p.client_name },
     { id: "site", header: "Site", defaultVisible: false, render: (p) => p.site_address, csv: (p) => p.site_address },
     { id: "status", header: "Status", sortValue: (p) => p.status, render: (p) => <StatusBadge status={p.archived ? "archived" : p.status} />, csv: (p) => (p.archived ? "Archived" : STATUS_LABEL[p.status]) },
@@ -53,20 +54,20 @@ export default function ProjectsPage() {
           }}
         >
           <Stack gap={5}>
-            <Select id="p-client" labelText="Client" value={editing.client_id || ""} disabled={editing.id !== null} onChange={(e) => setEditing({ ...editing, client_id: Number(e.target.value) })}>
+            <Select size="sm" id="p-client" labelText="Client" value={editing.client_id || ""} disabled={editing.id !== null} onChange={(e) => setEditing({ ...editing, client_id: Number(e.target.value) })}>
               <SelectItem value="" text="Select a client" />
               {clients.map((c) => <SelectItem key={c.id} value={c.id!} text={c.name} />)}
             </Select>
-            <TextInput id="p-name" labelText="Project name" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
-            <TextInput id="p-code" labelText="Project code" value={editing.code} onChange={(e) => setEditing({ ...editing, code: e.target.value })} />
-            <Select id="p-status" labelText="Status" value={editing.status} onChange={(e) => setEditing({ ...editing, status: e.target.value as Project["status"] })}>
+            <TextInput size="sm" id="p-name" labelText="Project name" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
+            <TextInput size="sm" id="p-code" labelText="Project code" value={editing.code} onChange={(e) => setEditing({ ...editing, code: e.target.value })} />
+            <Select size="sm" id="p-status" labelText="Status" value={editing.status} onChange={(e) => setEditing({ ...editing, status: e.target.value as Project["status"] })}>
               {Object.entries(STATUS_LABEL).map(([v, t]) => <SelectItem key={v} value={v} text={t} />)}
             </Select>
             <TextArea id="p-site" labelText="Site address" rows={3} value={editing.site_address} onChange={(e) => setEditing({ ...editing, site_address: e.target.value })} />
             {error && <InlineNotification kind="error" title={error} hideCloseButton lowContrast />}
             <div className="toolbar">
-              <Button kind="secondary" onClick={() => { setEditing(null); setError(""); }}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+              <Button size="sm" kind="secondary" onClick={() => { setEditing(null); setError(""); }}>Cancel</Button>
+              <Button size="sm" type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
             </div>
           </Stack>
         </Form>
@@ -78,7 +79,7 @@ export default function ProjectsPage() {
     <>
       <PageHeader
         title="Projects" description="Every engagement, with its client and status."
-        actions={<Button disabled={clients.length === 0} onClick={() => setEditing({ id: null, client_id: 0, code: "", name: "", site_address: "", status: "active", archived: false, client_name: "" })}>New project</Button>}
+        actions={<Button size="sm" disabled={clients.length === 0} onClick={() => setEditing({ id: null, client_id: 0, code: "", name: "", site_address: "", status: "active", archived: false, client_name: "" })}>New project</Button>}
       />
       {error && <InlineNotification kind="error" title={error} hideCloseButton lowContrast />}
       <DataTable
@@ -99,7 +100,7 @@ export default function ProjectsPage() {
         emptyTitle={clients.length === 0 ? "Create a client first" : "No projects yet"} emptyHint={clients.length === 0 ? "A project belongs to a client." : "Add the first project for a client."}
         rowActions={(p) => (
           <>
-            <Button kind="ghost" size="sm" onClick={() => setEditing(p)}>Edit</Button>{" "}
+            <Button renderIcon={Edit} kind="ghost" size="sm" onClick={() => setEditing(p)}>Edit</Button>{" "}
             <RowMenu items={[{ label: p.archived ? "Restore" : "Archive", onClick: async () => { try { await api.projectSetArchived(p.id!, !p.archived); load(); } catch (e) { setError(errorText(e)); } } }]} />
           </>
         )}

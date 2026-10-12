@@ -50,9 +50,9 @@ export function DialogHost() {
       onRequestClose={() => finish(false)}
       onRequestSubmit={() => finish(true)}
     >
-      <p style={{ marginBlockEnd: "var(--cds-spacing-05)" }}>{current?.message}</p>
+      <p className="ao-block">{current?.message}</p>
       {current?.kind === "reason" && (
-        <TextInput id="dialog-reason" labelText="Reason" data-modal-primary-focus value={text} onChange={(e) => setText(e.target.value)}
+        <TextInput size="sm" id="dialog-reason" labelText="Reason" data-modal-primary-focus value={text} onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) finish(true); }} />
       )}
     </Modal>

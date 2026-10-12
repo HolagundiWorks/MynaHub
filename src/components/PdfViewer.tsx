@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Button, Stack } from "@carbon/react";
+import { ArrowLeft, Download } from "@carbon/icons-react";
 
 /** Shows a PDF (given as base64) in the page; the blob URL never leaves the window. */
-export default function PdfViewer({ base64, filename = "document.pdf", onClose }: { base64: string; filename?: string; onClose: () => void }) {
+export default function PdfViewer({ base64, filename = "document.pdf", onClose }: { base64: string; filename?: string; onClose?: () => void }) {
   const [url, setUrl] = useState("");
   useEffect(() => {
     const bin = atob(base64);
@@ -14,10 +15,10 @@ export default function PdfViewer({ base64, filename = "document.pdf", onClose }
   return (
     <Stack gap={4}>
       <div className="toolbar">
-        <Button kind="secondary" size="sm" onClick={onClose}>Back</Button>
-        {url && <a href={url} download={filename}>Download PDF</a>}
+        {onClose ? <Button renderIcon={ArrowLeft} kind="secondary" size="sm" onClick={onClose}>Back</Button> : <span />}
+        {url && <Button as="a" kind="tertiary" size="sm" renderIcon={Download} href={url} download={filename}>Download PDF</Button>}
       </div>
-      {url && <iframe title="PDF" src={url} style={{ width: "100%", height: "70vh", border: "1px solid var(--cds-border-strong-01)" }} />}
+      {url && <iframe className="ao-pdf" title="PDF" src={url} />}
     </Stack>
   );
 }

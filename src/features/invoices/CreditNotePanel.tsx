@@ -5,6 +5,7 @@ import {
 import { api, errorText, type CreditNoteRow, type LineInput, type Totals } from "../../api";
 import { confirmDialog } from "../../components/dialogs";
 import PdfViewer from "../../components/PdfViewer";
+import { ArrowLeft, Document } from "@carbon/icons-react";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const rupees = (paise: number) => (paise / 100).toLocaleString("en-IN", { style: "currency", currency: "INR" });
@@ -59,13 +60,13 @@ export default function CreditNotePanel({ invoiceId, number, onClose }: { invoic
         )}
         <h4>New credit note</h4>
         <p>Reduces what the client owes on this invoice. GST follows the original invoice. It cannot exceed the amount still owed.</p>
-        <TextInput id="cn-date" type="date" labelText="Date" value={date} onChange={(e) => setDate(e.target.value)} />
-        <TextInput id="cn-reason" labelText="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+        <TextInput size="sm" id="cn-date" type="date" labelText="Date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <TextInput size="sm" id="cn-reason" labelText="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
         {lines.map((l, i) => (
           <Stack key={i} gap={3}>
-            <TextInput id={`cn-d-${i}`} labelText="Description" value={l.description} onChange={(e) => setLine(i, "description", e.target.value)} />
-            <TextInput id={`cn-q-${i}`} labelText="Qty" value={l.qty} onChange={(e) => setLine(i, "qty", e.target.value)} />
-            <TextInput id={`cn-r-${i}`} labelText="Rate (₹)" value={l.rate} onChange={(e) => setLine(i, "rate", e.target.value)} />
+            <TextInput size="sm" id={`cn-d-${i}`} labelText="Description" value={l.description} onChange={(e) => setLine(i, "description", e.target.value)} />
+            <TextInput size="sm" id={`cn-q-${i}`} labelText="Qty" value={l.qty} onChange={(e) => setLine(i, "qty", e.target.value)} />
+            <TextInput size="sm" id={`cn-r-${i}`} labelText="Rate (₹)" value={l.rate} onChange={(e) => setLine(i, "rate", e.target.value)} />
             {lines.length > 1 && <div><Button kind="ghost" size="sm" onClick={() => setLines(lines.filter((_, j) => j !== i))}>Remove line</Button></div>}
           </Stack>
         ))}
@@ -74,8 +75,8 @@ export default function CreditNotePanel({ invoiceId, number, onClose }: { invoic
         {error && <InlineNotification kind="error" title={error} hideCloseButton lowContrast />}
         {ok && <InlineNotification kind="success" title={ok} hideCloseButton lowContrast />}
         <div className="toolbar">
-          <Button kind="secondary" onClick={onClose}>Back</Button>
-          <Button type="submit">Issue credit note</Button>
+          <Button renderIcon={ArrowLeft} size="sm" kind="secondary" onClick={onClose}>Back</Button>
+          <Button renderIcon={Document} size="sm" type="submit">Issue credit note</Button>
         </div>
       </Stack>
     </Form>

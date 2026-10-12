@@ -11,6 +11,7 @@ import DataTable, { type Column } from "../../components/data-table/DataTable";
 import RowMenu from "../../components/data-table/RowMenu";
 import { useServerTable } from "../../components/data-table/useServerTable";
 import { Grid, Notice, PaySelect, currentFy, inr, today, useLoad } from "./shared";
+import { Add, ArrowLeft } from "@carbon/icons-react";
 
 const canPostRole = (role: string) => role === "Owner" || role === "Accounts";
 
@@ -92,7 +93,7 @@ export function ReportsSection() {
         </Grid>);
       } else if (kind === "ar") {
         const r = await api.reportArCheck(to);
-        setOut(<p>Receivable in the ledger <strong>{r.ledger_display}</strong> · owed per open invoices <strong>{r.invoices_display}</strong> · <StatusBadge status={r.agrees ? "posted" : "overdue"} label={r.agrees ? "Agree" : "Differ"} />{!r.agrees && " Use Chart and financial years → Post earlier documents if invoices were issued before the ledger existed."}</p>);
+        setOut(<p>Receivable in the ledger <strong>{r.ledger_display}</strong> · owed per open invoices <strong>{r.invoices_display}</strong> · <StatusBadge status={r.agrees ? "posted" : "overdue"} label={r.agrees ? "Agree" : "Differ"} />{!r.agrees && " Use the Post earlier documents action in Chart and financial years if invoices were issued before the ledger existed."}</p>);
       } else {
         const r = useSlabs ? await api.reportTaxSlabs(from, to, slabs, cess) : await api.reportTaxEstimate(from, to, rate);
         setOut(<>
@@ -111,43 +112,43 @@ export function ReportsSection() {
 
   return (
     <>
-      <PageHeader title="Reports" description={`Computed from posted journals. Financial year to date: ${fy.from} to ${fy.to}.`} actions={<Button onClick={run} disabled={running}>{running ? "Running…" : "Run report"}</Button>} />
-      <div className="toolbar" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
-        <Select id="rep-kind" labelText="Report" value={kind} onChange={(e) => { setKind(e.target.value as ReportKind); setOut(null); }}>
+      <PageHeader title="Reports" description={`Computed from posted journals. Financial year to date: ${fy.from} to ${fy.to}.`} actions={<Button size="sm" onClick={run} disabled={running}>{running ? "Running…" : "Run report"}</Button>} />
+      <div className="toolbar ao-justify-start ao-wrap">
+        <Select size="sm" id="rep-kind" labelText="Report" value={kind} onChange={(e) => { setKind(e.target.value as ReportKind); setOut(null); }}>
           <SelectItem value="tb" text="Trial balance" /><SelectItem value="pnl" text="Profit and loss" /><SelectItem value="bs" text="Balance sheet" />
           <SelectItem value="ledger" text="Account ledger" /><SelectItem value="tax" text="GST and TDS summary" />
           <SelectItem value="ar" text="Receivable vs invoices check" /><SelectItem value="estimate" text="Income-tax estimate" />
         </Select>
-        {needsFrom && <TextInput id="rep-from" type="date" labelText="From" value={from} onChange={(e) => setFrom(e.target.value)} />}
-        <TextInput id="rep-to" type="date" labelText={asOf ? "As of" : "To"} value={to} onChange={(e) => setTo(e.target.value)} />
+        {needsFrom && <TextInput size="sm" id="rep-from" type="date" labelText="From" value={from} onChange={(e) => setFrom(e.target.value)} />}
+        <TextInput size="sm" id="rep-to" type="date" labelText={asOf ? "As of" : "To"} value={to} onChange={(e) => setTo(e.target.value)} />
         {kind === "ledger" && (
-          <Select id="rep-acct" labelText="Account" value={accountId || ""} onChange={(e) => setAccountId(Number(e.target.value))}>
+          <Select size="sm" id="rep-acct" labelText="Account" value={accountId || ""} onChange={(e) => setAccountId(Number(e.target.value))}>
             <SelectItem value="" text="Select an account" />
             {accounts.map((a) => <SelectItem key={a.id} value={a.id} text={`${a.code} ${a.name}`} />)}
           </Select>
         )}
         {kind === "estimate" && (
-          <Select id="rep-mode" labelText="Method" value={useSlabs ? "slabs" : "flat"} onChange={(e) => setUseSlabs(e.target.value === "slabs")}>
+          <Select size="sm" id="rep-mode" labelText="Method" value={useSlabs ? "slabs" : "flat"} onChange={(e) => setUseSlabs(e.target.value === "slabs")}>
             <SelectItem value="flat" text="Flat rate (firms, LLPs, companies)" /><SelectItem value="slabs" text="Slab table (individuals)" />
           </Select>
         )}
-        {kind === "estimate" && !useSlabs && <TextInput id="rep-rate" labelText="Tax rate (%)" value={rate} onChange={(e) => setRate(e.target.value)} />}
+        {kind === "estimate" && !useSlabs && <TextInput size="sm" id="rep-rate" labelText="Tax rate (%)" value={rate} onChange={(e) => setRate(e.target.value)} />}
       </div>
       {kind === "estimate" && useSlabs && (
         <Stack gap={3}>
           <p>Enter the slabs that apply to you for the year, lowest first; leave the last limit empty. The app does not supply rates.</p>
           {slabs.map((s, i) => (
-            <div key={i} className="toolbar" style={{ justifyContent: "flex-start" }}>
-              <TextInput id={`sl-u-${i}`} labelText="Up to (₹)" value={s.upto} onChange={(e) => setSlabs(slabs.map((x, j) => (j === i ? { ...x, upto: e.target.value } : x)))} />
-              <TextInput id={`sl-r-${i}`} labelText="Rate (%)" value={s.rate_percent} onChange={(e) => setSlabs(slabs.map((x, j) => (j === i ? { ...x, rate_percent: e.target.value } : x)))} />
+            <div key={i} className="toolbar ao-justify-start">
+              <TextInput size="sm" id={`sl-u-${i}`} labelText="Up to (₹)" value={s.upto} onChange={(e) => setSlabs(slabs.map((x, j) => (j === i ? { ...x, upto: e.target.value } : x)))} />
+              <TextInput size="sm" id={`sl-r-${i}`} labelText="Rate (%)" value={s.rate_percent} onChange={(e) => setSlabs(slabs.map((x, j) => (j === i ? { ...x, rate_percent: e.target.value } : x)))} />
               {slabs.length > 1 && <Button kind="ghost" size="sm" onClick={() => setSlabs(slabs.filter((_, j) => j !== i))}>Remove</Button>}
             </div>
           ))}
-          <div><Button kind="tertiary" size="sm" onClick={() => setSlabs([...slabs, { upto: "", rate_percent: "" }])}>Add slab</Button> <TextInput id="sl-cess" labelText="Cess (%)" value={cess} onChange={(e) => setCess(e.target.value)} /></div>
+          <div><Button kind="tertiary" size="sm" onClick={() => setSlabs([...slabs, { upto: "", rate_percent: "" }])}>Add slab</Button> <TextInput size="sm" id="sl-cess" labelText="Cess (%)" value={cess} onChange={(e) => setCess(e.target.value)} /></div>
         </Stack>
       )}
       <Notice error={error} />
-      <div style={{ marginTop: 12 }}>{out}</div>
+      <div className="ao-block-start">{out}</div>
     </>
   );
 }
@@ -189,7 +190,7 @@ export function JournalsSection({ role }: { role: string }) {
   if (typeof view === "object" && "lines" in view) {
     return (
       <>
-        <PageHeader title={view.lines.number} description={`${view.lines.date} · ${view.lines.narration}`} actions={<Button kind="secondary" onClick={() => setView("list")}>Back to journals</Button>} />
+        <PageHeader title={view.lines.number} description={`${view.lines.date} · ${view.lines.narration}`} actions={<Button renderIcon={ArrowLeft} size="sm" kind="secondary" onClick={() => setView("list")}>Back to journals</Button>} />
         <Grid head={["Account", "Memo", "Debit", "Credit"]}>
           {lines.map((l, i) => <TableRow key={i}><TableCell>{l.account}</TableCell><TableCell>{l.memo}</TableCell><TableCell>{l.debit_display}</TableCell><TableCell>{l.credit_display}</TableCell></TableRow>)}
         </Grid>
@@ -210,10 +211,10 @@ export function JournalsSection({ role }: { role: string }) {
           setBusy(false);
         }}>
           <Stack gap={5}>
-            <TextInput id="rv-reason" labelText="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-            <PasswordInput id="rv-pw" labelText="Your password" value={pw} onChange={(e) => setPw(e.target.value)} />
+            <TextInput size="sm" id="rv-reason" labelText="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+            <PasswordInput size="sm" id="rv-pw" labelText="Your password" value={pw} onChange={(e) => setPw(e.target.value)} />
             <Notice error={error} />
-            <div className="toolbar"><Button kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? "Posting…" : "Reverse journal"}</Button></div>
+            <div className="toolbar"><Button size="sm" kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button size="sm" type="submit" disabled={busy}>{busy ? "Posting…" : "Reverse journal"}</Button></div>
           </Stack>
         </Form>
       </>
@@ -237,24 +238,24 @@ export function JournalsSection({ role }: { role: string }) {
           setBusy(false);
         }}>
           <Stack gap={4}>
-            <TextInput id="mj-date" type="date" labelText="Date" value={date} onChange={(e) => setDate(e.target.value)} />
-            <TextInput id="mj-narr" labelText="Narration" value={narration} onChange={(e) => setNarration(e.target.value)} />
+            <TextInput size="sm" id="mj-date" type="date" labelText="Date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <TextInput size="sm" id="mj-narr" labelText="Narration" value={narration} onChange={(e) => setNarration(e.target.value)} />
             {jl.map((l, i) => (
-              <div key={i} className="toolbar" style={{ gridColumn: "1 / -1", alignItems: "flex-end" }}>
-                <Select id={`mj-a-${i}`} labelText={i === 0 ? "Account" : ""} hideLabel={i !== 0} value={l.account_id || ""} onChange={(e) => setJl(jl.map((x, j) => (j === i ? { ...x, account_id: Number(e.target.value) } : x)))}>
+              <div key={i} className="toolbar ao-span">
+                <Select size="sm" id={`mj-a-${i}`} labelText={i === 0 ? "Account" : ""} hideLabel={i !== 0} value={l.account_id || ""} onChange={(e) => setJl(jl.map((x, j) => (j === i ? { ...x, account_id: Number(e.target.value) } : x)))}>
                   <SelectItem value="" text="Account…" />
                   {accounts.map((a) => <SelectItem key={a.id} value={a.id} text={`${a.code} ${a.name}`} />)}
                 </Select>
-                <TextInput id={`mj-d-${i}`} labelText={i === 0 ? "Debit" : ""} hideLabel={i !== 0} value={l.debit} onChange={(e) => setJl(jl.map((x, j) => (j === i ? { ...x, debit: e.target.value } : x)))} />
-                <TextInput id={`mj-c-${i}`} labelText={i === 0 ? "Credit" : ""} hideLabel={i !== 0} value={l.credit} onChange={(e) => setJl(jl.map((x, j) => (j === i ? { ...x, credit: e.target.value } : x)))} />
+                <TextInput size="sm" id={`mj-d-${i}`} labelText={i === 0 ? "Debit" : ""} hideLabel={i !== 0} value={l.debit} onChange={(e) => setJl(jl.map((x, j) => (j === i ? { ...x, debit: e.target.value } : x)))} />
+                <TextInput size="sm" id={`mj-c-${i}`} labelText={i === 0 ? "Credit" : ""} hideLabel={i !== 0} value={l.credit} onChange={(e) => setJl(jl.map((x, j) => (j === i ? { ...x, credit: e.target.value } : x)))} />
               </div>
             ))}
             <div>
               <Button kind="ghost" size="sm" onClick={() => setJl([...jl, { account_id: 0, debit: "", credit: "", memo: "" }])}>Add line</Button>
-              <span style={{ marginLeft: 16 }}>Debits {dsum.toFixed(2)} · Credits {csum.toFixed(2)} · <StatusBadge status={Math.abs(dsum - csum) < 0.005 && dsum > 0 ? "posted" : "overdue"} label={Math.abs(dsum - csum) < 0.005 && dsum > 0 ? "Balanced" : "Out of balance"} /></span>
+              <span className="ao-inline-start">Debits {dsum.toFixed(2)} · Credits {csum.toFixed(2)} · <StatusBadge status={Math.abs(dsum - csum) < 0.005 && dsum > 0 ? "posted" : "overdue"} label={Math.abs(dsum - csum) < 0.005 && dsum > 0 ? "Balanced" : "Out of balance"} /></span>
             </div>
             <Notice error={error} />
-            <div className="toolbar"><Button kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? "Posting…" : "Post journal"}</Button></div>
+            <div className="toolbar"><Button size="sm" kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button size="sm" type="submit" disabled={busy}>{busy ? "Posting…" : "Post journal"}</Button></div>
           </Stack>
         </Form>
       </>
@@ -263,7 +264,7 @@ export function JournalsSection({ role }: { role: string }) {
 
   return (
     <>
-      <PageHeader title="Journals" description="Every posting in the ledger, from documents and from manual entries." actions={canPost && <Button onClick={() => setView("new")}>New journal</Button>} />
+      <PageHeader title="Journals" description="Every posting in the ledger, from documents and from manual entries." actions={canPost && <Button renderIcon={Add} size="sm" onClick={() => setView("new")}>New journal</Button>} />
       <DataTable
         id="journals" rows={table.rows} columns={columns} rowKey={(r) => r.id} loading={table.loading} error={table.error} onRetry={reload}
         server={table.server} searchLabel="Search voucher number or narration" exportName="journals"
@@ -334,10 +335,10 @@ export function ExpensesSection({ role }: { role: string }) {
           setBusy(false);
         }}>
           <Stack gap={5}>
-            <TextInput id="pay-date" type="date" labelText="Payment date" value={payDate} onChange={(x) => setPayDate(x.target.value)} />
+            <TextInput size="sm" id="pay-date" type="date" labelText="Payment date" value={payDate} onChange={(x) => setPayDate(x.target.value)} />
             <PaySelect id="pay-via" label="Paid from" value={payVia} onChange={setPayVia} allowPayable={false} />
             <Notice error={error} />
-            <div className="toolbar"><Button kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? "Saving…" : "Record payment"}</Button></div>
+            <div className="toolbar"><Button size="sm" kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button size="sm" type="submit" disabled={busy}>{busy ? "Saving…" : "Record payment"}</Button></div>
           </Stack>
         </Form>
       </>
@@ -356,25 +357,25 @@ export function ExpensesSection({ role }: { role: string }) {
           setBusy(false);
         }}>
           <Stack gap={4}>
-            <TextInput id="ex-date" type="date" labelText="Date" value={f.date} onChange={(e) => set({ date: e.target.value })} />
-            <Select id="ex-vendor" labelText="Vendor (optional)" value={f.vendor_id || ""} onChange={(e) => set({ vendor_id: Number(e.target.value) })}>
+            <TextInput size="sm" id="ex-date" type="date" labelText="Date" value={f.date} onChange={(e) => set({ date: e.target.value })} />
+            <Select size="sm" id="ex-vendor" labelText="Vendor (optional)" value={f.vendor_id || ""} onChange={(e) => set({ vendor_id: Number(e.target.value) })}>
               <SelectItem value="" text="No vendor" />{vendors.filter((v) => v.active).map((v) => <SelectItem key={v.id} value={v.id!} text={v.name} />)}
             </Select>
-            <TextInput id="ex-ref" labelText="Bill / reference" value={f.bill_ref} onChange={(e) => set({ bill_ref: e.target.value })} />
-            <TextInput id="ex-desc" labelText="Description" value={f.description} onChange={(e) => set({ description: e.target.value })} />
-            <Select id="ex-acct" labelText="Expense account" value={f.expense_account_id || ""} onChange={(e) => set({ expense_account_id: Number(e.target.value) })}>
+            <TextInput size="sm" id="ex-ref" labelText="Bill / reference" value={f.bill_ref} onChange={(e) => set({ bill_ref: e.target.value })} />
+            <TextInput size="sm" id="ex-desc" labelText="Description" value={f.description} onChange={(e) => set({ description: e.target.value })} />
+            <Select size="sm" id="ex-acct" labelText="Expense account" value={f.expense_account_id || ""} onChange={(e) => set({ expense_account_id: Number(e.target.value) })}>
               <SelectItem value="" text="Select an account" />{accounts.map((a) => <SelectItem key={a.id} value={a.id} text={`${a.code} ${a.name}`} />)}
             </Select>
-            <TextInput id="ex-amt" labelText="Amount before GST (₹)" value={f.amount} onChange={(e) => set({ amount: e.target.value })} />
-            <TextInput id="ex-gst" labelText="GST charged (₹)" value={f.gst} onChange={(e) => set({ gst: e.target.value })} />
-            <TextInput id="ex-tds" labelText="TDS you deducted from the vendor (₹)" value={f.tds} onChange={(e) => set({ tds: e.target.value })} />
+            <TextInput size="sm" id="ex-amt" labelText="Amount before GST (₹)" value={f.amount} onChange={(e) => set({ amount: e.target.value })} />
+            <TextInput size="sm" id="ex-gst" labelText="GST charged (₹)" value={f.gst} onChange={(e) => set({ gst: e.target.value })} />
+            <TextInput size="sm" id="ex-tds" labelText="TDS you deducted from the vendor (₹)" value={f.tds} onChange={(e) => set({ tds: e.target.value })} />
             <PaySelect id="ex-via" label="Paid from" value={f.paid_via} onChange={(v) => set({ paid_via: v })} allowPayable />
-            <div className="toolbar" style={{ gridColumn: "1 / -1", justifyContent: "flex-start" }}>
-              <TextInput id="vn" labelText="Add a vendor" value={vname} onChange={(e) => setVname(e.target.value)} />
+            <div className="toolbar ao-justify-start ao-span">
+              <TextInput size="sm" id="vn" labelText="Add a vendor" value={vname} onChange={(e) => setVname(e.target.value)} />
               <Button kind="tertiary" size="sm" onClick={async () => { try { await api.vendorSave({ id: null, name: vname, pan: "", active: true }); setVname(""); loadSupport(); setError(""); } catch (err) { setError(errorText(err)); } }}>Add vendor</Button>
             </div>
             <Notice error={error} />
-            <div className="toolbar"><Button kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? "Saving…" : "Record expense"}</Button></div>
+            <div className="toolbar"><Button size="sm" kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button size="sm" type="submit" disabled={busy}>{busy ? "Saving…" : "Record expense"}</Button></div>
           </Stack>
         </Form>
       </>
@@ -383,7 +384,7 @@ export function ExpensesSection({ role }: { role: string }) {
 
   return (
     <>
-      <PageHeader title="Expenses" description="Bills and costs, with GST input credit and TDS deducted from vendors." actions={canPost && <Button onClick={() => setView("new")}>Record expense</Button>} />
+      <PageHeader title="Expenses" description="Bills and costs, with GST input credit and TDS deducted from vendors." actions={canPost && <Button renderIcon={Add} size="sm" onClick={() => setView("new")}>Record expense</Button>} />
       <Notice error={error} />
       <DataTable
         id="expenses" rows={rows} columns={columns} rowKey={(r) => r.id} loading={loading} error={loadError} onRetry={reload}
@@ -444,34 +445,34 @@ export function IncomeSection({ role }: { role: string }) {
           setBusy(false);
         }}>
           <Stack gap={4}>
-            <TextInput id="in-date" type="date" labelText="Date received" value={f.date} onChange={(e) => set({ date: e.target.value })} />
-            <Select id="in-kind" labelText="Type" value={f.kind} onChange={(e) => set({ kind: e.target.value as typeof f.kind })}>
+            <TextInput size="sm" id="in-date" type="date" labelText="Date received" value={f.date} onChange={(e) => set({ date: e.target.value })} />
+            <Select size="sm" id="in-kind" labelText="Type" value={f.kind} onChange={(e) => set({ kind: e.target.value as typeof f.kind })}>
               <SelectItem value="rent" text="Rent" /><SelectItem value="interest" text="Bank interest" /><SelectItem value="other" text="Other income" />
             </Select>
             {f.kind === "rent" && (
-              <Select id="in-prop" labelText="Property" value={f.property_id || ""} onChange={(e) => set({ property_id: Number(e.target.value) })}>
+              <Select size="sm" id="in-prop" labelText="Property" value={f.property_id || ""} onChange={(e) => set({ property_id: Number(e.target.value) })}>
                 <SelectItem value="" text="Select a property" />{props.filter((p) => p.active).map((p) => <SelectItem key={p.id} value={p.id!} text={`${p.name} (${p.kind})`} />)}
               </Select>
             )}
-            <TextInput id="in-payer" labelText="Received from" value={f.payer} onChange={(e) => set({ payer: e.target.value })} />
-            <TextInput id="in-amt" labelText="Amount before GST (₹)" value={f.amount} onChange={(e) => set({ amount: e.target.value })} />
-            <TextInput id="in-gst" labelText="GST charged (₹, regular registration only)" value={f.gst} onChange={(e) => set({ gst: e.target.value })} />
+            <TextInput size="sm" id="in-payer" labelText="Received from" value={f.payer} onChange={(e) => set({ payer: e.target.value })} />
+            <TextInput size="sm" id="in-amt" labelText="Amount before GST (₹)" value={f.amount} onChange={(e) => set({ amount: e.target.value })} />
+            <TextInput size="sm" id="in-gst" labelText="GST charged (₹, regular registration only)" value={f.gst} onChange={(e) => set({ gst: e.target.value })} />
             {f.gst && (
-              <Select id="in-gstmode" labelText="GST type" value={f.gst_mode} onChange={(e) => set({ gst_mode: e.target.value as "intra" | "inter" })}>
+              <Select size="sm" id="in-gstmode" labelText="GST type" value={f.gst_mode} onChange={(e) => set({ gst_mode: e.target.value as "intra" | "inter" })}>
                 <SelectItem value="intra" text="CGST + SGST" /><SelectItem value="inter" text="IGST" />
               </Select>
             )}
-            <TextInput id="in-tds" labelText="TDS deducted by the payer (₹)" value={f.tds} onChange={(e) => set({ tds: e.target.value })} />
+            <TextInput size="sm" id="in-tds" labelText="TDS deducted by the payer (₹)" value={f.tds} onChange={(e) => set({ tds: e.target.value })} />
             <PaySelect id="in-via" label="Received into" value={f.received_via} onChange={(v) => set({ received_via: v })} allowPayable={false} />
-            <div className="toolbar" style={{ gridColumn: "1 / -1", justifyContent: "flex-start" }}>
-              <TextInput id="pn" labelText="Add a rental property" value={pname} onChange={(e) => setPname(e.target.value)} />
-              <Select id="pk" labelText="Kind" value={pkind} onChange={(e) => setPkind(e.target.value as "commercial" | "residential")}>
+            <div className="toolbar ao-justify-start ao-span">
+              <TextInput size="sm" id="pn" labelText="Add a rental property" value={pname} onChange={(e) => setPname(e.target.value)} />
+              <Select size="sm" id="pk" labelText="Kind" value={pkind} onChange={(e) => setPkind(e.target.value as "commercial" | "residential")}>
                 <SelectItem value="commercial" text="Commercial" /><SelectItem value="residential" text="Residential" />
               </Select>
               <Button kind="tertiary" size="sm" onClick={async () => { try { await api.propertySave({ id: null, name: pname, kind: pkind, address: "", active: true }); setPname(""); loadProps(); setError(""); } catch (err) { setError(errorText(err)); } }}>Add property</Button>
             </div>
             <Notice error={error} />
-            <div className="toolbar"><Button kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? "Saving…" : "Record income"}</Button></div>
+            <div className="toolbar"><Button size="sm" kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button size="sm" type="submit" disabled={busy}>{busy ? "Saving…" : "Record income"}</Button></div>
           </Stack>
         </Form>
       </>
@@ -480,7 +481,7 @@ export function IncomeSection({ role }: { role: string }) {
 
   return (
     <>
-      <PageHeader title="Rent and interest" description="Income other than professional fees." actions={canPost && <Button onClick={() => setView("new")}>Record income</Button>} />
+      <PageHeader title="Rent and interest" description="Income other than professional fees." actions={canPost && <Button renderIcon={Add} size="sm" onClick={() => setView("new")}>Record income</Button>} />
       <Notice error={error} />
       <DataTable
         id="income" rows={rows} columns={columns} rowKey={(r) => r.id} loading={loading} error={loadError} onRetry={reload}
@@ -531,21 +532,21 @@ export function SalariesSection({ role }: { role: string }) {
           setBusy(false);
         }}>
           <Stack gap={4}>
-            <TextInput id="pr-date" type="date" labelText="Date paid" value={f.date} onChange={(e) => set({ date: e.target.value })} />
-            <TextInput id="pr-emp" labelText="Employee" value={f.employee} onChange={(e) => set({ employee: e.target.value })} />
-            <TextInput id="pr-per" labelText="Period (e.g. Oct 2026)" value={f.period_label} onChange={(e) => set({ period_label: e.target.value })} />
-            <TextInput id="pr-gross" labelText="Gross salary (₹)" value={f.gross} onChange={(e) => set({ gross: e.target.value })} />
-            <TextInput id="pr-tds" labelText="TDS on salary (₹)" value={f.tds} onChange={(e) => set({ tds: e.target.value })} />
+            <TextInput size="sm" id="pr-date" type="date" labelText="Date paid" value={f.date} onChange={(e) => set({ date: e.target.value })} />
+            <TextInput size="sm" id="pr-emp" labelText="Employee" value={f.employee} onChange={(e) => set({ employee: e.target.value })} />
+            <TextInput size="sm" id="pr-per" labelText="Period (e.g. Oct 2026)" value={f.period_label} onChange={(e) => set({ period_label: e.target.value })} />
+            <TextInput size="sm" id="pr-gross" labelText="Gross salary (₹)" value={f.gross} onChange={(e) => set({ gross: e.target.value })} />
+            <TextInput size="sm" id="pr-tds" labelText="TDS on salary (₹)" value={f.tds} onChange={(e) => set({ tds: e.target.value })} />
             <PaySelect id="pr-via" label="Paid from" value={f.paid_via} onChange={(v) => set({ paid_via: v })} allowPayable />
             <h4>Provident fund, ESI and professional tax</h4>
             <p>Enter the amounts, or fill them in from the rates below. The rates are assumptions you control; confirm them against current rules and your state.</p>
-            <TextInput id="pr-basic" labelText="Basic pay (₹), for the PF suggestion" value={basic} onChange={(e) => setBasic(e.target.value)} />
-            <div className="toolbar" style={{ gridColumn: "1 / -1", alignItems: "flex-end" }}>
-              <TextInput id="pr-pfr" labelText="PF rate %" value={rates.pf} onChange={(e) => setRates({ ...rates, pf: e.target.value })} />
-              <TextInput id="pr-pfc" labelText="PF wage ceiling (₹)" value={rates.ceiling} onChange={(e) => setRates({ ...rates, ceiling: e.target.value })} />
-              <TextInput id="pr-esil" labelText="ESI gross limit (₹)" value={rates.esiLimit} onChange={(e) => setRates({ ...rates, esiLimit: e.target.value })} />
-              <TextInput id="pr-esie" labelText="ESI employee %" value={rates.esiEe} onChange={(e) => setRates({ ...rates, esiEe: e.target.value })} />
-              <TextInput id="pr-esir" labelText="ESI employer %" value={rates.esiEr} onChange={(e) => setRates({ ...rates, esiEr: e.target.value })} />
+            <TextInput size="sm" id="pr-basic" labelText="Basic pay (₹), for the PF suggestion" value={basic} onChange={(e) => setBasic(e.target.value)} />
+            <div className="toolbar ao-span">
+              <TextInput size="sm" id="pr-pfr" labelText="PF rate %" value={rates.pf} onChange={(e) => setRates({ ...rates, pf: e.target.value })} />
+              <TextInput size="sm" id="pr-pfc" labelText="PF wage ceiling (₹)" value={rates.ceiling} onChange={(e) => setRates({ ...rates, ceiling: e.target.value })} />
+              <TextInput size="sm" id="pr-esil" labelText="ESI gross limit (₹)" value={rates.esiLimit} onChange={(e) => setRates({ ...rates, esiLimit: e.target.value })} />
+              <TextInput size="sm" id="pr-esie" labelText="ESI employee %" value={rates.esiEe} onChange={(e) => setRates({ ...rates, esiEe: e.target.value })} />
+              <TextInput size="sm" id="pr-esir" labelText="ESI employer %" value={rates.esiEr} onChange={(e) => setRates({ ...rates, esiEr: e.target.value })} />
               <Button kind="tertiary" size="sm" onClick={async () => {
                 try {
                   const s = await api.payrollSuggest(basic || f.gross, f.gross, rates.pf, rates.ceiling, rates.esiLimit, rates.esiEe, rates.esiEr);
@@ -554,13 +555,13 @@ export function SalariesSection({ role }: { role: string }) {
                 } catch (e) { setError(errorText(e)); }
               }}>Suggest PF and ESI</Button>
             </div>
-            <TextInput id="pr-pfe" labelText="Employee PF (₹)" value={f.pf_employee} onChange={(e) => set({ pf_employee: e.target.value })} />
-            <TextInput id="pr-pfr2" labelText="Employer PF (₹)" value={f.pf_employer} onChange={(e) => set({ pf_employer: e.target.value })} />
-            <TextInput id="pr-esie2" labelText="Employee ESI (₹)" value={f.esi_employee} onChange={(e) => set({ esi_employee: e.target.value })} />
-            <TextInput id="pr-esir2" labelText="Employer ESI (₹)" value={f.esi_employer} onChange={(e) => set({ esi_employer: e.target.value })} />
-            <TextInput id="pr-pt" labelText="Professional tax (₹)" value={f.professional_tax} onChange={(e) => set({ professional_tax: e.target.value })} />
+            <TextInput size="sm" id="pr-pfe" labelText="Employee PF (₹)" value={f.pf_employee} onChange={(e) => set({ pf_employee: e.target.value })} />
+            <TextInput size="sm" id="pr-pfr2" labelText="Employer PF (₹)" value={f.pf_employer} onChange={(e) => set({ pf_employer: e.target.value })} />
+            <TextInput size="sm" id="pr-esie2" labelText="Employee ESI (₹)" value={f.esi_employee} onChange={(e) => set({ esi_employee: e.target.value })} />
+            <TextInput size="sm" id="pr-esir2" labelText="Employer ESI (₹)" value={f.esi_employer} onChange={(e) => set({ esi_employer: e.target.value })} />
+            <TextInput size="sm" id="pr-pt" labelText="Professional tax (₹)" value={f.professional_tax} onChange={(e) => set({ professional_tax: e.target.value })} />
             <Notice error={error} />
-            <div className="toolbar"><Button kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? "Saving…" : "Record salary"}</Button></div>
+            <div className="toolbar"><Button size="sm" kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button size="sm" type="submit" disabled={busy}>{busy ? "Saving…" : "Record salary"}</Button></div>
           </Stack>
         </Form>
       </>
@@ -569,7 +570,7 @@ export function SalariesSection({ role }: { role: string }) {
 
   return (
     <>
-      <PageHeader title="Salaries" description="Salary payments with TDS, PF, ESI and professional tax." actions={canPost && <Button onClick={() => setView("new")}>Record salary</Button>} />
+      <PageHeader title="Salaries" description="Salary payments with TDS, PF, ESI and professional tax." actions={canPost && <Button renderIcon={Add} size="sm" onClick={() => setView("new")}>Record salary</Button>} />
       <Notice error={error} />
       <DataTable
         id="salaries" rows={rows} columns={columns} rowKey={(r) => r.id} loading={loading} error={loadError} onRetry={reload}
@@ -619,13 +620,13 @@ export function AssetsSection({ role }: { role: string }) {
           setBusy(false);
         }}>
           <Stack gap={4}>
-            <TextInput id="as-name" labelText="Asset" value={f.name} onChange={(e) => set({ name: e.target.value })} />
-            <TextInput id="as-date" type="date" labelText="Purchase date" value={f.purchase_date} onChange={(e) => set({ purchase_date: e.target.value })} />
-            <TextInput id="as-cost" labelText="Cost (₹)" value={f.cost} onChange={(e) => set({ cost: e.target.value })} />
-            <TextInput id="as-rate" labelText="Depreciation rate (% per year, written-down value)" value={f.rate_percent} onChange={(e) => set({ rate_percent: e.target.value })} />
+            <TextInput size="sm" id="as-name" labelText="Asset" value={f.name} onChange={(e) => set({ name: e.target.value })} />
+            <TextInput size="sm" id="as-date" type="date" labelText="Purchase date" value={f.purchase_date} onChange={(e) => set({ purchase_date: e.target.value })} />
+            <TextInput size="sm" id="as-cost" labelText="Cost (₹)" value={f.cost} onChange={(e) => set({ cost: e.target.value })} />
+            <TextInput size="sm" id="as-rate" labelText="Depreciation rate (% per year, written-down value)" value={f.rate_percent} onChange={(e) => set({ rate_percent: e.target.value })} />
             <PaySelect id="as-via" label="Paid from" value={f.paid_via} onChange={(v) => set({ paid_via: v })} allowPayable />
             <Notice error={error} />
-            <div className="toolbar"><Button kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? "Saving…" : "Add asset"}</Button></div>
+            <div className="toolbar"><Button size="sm" kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button size="sm" type="submit" disabled={busy}>{busy ? "Saving…" : "Add asset"}</Button></div>
           </Stack>
         </Form>
       </>
@@ -634,7 +635,7 @@ export function AssetsSection({ role }: { role: string }) {
 
   return (
     <>
-      <PageHeader title="Fixed assets" description="Cost and written-down value. Depreciation uses the full rate in the purchase year; check it against your tax schedule." actions={canPost && <Button onClick={() => setView("new")}>Add asset</Button>} />
+      <PageHeader title="Fixed assets" description="Cost and written-down value. Depreciation uses the full rate in the purchase year; check it against your tax schedule." actions={canPost && <Button renderIcon={Add} size="sm" onClick={() => setView("new")}>Add asset</Button>} />
       <Notice error={error} ok={ok} />
       <DataTable
         id="assets" rows={rows} columns={columns} rowKey={(r) => r.id} loading={loading} error={loadError} onRetry={reload}
@@ -674,17 +675,17 @@ export function TaxPaymentsSection({ role }: { role: string }) {
           setBusy(false);
         }}>
           <Stack gap={4}>
-            <Select id="tp-kind" labelText="Tax" value={f.kind} onChange={(e) => set({ kind: e.target.value })}>
+            <Select size="sm" id="tp-kind" labelText="Tax" value={f.kind} onChange={(e) => set({ kind: e.target.value })}>
               <SelectItem value="tds" text="TDS deposited" /><SelectItem value="cgst" text="GST - CGST" /><SelectItem value="sgst" text="GST - SGST" />
               <SelectItem value="igst" text="GST - IGST" /><SelectItem value="composition" text="GST composition tax" /><SelectItem value="income_tax" text="Income tax / advance tax" />
               <SelectItem value="pf" text="Provident fund" /><SelectItem value="esi" text="ESI" /><SelectItem value="professional_tax" text="Professional tax" />
             </Select>
-            <TextInput id="tp-date" type="date" labelText="Date paid" value={f.date} onChange={(e) => set({ date: e.target.value })} />
-            <TextInput id="tp-amt" labelText="Amount (₹)" value={f.amount} onChange={(e) => set({ amount: e.target.value })} />
+            <TextInput size="sm" id="tp-date" type="date" labelText="Date paid" value={f.date} onChange={(e) => set({ date: e.target.value })} />
+            <TextInput size="sm" id="tp-amt" labelText="Amount (₹)" value={f.amount} onChange={(e) => set({ amount: e.target.value })} />
             <PaySelect id="tp-via" label="Paid from" value={f.paid_via} onChange={(v) => set({ paid_via: v })} allowPayable={false} />
-            <TextInput id="tp-narr" labelText="Challan / reference" value={f.narration} onChange={(e) => set({ narration: e.target.value })} />
+            <TextInput size="sm" id="tp-narr" labelText="Challan / reference" value={f.narration} onChange={(e) => set({ narration: e.target.value })} />
             <Notice error={error} ok={ok} />
-            <div className="toolbar"><span /><Button type="submit" disabled={busy}>{busy ? "Saving…" : "Record payment"}</Button></div>
+            <div className="toolbar"><span /><Button size="sm" type="submit" disabled={busy}>{busy ? "Saving…" : "Record payment"}</Button></div>
           </Stack>
         </Form>
       )}
@@ -735,13 +736,13 @@ export function AccountSetup({ role }: { role: string }) {
           setBusy(false);
         }}>
           <Stack gap={4}>
-            <TextInput id="na-code" labelText="Code" value={code} onChange={(e) => setCode(e.target.value)} />
-            <TextInput id="na-name" labelText="Name" value={name} onChange={(e) => setName(e.target.value)} />
-            <Select id="na-kind" labelText="Type" value={kind} onChange={(e) => setKind(e.target.value)}>
+            <TextInput size="sm" id="na-code" labelText="Code" value={code} onChange={(e) => setCode(e.target.value)} />
+            <TextInput size="sm" id="na-name" labelText="Name" value={name} onChange={(e) => setName(e.target.value)} />
+            <Select size="sm" id="na-kind" labelText="Type" value={kind} onChange={(e) => setKind(e.target.value)}>
               {["asset", "liability", "equity", "income", "expense"].map((k) => <SelectItem key={k} value={k} text={k} />)}
             </Select>
             <Notice error={error} />
-            <div className="toolbar"><Button kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? "Saving…" : "Add account"}</Button></div>
+            <div className="toolbar"><Button size="sm" kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button size="sm" type="submit" disabled={busy}>{busy ? "Saving…" : "Add account"}</Button></div>
           </Stack>
         </Form>
       </>
@@ -762,9 +763,9 @@ export function AccountSetup({ role }: { role: string }) {
           setBusy(false);
         }}>
           <Stack gap={4}>
-            <PasswordInput id="per-pw" labelText="Your password" value={pw} onChange={(e) => setPw(e.target.value)} />
+            <PasswordInput size="sm" id="per-pw" labelText="Your password" value={pw} onChange={(e) => setPw(e.target.value)} />
             <Notice error={error} />
-            <div className="toolbar"><Button kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? "Saving…" : closing ? "Close year" : "Reopen year"}</Button></div>
+            <div className="toolbar"><Button size="sm" kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button size="sm" type="submit" disabled={busy}>{busy ? "Saving…" : closing ? "Close year" : "Reopen year"}</Button></div>
           </Stack>
         </Form>
       </>
@@ -777,8 +778,8 @@ export function AccountSetup({ role }: { role: string }) {
         title="Chart and financial years" description="Ledger accounts, and the years that can be closed against further postings."
         actions={canPost && (
           <>
-            <Button kind="tertiary" onClick={async () => { try { const [i, c, r] = await api.ledgerBackfill(); setOk(`Posted ${i} invoices, ${c} credit notes and ${r} receipts that were not in the ledger yet.`); setError(""); accounts.reload(); periods.reload(); } catch (e) { setError(errorText(e)); setOk(""); } }}>Post earlier documents</Button>
-            <Button onClick={() => setView("new")}>Add account</Button>
+            <Button size="sm" kind="tertiary" onClick={async () => { try { const [i, c, r] = await api.ledgerBackfill(); setOk(`Posted ${i} invoices, ${c} credit notes and ${r} receipts that were not in the ledger yet.`); setError(""); accounts.reload(); periods.reload(); } catch (e) { setError(errorText(e)); setOk(""); } }}>Post earlier documents</Button>
+            <Button renderIcon={Add} size="sm" onClick={() => setView("new")}>Add account</Button>
           </>
         )}
       />
@@ -789,7 +790,7 @@ export function AccountSetup({ role }: { role: string }) {
         pageSizes={[20]} defaultSort={{ id: "fy", dir: "desc" }} emptyTitle="No financial years yet" emptyHint="They appear when the first journal is posted."
         rowActions={(p) => canClose ? <Button kind="ghost" size="sm" onClick={() => setView({ period: p })}>{p.status === "open" ? "Close year…" : "Reopen…"}</Button> : null}
       />
-      <h4 style={{ marginTop: 24 }}>Chart of accounts</h4>
+      <h4 className="ao-section">Chart of accounts</h4>
       <DataTable
         id="accounts" rows={accounts.data} columns={accountColumns} rowKey={(a) => a.id} loading={accounts.loading} error={accounts.error} onRetry={accounts.reload}
         searchLabel="Search accounts by code or name" exportName="chart-of-accounts" searchText={(a) => `${a.code} ${a.name} ${a.kind}`}

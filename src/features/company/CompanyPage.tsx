@@ -3,7 +3,7 @@ import { Button, Form, InlineNotification, Select, SelectItem, Stack, TextArea, 
 import { api, errorText, type CompanyProfile } from "../../api";
 import PageHeader from "../../components/PageHeader";
 
-const EMPTY: CompanyProfile = { name: "", address: "", email: "", phone: "", pan: "", gstin: "", coa_registration: "", bank_details: "", gst_scheme: "none", upi_id: "", architect_name: "" };
+const EMPTY: CompanyProfile = { name: "", address: "", email: "", phone: "", pan: "", gstin: "", coa_registration: "", bank_details: "", gst_scheme: "none", upi_id: "", architect_name: "", letterhead_style: "classic" };
 
 export default function CompanyPage() {
   const [profile, setProfile] = useState<CompanyProfile>(EMPTY);
@@ -17,7 +17,7 @@ export default function CompanyPage() {
 
   const set = (patch: Partial<CompanyProfile>) => { setProfile({ ...profile, ...patch }); setDirty(true); setOk(""); };
   const field = (key: keyof CompanyProfile, label: string, extra?: { placeholder?: string }) => (
-    <TextInput id={key} labelText={label} placeholder={extra?.placeholder} value={profile[key]} onChange={(e) => set({ [key]: e.target.value } as Partial<CompanyProfile>)} />
+    <TextInput size="sm" id={key} labelText={label} placeholder={extra?.placeholder} value={profile[key]} onChange={(e) => set({ [key]: e.target.value } as Partial<CompanyProfile>)} />
   );
 
   return (
@@ -37,11 +37,16 @@ export default function CompanyPage() {
             {field("name", "Firm name")}
             {field("architect_name", "Architect name (signature block)")}
             <TextArea id="address" labelText="Address" rows={3} value={profile.address} onChange={(e) => set({ address: e.target.value })} />
+            <Select size="sm" id="letterhead_style" labelText="Letterhead style" value={profile.letterhead_style} helperText="How your details are set at the top of letters, agreements and records."
+              onChange={(e) => set({ letterhead_style: e.target.value as CompanyProfile["letterhead_style"] })}>
+              <SelectItem value="classic" text="Classic: firm name large, details beneath" />
+              <SelectItem value="minimal" text="Minimal: small name line and one line of details" />
+            </Select>
             {field("email", "Email")}
             {field("phone", "Phone")}
             {field("pan", "PAN")}
             {field("coa_registration", "COA registration number")}
-            <Select id="gst_scheme" labelText="GST registration" value={profile.gst_scheme} helperText="Controls the tax on every new invoice."
+            <Select size="sm" id="gst_scheme" labelText="GST registration" value={profile.gst_scheme} helperText="Controls the tax on every new invoice."
               onChange={(e) => set({ gst_scheme: e.target.value as CompanyProfile["gst_scheme"] })}>
               <SelectItem value="none" text="Not registered / no GST" />
               <SelectItem value="composition" text="Composition scheme (6% = 3% CGST + 3% SGST, paid by the firm)" />
@@ -53,7 +58,7 @@ export default function CompanyPage() {
             {ok && <InlineNotification kind="success" title={ok} hideCloseButton lowContrast />}
             <div className="toolbar">
               <span>{dirty ? "Unsaved changes" : ""}</span>
-              <Button type="submit" disabled={saving || !dirty}>{saving ? "Saving…" : "Save"}</Button>
+              <Button size="sm" type="submit" disabled={saving || !dirty}>{saving ? "Saving…" : "Save"}</Button>
             </div>
           </Stack>
         </Form>

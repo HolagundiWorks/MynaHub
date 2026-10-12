@@ -5,7 +5,24 @@ export interface SessionInfo {
   role: string;
 }
 
+export interface CompanySummary {
+  name: string;
+  path: string;
+  uuid: string;
+}
+
+export interface FileCheck extends CompanySummary {
+  schema_version: number;
+  needs_upgrade: boolean;
+}
+
+export interface RecentCompany extends CompanySummary {
+  last_opened: number;
+  exists: boolean;
+}
+
 export interface AuthStatus {
+  company: CompanySummary | null;
   setup_required: boolean;
   locked: boolean;
   user: SessionInfo | null;
@@ -23,6 +40,7 @@ export interface CompanyProfile {
   gst_scheme: "none" | "composition" | "regular";
   upi_id: string;
   architect_name: string;
+  letterhead_style: "classic" | "minimal";
 }
 
 export interface MilestoneInput {
@@ -93,10 +111,67 @@ export interface AttachmentRow {
   uploaded_at: string;
 }
 
+export interface FieldDef {
+  path: string;
+  group: string;
+  label: string;
+  kind: "text" | "date" | "money" | "block" | "list";
+  required: boolean;
+  example: string;
+  available: string;
+}
+
+export interface StudioDiagnostic {
+  severity: "error" | "warning";
+  source: "html" | "css";
+  line: number;
+  col: number;
+  message: string;
+}
+
+export interface StudioVersion {
+  version: number;
+  published_at: string;
+  change_summary: string;
+}
+
+export interface StudioState {
+  id: number;
+  name: string;
+  family: string;
+  kind: string;
+  built_in: boolean;
+  archived: boolean;
+  published_version: number;
+  has_draft: boolean;
+  html: string;
+  css: string;
+  versions: StudioVersion[];
+}
+
+export interface StudioPreview {
+  pdf_base64: string;
+  pages: number;
+  landscape: boolean;
+  diagnostics: StudioDiagnostic[];
+  missing_required: string[];
+}
+
+export interface TemplatePreview {
+  pdf_base64: string;
+  warnings: string[];
+}
+
 export interface TemplateRow {
   id: number;
   kind: string;
   name: string;
+  family: "consultancy" | "billing" | "administration";
+  layout: "letter" | "record";
+  description: string;
+  built_in: boolean;
+  archived: boolean;
+  format: "wording" | "html";
   latest_version: number;
   latest_version_id: number;
   body: string;
@@ -424,6 +499,15 @@ export interface AuditPageRow { id: number; at: string; user: string; event: str
 
 // The only bridge to the native layer: a small, typed set of commands.
 export const api = {
+  companyValidate: (path: string) => invoke<FileCheck>("company_validate", { path }),
+  companyRecent: () => invoke<RecentCompany[]>("company_recent_list"),
+  companyRecentRemove: (uuid: string) => invoke<void>("company_recent_remove", { uuid }),
+  companyOpen: (path: string) => invoke<CompanySummary>("company_open", { path }),
+  companyCreate: (path: string, name: string, username: string, password: string, confirm: string) =>
+    invoke<[CompanySummary, string]>("company_create", { path, name, username, password, confirm }),
+  companyClose: () => invoke<void>("company_close"),
+  companyLegacy: () => invoke<{ path: string } | null>("company_legacy_info"),
+  companyConvertLegacy: (path: string) => invoke<CompanySummary>("company_convert_legacy", { path }),
   authStatus: () => invoke<AuthStatus>("auth_status"),
   authSetup: (username: string, password: string, confirm: string) =>
     invoke<string>("auth_setup", { username, password, confirm }),
@@ -464,9 +548,22 @@ export const api = {
     invoke<number>("doc_attach", { docId, kind, filename, base64Data }),
   docAttachments: (docId: number) => invoke<AttachmentRow[]>("doc_attachments", { docId }),
   docAttachmentData: (id: number) => invoke<{ filename: string; base64_data: string }>("doc_attachment_data", { id }),
-  templateList: (kind: string | null) => invoke<TemplateRow[]>("template_list", { kind }),
+  templateList: (kind: string | null, includeArchived = false) => invoke<TemplateRow[]>("template_list", { kind, includeArchived }),
   templateVersions: (templateId: number) => invoke<VersionRow[]>("template_versions_list", { templateId }),
-  templateCreate: (kind: string, name: string, body: string) => invoke<number>("template_create", { kind, name, body }),
+  templateCreate: (kind: string, family: string, layout: string, name: string, body: string) =>
+    invoke<number>("template_create", { kind, family, layout, name, body }),
+  studioFields: () => invoke<FieldDef[]>("studio_fields"),
+  studioOpen: (templateId: number) => invoke<StudioState>("studio_open", { templateId }),
+  studioValidate: (html: string, css: string) => invoke<StudioDiagnostic[]>("studio_validate", { html, css }),
+  studioPreview: (html: string, css: string, profile: string) => invoke<StudioPreview>("studio_preview", { html, css, profile }),
+  studioSaveDraft: (templateId: number, html: string, css: string) => invoke<void>("studio_save_draft", { templateId, html, css }),
+  studioPublish: (templateId: number, summary: string) => invoke<number>("studio_publish", { templateId, summary }),
+  studioRestore: (templateId: number, version: number) => invoke<void>("studio_restore", { templateId, version }),
+  studioDiscardDraft: (templateId: number) => invoke<void>("studio_discard_draft", { templateId }),
+  studioCreate: (name: string, family: string, kind: string) => invoke<number>("studio_create", { name, family, kind }),
+  templateDuplicate: (templateId: number, name: string) => invoke<number>("template_duplicate", { templateId, name }),
+  templateSetArchived: (templateId: number, archived: boolean) => invoke<void>("template_set_archived", { templateId, archived }),
+  templatePreview: (body: string, layout: string, kind: string, name: string) => invoke<TemplatePreview>("template_preview", { body, layout, kind, name }),
   templatePublish: (templateId: number, body: string) => invoke<number>("template_publish", { templateId, body }),
   accountList: (asOf: string) => invoke<AccountRow[]>("account_list", { asOf }),
   accountCreate: (code: string, name: string, kind: string) => invoke<number>("account_create", { code, name, kind }),

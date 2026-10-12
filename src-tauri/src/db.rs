@@ -14,6 +14,9 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0010_documents.sql"),
     include_str!("../migrations/0011_ledger.sql"),
     include_str!("../migrations/0012_payroll_statutory.sql"),
+    include_str!("../migrations/0013_company_file.sql"),
+    include_str!("../migrations/0014_template_library.sql"),
+    include_str!("../migrations/0015_template_studio.sql"),
 ];
 
 pub fn open(path: &Path) -> Result<Connection, String> {
@@ -54,6 +57,8 @@ pub fn migrate(conn: &mut Connection) -> Result<(), String> {
         tx.pragma_update(None, "user_version", (i + 1) as i64).map_err(|e| e.to_string())?;
         tx.commit().map_err(|e| e.to_string())?;
     }
+    crate::builtin_templates::seed(conn)?;
+    crate::builtin_html::seed(conn)?;
     Ok(())
 }
 

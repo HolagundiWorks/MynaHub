@@ -4,6 +4,29 @@
   $font-path: "@ibm/plex"
 );
 
+@use "@carbon/styles/scss/type" as type;
+
+// ---------------------------------------------------------------------------
+// Type hierarchy. Carbon's reset flattens every heading to body size, so headings are given Carbon's own
+// productive/compact type styles through the official mixin (no custom sizes). Page title > section > subsection.
+// ---------------------------------------------------------------------------
+.cds--content,
+.panel {
+  h1 {
+    @include type.type-style("heading-03");
+  }
+
+  h2,
+  h3 {
+    @include type.type-style("heading-compact-02");
+  }
+
+  h4,
+  h5 {
+    @include type.type-style("heading-compact-01");
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Layout integration only. Everything below arranges Carbon components using
 // Carbon spacing tokens; nothing here restyles a Carbon component.
@@ -24,6 +47,7 @@
 }
 
 .ao-muted {
+  @include type.type-style("body-compact-01");
   color: var(--cds-text-secondary);
 }
 
@@ -40,6 +64,45 @@
 
 .ao-block {
   margin-block-end: var(--cds-spacing-05);
+}
+
+.ao-justify-start {
+  justify-content: flex-start;
+}
+
+.ao-wrap {
+  flex-wrap: wrap;
+}
+
+.ao-section {
+  margin-block-start: var(--cds-spacing-07);
+}
+
+.ao-block-start {
+  margin-block-start: var(--cds-spacing-04);
+}
+
+.ao-inline-start {
+  margin-inline-start: var(--cds-spacing-05);
+}
+
+.ao-narrow {
+  max-inline-size: 22.5rem;
+}
+
+.ao-pad {
+  padding: var(--cds-spacing-05);
+}
+
+.ao-empty {
+  padding: var(--cds-spacing-07);
+  text-align: center;
+}
+
+.ao-pdf {
+  inline-size: 100%;
+  block-size: 70vh;
+  border: 1px solid var(--cds-border-strong-01);
 }
 
 .ao-footnote {
@@ -106,6 +169,22 @@
   inline-size: 28rem;
   max-inline-size: 100%;
   display: grid;
-  gap: var(--cds-spacing-05);
-  padding: var(--cds-spacing-07);
+  gap: var(--cds-spacing-04);
+}
+
+.ao-start {
+  inline-size: 40rem;
+}
+
+// Template canvas: block editor beside the live page preview.
+.ao-canvas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--cds-spacing-06);
+  align-items: start;
+}
+
+.ao-block-card {
+  border: 1px solid var(--cds-border-subtle-01);
+  padding: var(--cds-spacing-03);
 }

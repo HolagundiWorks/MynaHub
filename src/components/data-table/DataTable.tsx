@@ -6,6 +6,7 @@ import {
 } from "@carbon/react";
 import { usePersisted, useTableSize } from "../../design/density";
 import { toCsv, downloadText } from "./csv";
+import { Close, Column, Download, Reset } from "@carbon/icons-react";
 
 /**
  * A thin, typed layer over Carbon's DataTable. Carbon provides the table, toolbar, search, selection, batch actions,
@@ -208,21 +209,21 @@ export default function DataTable<R>(p: Props<R>) {
                 {p.filters}
                 {p.toolbarEnd}
                 <Popover open={colsOpen} onRequestClose={() => setColsOpen(false)} align="bottom-end" isTabTip>
-                  <Button kind="ghost" size={size === "sm" ? "sm" : "lg"} aria-expanded={colsOpen} onClick={() => setColsOpen(!colsOpen)}>Columns</Button>
+                  <Button kind="ghost" size={size === "sm" ? "sm" : "lg"} renderIcon={Column} aria-expanded={colsOpen} onClick={() => setColsOpen(!colsOpen)}>Columns</Button>
                   <PopoverContent>
-                    <div style={{ padding: "var(--cds-spacing-05)" }}>
+                    <div className="ao-pad">
                       {p.columns.filter((c) => !c.locked).map((c) => (
                         <Checkbox
                           key={c.id} id={`${p.id}-col-${c.id}`} labelText={c.header} checked={!hiddenIds.includes(c.id)}
                           onChange={(_, { checked }) => setHidden(checked ? hiddenIds.filter((x) => x !== c.id) : [...hiddenIds, c.id])}
                         />
                       ))}
-                      <Button kind="ghost" size="sm" onClick={() => setHidden(null)}>Restore defaults</Button>
+                      <Button renderIcon={Reset} kind="ghost" size="sm" onClick={() => setHidden(null)}>Restore defaults</Button>
                     </div>
                   </PopoverContent>
                 </Popover>
                 {p.exportName && (
-                  <Button kind="ghost" size={size === "sm" ? "sm" : "lg"} disabled={exporting || totalCount === 0} onClick={exportCsv}>
+                  <Button kind="ghost" size={size === "sm" ? "sm" : "lg"} renderIcon={Download} disabled={exporting || totalCount === 0} onClick={exportCsv}>
                     {exporting ? "Exporting…" : server ? (server.exportAll ? `Export all ${server.total} matching` : "Export this page") : "Export CSV"}
                   </Button>
                 )}
@@ -271,11 +272,11 @@ export default function DataTable<R>(p: Props<R>) {
               </TableBody>
             </Table>
             {rows.length === 0 && (
-              <div style={{ padding: "var(--cds-spacing-07)", textAlign: "center" }}>
+              <div className="ao-empty">
                 {(server ? server.total === 0 && hasConstraint : p.rows.length > 0 && hasConstraint) ? (
                   <>
                     <h4>{query.trim() && filters.length === 0 ? "No results for this search" : "No rows match the filters"}</h4>
-                    <Button kind="tertiary" size="sm" onClick={clearAll}>Clear search and filters</Button>
+                    <Button kind="tertiary" size="sm" renderIcon={Close} onClick={clearAll}>Clear search and filters</Button>
                   </>
                 ) : (
                   <>
@@ -296,7 +297,7 @@ export default function DataTable<R>(p: Props<R>) {
       {filters.length > 0 && (
         <div className="ao-actions ao-block" aria-label="Active filters">
           {filters.map((f) => <DismissibleTag key={f.label} type="gray" text={f.label} onClose={f.clear} title="Remove filter" />)}
-          {filters.length > 1 && <Button kind="ghost" size="sm" onClick={clearAll}>Clear all</Button>}
+          {filters.length > 1 && <Button kind="ghost" size="sm" renderIcon={Close} onClick={clearAll}>Clear all</Button>}
         </div>
       )}
       {exportError && <ActionableNotification kind="error" lowContrast title="Export failed" subtitle={exportError} hideCloseButton />}

@@ -876,7 +876,7 @@ bad-date,Oops,X,,10.00,\n\
                 gst_mode: "intra".into(), gst_rate: "".into(), notes: "".into(),
                 lines: vec![LineInput { description: "Fee".into(), qty: "1".into(), rate: rate.into() }],
             }).unwrap();
-            issue(&mut c, &dir, id).unwrap();
+            issue(&mut c, id).unwrap();
             ids.push(id);
         }
         (c, ids, dir)
@@ -1057,7 +1057,7 @@ bad-date,Oops,X,,10.00,\n\
         reconcile(&mut c, 1, txn, &again).unwrap();
         // a manually recorded receipt that was linked survives an unmatch
         let manual = save_draft(&mut c, &InvoiceInput { id: None, project_id: 1, kind: "tax_invoice".into(), issue_date: "2026-10-01".into(), due_date: "".into(), gst_mode: "none".into(), gst_rate: "".into(), notes: "".into(), lines: vec![LineInput { description: "x".into(), qty: "1".into(), rate: "1000".into() }] }).unwrap();
-        issue(&mut c, &dir, manual).unwrap();
+        issue(&mut c, manual).unwrap();
         crate::receipts::record(&mut c, 1, &ReceiptInput { invoice_id: manual, received_date: "2026-10-18".into(), amount: "1000".into(), tds: "".into(), tds_section: "".into(), mode: "bank".into(), reference: "".into(), notes: "".into(), bank_account_id: None }).unwrap();
         let t2 = add_manual(&mut c, 1, &ManualEntry { account_id: 1, txn_date: "2026-10-18".into(), narration: "n".into(), reference: "".into(), direction: "credit".into(), amount: "1000".into() }).unwrap();
         let rid = unlinked_receipts(&c).unwrap()[0].id;

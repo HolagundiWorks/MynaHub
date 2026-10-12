@@ -220,16 +220,15 @@ pub struct BackupInfo {
     pub folder: String,
 }
 
-/// Consistent snapshot of the database via VACUUM INTO, verified by opening it and running an integrity check.
-/// Issued PDFs and other files are not in this snapshot yet; the folder is shown so they can be copied too.
-pub fn backup(conn: &Connection, files_root: &std::path::Path, actor: i64) -> Result<BackupInfo, String> {
-    let dir = files_root.parent().unwrap_or(files_root).join("backups");
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+/// Consistent snapshot of the whole company (records, issued documents, attachments, audit history) via VACUUM INTO,
+/// verified by opening it and running an integrity check. A backup is itself a complete company file.
+pub fn backup(conn: &Connection, dir: &std::path::Path, actor: i64) -> Result<BackupInfo, String> {
+    std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     let stamp: String = conn.query_row("SELECT strftime('%Y%m%d-%H%M%S','now')", [], |r| r.get(0)).map_err(|e| e.to_string())?;
-    let mut path = dir.join(format!("office-{stamp}.sqlite"));
+    let mut path = dir.join(format!("backup-{stamp}.adms"));
     let mut n = 1;
     while path.exists() {
-        path = dir.join(format!("office-{stamp}-{n}.sqlite"));
+        path = dir.join(format!("backup-{stamp}-{n}.adms"));
         n += 1;
     }
     conn.execute("VACUUM INTO ?1", params![path.to_string_lossy()]).map_err(|e| format!("Backup failed: {e}"))?;
@@ -257,13 +256,12 @@ pub struct BackupFile {
     pub bytes: u64,
 }
 
-pub fn list_backups(files_root: &std::path::Path) -> Result<Vec<BackupFile>, String> {
-    let dir = files_root.parent().unwrap_or(files_root).join("backups");
+pub fn list_backups(dir: &std::path::Path) -> Result<Vec<BackupFile>, String> {
     let mut out = Vec::new();
-    if let Ok(rd) = std::fs::read_dir(&dir) {
+    if let Ok(rd) = std::fs::read_dir(dir) {
         for e in rd.flatten() {
             let name = e.file_name().to_string_lossy().to_string();
-            if name.starts_with("office-") && name.ends_with(".sqlite") {
+            if name.starts_with("backup-") && (name.ends_with(".adms") || name.ends_with(".aorms")) {
                 out.push(BackupFile { filename: name, bytes: e.metadata().map(|m| m.len()).unwrap_or(0) });
             }
         }
@@ -274,12 +272,12 @@ pub fn list_backups(files_root: &std::path::Path) -> Result<Vec<BackupFile>, Str
 
 /// Replaces the live data with a backup. A fresh backup of the current data is taken first, the chosen file is
 /// integrity-checked and must not come from a newer version of the app, and the schema is brought up to date afterwards.
-/// Only the database is restored; issued PDFs and attachments in the files folder are not touched.
-pub fn restore(conn: &mut Connection, files_root: &std::path::Path, actor: i64, filename: &str) -> Result<String, String> {
-    if filename.contains(['/', '\\']) || !filename.starts_with("office-") || !filename.ends_with(".sqlite") {
+/// Everything is restored together, including issued documents and attachments, because they live in the same file.
+pub fn restore(conn: &mut Connection, dir: &std::path::Path, actor: i64, filename: &str) -> Result<String, String> {
+    if filename.contains(['/', '\\']) || !filename.starts_with("backup-") || !(filename.ends_with(".adms") || filename.ends_with(".aorms")) {
         return Err("Choose a backup from the list.".into());
     }
-    let path = files_root.parent().unwrap_or(files_root).join("backups").join(filename);
+    let path = dir.join(filename);
     if !path.is_file() {
         return Err("That backup file was not found.".into());
     }
@@ -292,7 +290,13 @@ pub fn restore(conn: &mut Connection, files_root: &std::path::Path, actor: i64, 
     if version > crate::db::latest_version() {
         return Err("This backup was made by a newer version of the app. Update the app before restoring it.".into());
     }
-    let pre = backup(conn, files_root, actor)?;
+    let uuid_of = |c: &Connection| c.query_row("SELECT company_uuid FROM company_file WHERE id = 1", [], |r| r.get::<_, String>(0)).ok();
+    if let (Some(a), Some(b)) = (uuid_of(&src), uuid_of(conn)) {
+        if a != b {
+            return Err("That backup belongs to a different company and was not restored.".into());
+        }
+    }
+    let pre = backup(conn, dir, actor)?;
     {
         let copy = rusqlite::backup::Backup::new(&src, conn).map_err(|e| e.to_string())?;
         copy.run_to_completion(100, std::time::Duration::ZERO, None).map_err(|e| format!("Restore failed: {e}"))?;
@@ -305,7 +309,7 @@ pub fn restore(conn: &mut Connection, files_root: &std::path::Path, actor: i64, 
 #[tauri::command]
 pub fn backup_list(state: State<AppState>) -> Result<Vec<BackupFile>, String> {
     require(&state, Permission::Backup)?;
-    list_backups(&state.files_root)
+    list_backups(&crate::company_file::backup_dir(&state)?)
 }
 
 /// Restores a backup and signs everyone out (the restored data has its own users).
@@ -315,7 +319,7 @@ pub fn backup_restore(state: State<AppState>, filename: String, password: String
     reauth(&state, &password)?;
     let pre = {
         let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
-        restore(&mut conn, &state.files_root, uid, &filename)?
+        restore(&mut conn, &crate::company_file::backup_dir(&state)?, uid, &filename)?
     };
     *state.session.lock().map_err(|_| INTERNAL)? = None;
     Ok(pre)
@@ -326,7 +330,7 @@ pub fn backup_create(state: State<AppState>, password: String) -> Result<BackupI
     let uid = require(&state, Permission::Backup)?;
     reauth(&state, &password)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
-    backup(&conn, &state.files_root, uid)
+    backup(&conn, &crate::company_file::backup_dir(&state)?, uid)
 }
 
 #[cfg(test)]
@@ -388,27 +392,27 @@ mod tests {
     fn restore_brings_back_old_data_after_taking_a_safety_backup() {
         let mut c = conn();
         c.execute("INSERT INTO clients (name) VALUES ('Before')", []).unwrap();
-        let root = std::env::temp_dir().join(format!("ao_rs_{}", std::process::id())).join("files");
+        let root = std::env::temp_dir().join(format!("ao_rs_{}", std::process::id())).join("backups");
         let b = backup(&c, &root, 1).unwrap();
         c.execute("INSERT INTO clients (name) VALUES ('After')", []).unwrap();
         assert!(restore(&mut c, &root, 1, "../evil.sqlite").is_err());
-        assert!(restore(&mut c, &root, 1, "office-nope.sqlite").is_err());
+        assert!(restore(&mut c, &root, 1, "backup-nope.adms").is_err());
         let pre = restore(&mut c, &root, 1, &b.filename).unwrap();
         let names: Vec<String> = c.prepare("SELECT name FROM clients").unwrap().query_map([], |r| r.get(0)).unwrap().map(|r| r.unwrap()).collect();
         assert_eq!(names, vec!["Before"]);
         // the data as it was just before the restore is kept and contains the later change
-        let safety = Connection::open(root.parent().unwrap().join("backups").join(&pre)).unwrap();
+        let safety = Connection::open(root.join(&pre)).unwrap();
         let n: i64 = safety.query_row("SELECT COUNT(*) FROM clients", [], |r| r.get(0)).unwrap();
         assert_eq!(n, 2);
         assert_eq!(list_backups(&root).unwrap().len(), 2);
         // a backup from a newer app is refused
-        let newer = root.parent().unwrap().join("backups").join("office-99999999-000000.sqlite");
-        std::fs::copy(root.parent().unwrap().join("backups").join(&b.filename), &newer).unwrap();
+        let newer = root.join("backup-99999999-000000.adms");
+        std::fs::copy(root.join(&b.filename), &newer).unwrap();
         {
             let n = Connection::open(&newer).unwrap();
             n.pragma_update(None, "user_version", 999).unwrap();
         }
-        assert!(restore(&mut c, &root, 1, "office-99999999-000000.sqlite").unwrap_err().contains("newer version"));
+        assert!(restore(&mut c, &root, 1, "backup-99999999-000000.adms").unwrap_err().contains("newer version"));
         let _ = std::fs::remove_dir_all(root.parent().unwrap());
     }
 
@@ -416,9 +420,9 @@ mod tests {
     fn backup_produces_a_verified_copy_with_the_data() {
         let c = conn();
         c.execute("INSERT INTO clients (name) VALUES ('Acme')", []).unwrap();
-        let root = std::env::temp_dir().join(format!("ao_bk_{}", std::process::id())).join("files");
+        let root = std::env::temp_dir().join(format!("ao_bk_{}", std::process::id())).join("backups");
         let info = backup(&c, &root, 1).unwrap();
-        let copy = Connection::open(root.parent().unwrap().join("backups").join(&info.filename)).unwrap();
+        let copy = Connection::open(root.join(&info.filename)).unwrap();
         let n: i64 = copy.query_row("SELECT COUNT(*) FROM clients", [], |r| r.get(0)).unwrap();
         assert_eq!(n, 1);
         assert_eq!(info.sha256.len(), 64);

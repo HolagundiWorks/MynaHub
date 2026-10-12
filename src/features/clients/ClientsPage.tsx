@@ -5,6 +5,7 @@ import PageHeader from "../../components/PageHeader";
 import StatusBadge from "../../components/StatusBadge";
 import DataTable, { type Column } from "../../components/data-table/DataTable";
 import RowMenu from "../../components/data-table/RowMenu";
+import { Add, Edit } from "@carbon/icons-react";
 
 const BLANK: Client = {
   id: null, name: "", contact_person: "", email: "", phone: "", address: "", pan: "", gstin: "", archived: false,
@@ -26,7 +27,7 @@ export default function ClientsPage() {
   useEffect(load, [load]);
 
   const columns: Column<Client>[] = [
-    { id: "name", header: "Client", locked: true, minWidth: 220, sortValue: (c) => c.name.toLowerCase(), render: (c) => <strong style={{ fontWeight: 500 }}>{c.name}</strong>, csv: (c) => c.name },
+    { id: "name", header: "Client", locked: true, minWidth: 220, sortValue: (c) => c.name.toLowerCase(), render: (c) => <strong>{c.name}</strong>, csv: (c) => c.name },
     { id: "contact", header: "Contact", sortValue: (c) => c.contact_person.toLowerCase(), render: (c) => c.contact_person, csv: (c) => c.contact_person },
     { id: "phone", header: "Phone", render: (c) => c.phone, csv: (c) => c.phone },
     { id: "email", header: "Email", defaultVisible: false, render: (c) => c.email, csv: (c) => c.email },
@@ -38,7 +39,7 @@ export default function ClientsPage() {
   if (editing) {
     const set = (k: keyof Client, v: string) => setEditing({ ...editing, [k]: v });
     const text = (k: keyof Client, label: string) => (
-      <TextInput id={`c-${k}`} labelText={label} value={String(editing[k] ?? "")} onChange={(e) => set(k, e.target.value)} />
+      <TextInput size="sm" id={`c-${k}`} labelText={label} value={String(editing[k] ?? "")} onChange={(e) => set(k, e.target.value)} />
     );
     return (
       <>
@@ -62,8 +63,8 @@ export default function ClientsPage() {
             {text("gstin", "GSTIN")}
             {error && <InlineNotification kind="error" title={error} hideCloseButton lowContrast />}
             <div className="toolbar">
-              <Button kind="secondary" onClick={() => { setEditing(null); setError(""); }}>Cancel</Button>
-              <Button type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+              <Button size="sm" kind="secondary" onClick={() => { setEditing(null); setError(""); }}>Cancel</Button>
+              <Button size="sm" type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
             </div>
           </Stack>
         </Form>
@@ -73,7 +74,7 @@ export default function ClientsPage() {
 
   return (
     <>
-      <PageHeader title="Clients" description="Everyone you bill. Projects, invoices and documents hang off a client." actions={<Button size="md" onClick={() => setEditing(BLANK)}>New client</Button>} />
+      <PageHeader title="Clients" description="Everyone you bill. Projects, invoices and documents hang off a client." actions={<Button renderIcon={Add} size="md" onClick={() => setEditing(BLANK)}>New client</Button>} />
       {error && <InlineNotification kind="error" title={error} hideCloseButton lowContrast />}
       <DataTable
         id="clients" rows={clients} columns={columns} rowKey={(c) => c.id!} loading={loading} error={loadError} onRetry={load}
@@ -85,7 +86,7 @@ export default function ClientsPage() {
         emptyTitle="No clients yet" emptyHint="Add your first client to start projects and invoices."
         rowActions={(c) => (
           <>
-            <Button kind="ghost" size="sm" onClick={() => setEditing(c)}>Edit</Button>{" "}
+            <Button renderIcon={Edit} kind="ghost" size="sm" onClick={() => setEditing(c)}>Edit</Button>{" "}
             <RowMenu items={[{ label: c.archived ? "Restore" : "Archive", onClick: async () => { try { await api.clientSetArchived(c.id!, !c.archived); load(); } catch (e) { setError(errorText(e)); } } }]} />
           </>
         )}

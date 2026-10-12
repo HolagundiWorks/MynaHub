@@ -32,7 +32,7 @@ export function usePersisted<T>(key: string, fallback: T): [T, (v: T) => void] {
 /** Carbon's own table sizes: the choice only selects a supported size variant, never custom dimensions. */
 export const TABLE_SIZE = { compact: "sm", comfortable: "md", expanded: "lg" } as const;
 
-export const DensityContext = createContext<Density>("comfortable");
+export const DensityContext = createContext<Density>("compact");
 
 export function useTableSize() {
   return TABLE_SIZE[useContext(DensityContext)];

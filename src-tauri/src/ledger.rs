@@ -719,12 +719,12 @@ mod tests {
         (c, dir)
     }
 
-    fn invoice(c: &mut Connection, dir: &std::path::Path, rate: &str, mode: &str) -> i64 {
+    fn invoice(c: &mut Connection, _dir: &std::path::Path, rate: &str, mode: &str) -> i64 {
         let id = save_draft(c, &InvoiceInput {
             id: None, project_id: 1, kind: "tax_invoice".into(), issue_date: "2026-10-01".into(), due_date: "".into(), gst_mode: mode.into(), gst_rate: "".into(), notes: "".into(),
             lines: vec![LineInput { description: "Fee".into(), qty: "1".into(), rate: rate.into() }],
         }).unwrap();
-        issue(c, dir, id).unwrap();
+        issue(c, id).unwrap();
         id
     }
 
@@ -785,7 +785,7 @@ mod tests {
         assert_eq!(balance_of(&c, "1200"), 11_800_000);
         assert!(ar_check(&c, "2026-12-31").unwrap().agrees);
         // cancelling is blocked while money is involved; a credit note reduces fees and GST together
-        let n = crate::billing::issue_credit_note(&mut c, &dir, 1, id, "2026-10-25", "Scope cut", vec![LineInput { description: "x".into(), qty: "1".into(), rate: "10000".into() }]).unwrap();
+        let n = crate::billing::issue_credit_note(&mut c, 1, id, "2026-10-25", "Scope cut", vec![LineInput { description: "x".into(), qty: "1".into(), rate: "10000".into() }]).unwrap();
         assert!(n.starts_with("CN/"));
         assert_eq!(balance_of(&c, "4000"), -9_000_000);
         assert_eq!(balance_of(&c, "2100"), -810_000);

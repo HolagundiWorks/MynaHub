@@ -3,11 +3,11 @@ import {
   Content, ContainedList, ContainedListItem, GlobalTheme, Header, HeaderGlobalAction, HeaderGlobalBar, HeaderMenuButton, HeaderName, HeaderPanel, Modal, Search,
   SideNav, SideNavItems, SideNavMenu, SideNavMenuItem, SkipToContent, Switcher, SwitcherDivider, SwitcherItem,
 } from "@carbon/react";
-import { Search as SearchIcon, Settings } from "@carbon/icons-react";
+import { Calculator, Folder, Receipt, Search as SearchIcon, Settings } from "@carbon/icons-react";
 import { api, type AuthStatus } from "../api";
 import { DensityContext, usePersisted, type Density } from "../design/density";
 import { GroupContext } from "../components/PageHeader";
-import { DialogHost } from "../components/dialogs";
+import { DialogHost, confirmDialog } from "../components/dialogs";
 import ClientsPage from "../features/clients/ClientsPage";
 import ProjectsPage from "../features/projects/ProjectsPage";
 import InvoicesPage from "../features/invoices/InvoicesPage";
@@ -21,6 +21,9 @@ import {
 } from "../features/accounting/AccountingPage";
 
 type NavItem = { id: string; label: string; group: string; keywords?: string };
+
+/** One Carbon icon per navigation group, used the same way everywhere. */
+const GROUP_ICON = { Work: Folder, Billing: Receipt, Accounting: Calculator, Settings: Settings } as const;
 
 const NAV: NavItem[] = [
   { id: "documents", label: "Letters and agreements", group: "Work", keywords: "letters agreements inward outward register" },
@@ -71,7 +74,7 @@ function Palette({ open, items, onClose }: { open: boolean; items: PaletteItem[]
 
 export default function Shell({ status, refresh }: { status: AuthStatus; refresh: () => void }) {
   const role = status.user?.role ?? "";
-  const [density, setDensity] = usePersisted<Density>("ao.density", "comfortable");
+  const [density, setDensity] = usePersisted<Density>("ao.density", "compact");
   const [page, setPage] = usePersisted<string>("ao.page", "documents");
   const [navOpen, setNavOpen] = usePersisted<boolean>("ao.navOpen", true);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -92,11 +95,17 @@ export default function Shell({ status, refresh }: { status: AuthStatus; refresh
 
   const lock = async () => { await api.authLock(); refresh(); };
   const logout = async () => { await api.authLogout(); refresh(); };
+  const closeCompany = async () => {
+    if (!(await confirmDialog(`Close ${status.company?.name ?? "this company"}? Anything you are typing that is not saved will be lost.`))) return;
+    await api.companyClose();
+    refresh();
+  };
 
   const paletteItems: PaletteItem[] = useMemo(() => [
     ...NAV.map((n) => ({ label: n.label, hint: n.group, run: () => setPage(n.id) })),
     { label: "Lock the screen", hint: "Command", run: lock },
     { label: "Log out", hint: "Command", run: logout },
+    { label: "Close company", hint: "Command", run: closeCompany },
     ...(["compact", "comfortable", "expanded"] as Density[]).map((d) => ({ label: `Table size: ${d}`, hint: "Command", run: () => setDensity(d) })),
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], []);
@@ -127,10 +136,10 @@ export default function Shell({ status, refresh }: { status: AuthStatus; refresh
   return (
     <GlobalTheme theme="white">
       <DensityContext.Provider value={density}>
-        <Header aria-label="Architect Office">
+        <Header aria-label="ADMS">
           <SkipToContent />
           <HeaderMenuButton aria-label={navOpen ? "Close navigation" : "Open navigation"} isCollapsible onClick={() => setNavOpen(!navOpen)} isActive={navOpen} />
-          <HeaderName href="#" prefix="Architect Office" onClick={(e: { preventDefault: () => void }) => e.preventDefault()}>{company || "Company not set up"} · FY {financialYear()}</HeaderName>
+          <HeaderName href="#" prefix="ADMS" onClick={(e: { preventDefault: () => void }) => e.preventDefault()}>{company || "Company not set up"} · FY {financialYear()}</HeaderName>
           <HeaderGlobalBar>
             <HeaderGlobalAction aria-label="Go to page or command (Ctrl+K)" tooltipAlignment="end" onClick={() => setPaletteOpen(true)}><SearchIcon size={20} /></HeaderGlobalAction>
             <HeaderGlobalAction aria-label="Preferences and session" tooltipAlignment="end" isActive={panelOpen} onClick={() => setPanelOpen(!panelOpen)}><Settings size={20} /></HeaderGlobalAction>
@@ -147,6 +156,7 @@ export default function Shell({ status, refresh }: { status: AuthStatus; refresh
               <SwitcherDivider />
               <SwitcherItem aria-label="Lock the screen" href="#" onClick={(e: { preventDefault: () => void }) => { e.preventDefault(); lock(); }}>Lock the screen</SwitcherItem>
               <SwitcherItem aria-label="Log out" href="#" onClick={(e: { preventDefault: () => void }) => { e.preventDefault(); logout(); }}>Log out</SwitcherItem>
+              <SwitcherItem aria-label="Close company" href="#" onClick={(e: { preventDefault: () => void }) => { e.preventDefault(); setPanelOpen(false); closeCompany(); }}>Close company</SwitcherItem>
             </Switcher>
           </HeaderPanel>
         </Header>
@@ -154,7 +164,7 @@ export default function Shell({ status, refresh }: { status: AuthStatus; refresh
         <SideNav aria-label="Side navigation" expanded={navOpen} isPersistent={navOpen} isFixedNav onOverlayClick={() => setNavOpen(false)}>
           <SideNavItems>
             {groups.map((g) => (
-              <SideNavMenu key={g} title={g} defaultExpanded isActive={current.group === g}>
+              <SideNavMenu key={g} title={g} renderIcon={GROUP_ICON[g as keyof typeof GROUP_ICON]} defaultExpanded isActive={current.group === g}>
                 {NAV.filter((n) => n.group === g).map((n) => (
                   <SideNavMenuItem key={n.id} href="#" isActive={n.id === current.id} aria-current={n.id === current.id ? "page" : undefined}
                     onClick={(e: { preventDefault: () => void }) => { e.preventDefault(); setPage(n.id); }}>

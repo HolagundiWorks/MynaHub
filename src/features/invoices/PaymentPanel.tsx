@@ -6,6 +6,7 @@ import {
 import { api, errorText, type Balance, type ReceiptInput, type ReceiptRow } from "../../api";
 import { askReason } from "../../components/dialogs";
 import PdfViewer from "../../components/PdfViewer";
+import { ArrowLeft, Money } from "@carbon/icons-react";
 
 // Common TDS sections for professional / contract receipts; the rate only seeds a suggestion.
 const TDS_SECTIONS = [
@@ -69,29 +70,29 @@ export default function PaymentPanel({ invoiceId, number, onClose }: { invoiceId
             {balance.credited_display !== "₹0.00" && <> · credit notes {balance.credited_display}</>}
           </p>
         )}
-        <TextInput id="r-date" type="date" labelText="Payment date" value={form.received_date} onChange={(e) => set("received_date", e.target.value)} />
-        <TextInput id="r-amount" labelText="Amount received in bank (₹)" value={form.amount} onChange={(e) => set("amount", e.target.value)} />
-        <Select id="r-section" labelText="TDS deducted by client" value={form.tds_section} onChange={(e) => pickSection(e.target.value)}>
+        <TextInput size="sm" id="r-date" type="date" labelText="Payment date" value={form.received_date} onChange={(e) => set("received_date", e.target.value)} />
+        <TextInput size="sm" id="r-amount" labelText="Amount received in bank (₹)" value={form.amount} onChange={(e) => set("amount", e.target.value)} />
+        <Select size="sm" id="r-section" labelText="TDS deducted by client" value={form.tds_section} onChange={(e) => pickSection(e.target.value)}>
           <SelectItem value="" text="No TDS" />
           {TDS_SECTIONS.map((s) => <SelectItem key={s.code} value={s.code} text={s.label} />)}
         </Select>
         {form.tds_section && (
-          <TextInput id="r-tds" labelText="TDS amount (₹)" helperText="Suggested on the invoice value excluding GST; edit to match the client's deduction."
+          <TextInput size="sm" id="r-tds" labelText="TDS amount (₹)" helperText="Suggested on the invoice value excluding GST; edit to match the client's deduction."
             value={form.tds} onChange={(e) => set("tds", e.target.value)} />
         )}
-        <Select id="r-mode" labelText="Mode" value={form.mode} onChange={(e) => set("mode", e.target.value as ReceiptInput["mode"])}>
+        <Select size="sm" id="r-mode" labelText="Mode" value={form.mode} onChange={(e) => set("mode", e.target.value as ReceiptInput["mode"])}>
           <SelectItem value="bank" text="Bank transfer" />
           <SelectItem value="upi" text="UPI" />
           <SelectItem value="cheque" text="Cheque" />
           <SelectItem value="cash" text="Cash" />
         </Select>
-        <TextInput id="r-ref" labelText="Bank reference / UTR" value={form.reference} onChange={(e) => set("reference", e.target.value)} />
-        <TextInput id="r-notes" labelText="Notes" value={form.notes} onChange={(e) => set("notes", e.target.value)} />
+        <TextInput size="sm" id="r-ref" labelText="Bank reference / UTR" value={form.reference} onChange={(e) => set("reference", e.target.value)} />
+        <TextInput size="sm" id="r-notes" labelText="Notes" value={form.notes} onChange={(e) => set("notes", e.target.value)} />
         {error && <InlineNotification kind="error" title={error} hideCloseButton lowContrast />}
         {done && <InlineNotification kind="success" title={done} hideCloseButton lowContrast />}
         <div className="toolbar">
-          <Button kind="secondary" onClick={onClose}>Back</Button>
-          <Button type="submit" disabled={balance?.balance_paise === 0}>Record payment</Button>
+          <Button renderIcon={ArrowLeft} size="sm" kind="secondary" onClick={onClose}>Back</Button>
+          <Button renderIcon={Money} size="sm" type="submit" disabled={balance?.balance_paise === 0}>Record payment</Button>
         </div>
 
         {receipts.length > 0 && (

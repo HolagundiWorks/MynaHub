@@ -3,8 +3,11 @@ mod admin;
 mod auth;
 mod bank;
 mod billing;
+mod builtin_html;
+mod builtin_templates;
 mod clients;
 mod commands;
+mod company_file;
 mod db;
 mod documents;
 mod entries;
@@ -14,6 +17,10 @@ mod pdf;
 mod qa_tests;
 mod receipts;
 mod registers;
+mod store;
+mod studio;
+mod template_engine;
+mod typography;
 
 use commands::AppState;
 use tauri::Manager;
@@ -21,14 +28,23 @@ use tauri::Manager;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            // OS-managed application-data directory; layout per guidelines section 3.2.
+            // No company is open at start; the user creates or opens a company file first.
             let root = app.path().app_data_dir()?;
-            let conn = db::open(&root.join("database").join("office.sqlite"))?;
-            app.manage(AppState::new(conn, root.join("files")));
+            app.manage(AppState::new(company_file::placeholder(), root));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            company_file::company_active,
+            company_file::company_validate,
+            company_file::company_recent_list,
+            company_file::company_recent_remove,
+            company_file::company_open,
+            company_file::company_create,
+            company_file::company_close,
+            company_file::company_legacy_info,
+            company_file::company_convert_legacy,
             commands::auth_status,
             commands::auth_setup,
             commands::auth_login,
@@ -73,6 +89,18 @@ pub fn run() {
             documents::template_versions_list,
             documents::template_create,
             documents::template_publish,
+            documents::template_duplicate,
+            documents::template_set_archived,
+            documents::template_preview,
+            studio::studio_fields,
+            studio::studio_open,
+            studio::studio_validate,
+            studio::studio_preview,
+            studio::studio_save_draft,
+            studio::studio_publish,
+            studio::studio_restore,
+            studio::studio_discard_draft,
+            studio::studio_create,
             accounting::account_list,
             accounting::account_create,
             accounting::account_set_active,

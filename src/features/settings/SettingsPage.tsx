@@ -7,6 +7,7 @@ import { confirmDialog } from "../../components/dialogs";
 import StatusBadge from "../../components/StatusBadge";
 import DataTable, { type Column } from "../../components/data-table/DataTable";
 import { usePersisted } from "../../design/density";
+import { Add, DataBackup, Password, Renew, Save } from "@carbon/icons-react";
 
 const ROLES = [
   ["owner", "Owner / Admin"], ["principal", "Principal / Architect"], ["accounts", "Accounts"],
@@ -36,11 +37,11 @@ function PasswordCard() {
     }}>
       <Stack gap={4}>
         <h4>Change password</h4>
-        <PasswordInput id="pw-cur" labelText="Current password" value={cur} onChange={(e) => setCur(e.target.value)} />
-        <PasswordInput id="pw-new" labelText="New password (12+ characters)" value={next} onChange={(e) => setNext(e.target.value)} />
-        <PasswordInput id="pw-conf" labelText="Confirm new password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+        <PasswordInput size="sm" id="pw-cur" labelText="Current password" value={cur} onChange={(e) => setCur(e.target.value)} />
+        <PasswordInput size="sm" id="pw-new" labelText="New password (12+ characters)" value={next} onChange={(e) => setNext(e.target.value)} />
+        <PasswordInput size="sm" id="pw-conf" labelText="Confirm new password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         <Notice error={error} ok={ok} />
-        <div><Button type="submit" size="sm">Change password</Button></div>
+        <div><Button renderIcon={Password} type="submit" size="sm">Change password</Button></div>
       </Stack>
     </Form>
   );
@@ -60,12 +61,12 @@ function IdleCard() {
     }}>
       <Stack gap={4}>
         <h4>Auto-lock</h4>
-        <Select id="idle" labelText="Lock after inactivity" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))}>
+        <Select size="sm" id="idle" labelText="Lock after inactivity" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))}>
           {[1, 5, 10, 15, 30].map((m) => <SelectItem key={m} value={m} text={`${m} minute${m > 1 ? "s" : ""}`} />)}
         </Select>
-        <PasswordInput id="idle-pw" labelText="Confirm with your password" value={pw} onChange={(e) => setPw(e.target.value)} />
+        <PasswordInput size="sm" id="idle-pw" labelText="Confirm with your password" value={pw} onChange={(e) => setPw(e.target.value)} />
         <Notice error={error} ok={ok} />
-        <div><Button type="submit" size="sm">Save</Button></div>
+        <div><Button renderIcon={Save} type="submit" size="sm">Save</Button></div>
       </Stack>
     </Form>
   );
@@ -118,14 +119,14 @@ function UsersCard() {
           setBusy(false);
         }}>
           <Stack gap={4}>
-            <TextInput id="nu-name" labelText="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
-            <PasswordInput id="nu-pw" labelText="Initial password (12+ characters)" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <Select id="nu-role" labelText="Role" value={role} onChange={(e) => setRole(e.target.value)}>
+            <TextInput size="sm" id="nu-name" labelText="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
+            <PasswordInput size="sm" id="nu-pw" labelText="Initial password (12+ characters)" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Select size="sm" id="nu-role" labelText="Role" value={role} onChange={(e) => setRole(e.target.value)}>
               {ROLES.map(([v, t]) => <SelectItem key={v} value={v} text={t} />)}
             </Select>
-            <PasswordInput id="nu-admin" labelText="Your password" value={adminPw} onChange={(e) => setAdminPw(e.target.value)} />
+            <PasswordInput size="sm" id="nu-admin" labelText="Your password" value={adminPw} onChange={(e) => setAdminPw(e.target.value)} />
             <Notice error={error} />
-            <div className="toolbar"><Button kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button type="submit" disabled={busy}>{busy ? "Saving…" : "Add user"}</Button></div>
+            <div className="toolbar"><Button size="sm" kind="secondary" onClick={() => { setView("list"); setError(""); }}>Cancel</Button><Button size="sm" type="submit" disabled={busy}>{busy ? "Saving…" : "Add user"}</Button></div>
           </Stack>
         </Form>
       </>
@@ -134,8 +135,8 @@ function UsersCard() {
 
   return (
     <>
-      <PageHeader title="Users and roles" description="Changing a role or adding a user needs your password." actions={<Button onClick={() => setView("new")}>Add user</Button>} />
-      <div style={{ maxWidth: 360, marginBottom: 8 }}>
+      <PageHeader title="Users and roles" description="Changing a role or adding a user needs your password." actions={<Button renderIcon={Add} size="sm" onClick={() => setView("new")}>Add user</Button>} />
+      <div className="ao-narrow ao-block">
         <PasswordInput id="adm-pw" labelText="Your password (for role changes)" size="sm" value={adminPw} onChange={(e) => setAdminPw(e.target.value)} />
       </div>
       <Notice error={error} ok={ok} />
@@ -160,11 +161,11 @@ function BackupCard() {
     }}>
       <Stack gap={4}>
         <h4>Backup</h4>
-        <p>Creates a verified copy of the database. Issued invoice PDFs are stored in the files folder next to it; copy that folder as well.</p>
-        <PasswordInput id="bk-pw" labelText="Confirm with your password" value={pw} onChange={(e) => setPw(e.target.value)} />
+        <p>Creates a verified copy of the whole company: records, issued documents, attachments and audit history. A backup is itself a company file you can open.</p>
+        <PasswordInput size="sm" id="bk-pw" labelText="Confirm with your password" value={pw} onChange={(e) => setPw(e.target.value)} />
         <Notice error={error} />
         {info && <InlineNotification kind="success" hideCloseButton lowContrast title={`Backup created: ${info.filename}`} subtitle={`${info.folder} · SHA-256 ${info.sha256}`} />}
-        <div><Button type="submit" size="sm">Create backup</Button></div>
+        <div><Button renderIcon={DataBackup} type="submit" size="sm">Create backup</Button></div>
       </Stack>
     </Form>
   );
@@ -181,13 +182,13 @@ function RestoreCard({ onRestored }: { onRestored: () => void }) {
       <h4>Restore a backup</h4>
       <p>
         This replaces all current data with the backup. A safety backup of the current data is made first, and everyone is
-        signed out afterwards. Only the database is restored; issued PDFs and attachments are not changed.
+        signed out afterwards. Records, issued documents and attachments are restored together.
       </p>
-      <Select id="rs-file" labelText="Backup" value={pick} onChange={(e) => setPick(e.target.value)}>
+      <Select size="sm" id="rs-file" labelText="Backup" value={pick} onChange={(e) => setPick(e.target.value)}>
         <SelectItem value="" text="Choose a backup…" />
         {files.map((f) => <SelectItem key={f.filename} value={f.filename} text={`${f.filename} (${(f.bytes / 1024).toFixed(0)} KB)`} />)}
       </Select>
-      <PasswordInput id="rs-pw" labelText="Confirm with your password" value={pw} onChange={(e) => setPw(e.target.value)} />
+      <PasswordInput size="sm" id="rs-pw" labelText="Confirm with your password" value={pw} onChange={(e) => setPw(e.target.value)} />
       <Notice error={error} />
       <div>
         <Button size="sm" kind="danger" disabled={!pick} onClick={async () => {
@@ -209,7 +210,7 @@ function AuditCard() {
   ];
   return (
     <>
-      <PageHeader title="Audit log" description="Security and financial actions. Entries cannot be edited or deleted." actions={<Button kind="secondary" onClick={table.reload}>Refresh</Button>} />
+      <PageHeader title="Audit log" description="Security and financial actions. Entries cannot be edited or deleted." actions={<Button renderIcon={Renew} size="sm" kind="secondary" onClick={table.reload}>Refresh</Button>} />
       <DataTable
         id="audit" rows={table.rows} columns={columns} rowKey={(r) => r.id} loading={table.loading} error={table.error} onRetry={table.reload}
         server={table.server} searchLabel="Search events, users or details" exportName="audit-log" emptyTitle="No audit entries yet"

@@ -446,7 +446,7 @@ mod tests {
                 id: None, project_id: 1, kind: "tax_invoice".into(), issue_date: "2026-08-01".into(), due_date: due.to_string(), gst_mode: "none".into(), gst_rate: "".into(), notes: "".into(),
                 lines: vec![crate::billing::LineInput { description: "Fee".into(), qty: "1".into(), rate: format!("{}", 1000 * (i + 1)) }],
             }).unwrap();
-            if i < 2 { crate::billing::issue(&mut c, &dir, id).unwrap(); }
+            if i < 2 { crate::billing::issue(&mut c, id).unwrap(); }
         }
         let mut iq = q(0, 50);
         let all = page_invoices(&c, &iq, "2026-10-12").unwrap();

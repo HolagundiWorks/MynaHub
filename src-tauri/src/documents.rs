@@ -17,7 +17,7 @@ pub const FIELDS: &[&str] = &[
     "company.name", "company.address", "company.email", "company.phone", "company.pan", "company.gstin", "company.coa", "company.architect",
     "client.name", "client.address", "project.name", "project.code", "project.site",
     "document.number", "document.date", "document.subject", "document.reference",
-    "party.name", "party.address", "agreement.fee",
+    "party.name", "party.address", "agreement.fee", "company.bank", "company.upi",
 ];
 
 /// Every `{{field}}` must be in the catalogue; returns the names found.
@@ -39,7 +39,7 @@ pub fn validate_fields(body: &str) -> Result<Vec<String>, String> {
 
 struct Ctx {
     company_name: String, company_address: String, company_email: String, company_phone: String, company_pan: String,
-    company_gstin: String, company_coa: String, company_architect: String,
+    company_gstin: String, company_coa: String, company_architect: String, company_bank: String, company_upi: String,
     client_name: Option<String>, client_address: String, project_name: Option<String>, project_code: String, project_site: String,
     number: String, date: String, subject: String, reference: String, party_name: String, party_address: String, fee_display: String,
 }
@@ -55,6 +55,8 @@ fn field_value(c: &Ctx, name: &str) -> Result<String, String> {
         "company.gstin" => c.company_gstin.clone(),
         "company.coa" => c.company_coa.clone(),
         "company.architect" => c.company_architect.clone(),
+        "company.bank" => c.company_bank.clone(),
+        "company.upi" => c.company_upi.clone(),
         "client.name" => need(&c.client_name, "project")?,
         "client.address" => { need(&c.client_name, "project")?; c.client_address.clone() }
         "project.name" => need(&c.project_name, "project")?,
@@ -110,7 +112,7 @@ fn text_to_html(text: &str) -> String {
                 html.push_str(&format!("<p>{}</p>", esc(&rest.join("\n"))));
             }
         } else {
-            html.push_str(&format!("<p>{}</p>", esc(block)));
+            html.push_str(&format!("<p>{}</p>", esc(block).replace('\n', "<br/>")));
         }
     }
     html
@@ -159,6 +161,21 @@ pub struct DocSnapshot {
     pub architect: String,
     pub fee_display: String,
     pub milestones: Vec<(String, String, String)>,
+    /// Heading for record-style documents (minutes, notes, registers). Older snapshots have none.
+    #[serde(default)]
+    pub title: String,
+    /// `letter` has an addressee block; `record` is a titled record. Older snapshots are letters.
+    #[serde(default)]
+    pub layout: String,
+    /// `classic` or `minimal`, as chosen in the company profile when the document was issued.
+    #[serde(default)]
+    pub letterhead: String,
+    /// For documents made from an HTML template: the complete resolved HTML that was rendered, kept so an issued document
+    /// can always be explained and re-rendered exactly. Empty for wording templates.
+    #[serde(default)]
+    pub rendered_html: String,
+    #[serde(default)]
+    pub page_setup: Option<crate::template_engine::PageSetup>,
 }
 
 fn kind_ok(k: &str) -> bool {
@@ -194,11 +211,12 @@ fn parse_milestones(fee_paise: i64, ms: &[MilestoneInput]) -> Result<Vec<(String
 }
 
 fn build_ctx(conn: &Connection, i: &DocInput, number: &str, fee_paise: i64) -> Result<Ctx, String> {
-    let (company_name, company_address, company_email, company_phone, company_pan, company_gstin, company_coa, company_architect): (String, String, String, String, String, String, String, String) = conn
+    type Company = (String, String, String, String, String, String, String, String, String, String);
+    let (company_name, company_address, company_email, company_phone, company_pan, company_gstin, company_coa, company_architect, company_bank, company_upi): Company = conn
         .query_row(
-            "SELECT name, address, email, phone, pan, gstin, coa_registration, architect_name FROM company_profile WHERE id = 1",
+            "SELECT name, address, email, phone, pan, gstin, coa_registration, architect_name, bank_details, upi_id FROM company_profile WHERE id = 1",
             [],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?, r.get(7)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?, r.get(7)?, r.get(8)?, r.get(9)?)),
         )
         .map_err(|e| e.to_string())?;
     let (mut client_name, mut client_address, mut project_name, mut project_code, mut project_site) = (None, String::new(), None, String::new(), String::new());
@@ -219,7 +237,7 @@ fn build_ctx(conn: &Connection, i: &DocInput, number: &str, fee_paise: i64) -> R
     let party_name = if i.party_name.trim().is_empty() { client_name.clone().unwrap_or_default() } else { i.party_name.trim().to_string() };
     let party_address = if i.party_address.trim().is_empty() { client_address.clone() } else { i.party_address.trim().to_string() };
     Ok(Ctx {
-        company_name, company_address, company_email, company_phone, company_pan, company_gstin, company_coa, company_architect,
+        company_name, company_address, company_email, company_phone, company_pan, company_gstin, company_coa, company_architect, company_bank, company_upi,
         client_name, client_address, project_name, project_code, project_site,
         number: number.to_string(), date: i.doc_date.clone(), subject: i.subject.trim().to_string(), reference: i.reference.trim().to_string(),
         party_name, party_address, fee_display: fmt_inr(fee_paise),
@@ -236,7 +254,9 @@ pub fn save_draft(conn: &mut Connection, actor: i64, i: &DocInput) -> Result<i64
         return Err("Invalid document type.".into());
     }
     validate_date(&i.doc_date)?;
-    validate_fields(&i.body)?;
+    if studio_source(conn, i.template_version_id).is_none() {
+        validate_fields(&i.body)?;
+    }
     let fee = if i.fee.trim().is_empty() { 0 } else { parse_decimal(&i.fee, 2).map_err(|e| format!("Fee. {e}"))? };
     if i.kind == "agreement" && i.project_id.is_none() {
         return Err("Choose the project this agreement is for.".into());
@@ -299,17 +319,98 @@ fn fixed_text(i: &DocInput) -> String {
     i.body.clone()
 }
 
+/// Layout and name of the template a document was started from; documents without one are plain letters.
+fn template_layout(conn: &Connection, template_version_id: Option<i64>) -> (String, String) {
+    template_version_id
+        .and_then(|v| {
+            conn.query_row("SELECT t.layout, t.name FROM template_versions v JOIN templates t ON t.id = v.template_id WHERE v.id = ?1", params![v], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))).ok()
+        })
+        .unwrap_or_else(|| ("letter".to_string(), String::new()))
+}
+
+/// Prompts such as [[describe the scope]] that were never replaced. A document with any left cannot be issued.
+pub fn open_prompts(text: &str) -> Vec<String> {
+    let mut found = Vec::new();
+    let mut rest = text;
+    while let Some(start) = rest.find("[[") {
+        let after = &rest[start + 2..];
+        match after.find("]]") {
+            Some(end) => {
+                found.push(after[..end].trim().to_string());
+                rest = &after[end + 2..];
+            }
+            None => break,
+        }
+    }
+    found
+}
+
+/// HTML and CSS of the template version a document was started from, when that template is an HTML (studio) template.
+pub fn studio_source(conn: &Connection, template_version_id: Option<i64>) -> Option<(String, String)> {
+    let v = template_version_id?;
+    conn.query_row("SELECT html_source, COALESCE(css_source,'') FROM template_versions WHERE id = ?1 AND html_source IS NOT NULL", params![v], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))).ok()
+}
+
+/// The typed data the placeholders resolve from. Money and shares arrive formatted by the domain code; templates never calculate.
+fn studio_data(conn: &Connection, c: &Ctx, fee_paise: i64, ms: &[(String, i64, i64)]) -> serde_json::Value {
+    let scheme: String = conn.query_row("SELECT gst_scheme FROM company_profile WHERE id = 1", [], |r| r.get(0)).unwrap_or_default();
+    let scheme_label = match scheme.as_str() { "regular" => "Regular GST registration", "composition" => "Composition scheme", _ => "Not registered for GST" };
+    let items: Vec<serde_json::Value> = ms
+        .iter()
+        .enumerate()
+        .map(|(n, (name, bp, amount))| serde_json::json!({ "no": (n + 1).to_string(), "description": name, "share": format!("{}%", pct(*bp)), "formatted_amount": fmt_inr(*amount) }))
+        .collect();
+    serde_json::json!({
+        "company": { "name": c.company_name, "address": c.company_address, "email": c.company_email, "phone": c.company_phone, "pan": c.company_pan,
+                     "gstin": c.company_gstin, "coa_registration_number": c.company_coa, "architect_name": c.company_architect },
+        "client": { "name": c.client_name.clone().unwrap_or_default(), "address": c.client_address },
+        "project": { "name": c.project_name.clone().unwrap_or_default(), "code": c.project_code, "site_address": c.project_site },
+        "fee": { "total": if fee_paise > 0 { fmt_inr(fee_paise) } else { String::new() } },
+        "fee_items": items,
+        "tax": { "scheme": scheme_label },
+        "payment": { "bank_details": c.company_bank, "upi_id": c.company_upi },
+        "document": { "number": c.number, "date": c.date, "title": c.subject, "subject": c.subject, "reference": c.reference, "body": "" },
+        "addressee": { "name": c.party_name, "address": c.party_address },
+        "signatory": { "name": c.company_architect, "firm": c.company_name },
+    })
+}
+
+/// Renders a snapshot to PDF: through the HTML studio path when it carries resolved HTML, otherwise the wording-template layout.
+pub fn render_snapshot(s: &DocSnapshot) -> Result<pdf::Rendered, String> {
+    match (&s.page_setup, s.rendered_html.is_empty()) {
+        (Some(setup), false) => pdf::render_html_with_page(&s.rendered_html, &pdf::bundled_fonts(), setup),
+        _ => pdf::render_html(&doc_html(s), &pdf::bundled_fonts()),
+    }
+}
+
 fn build_snapshot(conn: &Connection, i: &DocInput, number: &str) -> Result<DocSnapshot, String> {
     let fee = if i.fee.trim().is_empty() { 0 } else { parse_decimal(&i.fee, 2)? };
     let ctx = build_ctx(conn, i, number, fee)?;
-    let text = substitute(&fixed_text(i), &ctx)?;
+    let studio = studio_source(conn, i.template_version_id);
+    // An HTML template places the written text itself, as escaped paragraphs; the text is not a wording template.
+    let text = if studio.is_some() { i.body.trim().to_string() } else { substitute(&fixed_text(i), &ctx)? };
     let ms = if i.kind == "agreement" { parse_milestones(fee, &i.milestones)? } else { Vec::new() };
     let contact = [ctx.company_email.as_str(), ctx.company_phone.as_str()].iter().filter(|s| !s.is_empty()).cloned().collect::<Vec<_>>().join("  |  ");
     let mut ids = Vec::new();
     if !ctx.company_pan.is_empty() { ids.push(format!("PAN: {}", ctx.company_pan)); }
     if !ctx.company_gstin.is_empty() { ids.push(format!("GSTIN: {}", ctx.company_gstin)); }
     if !ctx.company_coa.is_empty() { ids.push(format!("COA Reg. No.: {}", ctx.company_coa)); }
+    let (layout, template_name) = template_layout(conn, i.template_version_id);
+    let letterhead: String = conn.query_row("SELECT letterhead_style FROM company_profile WHERE id = 1", [], |r| r.get(0)).unwrap_or_else(|_| "classic".to_string());
+    let title = if layout == "record" { if ctx.subject.is_empty() { template_name } else { ctx.subject.clone() } } else { String::new() };
+    let (rendered_html, page_setup) = match &studio {
+        Some((html, css)) => {
+            let mut data = studio_data(conn, &ctx, fee, &ms);
+            data["document"]["body"] = serde_json::Value::String(text.clone());
+            let fragment = crate::template_engine::render_fragment(html, &data)?;
+            let mut notes = Vec::new();
+            let (setup, css) = crate::template_engine::split_page_rule(css, &mut notes);
+            (crate::template_engine::full_document(&fragment, &css), Some(setup))
+        }
+        None => (String::new(), None),
+    };
     Ok(DocSnapshot {
+        title, layout, letterhead, rendered_html, page_setup,
         number: number.to_string(), kind: i.kind.clone(), doc_date: i.doc_date.clone(), subject: ctx.subject.clone(), reference: ctx.reference.clone(),
         party_name: ctx.party_name.clone(), party_address: ctx.party_address.clone(), text,
         company_name: ctx.company_name.clone(), company_address: ctx.company_address.clone(), company_contact: contact, company_ids: ids.join("  |  "),
@@ -324,11 +425,16 @@ pub fn pct(bp: i64) -> String {
 }
 
 pub fn doc_html(s: &DocSnapshot) -> String {
-    let title = match s.kind.as_str() {
-        "agreement" => format!("<h2>{}</h2>", esc(if s.subject.is_empty() { "AGREEMENT" } else { &s.subject })),
-        _ => String::new(),
+    let record = s.layout == "record";
+    let title = if record {
+        format!("<h2>{}</h2>", esc(&s.title))
+    } else {
+        match s.kind.as_str() {
+            "agreement" => format!("<h2 class=\"formal\">{}</h2>", esc(if s.subject.is_empty() { "AGREEMENT" } else { &s.subject })),
+            _ => String::new(),
+        }
     };
-    let to = if s.kind == "letter_out" && !s.party_name.is_empty() {
+    let to = if s.kind == "letter_out" && !record && !s.party_name.is_empty() {
         format!("<p>To,<br/>{}<br/>{}</p>", esc(&s.party_name), esc(&s.party_address))
     } else {
         String::new()
@@ -338,12 +444,14 @@ pub fn doc_html(s: &DocSnapshot) -> String {
     } else {
         let mut rows = String::new();
         for (i, (n, p, a)) in s.milestones.iter().enumerate() {
-            rows.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>", i + 1, esc(n), esc(p), esc(a)));
+            rows.push_str(&format!("<tr><td>{}</td><td>{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td></tr>", i + 1, esc(n), esc(p), esc(a)));
         }
-        format!("<h3>Fee schedule — total {}</h3><table class=\"items\"><tr><th>#</th><th>Milestone</th><th>Share</th><th>Amount</th></tr>{rows}</table>", esc(&s.fee_display))
+        format!("<h3>Fee schedule — total {}</h3><table class=\"items\"><tr><th>#</th><th>Milestone</th><th class=\"num\">Share</th><th class=\"num\">Amount</th></tr>{rows}</table>", esc(&s.fee_display))
     };
     let signer = if s.architect.is_empty() { String::new() } else { format!("<br/>{}", esc(&s.architect)) };
-    let signature = if s.kind == "agreement" {
+    let signature = if record {
+        format!("<p><br/>Prepared by {}{}</p>", esc(&s.company_name), signer)
+    } else if s.kind == "agreement" {
         format!(
             "<table class=\"items\"><tr><td>For {co}{signer}<br/><br/><br/>Signature &amp; date</td><td>For the Client<br/><br/><br/><br/>Signature &amp; date</td></tr></table>",
             co = esc(&s.company_name), signer = signer
@@ -352,26 +460,28 @@ pub fn doc_html(s: &DocSnapshot) -> String {
         format!("<p><br/>For {}{}<br/>Authorised signatory</p>", esc(&s.company_name), signer)
     };
     format!(
-        r#"<html><head><style>
-        body {{ font-family: DejaVu; font-size: 10px; color: #161616; }}
-        h1 {{ font-size: 18px; margin-bottom: 2px; }}
-        h2 {{ font-size: 14px; margin-bottom: 2px; }}
-        h3 {{ font-size: 11px; margin-bottom: 2px; }}
-        .items {{ width: 100%; border-collapse: collapse; margin-top: 8px; }}
-        .items th, .items td {{ border: 1px solid #8d8d8d; padding: 4px; }}
-        .items th {{ background-color: #e0e0e0; }}
-        </style></head><body>
-        <h1>{company}</h1>
-        <p>{address}<br/>{contact}<br/>{ids}</p>
-        <p>No.: {number} &nbsp; Date: {date}</p>
+        r#"<html><head><style>{css}</style></head><body>
+        {head}
+        <p>No.: <span class="id">{number}</span> &nbsp; Date: {date}</p>
         {title}{to}
         {body}
         {milestones}
         {signature}
         </body></html>"#,
-        company = esc(&s.company_name), address = esc(&s.company_address), contact = esc(&s.company_contact), ids = esc(&s.company_ids),
+        css = crate::typography::css(),
+        head = letterhead_html(s),
         number = esc(&s.number), date = esc(&s.doc_date), title = title, to = to, body = text_to_html(&s.text), milestones = milestones, signature = signature,
     )
+}
+
+/// Classic: firm name large with address and identifiers beneath. Minimal: a small name line and one line of details.
+fn letterhead_html(s: &DocSnapshot) -> String {
+    if s.letterhead == "minimal" {
+        let details = [s.company_address.as_str(), s.company_contact.as_str(), s.company_ids.as_str()].iter().filter(|x| !x.is_empty()).cloned().collect::<Vec<_>>().join("  |  ");
+        format!("<h4>{}</h4><p class=\"meta\">{}</p>", esc(&s.company_name.to_uppercase()), esc(&details))
+    } else {
+        format!("<h1>{}</h1><p class=\"meta\">{}<br/>{}<br/>{}</p>", esc(&s.company_name), esc(&s.company_address), esc(&s.company_contact), esc(&s.company_ids))
+    }
 }
 
 fn root_number(n: &str) -> String {
@@ -381,14 +491,24 @@ fn root_number(n: &str) -> String {
     }
 }
 
-pub fn issue(conn: &mut Connection, files_root: &std::path::Path, actor: i64, id: i64) -> Result<String, String> {
+pub fn issue(conn: &mut Connection, actor: i64, id: i64) -> Result<String, String> {
     let d = get(conn, id)?;
     if d.status != "draft" {
         return Err("Only drafts can be issued.".into());
     }
     let i = &d.input;
     validate_date(&i.doc_date)?;
-    if i.kind == "letter_out" {
+    let prompts = open_prompts(&i.body);
+    if !prompts.is_empty() {
+        let shown: Vec<String> = prompts.iter().take(3).map(|p| format!("[[{p}]]")).collect();
+        return Err(format!(
+            "Replace or delete {} prompt{} still in the text before issuing, for example {}.",
+            prompts.len(), if prompts.len() == 1 { "" } else { "s" }, shown.join(", ")
+        ));
+    }
+    let (layout, _) = template_layout(conn, i.template_version_id);
+    let html_template = studio_source(conn, i.template_version_id).is_some();
+    if i.kind == "letter_out" && layout != "record" && !html_template {
         if i.subject.trim().is_empty() {
             return Err("Enter the subject of the letter.".into());
         }
@@ -417,15 +537,10 @@ pub fn issue(conn: &mut Connection, files_root: &std::path::Path, actor: i64, id
         None => allocate_number(&tx, series_kind(&i.kind), &i.doc_date)?,
     };
     let snapshot = build_snapshot(&tx, i, &number)?;
-    let rendered = pdf::render_html(&doc_html(&snapshot), &pdf::bundled_fonts())?;
+    let rendered = render_snapshot(&snapshot)?;
     let sha = sha256_hex(&rendered.bytes);
     let key = format!("documents/{}.pdf", number.replace('/', "_"));
-    let path = files_root.join(&key);
-    std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
-    if path.exists() {
-        return Err("A PDF for this number already exists; refusing to overwrite.".into());
-    }
-    std::fs::write(&path, &rendered.bytes).map_err(|e| e.to_string())?;
+    crate::store::put(&tx, &key, &rendered.bytes)?;
     let json = serde_json::to_string(&snapshot).map_err(|e| e.to_string())?;
     let res = tx
         .execute(
@@ -439,10 +554,7 @@ pub fn issue(conn: &mut Connection, files_root: &std::path::Path, actor: i64, id
             db::audit(&tx, Some(actor), "document_issued", &format!("{number} ({})", i.kind));
             tx.commit().map_err(|e| e.to_string())
         });
-    if let Err(e) = res {
-        let _ = std::fs::remove_file(&path);
-        return Err(e);
-    }
+    res?;
     Ok(number)
 }
 
@@ -577,17 +689,17 @@ pub fn list(conn: &Connection, kind: Option<&str>, q: Option<&str>) -> Result<Ve
     rows.collect::<Result<_, _>>().map_err(|e| e.to_string())
 }
 
-pub fn pdf_bytes(conn: &Connection, files_root: &std::path::Path, id: i64) -> Result<Vec<u8>, String> {
+pub fn pdf_bytes(conn: &Connection, id: i64) -> Result<Vec<u8>, String> {
     let (status, key, sha): (String, Option<String>, Option<String>) = conn
         .query_row("SELECT status, pdf_key, pdf_sha256 FROM documents WHERE id = ?1", params![id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
         .map_err(|_| "Document not found.".to_string())?;
     if status == "draft" {
         let d = get(conn, id)?;
         let snap = build_snapshot(conn, &d.input, "DRAFT")?;
-        return Ok(pdf::render_html(&doc_html(&snap), &pdf::bundled_fonts())?.bytes);
+        return Ok(render_snapshot(&snap)?.bytes);
     }
     let key = key.ok_or("This register entry has no PDF (inward letters keep their scanned attachment instead).")?;
-    let bytes = std::fs::read(files_root.join(key)).map_err(|_| "The stored PDF could not be read.".to_string())?;
+    let bytes = crate::store::get(conn, &key)?;
     if Some(sha256_hex(&bytes)) != sha {
         return Err("The stored PDF failed its integrity check.".into());
     }
@@ -685,7 +797,7 @@ fn safe_name(name: &str) -> String {
     cleaned.trim_matches('.').to_string()
 }
 
-pub fn add_attachment(conn: &Connection, files_root: &std::path::Path, actor: i64, doc_id: i64, kind: &str, filename: &str, data: &[u8]) -> Result<i64, String> {
+pub fn add_attachment(conn: &Connection, actor: i64, doc_id: i64, kind: &str, filename: &str, data: &[u8]) -> Result<i64, String> {
     if kind != "attachment" && kind != "signed_copy" {
         return Err("Invalid attachment type.".into());
     }
@@ -703,10 +815,8 @@ pub fn add_attachment(conn: &Connection, files_root: &std::path::Path, actor: i6
     }
     let sha = sha256_hex(data);
     let key = format!("attachments/doc{doc_id}_{}_{name}", &sha[..10]);
-    let path = files_root.join(&key);
-    std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
-    if !path.exists() {
-        std::fs::write(&path, data).map_err(|e| e.to_string())?;
+    if !crate::store::exists(conn, &key) {
+        crate::store::put(conn, &key, data)?;
     }
     conn.execute(
         "INSERT INTO document_attachments (document_id, kind, filename, file_key, sha256, bytes, uploaded_by) VALUES (?1,?2,?3,?4,?5,?6,?7)",
@@ -724,11 +834,11 @@ pub fn list_attachments(conn: &Connection, doc_id: i64) -> Result<Vec<Attachment
     rows.collect::<Result<_, _>>().map_err(|e| e.to_string())
 }
 
-pub fn attachment_bytes(conn: &Connection, files_root: &std::path::Path, id: i64) -> Result<(String, Vec<u8>), String> {
+pub fn attachment_bytes(conn: &Connection, id: i64) -> Result<(String, Vec<u8>), String> {
     let (name, key, sha): (String, String, String) = conn
         .query_row("SELECT filename, file_key, sha256 FROM document_attachments WHERE id = ?1", params![id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
         .map_err(|_| "Attachment not found.".to_string())?;
-    let bytes = std::fs::read(files_root.join(key)).map_err(|_| "The stored file could not be read.".to_string())?;
+    let bytes = crate::store::get(conn, &key)?;
     if sha256_hex(&bytes) != sha {
         return Err("The stored file failed its integrity check.".into());
     }
@@ -742,20 +852,36 @@ pub struct TemplateRow {
     pub id: i64,
     pub kind: String,
     pub name: String,
+    pub family: String,
+    pub layout: String,
+    pub description: String,
+    pub built_in: bool,
+    pub archived: bool,
+    /// `wording` templates are edited as text; `html` templates in the Template Studio.
+    pub format: String,
     pub latest_version: i64,
     pub latest_version_id: i64,
     pub body: String,
 }
 
-pub fn list_templates(conn: &Connection, kind: Option<&str>) -> Result<Vec<TemplateRow>, String> {
+const FAMILIES: [&str; 3] = ["consultancy", "billing", "administration"];
+
+pub fn list_templates(conn: &Connection, kind: Option<&str>, include_archived: bool) -> Result<Vec<TemplateRow>, String> {
     let mut stmt = conn
         .prepare(
-            "SELECT t.id, t.kind, t.name, v.version, v.id, v.body FROM templates t
+            "SELECT t.id, t.kind, t.name, t.family, t.layout, t.description, t.built_in, t.archived, v.version, v.id, v.body, t.format FROM templates t
              JOIN template_versions v ON v.template_id = t.id AND v.version = (SELECT MAX(version) FROM template_versions WHERE template_id = t.id)
-             WHERE (?1 IS NULL OR t.kind = ?1) ORDER BY t.kind, t.name",
+             WHERE (?1 IS NULL OR t.kind = ?1) AND (?2 = 1 OR t.archived = 0) ORDER BY t.family, t.name",
         )
         .map_err(|e| e.to_string())?;
-    let rows = stmt.query_map(params![kind], |r| Ok(TemplateRow { id: r.get(0)?, kind: r.get(1)?, name: r.get(2)?, latest_version: r.get(3)?, latest_version_id: r.get(4)?, body: r.get(5)? })).map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![kind, include_archived as i64], |r| {
+            Ok(TemplateRow {
+                id: r.get(0)?, kind: r.get(1)?, name: r.get(2)?, family: r.get(3)?, layout: r.get(4)?, description: r.get(5)?,
+                built_in: r.get::<_, i64>(6)? == 1, archived: r.get::<_, i64>(7)? == 1, latest_version: r.get(8)?, latest_version_id: r.get(9)?, body: r.get(10)?, format: r.get(11)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
     rows.collect::<Result<_, _>>().map_err(|e| e.to_string())
 }
 
@@ -772,16 +898,19 @@ pub fn template_versions(conn: &Connection, template_id: i64) -> Result<Vec<Vers
     rows.collect::<Result<_, _>>().map_err(|e| e.to_string())
 }
 
-pub fn create_template(conn: &mut Connection, actor: i64, kind: &str, name: &str, body: &str) -> Result<i64, String> {
+pub fn create_template(conn: &mut Connection, actor: i64, kind: &str, family: &str, layout: &str, name: &str, body: &str) -> Result<i64, String> {
     if kind != "letter" && kind != "agreement" {
         return Err("Invalid template type.".into());
+    }
+    if !FAMILIES.contains(&family) || !["letter", "record"].contains(&layout) {
+        return Err("Invalid template family or layout.".into());
     }
     if name.trim().is_empty() {
         return Err("Give the template a name.".into());
     }
     validate_fields(body)?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
-    tx.execute("INSERT INTO templates (kind, name) VALUES (?1, ?2)", params![kind, name.trim()]).map_err(|_| "A template with this name already exists.".to_string())?;
+    tx.execute("INSERT INTO templates (kind, name, family, layout) VALUES (?1, ?2, ?3, ?4)", params![kind, name.trim(), family, layout]).map_err(|_| "A template with this name already exists.".to_string())?;
     let id = tx.last_insert_rowid();
     tx.execute("INSERT INTO template_versions (template_id, version, body, published_by) VALUES (?1, 1, ?2, ?3)", params![id, body, actor]).map_err(|e| e.to_string())?;
     db::audit(&tx, Some(actor), "template_created", name.trim());
@@ -789,10 +918,56 @@ pub fn create_template(conn: &mut Connection, actor: i64, kind: &str, name: &str
     Ok(id)
 }
 
+/// A built-in is an original that stays as shipped; a firm customises its own copy.
+pub fn duplicate_template(conn: &mut Connection, actor: i64, template_id: i64, name: &str) -> Result<i64, String> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err("Give the copy a name.".into());
+    }
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    type Source = (String, String, String, String, String, String, Option<String>, Option<String>);
+    let (kind, family, layout, description, body, format, html, css): Source = tx
+        .query_row(
+            "SELECT t.kind, t.family, t.layout, t.description, v.body, t.format, v.html_source, v.css_source FROM templates t JOIN template_versions v ON v.template_id = t.id
+             WHERE t.id = ?1 ORDER BY v.version DESC LIMIT 1",
+            params![template_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?, r.get(7)?)),
+        )
+        .map_err(|_| "Template not found.".to_string())?;
+    tx.execute(
+        "INSERT INTO templates (kind, name, family, layout, description, copied_from, format) VALUES (?1,?2,?3,?4,?5,?6,?7)",
+        params![kind, name, family, layout, description, template_id, format],
+    )
+    .map_err(|_| "A template with this name already exists.".to_string())?;
+    let id = tx.last_insert_rowid();
+    tx.execute(
+        "INSERT INTO template_versions (template_id, version, body, html_source, css_source, change_summary, published_by) VALUES (?1, 1, ?2, ?3, ?4, 'Copied from a template', ?5)",
+        params![id, body, html, css, actor],
+    )
+    .map_err(|e| e.to_string())?;
+    db::audit(&tx, Some(actor), "template_duplicated", &format!("{name} (from template {template_id})"));
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+/// Archived templates are hidden from the document picker; their versions and issued documents are unaffected.
+pub fn set_template_archived(conn: &Connection, actor: i64, template_id: i64, archived: bool) -> Result<(), String> {
+    let n = conn.execute("UPDATE templates SET archived = ?1 WHERE id = ?2", params![archived as i64, template_id]).map_err(|e| e.to_string())?;
+    if n == 0 {
+        return Err("Template not found.".into());
+    }
+    db::audit(conn, Some(actor), if archived { "template_archived" } else { "template_restored" }, &format!("template {template_id}"));
+    Ok(())
+}
+
 /// Publishes the next version. Earlier versions, and documents issued from them, are unaffected.
 pub fn publish_template(conn: &mut Connection, actor: i64, template_id: i64, body: &str) -> Result<i64, String> {
     validate_fields(body)?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let built_in: i64 = tx.query_row("SELECT built_in FROM templates WHERE id = ?1", params![template_id], |r| r.get(0)).map_err(|_| "Template not found.".to_string())?;
+    if built_in == 1 {
+        return Err("Built-in templates are not edited. Make a copy and edit the copy.".into());
+    }
     let (latest, current): (i64, String) = tx
         .query_row("SELECT version, body FROM template_versions WHERE template_id = ?1 ORDER BY version DESC LIMIT 1", params![template_id], |r| Ok((r.get(0)?, r.get(1)?)))
         .map_err(|_| "Template not found.".to_string())?;
@@ -803,6 +978,73 @@ pub fn publish_template(conn: &mut Connection, actor: i64, template_id: i64, bod
     db::audit(&tx, Some(actor), "template_published", &format!("template {template_id} v{}", latest + 1));
     tx.commit().map_err(|e| e.to_string())?;
     Ok(latest + 1)
+}
+
+#[derive(Serialize)]
+pub struct Preview {
+    pub pdf_base64: String,
+    pub warnings: Vec<String>,
+}
+
+/// Renders a template with realistic sample project data and the firm's real profile, and lists what is missing.
+/// Nothing is stored or numbered.
+pub fn preview_template(conn: &Connection, body: &str, layout: &str, kind: &str, name: &str) -> Result<Preview, String> {
+    validate_fields(body)?;
+    let c = build_ctx(conn, &DocInput {
+        id: None, kind: kind.to_string(), project_id: None, party_name: "Sample Client".into(), party_address: "12 Sample Road, Pune".into(),
+        subject: String::new(), reference: "SAMPLE/001".into(), doc_date: "2026-04-01".into(), body: String::new(), template_version_id: None,
+        fee: "500000".into(), milestones: Vec::new(),
+    }, "PREVIEW", 50_000_000)?;
+    let sample = Ctx {
+        client_name: Some("Sample Client".into()), client_address: "12 Sample Road, Pune".into(),
+        project_name: Some("Sample Residence".into()), project_code: "SR-01".into(), project_site: "Plot 5, Sample Layout, Pune".into(),
+        subject: format!("Sample: {name}"), ..c
+    };
+    let text = substitute(body, &sample)?;
+    let mut warnings = Vec::new();
+    for (label, v) in [
+        ("firm name", &sample.company_name), ("firm address", &sample.company_address), ("architect name", &sample.company_architect),
+        ("COA registration number", &sample.company_coa),
+    ] {
+        if v.trim().is_empty() {
+            warnings.push(format!("The company profile has no {label}; it will be left out of issued documents."));
+        }
+    }
+    if sample.company_email.is_empty() && sample.company_phone.is_empty() {
+        warnings.push("The company profile has no email or phone; the contact line will be empty.".into());
+    }
+    for f in validate_fields(body)? {
+        let empty = match f.as_str() {
+            "company.bank" => sample.company_bank.is_empty(),
+            "company.upi" => sample.company_upi.is_empty(),
+            "company.gstin" => sample.company_gstin.is_empty(),
+            "company.pan" => sample.company_pan.is_empty(),
+            _ => false,
+        };
+        if empty {
+            warnings.push(format!("This template uses {{{{{f}}}}} but the company profile has no value for it."));
+        }
+    }
+    let prompts = open_prompts(body).len();
+    if prompts > 0 {
+        warnings.push(format!("{prompts} prompt{} in [[double brackets]] must be replaced or deleted in each document before it can be issued.", if prompts == 1 { "" } else { "s" }));
+    }
+    let contact = [sample.company_email.as_str(), sample.company_phone.as_str()].iter().filter(|s| !s.is_empty()).cloned().collect::<Vec<_>>().join("  |  ");
+    let mut ids = Vec::new();
+    if !sample.company_pan.is_empty() { ids.push(format!("PAN: {}", sample.company_pan)); }
+    if !sample.company_gstin.is_empty() { ids.push(format!("GSTIN: {}", sample.company_gstin)); }
+    if !sample.company_coa.is_empty() { ids.push(format!("COA Reg. No.: {}", sample.company_coa)); }
+    let letterhead: String = conn.query_row("SELECT letterhead_style FROM company_profile WHERE id = 1", [], |r| r.get(0)).unwrap_or_else(|_| "classic".to_string());
+    let snapshot = DocSnapshot {
+        number: "PREVIEW".into(), kind: kind.to_string(), doc_date: "2026-04-01".into(), subject: String::new(), reference: "SAMPLE/001".into(),
+        party_name: "Sample Client".into(), party_address: "12 Sample Road, Pune".into(), text,
+        company_name: sample.company_name.clone(), company_address: sample.company_address.clone(), company_contact: contact, company_ids: ids.join("  |  "),
+        architect: sample.company_architect.clone(), fee_display: sample.fee_display.clone(),
+        milestones: if kind == "agreement" { vec![("On appointment".into(), "40%".into(), fmt_inr(20_000_000)), ("On approval of design".into(), "60%".into(), fmt_inr(30_000_000))] } else { Vec::new() },
+        title: if layout == "record" { name.to_string() } else { String::new() }, layout: layout.to_string(), letterhead, rendered_html: String::new(), page_setup: None,
+    };
+    let rendered = pdf::render_html(&doc_html(&snapshot), &pdf::bundled_fonts())?;
+    Ok(Preview { pdf_base64: base64::engine::general_purpose::STANDARD.encode(rendered.bytes), warnings })
 }
 
 // ---------- commands ----------
@@ -840,7 +1082,7 @@ pub fn doc_save_draft(state: State<AppState>, input: DocInput) -> Result<i64, St
 pub fn doc_issue(state: State<AppState>, id: i64) -> Result<String, String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
-    issue(&mut conn, &state.files_root, uid, id)
+    issue(&mut conn, uid, id)
 }
 
 #[tauri::command]
@@ -854,7 +1096,7 @@ pub fn doc_register_inward(state: State<AppState>, input: InwardInput) -> Result
 pub fn doc_pdf(state: State<AppState>, id: i64) -> Result<String, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
-    Ok(base64::engine::general_purpose::STANDARD.encode(pdf_bytes(&conn, &state.files_root, id)?))
+    Ok(base64::engine::general_purpose::STANDARD.encode(pdf_bytes(&conn, id)?))
 }
 
 #[tauri::command]
@@ -890,7 +1132,7 @@ pub fn doc_attach(state: State<AppState>, doc_id: i64, kind: String, filename: S
     let uid = require(&state, Permission::Edit)?;
     let data = base64::engine::general_purpose::STANDARD.decode(base64_data.as_bytes()).map_err(|_| "The file could not be read.".to_string())?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
-    add_attachment(&conn, &state.files_root, uid, doc_id, &kind, &filename, &data)
+    add_attachment(&conn, uid, doc_id, &kind, &filename, &data)
 }
 
 #[tauri::command]
@@ -910,15 +1152,15 @@ pub struct AttachmentData {
 pub fn doc_attachment_data(state: State<AppState>, id: i64) -> Result<AttachmentData, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
-    let (filename, bytes) = attachment_bytes(&conn, &state.files_root, id)?;
+    let (filename, bytes) = attachment_bytes(&conn, id)?;
     Ok(AttachmentData { filename, base64_data: base64::engine::general_purpose::STANDARD.encode(bytes) })
 }
 
 #[tauri::command]
-pub fn template_list(state: State<AppState>, kind: Option<String>) -> Result<Vec<TemplateRow>, String> {
+pub fn template_list(state: State<AppState>, kind: Option<String>, include_archived: Option<bool>) -> Result<Vec<TemplateRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
-    list_templates(&conn, kind.as_deref())
+    list_templates(&conn, kind.as_deref(), include_archived.unwrap_or(false))
 }
 
 #[tauri::command]
@@ -929,10 +1171,24 @@ pub fn template_versions_list(state: State<AppState>, template_id: i64) -> Resul
 }
 
 #[tauri::command]
-pub fn template_create(state: State<AppState>, kind: String, name: String, body: String) -> Result<i64, String> {
+pub fn template_create(state: State<AppState>, kind: String, family: String, layout: String, name: String, body: String) -> Result<i64, String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
-    create_template(&mut conn, uid, &kind, &name, &body)
+    create_template(&mut conn, uid, &kind, &family, &layout, &name, &body)
+}
+
+#[tauri::command]
+pub fn template_duplicate(state: State<AppState>, template_id: i64, name: String) -> Result<i64, String> {
+    let uid = require(&state, Permission::ManageSettings)?;
+    let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
+    duplicate_template(&mut conn, uid, template_id, &name)
+}
+
+#[tauri::command]
+pub fn template_set_archived(state: State<AppState>, template_id: i64, archived: bool) -> Result<(), String> {
+    let uid = require(&state, Permission::ManageSettings)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    set_template_archived(&conn, uid, template_id, archived)
 }
 
 #[tauri::command]
@@ -940,6 +1196,13 @@ pub fn template_publish(state: State<AppState>, template_id: i64, body: String) 
     let uid = require(&state, Permission::ManageSettings)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     publish_template(&mut conn, uid, template_id, &body)
+}
+
+#[tauri::command]
+pub fn template_preview(state: State<AppState>, body: String, layout: String, kind: String, name: String) -> Result<Preview, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    preview_template(&conn, &body, &layout, &kind, &name)
 }
 
 #[cfg(test)]
@@ -991,10 +1254,10 @@ mod tests {
         let (mut c, dir) = setup();
         let a = save_draft(&mut c, 1, &letter()).unwrap();
         let b = save_draft(&mut c, 1, &letter()).unwrap();
-        assert_eq!(issue(&mut c, &dir, 1, a).unwrap(), "OUT/2026-27/0001");
-        assert_eq!(issue(&mut c, &dir, 1, b).unwrap(), "OUT/2026-27/0002");
+        assert_eq!(issue(&mut c, 1, a).unwrap(), "OUT/2026-27/0001");
+        assert_eq!(issue(&mut c, 1, b).unwrap(), "OUT/2026-27/0002");
         if let Ok(p) = std::env::var("AO_PREVIEW_DIR") {
-            std::fs::write(std::path::Path::new(&p).join("letter.pdf"), pdf_bytes(&c, &dir, a).unwrap()).unwrap();
+            std::fs::write(std::path::Path::new(&p).join("letter.pdf"), pdf_bytes(&c, a).unwrap()).unwrap();
         }
         let (_, n) = register_inward(&mut c, 1, &InwardInput { project_id: Some(1), party_name: "Municipal Corp".into(), subject: "Approval".into(), reference: "MC/9".into(), doc_date: "2026-10-13".into(), notes: "".into() }).unwrap();
         assert_eq!(n, "IN/2026-27/0001");
@@ -1002,11 +1265,11 @@ mod tests {
         let mut edit = letter();
         edit.id = Some(a);
         assert!(save_draft(&mut c, 1, &edit).is_err());
-        assert!(issue(&mut c, &dir, 1, a).is_err());
+        assert!(issue(&mut c, 1, a).is_err());
         assert!(c.execute("UPDATE documents SET body = 'x' WHERE id = ?1", params![a]).is_err());
         assert!(c.execute("DELETE FROM documents WHERE id = ?1", params![a]).is_err());
         c.execute("UPDATE clients SET name = 'Renamed'", []).unwrap();
-        let bytes = pdf_bytes(&c, &dir, a).unwrap();
+        let bytes = pdf_bytes(&c, a).unwrap();
         assert!(bytes.starts_with(b"%PDF"));
         let snap: DocSnapshot = serde_json::from_str(&c.query_row("SELECT snapshot_json FROM documents WHERE id = ?1", params![a], |r| r.get::<_, String>(0)).unwrap()).unwrap();
         assert!(snap.text.contains("Acme Developers"), "wording was resolved at issue time and is not affected by later edits");
@@ -1022,11 +1285,11 @@ mod tests {
         let mut l = letter();
         l.subject = "".into();
         let id = save_draft(&mut c, 1, &l).unwrap();
-        assert!(issue(&mut c, &dir, 1, id).unwrap_err().contains("subject"));
+        assert!(issue(&mut c, 1, id).unwrap_err().contains("subject"));
         let mut a = agreement();
         a.milestones[2].percent = "20".into();
         let aid = save_draft(&mut c, 1, &a).unwrap();
-        assert!(issue(&mut c, &dir, 1, aid).unwrap_err().contains("100%"));
+        assert!(issue(&mut c, 1, aid).unwrap_err().contains("100%"));
         a.id = Some(aid);
         a.milestones[2].percent = "40".into();
         assert!(save_draft(&mut c, 1, &a).unwrap_err().contains("more than 100"));
@@ -1035,7 +1298,7 @@ mod tests {
         np.project_id = None;
         np.party_name = "Someone".into();
         let npid = save_draft(&mut c, 1, &np).unwrap();
-        assert!(issue(&mut c, &dir, 1, npid).unwrap_err().contains("no project"));
+        assert!(issue(&mut c, 1, npid).unwrap_err().contains("no project"));
         let _ = std::fs::remove_dir_all(dir);
     }
 
@@ -1047,9 +1310,9 @@ mod tests {
         let id = save_draft(&mut c, 1, &a).unwrap();
         let d = get(&c, id).unwrap();
         assert_eq!(d.milestone_rows.len(), 3);
-        assert_eq!(issue(&mut c, &dir, 1, id).unwrap(), "AGR/2026-27/0001");
+        assert_eq!(issue(&mut c, 1, id).unwrap(), "AGR/2026-27/0001");
         if let Ok(p) = std::env::var("AO_PREVIEW_DIR") {
-            std::fs::write(std::path::Path::new(&p).join("agreement.pdf"), pdf_bytes(&c, &dir, id).unwrap()).unwrap();
+            std::fs::write(std::path::Path::new(&p).join("agreement.pdf"), pdf_bytes(&c, id).unwrap()).unwrap();
         }
         let amounts: i64 = c.query_row("SELECT SUM(amount_paise) FROM document_milestones WHERE document_id = ?1", params![id], |r| r.get(0)).unwrap();
         assert_eq!(amounts, 10_000_001, "rounding is absorbed so milestones add up to the fee");
@@ -1063,18 +1326,18 @@ mod tests {
         assert!(c.execute("UPDATE document_milestones SET amount_paise = 1", []).is_err());
         // revisions: new draft, numbered R1 then R2 against the same root
         let r1 = revise(&mut c, 1, id).unwrap();
-        assert_eq!(issue(&mut c, &dir, 1, r1).unwrap(), "AGR/2026-27/0001-R1");
+        assert_eq!(issue(&mut c, 1, r1).unwrap(), "AGR/2026-27/0001-R1");
         let r2 = revise(&mut c, 1, r1).unwrap();
-        assert_eq!(issue(&mut c, &dir, 1, r2).unwrap(), "AGR/2026-27/0001-R2");
+        assert_eq!(issue(&mut c, 1, r2).unwrap(), "AGR/2026-27/0001-R2");
         // signed copy workflow
         assert!(mark_signed(&c, 1, id).unwrap_err().contains("signed copy"));
-        assert!(add_attachment(&c, &dir, 1, id, "signed_copy", "evil.exe", b"x").is_err());
-        add_attachment(&c, &dir, 1, id, "signed_copy", "../signed agreement.pdf", b"%PDF-1.4 signed").unwrap();
+        assert!(add_attachment(&c, 1, id, "signed_copy", "evil.exe", b"x").is_err());
+        add_attachment(&c, 1, id, "signed_copy", "../signed agreement.pdf", b"%PDF-1.4 signed").unwrap();
         mark_signed(&c, 1, id).unwrap();
         assert_eq!(get(&c, id).unwrap().status, "signed");
         let atts = list_attachments(&c, id).unwrap();
         assert_eq!(atts[0].filename, "signed_agreement.pdf");
-        assert_eq!(attachment_bytes(&c, &dir, atts[0].id).unwrap().1, b"%PDF-1.4 signed");
+        assert_eq!(attachment_bytes(&c, atts[0].id).unwrap().1, b"%PDF-1.4 signed");
         assert!(c.execute("DELETE FROM document_attachments", []).is_err());
         let _ = std::fs::remove_dir_all(dir);
     }
@@ -1082,9 +1345,14 @@ mod tests {
     #[test]
     fn templates_version_immutably() {
         let (mut c, _dir) = setup();
-        let all = list_templates(&c, None).unwrap();
-        assert_eq!(all.len(), 2);
-        let letter_t = all.iter().find(|t| t.kind == "letter").unwrap();
+        let all = list_templates(&c, None, false).unwrap();
+        assert_eq!(all.len(), crate::builtin_templates::LIBRARY.len() + crate::builtin_html::LIBRARY.len() + 2);
+        let original = all.iter().find(|t| t.name == "Standard letter").unwrap();
+        assert!(original.built_in);
+        assert!(publish_template(&mut c, 1, original.id, "Changed").unwrap_err().contains("Make a copy"));
+        let copy = duplicate_template(&mut c, 1, original.id, "Our standard letter").unwrap();
+        let letter_t = list_templates(&c, None, false).unwrap().into_iter().find(|t| t.id == copy).unwrap();
+        assert!(!letter_t.built_in);
         assert_eq!(letter_t.latest_version, 1);
         assert!(publish_template(&mut c, 1, letter_t.id, &letter_t.body).unwrap_err().contains("Nothing has changed"));
         assert!(publish_template(&mut c, 1, letter_t.id, "Hi {{nope}}").is_err());
@@ -1092,8 +1360,143 @@ mod tests {
         assert_eq!(template_versions(&c, letter_t.id).unwrap().len(), 2);
         assert!(c.execute("UPDATE template_versions SET body = 'x'", []).is_err());
         assert!(c.execute("DELETE FROM template_versions", []).is_err());
-        assert!(create_template(&mut c, 1, "letter", "standard LETTER", "x").is_err(), "names are unique ignoring case");
-        assert!(create_template(&mut c, 1, "letter", "Site visit report", "Hello {{client.name}}").is_ok());
+        assert!(create_template(&mut c, 1, "letter", "administration", "letter", "standard LETTER", "x").is_err(), "names are unique ignoring case");
+        assert!(create_template(&mut c, 1, "letter", "administration", "letter", "Site visit report", "Hello {{client.name}}").is_ok());
+    }
+
+    fn input(c: &Connection, key: &str, body: &str) -> DocInput {
+        let tv: i64 = c.query_row("SELECT v.id FROM templates t JOIN template_versions v ON v.template_id = t.id WHERE t.template_key = ?1", params![key], |r| r.get(0)).unwrap();
+        DocInput {
+            id: None, kind: "letter_out".into(), project_id: Some(1), party_name: String::new(), party_address: String::new(), subject: String::new(),
+            reference: String::new(), doc_date: "2026-10-05".into(), body: body.into(), template_version_id: Some(tv), fee: String::new(), milestones: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn a_document_with_unfilled_prompts_cannot_be_issued() {
+        let (mut c, dir) = setup();
+        let t = list_templates(&c, None, false).unwrap().into_iter().find(|t| t.name == "Meeting minutes").unwrap();
+        let id = { let i = input(&c, "meeting-minutes", &t.body); save_draft(&mut c, 1, &i).unwrap() };
+        let err = issue(&mut c, 1, id).unwrap_err();
+        assert!(err.contains("prompt") && err.contains("[["), "{err}");
+        let status: String = c.query_row("SELECT status FROM documents WHERE id = ?1", params![id], |r| r.get(0)).unwrap();
+        assert_eq!(status, "draft");
+        assert_eq!(open_prompts("a [[one]] b [[ two ]] c"), vec!["one", "two"]);
+        assert!(open_prompts("nothing here, and a lone [[ bracket").is_empty());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn record_style_documents_issue_with_a_title_and_no_addressee() {
+        let (mut c, dir) = setup();
+        let id = { let i = input(&c, "meeting-minutes", "Project: {{project.name}}
+
+# Decisions
+
+Approved the plan."); save_draft(&mut c, 1, &i).unwrap() };
+        let number = issue(&mut c, 1, id).unwrap();
+        assert!(number.starts_with("OUT/"));
+        let snap: DocSnapshot = serde_json::from_str(&c.query_row("SELECT snapshot_json FROM documents WHERE id = ?1", params![id], |r| r.get::<_, String>(0)).unwrap()).unwrap();
+        assert_eq!(snap.layout, "record");
+        assert_eq!(snap.title, "Meeting minutes");
+        let html = doc_html(&snap);
+        assert!(html.contains("<h2>Meeting minutes</h2>") && !html.contains("To,<br/>") && html.contains("Prepared by Studio X"));
+        assert!(pdf_bytes(&c, id).unwrap().starts_with(b"%PDF"));
+        // a plain letter still needs a subject
+        let letter = { let i = DocInput { template_version_id: None, ..input(&c, "standard-letter", "Dear Sir") }; save_draft(&mut c, 1, &i).unwrap() };
+        assert!(issue(&mut c, 1, letter).unwrap_err().contains("subject"));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn the_letterhead_style_is_snapshotted_when_issued() {
+        let (mut c, dir) = setup();
+        c.execute("UPDATE company_profile SET letterhead_style = 'minimal'", []).unwrap();
+        let id = { let i = input(&c, "meeting-minutes", "Done."); save_draft(&mut c, 1, &i).unwrap() };
+        issue(&mut c, 1, id).unwrap();
+        // changing the style later does not change the issued document
+        c.execute("UPDATE company_profile SET letterhead_style = 'classic'", []).unwrap();
+        let snap: DocSnapshot = serde_json::from_str(&c.query_row("SELECT snapshot_json FROM documents WHERE id = ?1", params![id], |r| r.get::<_, String>(0)).unwrap()).unwrap();
+        assert_eq!(snap.letterhead, "minimal");
+        assert!(doc_html(&snap).contains("<h4>STUDIO X</h4>"));
+        assert!(c.execute("UPDATE company_profile SET letterhead_style = 'fancy'", []).is_err(), "only the supported styles are accepted");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn preview_uses_sample_data_and_lists_what_is_missing() {
+        let (c, dir) = setup();
+        let p = preview_template(&c, "Dear {{client.name}}, re {{project.name}}. Pay to {{company.bank}}. [[describe scope]]", "letter", "letter_out", "Test").unwrap();
+        assert!(!p.pdf_base64.is_empty());
+        let joined = p.warnings.join(" | ");
+        assert!(joined.contains("COA registration"), "{joined}");
+        assert!(joined.contains("company.bank"), "{joined}");
+        assert!(joined.contains("1 prompt"), "{joined}");
+        assert!(preview_template(&c, "{{nope}}", "letter", "letter_out", "T").is_err());
+        assert_eq!(c.query_row("SELECT COUNT(*) FROM documents", [], |r| r.get::<_, i64>(0)).unwrap(), 0, "a preview stores nothing");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn archived_templates_leave_the_picker_but_stay_on_record() {
+        let (mut c, _dir) = setup();
+        let id = duplicate_template(&mut c, 1, 1, "Mine").unwrap();
+        set_template_archived(&c, 1, id, true).unwrap();
+        assert!(list_templates(&c, None, false).unwrap().iter().all(|t| t.id != id));
+        assert!(list_templates(&c, None, true).unwrap().iter().any(|t| t.id == id && t.archived));
+        set_template_archived(&c, 1, id, false).unwrap();
+        assert!(list_templates(&c, None, false).unwrap().iter().any(|t| t.id == id));
+        assert!(set_template_archived(&c, 1, 99_999, true).is_err());
+    }
+
+    #[test]
+    fn html_template_documents_issue_with_their_resolved_html_and_never_change_afterwards() {
+        let (mut c, dir) = setup();
+        let tv: i64 = c.query_row("SELECT v.id FROM templates t JOIN template_versions v ON v.template_id = t.id WHERE t.template_key = 'html-fee-schedule'", [], |r| r.get(0)).unwrap();
+        let input = DocInput {
+            id: None, kind: "agreement".into(), project_id: Some(1), party_name: String::new(), party_address: String::new(), subject: "Fee schedule".into(),
+            reference: "R/1".into(), doc_date: "2026-10-05".into(), body: "Note <script>alert(1)</script> & more".into(), template_version_id: Some(tv), fee: "100000".into(),
+            milestones: vec![MilestoneInput { name: "Concept".into(), percent: "40".into() }, MilestoneInput { name: "Design".into(), percent: "60".into() }],
+        };
+        let id = save_draft(&mut c, 1, &input).unwrap();
+        let number = issue(&mut c, 1, id).unwrap();
+        assert!(number.starts_with("AGR/"));
+        let json: String = c.query_row("SELECT snapshot_json FROM documents WHERE id = ?1", params![id], |r| r.get(0)).unwrap();
+        let snap: DocSnapshot = serde_json::from_str(&json).unwrap();
+        for expected in ["Concept", "Design", "40%", "₹40,000.00", "₹1,00,000.00", "Baner", "Studio X"] {
+            assert!(snap.rendered_html.contains(expected), "the resolved HTML should contain {expected}");
+        }
+        assert!(!snap.rendered_html.contains("<script") && snap.rendered_html.contains("&lt;script&gt;"), "free text is escaped");
+        assert!(!snap.rendered_html.contains("{{"), "no placeholder may survive");
+        assert!(snap.page_setup.is_some());
+        let first = pdf_bytes(&c, id).unwrap();
+        assert!(first.starts_with(b"%PDF"));
+        // a later template version does not change the issued document
+        let tid: i64 = c.query_row("SELECT template_id FROM template_versions WHERE id = ?1", params![tv], |r| r.get(0)).unwrap();
+        let copy = duplicate_template(&mut c, 1, tid, "Our schedule").unwrap();
+        crate::studio::save_draft(&c, 1, copy, "<p>Changed {{ client.name }}</p>", "").unwrap();
+        crate::studio::publish(&mut c, 1, copy, "changed").unwrap();
+        assert_eq!(pdf_bytes(&c, id).unwrap(), first);
+        let after: String = c.query_row("SELECT snapshot_json FROM documents WHERE id = ?1", params![id], |r| r.get(0)).unwrap();
+        assert_eq!(after, json);
+        assert!(c.execute("UPDATE documents SET snapshot_json = 'x' WHERE id = ?1", params![id]).is_err());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn html_template_documents_need_no_subject_and_prompts_in_text_still_block_issue() {
+        let (mut c, dir) = setup();
+        let tv: i64 = c.query_row("SELECT v.id FROM templates t JOIN template_versions v ON v.template_id = t.id WHERE t.template_key = 'html-meeting-minutes'", [], |r| r.get(0)).unwrap();
+        let mk = |body: &str| DocInput {
+            id: None, kind: "letter_out".into(), project_id: Some(1), party_name: String::new(), party_address: String::new(), subject: String::new(), reference: String::new(),
+            doc_date: "2026-10-05".into(), body: body.into(), template_version_id: Some(tv), fee: String::new(), milestones: Vec::new(),
+        };
+        let blocked = save_draft(&mut c, 1, &mk("Item one [[fill in]]")).unwrap();
+        assert!(issue(&mut c, 1, blocked).unwrap_err().contains("prompt"));
+        // braces in the written text are ordinary text for an HTML template, not wording-template fields
+        let ok = save_draft(&mut c, 1, &mk("Discussed {{ this }} and that.")).unwrap();
+        issue(&mut c, 1, ok).unwrap();
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

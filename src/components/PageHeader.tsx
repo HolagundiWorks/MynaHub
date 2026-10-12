@@ -5,7 +5,7 @@ import { Breadcrumb, BreadcrumbItem, Heading } from "@carbon/react";
 export const GroupContext = createContext<string>("");
 
 /** Carbon page pattern: breadcrumb, page title, one line of context and the page's actions. */
-export default function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
+export default function PageHeader({ title, actions }: { title: string; description?: string; actions?: ReactNode }) {
   const group = useContext(GroupContext);
   return (
     <div>
@@ -18,7 +18,7 @@ export default function PageHeader({ title, description, actions }: { title: str
       <div className="ao-page-head">
         <div>
           <Heading>{title}</Heading>
-          {description && <p className="ao-muted">{description}</p>}
+          {/* `description` is accepted for call-site documentation but not rendered: repeated subtitles add height, not information. */}
         </div>
         {actions && <div className="ao-actions">{actions}</div>}
       </div>

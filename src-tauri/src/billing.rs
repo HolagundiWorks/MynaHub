@@ -530,7 +530,7 @@ pub fn invoice_html(s: &Snapshot) -> String {
     let mut rows = String::new();
     for (i, l) in s.totals.lines.iter().enumerate() {
         rows.push_str(&format!(
-            "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+            "<tr><td>{}</td><td>{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td></tr>",
             i + 1, esc(&l.description), esc(&milli_to_plain(l.qty_milli)), fmt_inr(l.rate_paise), fmt_inr(l.amount_paise)
         ));
     }
@@ -539,10 +539,10 @@ pub fn invoice_html(s: &Snapshot) -> String {
     let mut tax_rows = String::new();
     match s.gst_mode.as_str() {
         "intra" => {
-            tax_rows.push_str(&format!("<tr><td>CGST @ {}%</td><td>{}</td></tr>", half(t.gst_rate_bp), fmt_inr(t.cgst_paise)));
-            tax_rows.push_str(&format!("<tr><td>SGST @ {}%</td><td>{}</td></tr>", half(t.gst_rate_bp), fmt_inr(t.sgst_paise)));
+            tax_rows.push_str(&format!("<tr><td>CGST @ {}%</td><td class=\"num\">{}</td></tr>", half(t.gst_rate_bp), fmt_inr(t.cgst_paise)));
+            tax_rows.push_str(&format!("<tr><td>SGST @ {}%</td><td class=\"num\">{}</td></tr>", half(t.gst_rate_bp), fmt_inr(t.sgst_paise)));
         }
-        "inter" => tax_rows.push_str(&format!("<tr><td>IGST @ {}%</td><td>{}</td></tr>", milli_to_plain(t.gst_rate_bp * 10), fmt_inr(t.igst_paise))),
+        "inter" => tax_rows.push_str(&format!("<tr><td>IGST @ {}%</td><td class=\"num\">{}</td></tr>", milli_to_plain(t.gst_rate_bp * 10), fmt_inr(t.igst_paise))),
         _ => {}
     }
     let gstin = if s.company_gstin.is_empty() { String::new() } else { format!("GSTIN: {} &nbsp; ", esc(&s.company_gstin)) };
@@ -555,27 +555,20 @@ pub fn invoice_html(s: &Snapshot) -> String {
     let notes_title = if is_credit { "Reason" } else { "Notes" };
     let notes = if s.notes.is_empty() { String::new() } else { format!("<h3>{notes_title}</h3><p>{}</p>", esc(&s.notes)) };
     format!(
-        r#"<html><head><style>
-        body {{ font-family: DejaVu; font-size: 10px; color: #161616; }}
-        h1 {{ font-size: 18px; margin-bottom: 2px; }}
-        h2 {{ font-size: 14px; margin-bottom: 2px; }}
-        h3 {{ font-size: 11px; margin-bottom: 2px; }}
-        .items {{ width: 100%; border-collapse: collapse; margin-top: 8px; }}
-        .items th, .items td {{ border: 1px solid #8d8d8d; padding: 4px; }}
-        .items th {{ background-color: #e0e0e0; }}
-        </style></head><body>
+        r#"<html><head><style>{css}</style></head><body>
         <div style="width: 65%">
         <h1>{company}</h1>
-        <p>{address}<br/>{gstin}PAN: {pan}<br/>COA Reg. No.: {coa}</p>
+        <p class="meta">{address}<br/>{gstin}PAN: {pan}<br/>COA Reg. No.: {coa}</p>
         </div>
         <h2>{title}</h2>
-        <p>No.: {number}<br/>Date: {date}{due}{against}</p>
+        <p>No.: <span class="id">{number}</span><br/>Date: {date}{due}{against}</p>
         <h3>Bill to</h3>
         <p>{client}<br/>{client_address}{client_gstin}<br/>Project: {project}</p>
-        <table class="items"><tr><th>#</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>{rows}</table>
-        <table class="items"><tr><td>Subtotal</td><td>{subtotal}</td></tr>{tax_rows}<tr><th>Total</th><th>{total}</th></tr></table>
+        <table class="items"><tr><th>#</th><th>Description</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr>{rows}</table>
+        <table class="items"><tr><td>Subtotal</td><td class="num">{subtotal}</td></tr>{tax_rows}<tr><th>Total</th><th class="num">{total}</th></tr></table>
         {proforma_note}{declaration}{bank}{qr}{notes}
         </body></html>"#,
+        css = crate::typography::css(),
         company = esc(&s.company_name), address = esc(&s.company_address), gstin = gstin, pan = esc(&s.company_pan), coa = esc(&s.company_coa),
         title = title, number = esc(&s.number), date = esc(&s.issue_date), due = due, against = against, qr = qr, client = esc(&s.client_name),
         client_address = esc(&s.client_address), client_gstin = client_gstin, project = esc(&s.project_name),
@@ -590,11 +583,11 @@ fn render(s: &Snapshot) -> Result<pdf::Rendered, String> {
 
 // ---------- issue ----------
 
-pub fn issue(conn: &mut Connection, files_root: &std::path::Path, id: i64) -> Result<String, String> {
-    issue_by(conn, files_root, None, id)
+pub fn issue(conn: &mut Connection, id: i64) -> Result<String, String> {
+    issue_by(conn, None, id)
 }
 
-pub fn issue_by(conn: &mut Connection, files_root: &std::path::Path, actor: Option<i64>, id: i64) -> Result<String, String> {
+pub fn issue_by(conn: &mut Connection, actor: Option<i64>, id: i64) -> Result<String, String> {
     let detail = get(conn, id)?;
     if detail.status != "draft" {
         return Err("Only drafts can be issued.".into());
@@ -606,12 +599,7 @@ pub fn issue_by(conn: &mut Connection, files_root: &std::path::Path, actor: Opti
     let rendered = render(&snapshot)?;
     let sha = sha256_hex(&rendered.bytes);
     let key = format!("issued-pdfs/{}.pdf", number.replace('/', "_"));
-    let path = files_root.join(&key);
-    std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
-    if path.exists() {
-        return Err("A PDF for this number already exists; refusing to overwrite.".into());
-    }
-    std::fs::write(&path, &rendered.bytes).map_err(|e| e.to_string())?;
+    crate::store::put(&tx, &key, &rendered.bytes)?;
     let snapshot_json = serde_json::to_string(&snapshot).map_err(|e| e.to_string())?;
     let res = tx
         .execute(
@@ -623,14 +611,11 @@ pub fn issue_by(conn: &mut Connection, files_root: &std::path::Path, actor: Opti
         .and_then(|n| if n == 1 { Ok(()) } else { Err("Invoice was already issued.".to_string()) })
         .and_then(|_| crate::ledger::post_invoice(&tx, actor, id).map(|_| ()))
         .and_then(|_| tx.commit().map_err(|e| e.to_string()));
-    if let Err(e) = res {
-        let _ = std::fs::remove_file(&path);
-        return Err(e);
-    }
+    res?;
     Ok(number)
 }
 
-pub fn pdf_bytes(conn: &Connection, files_root: &std::path::Path, id: i64) -> Result<Vec<u8>, String> {
+pub fn pdf_bytes(conn: &Connection, id: i64) -> Result<Vec<u8>, String> {
     let (status, key, sha): (String, Option<String>, Option<String>) = conn
         .query_row("SELECT status, pdf_key, pdf_sha256 FROM invoices WHERE id = ?1", params![id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
         .map_err(|_| "Invoice not found.".to_string())?;
@@ -639,7 +624,7 @@ pub fn pdf_bytes(conn: &Connection, files_root: &std::path::Path, id: i64) -> Re
         let snap = build_snapshot(conn, &d.input, "DRAFT")?;
         return Ok(render(&snap)?.bytes);
     }
-    let bytes = std::fs::read(files_root.join(key.ok_or("Missing PDF.")?)).map_err(|_| "The stored PDF could not be read.".to_string())?;
+    let bytes = crate::store::get(conn, &key.ok_or("Missing PDF.")?)?;
     if Some(sha256_hex(&bytes)) != sha {
         return Err("The stored PDF failed its integrity check.".into());
     }
@@ -698,7 +683,7 @@ pub fn list_credit_notes(conn: &Connection, invoice_id: i64) -> Result<Vec<Credi
 }
 
 /// Issues a credit note against an issued tax invoice. It reduces the amount still owed and is never edited afterwards.
-pub fn issue_credit_note(conn: &mut Connection, files_root: &std::path::Path, actor: i64, invoice_id: i64, issue_date: &str, reason: &str, lines: Vec<LineInput>) -> Result<String, String> {
+pub fn issue_credit_note(conn: &mut Connection, actor: i64, invoice_id: i64, issue_date: &str, reason: &str, lines: Vec<LineInput>) -> Result<String, String> {
     validate_date(issue_date)?;
     if reason.trim().is_empty() {
         return Err("Give the reason for the credit note.".into());
@@ -737,12 +722,7 @@ pub fn issue_credit_note(conn: &mut Connection, files_root: &std::path::Path, ac
     let rendered = render(&snap)?;
     let sha = sha256_hex(&rendered.bytes);
     let key = format!("credit-notes/{}.pdf", number.replace('/', "_"));
-    let path = files_root.join(&key);
-    std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
-    if path.exists() {
-        return Err("A PDF for this number already exists; refusing to overwrite.".into());
-    }
-    std::fs::write(&path, &rendered.bytes).map_err(|e| e.to_string())?;
+    crate::store::put(&tx, &key, &rendered.bytes)?;
     let snapshot_json = serde_json::to_string(&snap).map_err(|e| e.to_string())?;
     let res = tx
         .execute(
@@ -757,18 +737,15 @@ pub fn issue_credit_note(conn: &mut Connection, files_root: &std::path::Path, ac
             db::audit(&tx, Some(actor), "credit_note_issued", &format!("{number} against invoice {invoice_id}"));
             tx.commit().map_err(|e| e.to_string())
         });
-    if let Err(e) = res {
-        let _ = std::fs::remove_file(&path);
-        return Err(e);
-    }
+    res?;
     Ok(number)
 }
 
-pub fn credit_note_pdf(conn: &Connection, files_root: &std::path::Path, id: i64) -> Result<Vec<u8>, String> {
+pub fn credit_note_pdf(conn: &Connection, id: i64) -> Result<Vec<u8>, String> {
     let (key, sha): (String, String) = conn
         .query_row("SELECT pdf_key, pdf_sha256 FROM credit_notes WHERE id = ?1", params![id], |r| Ok((r.get(0)?, r.get(1)?)))
         .map_err(|_| "Credit note not found.".to_string())?;
-    let bytes = std::fs::read(files_root.join(key)).map_err(|_| "The stored PDF could not be read.".to_string())?;
+    let bytes = crate::store::get(conn, &key)?;
     if sha256_hex(&bytes) != sha {
         return Err("The stored PDF failed its integrity check.".into());
     }
@@ -788,7 +765,7 @@ pub fn invoice_cancel(state: State<AppState>, id: i64, reason: String) -> Result
 pub fn credit_note_issue(state: State<AppState>, invoice_id: i64, issue_date: String, reason: String, lines: Vec<LineInput>) -> Result<String, String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
-    issue_credit_note(&mut conn, &state.files_root, uid, invoice_id, &issue_date, &reason, lines)
+    issue_credit_note(&mut conn, uid, invoice_id, &issue_date, &reason, lines)
 }
 
 #[tauri::command]
@@ -802,7 +779,7 @@ pub fn credit_note_list(state: State<AppState>, invoice_id: i64) -> Result<Vec<C
 pub fn credit_note_pdf_data(state: State<AppState>, id: i64) -> Result<String, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
-    Ok(base64::engine::general_purpose::STANDARD.encode(credit_note_pdf(&conn, &state.files_root, id)?))
+    Ok(base64::engine::general_purpose::STANDARD.encode(credit_note_pdf(&conn, id)?))
 }
 
 #[tauri::command]
@@ -839,7 +816,7 @@ pub fn invoice_save_draft(state: State<AppState>, input: InvoiceInput) -> Result
 pub fn invoice_issue(state: State<AppState>, id: i64) -> Result<String, String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
-    let number = issue_by(&mut conn, &state.files_root, Some(uid), id)?;
+    let number = issue_by(&mut conn, Some(uid), id)?;
     db::audit(&conn, Some(uid), "invoice_issued", &format!("invoice {id} as {number}"));
     Ok(number)
 }
@@ -858,7 +835,7 @@ pub fn invoice_convert_proforma(state: State<AppState>, id: i64, today: String) 
 pub fn invoice_pdf(state: State<AppState>, id: i64) -> Result<String, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
-    let bytes = pdf_bytes(&conn, &state.files_root, id)?;
+    let bytes = pdf_bytes(&conn, id)?;
     Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
 }
 
@@ -1017,24 +994,26 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         let a = save_draft(&mut c, &input("intra", "18", vec![line("Stage 1", "1", "100000")])).unwrap();
         let b = save_draft(&mut c, &input("none", "", vec![line("Stage 2", "1", "5000")])).unwrap();
-        assert_eq!(issue(&mut c, &dir, a).unwrap(), "INV/2026-27/0001");
-        assert_eq!(issue(&mut c, &dir, b).unwrap(), "INV/2026-27/0002");
+        assert_eq!(issue(&mut c, a).unwrap(), "INV/2026-27/0001");
+        assert_eq!(issue(&mut c, b).unwrap(), "INV/2026-27/0002");
         // issued: cannot be edited, re-issued or altered at the SQL level
         let mut edit = input("none", "", vec![line("Changed", "1", "1")]);
         edit.id = Some(a);
         assert!(save_draft(&mut c, &edit).is_err());
-        assert!(issue(&mut c, &dir, a).is_err());
+        assert!(issue(&mut c, a).is_err());
         assert!(c.execute("UPDATE invoices SET total_paise = 1 WHERE id = ?1", params![a]).is_err());
         assert!(c.execute("DELETE FROM invoice_lines WHERE invoice_id = ?1", params![a]).is_err());
         assert!(c.execute("DELETE FROM invoices WHERE id = ?1", params![a]).is_err());
         // stored PDF verifies, and later master-data edits don't change it
         c.execute("UPDATE clients SET name = 'Renamed'", []).unwrap();
-        let bytes = pdf_bytes(&c, &dir, a).unwrap();
+        let bytes = pdf_bytes(&c, a).unwrap();
         assert!(bytes.starts_with(b"%PDF"));
-        // tampering is detected
-        let path = dir.join("issued-pdfs/INV_2026-27_0001.pdf");
-        std::fs::write(&path, b"tampered").unwrap();
-        assert!(pdf_bytes(&c, &dir, a).unwrap_err().contains("integrity"));
+        // the stored document cannot be edited or removed through the database...
+        assert!(c.execute("UPDATE stored_files SET data = x'00'", []).is_err());
+        assert!(c.execute("DELETE FROM stored_files", []).is_err());
+        // ...and tampering that bypasses those guards is still detected on read
+        c.execute_batch("DROP TRIGGER stored_files_immutable; UPDATE stored_files SET data = x'74616d7065726564';").unwrap();
+        assert!(pdf_bytes(&c, a).unwrap_err().contains("integrity"));
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1049,8 +1028,8 @@ mod tests {
         late.issue_date = "2027-04-01".into();
         let a = save_draft(&mut c, &early).unwrap();
         let b = save_draft(&mut c, &late).unwrap();
-        assert_eq!(issue(&mut c, &dir, a).unwrap(), "INV/2026-27/0001");
-        assert_eq!(issue(&mut c, &dir, b).unwrap(), "INV/2027-28/0001");
+        assert_eq!(issue(&mut c, a).unwrap(), "INV/2026-27/0001");
+        assert_eq!(issue(&mut c, b).unwrap(), "INV/2027-28/0001");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1063,13 +1042,13 @@ mod tests {
         pi.kind = "proforma".into();
         let id = save_draft(&mut c, &pi).unwrap();
         assert!(convert_proforma(&mut c, id, "2026-10-13").is_err(), "drafts cannot be converted");
-        assert_eq!(issue(&mut c, &dir, id).unwrap(), "PI/2026-27/0001");
+        assert_eq!(issue(&mut c, id).unwrap(), "PI/2026-27/0001");
         let tax = convert_proforma(&mut c, id, "2026-10-13").unwrap();
         assert!(convert_proforma(&mut c, id, "2026-10-13").unwrap_err().contains("already been converted"));
         let d = get(&c, tax).unwrap();
         assert_eq!((d.status.as_str(), d.input.kind.as_str(), d.input.lines.len()), ("draft", "tax_invoice", 1));
         // tax invoices use their own number series
-        assert_eq!(issue(&mut c, &dir, tax).unwrap(), "INV/2026-27/0001");
+        assert_eq!(issue(&mut c, tax).unwrap(), "INV/2026-27/0001");
         let rows = list(&c).unwrap();
         assert_eq!(rows.iter().find(|r| r.id == id).unwrap().converted_to.as_deref(), Some("INV/2026-27/0001"));
         // a tax invoice is not convertible
@@ -1093,7 +1072,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         let id = save_draft(&mut c, &input("none", "", vec![line("Fee", "1", "1000")])).unwrap();
         assert!(cancel(&mut c, 1, id, "x").is_err(), "drafts are not cancelled");
-        issue(&mut c, &dir, id).unwrap();
+        issue(&mut c, id).unwrap();
         assert!(cancel(&mut c, 1, id, " ").is_err());
         cancel(&mut c, 1, id, "Raised in error").unwrap();
         assert_eq!(get(&c, id).unwrap().status, "cancelled");
@@ -1101,7 +1080,7 @@ mod tests {
         assert!(cancel(&mut c, 1, id, "again").is_err());
         // a paid invoice cannot be cancelled
         let paid = save_draft(&mut c, &input("none", "", vec![line("Fee", "1", "1000")])).unwrap();
-        issue(&mut c, &dir, paid).unwrap();
+        issue(&mut c, paid).unwrap();
         crate::receipts::record(&mut c, 1, &crate::receipts::ReceiptInput { invoice_id: paid, received_date: "2026-10-20".into(), amount: "500".into(), tds: "".into(), tds_section: "".into(), mode: "bank".into(), reference: "".into(), notes: "".into(), bank_account_id: None }).unwrap();
         assert!(cancel(&mut c, 1, paid, "oops").unwrap_err().contains("payments"));
         let _ = std::fs::remove_dir_all(&dir);
@@ -1113,17 +1092,17 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("ao_cn_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let id = save_draft(&mut c, &input("intra", "", vec![line("Fee", "1", "10000")])).unwrap();
-        issue(&mut c, &dir, id).unwrap();
+        issue(&mut c, id).unwrap();
         // invoice total 11,800 (10,000 + 18%). Credit 2,000 + 18% = 2,360.
-        let n = issue_credit_note(&mut c, &dir, 1, id, "2026-10-20", "Scope reduced", vec![line("Reduction", "1", "2000")]).unwrap();
+        let n = issue_credit_note(&mut c, 1, id, "2026-10-20", "Scope reduced", vec![line("Reduction", "1", "2000")]).unwrap();
         assert_eq!(n, "CN/2026-27/0001");
         let b = crate::receipts::balance(&c, id).unwrap();
         assert_eq!((b.credited_paise, b.balance_paise), (236_000, 944_000));
         assert_eq!(list_credit_notes(&c, id).unwrap().len(), 1);
-        assert!(credit_note_pdf(&c, &dir, list_credit_notes(&c, id).unwrap()[0].id).unwrap().starts_with(b"%PDF"));
+        assert!(credit_note_pdf(&c, list_credit_notes(&c, id).unwrap()[0].id).unwrap().starts_with(b"%PDF"));
         // more than what is still owed is refused; nothing is consumed by the failed attempt
-        assert!(issue_credit_note(&mut c, &dir, 1, id, "2026-10-21", "Too much", vec![line("x", "1", "9000")]).unwrap_err().contains("cannot exceed"));
-        assert!(issue_credit_note(&mut c, &dir, 1, id, "2026-10-21", " ", vec![line("x", "1", "1")]).is_err());
+        assert!(issue_credit_note(&mut c, 1, id, "2026-10-21", "Too much", vec![line("x", "1", "9000")]).unwrap_err().contains("cannot exceed"));
+        assert!(issue_credit_note(&mut c, 1, id, "2026-10-21", " ", vec![line("x", "1", "1")]).is_err());
         assert!(c.execute("DELETE FROM credit_notes", []).is_err());
         // a credited invoice cannot be cancelled
         assert!(cancel(&mut c, 1, id, "x").unwrap_err().contains("credit notes"));

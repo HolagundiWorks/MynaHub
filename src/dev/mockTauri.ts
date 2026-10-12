@@ -67,10 +67,35 @@ const manyTxns = Array.from({ length: 230 }, (_, i) => ({
   narration: `${txns[i % txns.length].narration} #${i}`,
 }));
 
+// Preview-only company state: add ?start to the address to see the company chooser first.
+let company: { name: string; path: string; uuid: string } | null = location.search.includes("start") ? null : { name: "Studio X Architects", path: "D:\Companies\Studio X.adms", uuid: "0a1b2c3d-0000-4000-8000-000000000001" };
+let signedIn = !location.search.includes("start");
+
+const templates = [
+  { id: 1, kind: "letter", name: "Standard letter", family: "administration", layout: "letter", description: "A plain outward letter.", built_in: true, archived: false, format: "wording", latest_version: 1, latest_version_id: 3, body: "Dear Sir / Madam,\n\nSub: {{document.subject}}" },
+  { id: 2, kind: "letter", name: "Meeting minutes", family: "consultancy", layout: "record", description: "Minutes with attendees, decisions and actions.", built_in: true, archived: false, format: "wording", latest_version: 1, latest_version_id: 4, body: "Project: {{project.name}}\n\n# Present\n\n[[names]]" },
+  { id: 3, kind: "letter", name: "Outstanding fee reminder", family: "billing", layout: "letter", description: "A courteous reminder for fees past their due date.", built_in: true, archived: false, format: "wording", latest_version: 1, latest_version_id: 5, body: "Dear Sir / Madam," },
+  { id: 5, kind: "letter", name: "Consultancy proposal (HTML)", family: "consultancy", layout: "letter", description: "A proposal with a fee schedule.", built_in: true, archived: false, format: "html", latest_version: 1, latest_version_id: 7, body: "" },
+  { id: 6, kind: "letter", name: "Our proposal", family: "consultancy", layout: "letter", description: "", built_in: false, archived: false, format: "html", latest_version: 2, latest_version_id: 8, body: "" },
+  { id: 4, kind: "letter", name: "Our site note", family: "consultancy", layout: "record", description: "", built_in: false, archived: false, format: "wording", latest_version: 2, latest_version_id: 6, body: "Visit on [[date]]" },
+];
+
 function handle(cmd: string, args: Args): unknown {
   switch (cmd) {
-    case "auth_status": return { setup_required: false, locked: false, user: { username: "admin", role: "Owner" } };
-    case "company_get_profile": return { name: "Studio X Architects", address: "Mumbai", email: "", phone: "", pan: "", gstin: "", coa_registration: "CA/2001/12345", bank_details: "", gst_scheme: "regular", upi_id: "studio@bank", architect_name: "A. Architect" };
+    case "plugin:dialog|save": return "D:\Companies\New Studio.adms";
+    case "plugin:dialog|open": return "D:\Companies\Studio X.adms";
+    case "company_recent_list": return [
+      { name: "Studio X Architects", path: "D:\Companies\Studio X.adms", uuid: "0a1b2c3d-0000-4000-8000-000000000001", last_opened: 1791000000, exists: true },
+      { name: "Old Practice", path: "E:\Archive\Old Practice.adms", uuid: "0a1b2c3d-0000-4000-8000-000000000002", last_opened: 1770000000, exists: false },
+    ];
+    case "company_legacy_info": return null;
+    case "company_validate": return { name: "Studio X Architects", path: String(args?.path), uuid: "0a1b2c3d-0000-4000-8000-000000000001", schema_version: 13, needs_upgrade: false };
+    case "company_open": company = { name: "Studio X Architects", path: String(args?.path), uuid: "0a1b2c3d-0000-4000-8000-000000000001" }; signedIn = false; return company;
+    case "company_create": company = { name: String(args?.name), path: String(args?.path), uuid: "0a1b2c3d-0000-4000-8000-000000000003" }; return [company, "ABCD-EFGH-JKLM-NPQR"];
+    case "company_close": company = null; signedIn = false; return null;
+    case "auth_login": signedIn = true; return { username: "admin", role: "Owner" };
+    case "auth_status": return { company, setup_required: false, locked: false, user: signedIn ? { username: "admin", role: "Owner" } : null };
+    case "company_get_profile": return { name: "Studio X Architects", address: "Mumbai", email: "", phone: "", pan: "", gstin: "", coa_registration: "CA/2001/12345", bank_details: "", gst_scheme: "regular", upi_id: "studio@bank", architect_name: "A. Architect", letterhead_style: "classic" };
     case "client_list": return (args?.includeArchived ? clients : clients.filter((c) => !c.archived));
     case "project_list": return projects;
     case "invoice_list": return invoices;
@@ -91,7 +116,22 @@ function handle(cmd: string, args: Args): unknown {
       { id: 2, kind: "letter_out", number: "OUT/2026-27/0004", status: "issued", party_name: "Municipal Corporation", subject: "Drawings submitted for approval", reference: "SK/12", doc_date: "2026-10-09", project_name: "Baner Villa", client_name: "Acme Developers", signed: false },
       { id: 3, kind: "letter_out", number: null, status: "draft", party_name: "", subject: "Site visit follow-up", reference: "", doc_date: "2026-10-12", project_name: "", client_name: "", signed: false },
     ];
-    case "template_list": return [{ id: 1, kind: "letter", name: "Standard letter", latest_version: 2, latest_version_id: 3, body: "" }];
+    case "template_list": return templates.filter((t) => args?.includeArchived || !t.archived);
+    case "template_duplicate": templates.push({ ...templates[0], id: templates.length + 1, name: String(args?.name), built_in: false, latest_version: 1, latest_version_id: 100 + templates.length }); return templates.length;
+    case "template_set_archived": { const t = templates.find((x) => x.id === Number(args?.templateId)); if (t) t.archived = Boolean(args?.archived); return null; }
+    case "studio_fields": return [
+      { path: "company.name", group: "Company", label: "Firm name", kind: "text", required: true, example: "Studio Meridian Architects", available: "Always" },
+      { path: "client.name", group: "Client", label: "Client name", kind: "text", required: true, example: "Acme Developers", available: "When a project is selected" },
+      { path: "fee_items", group: "Fee", label: "Fee milestones (repeat)", kind: "list", required: false, example: "", available: "When a milestone schedule is entered" },
+      { path: "document.body", group: "Document", label: "Document text", kind: "block", required: false, example: "Paragraphs", available: "When entered" },
+    ];
+    case "studio_open": { const t = templates.find((x) => x.id === Number(args?.templateId))!; return { id: t.id, name: t.name, family: t.family, kind: t.kind, built_in: t.built_in, archived: t.archived, published_version: t.latest_version, has_draft: false, html: "<h1>{{ document.title | default \"Proposal\" }}</h1>\n<p>{{ client.name }}</p>\n<main>{{ document.body }}</main>", css: "@page { size: A4; margin: 18mm 16mm; }\nh1 { font-size: 22pt; }", versions: [{ version: t.latest_version, published_at: "2026-10-05 10:00:00", change_summary: "Built-in original" }] }; }
+    case "studio_validate": return String(args?.html).includes("nope") ? [{ severity: "error", source: "html", line: 1, col: 1, message: "Unknown field “nope”. Pick one from the Fields panel." }] : [];
+    case "studio_preview": return { pdf_base64: "", pages: 2, landscape: false, diagnostics: [], missing_required: [] };
+    case "studio_save_draft": case "studio_discard_draft": case "studio_restore": return null;
+    case "studio_publish": return 3;
+    case "studio_create": return 6;
+    case "template_preview": return { pdf_base64: "", warnings: ["The company profile has no COA registration number; it will be left out of issued documents.", "2 prompts in [[double brackets]] must be replaced or deleted in each document before it can be issued."] };
     case "audit_list": return Array.from({ length: 8 }, (_, i) => ({ at: `2026-10-12 09:${10 + i}:00`, user: "admin", event: i % 2 ? "invoice_issued" : "login_ok", detail: i % 2 ? `invoice ${i} as INV/2026-27/000${i}` : "" }));
     case "user_list": return [{ id: 1, username: "admin", role: "owner", disabled: false }, { id: 2, username: "accounts", role: "accounts", disabled: false }];
     case "security_get": return 5;

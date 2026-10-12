@@ -27,6 +27,7 @@ printpdf = { version = "0.12", features = ["html"] }
 base64 = "0.22"
 csv = "1"
 qrcode = { version = "0.14", default-features = false }
+tauri-plugin-dialog = "2.8.2"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

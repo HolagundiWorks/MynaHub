@@ -44,12 +44,14 @@ fn count(c: &Connection, table: &str) -> i64 {
 /// Every command that Tauri exposes must check the session. The only exceptions are the sign-in flow itself.
 #[test]
 fn every_tauri_command_checks_the_session_and_permission() {
-    let files: [(&str, &str); 11] = [
+    let files: [(&str, &str); 13] = [
+        ("studio.rs", include_str!("studio.rs")),
+        ("company_file.rs", include_str!("company_file.rs")),
         ("commands.rs", include_str!("commands.rs")), ("admin.rs", include_str!("admin.rs")), ("bank.rs", include_str!("bank.rs")), ("billing.rs", include_str!("billing.rs")),
         ("receipts.rs", include_str!("receipts.rs")), ("documents.rs", include_str!("documents.rs")), ("accounting.rs", include_str!("accounting.rs")),
         ("registers.rs", include_str!("registers.rs")), ("clients.rs", include_str!("clients.rs")), ("entries.rs", include_str!("entries.rs")), ("ledger.rs", include_str!("ledger.rs")),
     ];
-    let open = ["auth_status", "auth_setup", "auth_login", "auth_unlock", "auth_lock", "auth_logout", "auth_recover"];
+    let open = ["company_active", "company_validate", "company_recent_list", "company_recent_remove", "company_open", "company_create", "company_close", "company_legacy_info", "company_convert_legacy", "auth_status", "auth_setup", "auth_login", "auth_unlock", "auth_lock", "auth_logout", "auth_recover"];
     let mut checked = 0;
     for (name, text) in files {
         for segment in text.split("#[tauri::command]").skip(1) {
@@ -130,7 +132,7 @@ fn absurd_amounts_are_rejected_instead_of_overflowing() {
     assert!(big.is_ok() || big.is_err()); // either is fine; it must not panic
     // receipts, expenses and journals with absurd amounts
     let id = draft(&mut c, "2026-10-01", "1000");
-    billing::issue(&mut c, &dir, id).unwrap();
+    billing::issue(&mut c, id).unwrap();
     for amt in ["9223372036854775807", "99999999999999999999", "92233720368547758.07"] {
         assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| receipts::record(&mut c, 1, &receipt(id, "2026-10-20", amt)))).expect("receipt panicked").is_err());
     }
@@ -199,13 +201,13 @@ fn a_failed_posting_leaves_no_partial_records_numbers_or_files() {
     let mut c = fresh();
     let dir = tmp("atomic");
     let paid = draft(&mut c, "2026-04-10", "1000");
-    billing::issue(&mut c, &dir, paid).unwrap();
+    billing::issue(&mut c, paid).unwrap();
     let next = draft(&mut c, "2026-05-01", "2000");
     ledger::set_period_status(&c, 1, "2026-27", true).unwrap();
 
     let (series_before, files_before) = (c.query_row("SELECT SUM(last_seq) FROM number_series", [], |r| r.get::<_, i64>(0)).unwrap(), std::fs::read_dir(dir.join("issued-pdfs")).map(|d| d.count()).unwrap_or(0));
     // issuing into a closed year must fail as a whole
-    assert!(billing::issue(&mut c, &dir, next).is_err());
+    assert!(billing::issue(&mut c, next).is_err());
     assert_eq!(billing::get(&c, next).unwrap().status, "draft", "the draft must stay a draft");
     assert_eq!(c.query_row("SELECT SUM(last_seq) FROM number_series", [], |r| r.get::<_, i64>(0)).unwrap(), series_before, "the number must not be consumed");
     assert_eq!(std::fs::read_dir(dir.join("issued-pdfs")).map(|d| d.count()).unwrap_or(0), files_before, "no orphan PDF");
@@ -215,7 +217,7 @@ fn a_failed_posting_leaves_no_partial_records_numbers_or_files() {
     assert_eq!((count(&c, "receipts"), count(&c, "journals")), (rc, jc));
     // reopen: the same operations now succeed and numbers continue without a gap
     ledger::set_period_status(&c, 1, "2026-27", false).unwrap();
-    assert_eq!(billing::issue(&mut c, &dir, next).unwrap(), "INV/2026-27/0002");
+    assert_eq!(billing::issue(&mut c, next).unwrap(), "INV/2026-27/0002");
     receipts::record(&mut c, 1, &receipt(paid, "2026-06-01", "100")).unwrap();
     assert_eq!(ledger::unbalanced_journals(&c).unwrap(), 0);
     let _ = std::fs::remove_dir_all(dir);
@@ -226,7 +228,7 @@ fn business_events_post_to_the_ledger_at_most_once() {
     let mut c = fresh();
     let dir = tmp("once");
     let id = draft(&mut c, "2026-10-01", "1000");
-    billing::issue(&mut c, &dir, id).unwrap();
+    billing::issue(&mut c, id).unwrap();
     receipts::record(&mut c, 1, &receipt(id, "2026-10-02", "500")).unwrap();
     let before = count(&c, "journals");
     assert!(ledger::post_invoice(&c, Some(1), id).unwrap().is_none());
@@ -254,10 +256,10 @@ fn two_connections_cannot_issue_the_same_invoice_twice() {
     }
     let results: Vec<Result<String, String>> = (0..4)
         .map(|_| {
-            let (p, d) = (path.clone(), dir.clone());
+            let p = path.clone();
             std::thread::spawn(move || {
                 let mut c = db::open(&p).unwrap();
-                billing::issue(&mut c, &d, 1)
+                billing::issue(&mut c, 1)
             })
         })
         .collect::<Vec<_>>()
@@ -271,7 +273,7 @@ fn two_connections_cannot_issue_the_same_invoice_twice() {
     let numbered: i64 = c.query_row("SELECT COUNT(*) FROM invoices WHERE number IS NOT NULL", [], |r| r.get(0)).unwrap();
     assert_eq!(numbered, 1);
     assert_eq!(count(&c, "journals"), 1, "one invoice, one journal");
-    assert_eq!(std::fs::read_dir(dir.join("issued-pdfs")).unwrap().count(), 1, "losers must not leave PDFs behind");
+    assert_eq!(count(&c, "stored_files"), 1, "losers must not leave documents behind");
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -302,7 +304,7 @@ fn random_operation_sequences_keep_the_ledger_balanced_and_reconciled() {
                 0 | 1 => {
                     let rate = format!("{}", 1000 + rng.below(90_000));
                     let id = draft(&mut c, &date, &rate);
-                    if billing::issue(&mut c, &dir, id).is_ok() { open.push(id); }
+                    if billing::issue(&mut c, id).is_ok() { open.push(id); }
                 }
                 2 if !open.is_empty() => {
                     let id = open[rng.below(open.len() as u64) as usize];
@@ -311,7 +313,7 @@ fn random_operation_sequences_keep_the_ledger_balanced_and_reconciled() {
                 }
                 3 if !open.is_empty() => {
                     let id = open[rng.below(open.len() as u64) as usize];
-                    let _ = billing::issue_credit_note(&mut c, &dir, 1, id, &date, "random", vec![LineInput { description: "c".into(), qty: "1".into(), rate: format!("{}", 1 + rng.below(300)) }]);
+                    let _ = billing::issue_credit_note(&mut c, 1, id, &date, "random", vec![LineInput { description: "c".into(), qty: "1".into(), rate: format!("{}", 1 + rng.below(300)) }]);
                 }
                 4 => {
                     let rid: Option<i64> = c.query_row("SELECT id FROM effective_receipts ORDER BY RANDOM() LIMIT 1", [], |r| r.get(0)).ok();
