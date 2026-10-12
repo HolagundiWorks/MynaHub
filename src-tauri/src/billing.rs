@@ -1,0 +1,1154 @@
+use crate::auth::Permission;
+use crate::commands::{require, AppState, INTERNAL};
+use crate::{db, pdf};
+use base64::Engine;
+use rusqlite::{params, Connection};
+use serde::{Deserialize, Serialize};
+use sha2_lite::sha256_hex;
+use tauri::State;
+
+// ---------- money ----------
+
+/// Parses a non-negative decimal string into an integer scaled by 10^scale (no floats).
+pub fn parse_decimal(s: &str, scale: u32) -> Result<i64, String> {
+    let s = s.trim().replace(',', "");
+    if s.is_empty() {
+        return Err("Enter a number.".into());
+    }
+    let (int, frac) = s.split_once('.').unwrap_or((&s, ""));
+    if int.is_empty() && frac.is_empty() || !int.chars().all(|c| c.is_ascii_digit()) || !frac.chars().all(|c| c.is_ascii_digit()) {
+        return Err(format!("'{s}' is not a valid number."));
+    }
+    if frac.len() > scale as usize {
+        return Err(format!("At most {scale} decimal places allowed."));
+    }
+    let mult = 10i64.pow(scale);
+    let int_v: i64 = if int.is_empty() { 0 } else { int.parse().map_err(|_| "Number too large.")? };
+    let frac_v: i64 = if frac.is_empty() { 0 } else { frac.parse::<i64>().unwrap() * 10i64.pow(scale - frac.len() as u32) };
+    int_v.checked_mul(mult).and_then(|v| v.checked_add(frac_v)).ok_or_else(|| "Number too large.".into())
+}
+
+/// Indian digit grouping, e.g. 12345678 paise -> "₹1,23,456.78".
+pub fn fmt_inr(paise: i64) -> String {
+    let neg = paise < 0;
+    let p = paise.abs();
+    let (rupees, ps) = (p / 100, p % 100);
+    let digits = rupees.to_string();
+    let grouped = if digits.len() <= 3 {
+        digits
+    } else {
+        let (head, tail) = digits.split_at(digits.len() - 3);
+        let mut parts = Vec::new();
+        let mut h = head;
+        while h.len() > 2 {
+            let (a, b) = h.split_at(h.len() - 2);
+            parts.push(b.to_string());
+            h = a;
+        }
+        if !h.is_empty() {
+            parts.push(h.to_string());
+        }
+        parts.reverse();
+        format!("{},{}", parts.join(","), tail)
+    };
+    format!("{}₹{}.{:02}", if neg { "-" } else { "" }, grouped, ps)
+}
+
+fn div_round(n: i64, d: i64) -> i64 {
+    (n + d / 2) / d
+}
+
+// ---------- input / calculation ----------
+
+/// Regular scheme: 18% (basis points). Composition (services): 6%.
+pub const REGULAR_BP: i64 = 1800;
+pub const COMPOSITION_BP: i64 = 600;
+
+pub fn company_scheme(conn: &Connection) -> Result<String, String> {
+    conn.query_row("SELECT gst_scheme FROM company_profile WHERE id = 1", [], |r| r.get(0)).map_err(|e| e.to_string())
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct LineInput {
+    pub description: String,
+    pub qty: String,
+    pub rate: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct InvoiceInput {
+    pub id: Option<i64>,
+    pub project_id: i64,
+    pub kind: String,
+    pub issue_date: String,
+    pub due_date: String,
+    pub gst_mode: String,
+    /// GST rate as a percentage string, e.g. "18" or "12.5".
+    pub gst_rate: String,
+    pub notes: String,
+    pub lines: Vec<LineInput>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct CalcLine {
+    pub description: String,
+    pub qty_milli: i64,
+    pub rate_paise: i64,
+    pub amount_paise: i64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct Totals {
+    pub lines: Vec<CalcLine>,
+    pub subtotal_paise: i64,
+    pub cgst_paise: i64,
+    pub sgst_paise: i64,
+    pub igst_paise: i64,
+    pub tax_paise: i64,
+    pub total_paise: i64,
+    pub gst_rate_bp: i64,
+    /// Mode actually applied after the company scheme is taken into account.
+    pub gst_mode: String,
+    /// Composition scheme only: 6% liability on this bill. Paid by the firm, NOT added to the total.
+    pub composition_paise: i64,
+}
+
+/// `scheme` is the company's declared GST registration (none / composition / regular).
+pub fn calculate(input: &InvoiceInput, scheme: &str) -> Result<Totals, String> {
+    if input.lines.is_empty() {
+        return Err("Add at least one line.".into());
+    }
+    let mut lines = Vec::new();
+    let mut subtotal = 0i64;
+    for (i, l) in input.lines.iter().enumerate() {
+        let description = l.description.trim();
+        if description.is_empty() {
+            return Err(format!("Line {}: description is required.", i + 1));
+        }
+        let qty_milli = parse_decimal(&l.qty, 3).map_err(|e| format!("Line {}: quantity. {e}", i + 1))?;
+        let rate_paise = parse_decimal(&l.rate, 2).map_err(|e| format!("Line {}: rate. {e}", i + 1))?;
+        let amount = div_round(qty_milli.checked_mul(rate_paise).ok_or("Amount too large.")?, 1000);
+        subtotal = subtotal.checked_add(amount).ok_or("Amount too large.")?;
+        lines.push(CalcLine { description: description.to_string(), qty_milli, rate_paise, amount_paise: amount });
+    }
+    let (mode, rate_bp, cgst, sgst, igst, composition) = match scheme {
+        "none" => ("none", 0, 0, 0, 0, 0),
+        // Composition: nothing is charged to the client; the firm owes 6% (3% CGST + 3% SGST) of turnover.
+        "composition" => ("none", 0, 0, 0, 0, div_round(subtotal * COMPOSITION_BP, 10_000)),
+        "regular" => {
+            let total = div_round(subtotal * REGULAR_BP, 10_000);
+            if input.gst_mode == "inter" {
+                ("inter", REGULAR_BP, 0, 0, total, 0)
+            } else {
+                // 9% + 9%; the second half absorbs rounding so the pair sums exactly.
+                let cgst = total / 2;
+                ("intra", REGULAR_BP, cgst, total - cgst, 0, 0)
+            }
+        }
+        _ => return Err("Invalid GST scheme.".into()),
+    };
+    let tax = cgst + sgst + igst;
+    Ok(Totals { lines, subtotal_paise: subtotal, cgst_paise: cgst, sgst_paise: sgst, igst_paise: igst, tax_paise: tax, total_paise: subtotal + tax, gst_rate_bp: rate_bp, gst_mode: mode.to_string(), composition_paise: composition })
+}
+
+// ---------- dates / numbering ----------
+
+pub fn validate_date(s: &str) -> Result<(), String> {
+    parse_date(s).map(|_| ())
+}
+
+fn parse_date(s: &str) -> Result<(i32, u32, u32), String> {
+    let bad = || format!("'{s}' is not a valid date (use YYYY-MM-DD).");
+    let parts: Vec<&str> = s.split('-').collect();
+    if parts.len() != 3 || parts[0].len() != 4 || parts[1].len() != 2 || parts[2].len() != 2 || !parts.iter().all(|p| p.bytes().all(|b| b.is_ascii_digit())) {
+        return Err(bad());
+    }
+    let (y, m, d): (i32, u32, u32) = (parts[0].parse().map_err(|_| bad())?, parts[1].parse().map_err(|_| bad())?, parts[2].parse().map_err(|_| bad())?);
+    // Business dates only: this also keeps financial-year labels and numbers well formed.
+    if !(1990..=2100).contains(&y) {
+        return Err(bad());
+    }
+    let leap = (y % 4 == 0 && y % 100 != 0) || y % 400 == 0;
+    let dim = match m { 1 | 3 | 5 | 7 | 8 | 10 | 12 => 31, 4 | 6 | 9 | 11 => 30, 2 => if leap { 29 } else { 28 }, _ => return Err(bad()) };
+    if d == 0 || d > dim {
+        return Err(bad());
+    }
+    Ok((y, m, d))
+}
+
+/// Indian financial year (April-March), e.g. 2026-10-12 -> "2026-27".
+pub fn financial_year(date: &str) -> Result<String, String> {
+    let (y, m, _) = parse_date(date)?;
+    let start = if m >= 4 { y } else { y - 1 };
+    Ok(format!("{}-{:02}", start, (start + 1) % 100))
+}
+
+fn series_prefix(kind: &str) -> &'static str {
+    match kind {
+        "proforma" => "PI",
+        "receipt" => "RCT",
+        "credit_note" => "CN",
+        "letter_out" => "OUT",
+        "letter_in" => "IN",
+        "agreement" => "AGR",
+        _ => "INV",
+    }
+}
+
+pub(crate) fn allocate_number(conn: &Connection, kind: &str, issue_date: &str) -> Result<String, String> {
+    let fy = financial_year(issue_date)?;
+    let prefix = series_prefix(kind);
+    conn.execute(
+        "INSERT INTO number_series (kind, fy, prefix, last_seq) VALUES (?1, ?2, ?3, 0) ON CONFLICT(kind, fy) DO NOTHING",
+        params![kind, fy, prefix],
+    )
+    .map_err(|e| e.to_string())?;
+    conn.execute("UPDATE number_series SET last_seq = last_seq + 1 WHERE kind = ?1 AND fy = ?2", params![kind, fy])
+        .map_err(|e| e.to_string())?;
+    let seq: i64 = conn
+        .query_row("SELECT last_seq FROM number_series WHERE kind = ?1 AND fy = ?2", params![kind, fy], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    Ok(format!("{prefix}/{fy}/{seq:04}"))
+}
+
+// ---------- persistence ----------
+
+fn validate_header(input: &InvoiceInput) -> Result<(), String> {
+    parse_date(&input.issue_date)?;
+    if !input.due_date.trim().is_empty() {
+        parse_date(&input.due_date)?;
+    }
+    if !["tax_invoice", "proforma"].contains(&input.kind.as_str()) {
+        return Err("Invalid document type.".into());
+    }
+    Ok(())
+}
+
+pub fn save_draft(conn: &mut Connection, input: &InvoiceInput) -> Result<i64, String> {
+    validate_header(input)?;
+    let t = calculate(input, &company_scheme(conn)?)?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let project_ok: i64 = tx
+        .query_row("SELECT COUNT(*) FROM projects WHERE id = ?1 AND archived = 0", params![input.project_id], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    if project_ok == 0 {
+        return Err("Choose an active project.".into());
+    }
+    let id = match input.id {
+        Some(id) => {
+            let status: String = tx
+                .query_row("SELECT status FROM invoices WHERE id = ?1", params![id], |r| r.get(0))
+                .map_err(|_| "Invoice not found.".to_string())?;
+            if status != "draft" {
+                return Err("Only drafts can be edited.".into());
+            }
+            tx.execute(
+                "UPDATE invoices SET project_id=?1, kind=?2, issue_date=?3, due_date=?4, gst_mode=?5, gst_rate_bp=?6, notes=?7,
+                 subtotal_paise=?8, tax_paise=?9, total_paise=?10, updated_at=datetime('now') WHERE id=?11",
+                params![input.project_id, input.kind, input.issue_date, input.due_date.trim(), t.gst_mode, t.gst_rate_bp, input.notes, t.subtotal_paise, t.tax_paise, t.total_paise, id],
+            )
+            .map_err(|e| e.to_string())?;
+            tx.execute("DELETE FROM invoice_lines WHERE invoice_id = ?1", params![id]).map_err(|e| e.to_string())?;
+            id
+        }
+        None => {
+            tx.execute(
+                "INSERT INTO invoices (project_id, kind, issue_date, due_date, gst_mode, gst_rate_bp, notes, subtotal_paise, tax_paise, total_paise)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
+                params![input.project_id, input.kind, input.issue_date, input.due_date.trim(), t.gst_mode, t.gst_rate_bp, input.notes, t.subtotal_paise, t.tax_paise, t.total_paise],
+            )
+            .map_err(|e| e.to_string())?;
+            tx.last_insert_rowid()
+        }
+    };
+    for (i, l) in t.lines.iter().enumerate() {
+        tx.execute(
+            "INSERT INTO invoice_lines (invoice_id, position, description, qty_milli, rate_paise, amount_paise) VALUES (?1,?2,?3,?4,?5,?6)",
+            params![id, i as i64, l.description, l.qty_milli, l.rate_paise, l.amount_paise],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+#[derive(Serialize)]
+pub struct InvoiceRow {
+    pub id: i64,
+    pub number: Option<String>,
+    pub kind: String,
+    pub status: String,
+    pub client_name: String,
+    pub project_name: String,
+    pub issue_date: String,
+    pub total_paise: i64,
+    pub total_display: String,
+    pub paid_display: String,
+    pub tds_display: String,
+    pub balance_paise: i64,
+    pub balance_display: String,
+    pub credited_display: String,
+    pub paid_paise: i64,
+    pub tds_paise: i64,
+    pub credited_paise: i64,
+    pub due_date: String,
+    /// Number of the tax invoice raised from this pro forma, if any.
+    pub converted_to: Option<String>,
+    /// Number of the pro forma this invoice was raised from, if any.
+    pub from_proforma: Option<String>,
+}
+
+pub fn list(conn: &Connection) -> Result<Vec<InvoiceRow>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT i.id, i.number, i.kind, i.status, c.name, p.name, i.issue_date, i.total_paise,
+                    b.received_paise, b.tds_paise, b.credited_paise,
+                    (SELECT COALESCE(t.number, 'Draft') FROM invoices t WHERE t.source_proforma_id = i.id AND t.status <> 'cancelled'),
+                    (SELECT s.number FROM invoices s WHERE s.id = i.source_proforma_id), i.due_date
+             FROM invoices i JOIN invoice_balances b ON b.invoice_id = i.id JOIN projects p ON p.id = i.project_id JOIN clients c ON c.id = p.client_id
+             ORDER BY i.id DESC",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| {
+            let total: i64 = r.get(7)?;
+            let (paid, tds, credited): (i64, i64, i64) = (r.get(8)?, r.get(9)?, r.get(10)?);
+            let balance = total - paid - tds - credited;
+            Ok(InvoiceRow {
+                id: r.get(0)?, number: r.get(1)?, kind: r.get(2)?, status: r.get(3)?, client_name: r.get(4)?, project_name: r.get(5)?,
+                issue_date: r.get(6)?, total_paise: total, total_display: fmt_inr(total),
+                paid_display: fmt_inr(paid), tds_display: fmt_inr(tds), balance_paise: balance, balance_display: fmt_inr(balance),
+                credited_display: fmt_inr(credited), paid_paise: paid, tds_paise: tds, credited_paise: credited, due_date: r.get(13)?,
+                converted_to: r.get(11)?, from_proforma: r.get(12)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<_, _>>().map_err(|e| e.to_string())
+}
+
+#[derive(Serialize)]
+pub struct InvoiceDetail {
+    pub status: String,
+    pub number: Option<String>,
+    pub input: InvoiceInput,
+}
+
+fn paise_to_plain(p: i64) -> String {
+    format!("{}.{:02}", p / 100, p % 100)
+}
+
+fn milli_to_plain(q: i64) -> String {
+    let s = format!("{}.{:03}", q / 1000, q % 1000);
+    s.trim_end_matches('0').trim_end_matches('.').to_string()
+}
+
+pub fn get(conn: &Connection, id: i64) -> Result<InvoiceDetail, String> {
+    let row = conn
+        .query_row(
+            "SELECT status, number, project_id, kind, issue_date, due_date, gst_mode, gst_rate_bp, notes FROM invoices WHERE id = ?1",
+            params![id],
+            |r| Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?, r.get::<_, i64>(2)?, r.get::<_, String>(3)?, r.get::<_, String>(4)?, r.get::<_, String>(5)?, r.get::<_, String>(6)?, r.get::<_, i64>(7)?, r.get::<_, String>(8)?)),
+        )
+        .map_err(|_| "Invoice not found.".to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT description, qty_milli, rate_paise FROM invoice_lines WHERE invoice_id = ?1 ORDER BY position")
+        .map_err(|e| e.to_string())?;
+    let lines = stmt
+        .query_map(params![id], |r| Ok(LineInput { description: r.get(0)?, qty: milli_to_plain(r.get(1)?), rate: paise_to_plain(r.get(2)?) }))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    Ok(InvoiceDetail {
+        status: row.0,
+        number: row.1,
+        input: InvoiceInput { id: Some(id), project_id: row.2, kind: row.3, issue_date: row.4, due_date: row.5, gst_mode: row.6, gst_rate: paise_to_plain(row.7), notes: row.8, lines },
+    })
+}
+
+/// Creates a draft tax invoice from an issued pro forma (same project, lines and notes). The pro forma is left untouched.
+pub fn convert_proforma(conn: &mut Connection, id: i64, today: &str) -> Result<i64, String> {
+    let d = get(conn, id)?;
+    if d.input.kind != "proforma" || d.status != "issued" {
+        return Err("Only an issued pro forma invoice can be converted.".into());
+    }
+    let existing: Option<String> = conn
+        .query_row(
+            "SELECT COALESCE(number, 'a draft') FROM invoices WHERE source_proforma_id = ?1 AND status <> 'cancelled'",
+            params![id],
+            |r| r.get(0),
+        )
+        .ok();
+    if let Some(n) = existing {
+        return Err(format!("This pro forma has already been converted ({n})."));
+    }
+    let mut input = d.input.clone();
+    input.id = None;
+    input.kind = "tax_invoice".into();
+    input.issue_date = today.to_string();
+    input.due_date = String::new();
+    let new_id = save_draft(conn, &input)?;
+    conn.execute("UPDATE invoices SET source_proforma_id = ?1 WHERE id = ?2", params![id, new_id]).map_err(|e| e.to_string())?;
+    Ok(new_id)
+}
+
+// ---------- document snapshot & HTML ----------
+
+#[derive(Serialize, Deserialize)]
+pub struct Snapshot {
+    pub number: String,
+    pub kind: String,
+    pub issue_date: String,
+    pub due_date: String,
+    pub gst_mode: String,
+    pub scheme: String,
+    pub notes: String,
+    pub company_name: String,
+    pub company_address: String,
+    pub company_pan: String,
+    pub company_gstin: String,
+    pub company_coa: String,
+    pub bank_details: String,
+    pub client_name: String,
+    pub client_address: String,
+    pub client_gstin: String,
+    pub project_name: String,
+    pub totals: Totals,
+    /// Credit notes: the number of the invoice being credited.
+    #[serde(default)]
+    pub against: String,
+    /// UPI payment link encoded in the QR printed on the document (empty = no QR).
+    #[serde(default)]
+    pub upi_uri: String,
+}
+
+fn primary_account_text(conn: &Connection) -> Result<Option<String>, String> {
+    let row: Option<(String, String, String, String)> = conn
+        .query_row(
+            "SELECT bank_name, account_holder, account_number, ifsc FROM bank_accounts WHERE is_primary = 1 AND active = 1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+        )
+        .ok();
+    Ok(row.and_then(|(bank, holder, number, ifsc)| {
+        let mut lines = Vec::new();
+        if !holder.is_empty() {
+            lines.push(format!("Account name: {holder}"));
+        }
+        if !bank.is_empty() {
+            lines.push(format!("Bank: {bank}"));
+        }
+        if !number.is_empty() {
+            lines.push(format!("Account no.: {number}"));
+        }
+        if !ifsc.is_empty() {
+            lines.push(format!("IFSC: {ifsc}"));
+        }
+        if lines.is_empty() { None } else { Some(lines.join("\n")) }
+    }))
+}
+
+fn build_snapshot(conn: &Connection, input: &InvoiceInput, number: &str) -> Result<Snapshot, String> {
+    let scheme = company_scheme(conn)?;
+    let totals = calculate(input, &scheme)?;
+    let (company_name, company_address, company_pan, company_gstin, company_coa, bank_details) = conn
+        .query_row("SELECT name, address, pan, gstin, coa_registration, bank_details FROM company_profile WHERE id = 1", [], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?, r.get::<_, String>(3)?, r.get::<_, String>(4)?, r.get::<_, String>(5)?))
+        })
+        .map_err(|e| e.to_string())?;
+    // The primary active bank account, when one exists, supplies the payment details printed on the document.
+    let bank_details = primary_account_text(conn)?.unwrap_or(bank_details);
+    let (project_name, client_name, client_address, client_gstin) = conn
+        .query_row(
+            "SELECT p.name, c.name, c.address, c.gstin FROM projects p JOIN clients c ON c.id = p.client_id WHERE p.id = ?1",
+            params![input.project_id],
+            |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?, r.get::<_, String>(3)?)),
+        )
+        .map_err(|_| "Project not found.".to_string())?;
+    let upi_id: String = conn.query_row("SELECT upi_id FROM company_profile WHERE id = 1", [], |r| r.get(0)).map_err(|e| e.to_string())?;
+    let upi_uri = if upi_id.trim().is_empty() {
+        String::new()
+    } else {
+        format!(
+            "upi://pay?pa={}&pn={}&am={}&cu=INR&tn={}",
+            pct_encode(upi_id.trim()), pct_encode(&company_name), paise_to_plain(totals.total_paise), pct_encode(number)
+        )
+    };
+    Ok(Snapshot {
+        against: String::new(),
+        upi_uri,
+        number: number.to_string(),
+        kind: input.kind.clone(),
+        issue_date: input.issue_date.clone(),
+        due_date: input.due_date.clone(),
+        gst_mode: totals.gst_mode.clone(),
+        scheme,
+        notes: input.notes.clone(),
+        company_name, company_address, company_pan, company_gstin, company_coa, bank_details,
+        client_name, client_address, client_gstin, project_name,
+        totals,
+    })
+}
+
+fn pct_encode(s: &str) -> String {
+    let mut out = String::new();
+    for b in s.bytes() {
+        if b.is_ascii_alphanumeric() || b"-._~".contains(&b) {
+            out.push(b as char);
+        } else {
+            out.push_str(&format!("%{b:02X}"));
+        }
+    }
+    out
+}
+
+pub(crate) fn esc(s: &str) -> String {
+    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;").replace('\n', "<br/>")
+}
+
+pub fn invoice_html(s: &Snapshot) -> String {
+    let title = if s.kind == "credit_note" {
+        "CREDIT NOTE"
+    } else if s.kind == "proforma" {
+        "PRO FORMA INVOICE"
+    } else {
+        match s.scheme.as_str() {
+            "regular" => "TAX INVOICE",
+            "composition" => "BILL OF SUPPLY",
+            _ => "INVOICE",
+        }
+    };
+    let proforma_note = if s.kind == "proforma" {
+        "<p>This is a pro forma invoice. It is a request for payment and not a tax invoice.</p>"
+    } else {
+        ""
+    };
+    let declaration = if s.scheme == "composition" {
+        "<p>Composition taxable person, not eligible to collect tax on supplies.</p>"
+    } else {
+        ""
+    };
+    let mut rows = String::new();
+    for (i, l) in s.totals.lines.iter().enumerate() {
+        rows.push_str(&format!(
+            "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+            i + 1, esc(&l.description), esc(&milli_to_plain(l.qty_milli)), fmt_inr(l.rate_paise), fmt_inr(l.amount_paise)
+        ));
+    }
+    let t = &s.totals;
+    let half = |bp: i64| format!("{}", milli_to_plain(bp * 10 / 2));
+    let mut tax_rows = String::new();
+    match s.gst_mode.as_str() {
+        "intra" => {
+            tax_rows.push_str(&format!("<tr><td>CGST @ {}%</td><td>{}</td></tr>", half(t.gst_rate_bp), fmt_inr(t.cgst_paise)));
+            tax_rows.push_str(&format!("<tr><td>SGST @ {}%</td><td>{}</td></tr>", half(t.gst_rate_bp), fmt_inr(t.sgst_paise)));
+        }
+        "inter" => tax_rows.push_str(&format!("<tr><td>IGST @ {}%</td><td>{}</td></tr>", milli_to_plain(t.gst_rate_bp * 10), fmt_inr(t.igst_paise))),
+        _ => {}
+    }
+    let gstin = if s.company_gstin.is_empty() { String::new() } else { format!("GSTIN: {} &nbsp; ", esc(&s.company_gstin)) };
+    let client_gstin = if s.client_gstin.is_empty() { String::new() } else { format!("<br/>GSTIN: {}", esc(&s.client_gstin)) };
+    let due = if s.due_date.is_empty() { String::new() } else { format!("<br/>Due date: {}", esc(&s.due_date)) };
+    let is_credit = s.kind == "credit_note";
+    let bank = if s.bank_details.is_empty() || is_credit { String::new() } else { format!("<h3>Bank details</h3><p>{}</p>", esc(&s.bank_details)) };
+    let qr = if s.upi_uri.is_empty() || is_credit { "" } else { "<p>Scan the QR code at the top right to pay by UPI.</p>" };
+    let against = if is_credit { format!("<br/>Against invoice no.: {}", esc(&s.against)) } else { String::new() };
+    let notes_title = if is_credit { "Reason" } else { "Notes" };
+    let notes = if s.notes.is_empty() { String::new() } else { format!("<h3>{notes_title}</h3><p>{}</p>", esc(&s.notes)) };
+    format!(
+        r#"<html><head><style>
+        body {{ font-family: DejaVu; font-size: 10px; color: #161616; }}
+        h1 {{ font-size: 18px; margin-bottom: 2px; }}
+        h2 {{ font-size: 14px; margin-bottom: 2px; }}
+        h3 {{ font-size: 11px; margin-bottom: 2px; }}
+        .items {{ width: 100%; border-collapse: collapse; margin-top: 8px; }}
+        .items th, .items td {{ border: 1px solid #8d8d8d; padding: 4px; }}
+        .items th {{ background-color: #e0e0e0; }}
+        </style></head><body>
+        <div style="width: 65%">
+        <h1>{company}</h1>
+        <p>{address}<br/>{gstin}PAN: {pan}<br/>COA Reg. No.: {coa}</p>
+        </div>
+        <h2>{title}</h2>
+        <p>No.: {number}<br/>Date: {date}{due}{against}</p>
+        <h3>Bill to</h3>
+        <p>{client}<br/>{client_address}{client_gstin}<br/>Project: {project}</p>
+        <table class="items"><tr><th>#</th><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>{rows}</table>
+        <table class="items"><tr><td>Subtotal</td><td>{subtotal}</td></tr>{tax_rows}<tr><th>Total</th><th>{total}</th></tr></table>
+        {proforma_note}{declaration}{bank}{qr}{notes}
+        </body></html>"#,
+        company = esc(&s.company_name), address = esc(&s.company_address), gstin = gstin, pan = esc(&s.company_pan), coa = esc(&s.company_coa),
+        title = title, number = esc(&s.number), date = esc(&s.issue_date), due = due, against = against, qr = qr, client = esc(&s.client_name),
+        client_address = esc(&s.client_address), client_gstin = client_gstin, project = esc(&s.project_name),
+        rows = rows, subtotal = fmt_inr(t.subtotal_paise), tax_rows = tax_rows, total = fmt_inr(t.total_paise), proforma_note = proforma_note, declaration = declaration, bank = bank, notes = notes,
+    )
+}
+
+fn render(s: &Snapshot) -> Result<pdf::Rendered, String> {
+    let qr = if s.upi_uri.is_empty() || s.kind == "credit_note" { None } else { Some(s.upi_uri.as_str()) };
+    pdf::render_html_with_qr(&invoice_html(s), &pdf::bundled_fonts(), qr)
+}
+
+// ---------- issue ----------
+
+pub fn issue(conn: &mut Connection, files_root: &std::path::Path, id: i64) -> Result<String, String> {
+    issue_by(conn, files_root, None, id)
+}
+
+pub fn issue_by(conn: &mut Connection, files_root: &std::path::Path, actor: Option<i64>, id: i64) -> Result<String, String> {
+    let detail = get(conn, id)?;
+    if detail.status != "draft" {
+        return Err("Only drafts can be issued.".into());
+    }
+    validate_header(&detail.input)?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let number = allocate_number(&tx, &detail.input.kind, &detail.input.issue_date)?;
+    let snapshot = build_snapshot(&tx, &detail.input, &number)?;
+    let rendered = render(&snapshot)?;
+    let sha = sha256_hex(&rendered.bytes);
+    let key = format!("issued-pdfs/{}.pdf", number.replace('/', "_"));
+    let path = files_root.join(&key);
+    std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
+    if path.exists() {
+        return Err("A PDF for this number already exists; refusing to overwrite.".into());
+    }
+    std::fs::write(&path, &rendered.bytes).map_err(|e| e.to_string())?;
+    let snapshot_json = serde_json::to_string(&snapshot).map_err(|e| e.to_string())?;
+    let res = tx
+        .execute(
+            "UPDATE invoices SET status='issued', number=?1, snapshot_json=?2, pdf_key=?3, pdf_sha256=?4, issued_at=datetime('now'),
+             subtotal_paise=?5, tax_paise=?6, total_paise=?7 WHERE id=?8 AND status='draft'",
+            params![number, snapshot_json, key, sha, snapshot.totals.subtotal_paise, snapshot.totals.tax_paise, snapshot.totals.total_paise, id],
+        )
+        .map_err(|e| e.to_string())
+        .and_then(|n| if n == 1 { Ok(()) } else { Err("Invoice was already issued.".to_string()) })
+        .and_then(|_| crate::ledger::post_invoice(&tx, actor, id).map(|_| ()))
+        .and_then(|_| tx.commit().map_err(|e| e.to_string()));
+    if let Err(e) = res {
+        let _ = std::fs::remove_file(&path);
+        return Err(e);
+    }
+    Ok(number)
+}
+
+pub fn pdf_bytes(conn: &Connection, files_root: &std::path::Path, id: i64) -> Result<Vec<u8>, String> {
+    let (status, key, sha): (String, Option<String>, Option<String>) = conn
+        .query_row("SELECT status, pdf_key, pdf_sha256 FROM invoices WHERE id = ?1", params![id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+        .map_err(|_| "Invoice not found.".to_string())?;
+    if status == "draft" {
+        let d = get(conn, id)?;
+        let snap = build_snapshot(conn, &d.input, "DRAFT")?;
+        return Ok(render(&snap)?.bytes);
+    }
+    let bytes = std::fs::read(files_root.join(key.ok_or("Missing PDF.")?)).map_err(|_| "The stored PDF could not be read.".to_string())?;
+    if Some(sha256_hex(&bytes)) != sha {
+        return Err("The stored PDF failed its integrity check.".into());
+    }
+    Ok(bytes)
+}
+
+// ---------- cancellation & credit notes ----------
+
+/// Cancels an issued document. The number stays used and the PDF stays on file; the document just stops counting.
+pub fn cancel(conn: &mut Connection, actor: i64, id: i64, reason: &str) -> Result<(), String> {
+    if reason.trim().is_empty() {
+        return Err("Give a reason for the cancellation.".into());
+    }
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let (status, number): (String, Option<String>) = tx
+        .query_row("SELECT status, number FROM invoices WHERE id = ?1", params![id], |r| Ok((r.get(0)?, r.get(1)?)))
+        .map_err(|_| "Invoice not found.".to_string())?;
+    if status != "issued" {
+        return Err("Only issued documents can be cancelled (a draft can simply be edited).".into());
+    }
+    let b = crate::receipts::balance(&tx, id)?;
+    if b.received_paise + b.tds_paise > 0 || b.credited_paise > 0 {
+        return Err("This invoice has payments or credit notes against it. Reverse the payments first, or issue a credit note instead.".into());
+    }
+    let converted: i64 = tx
+        .query_row("SELECT COUNT(*) FROM invoices WHERE source_proforma_id = ?1 AND status <> 'cancelled'", params![id], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    if converted > 0 {
+        return Err("A tax invoice has been raised from this pro forma. Cancel that invoice first.".into());
+    }
+    tx.execute("UPDATE invoices SET status='cancelled', cancel_reason=?1, cancelled_at=datetime('now') WHERE id=?2 AND status='issued'", params![reason.trim(), id])
+        .map_err(|e| e.to_string())?;
+    crate::ledger::reverse_source(&tx, Some(actor), "invoice", id, reason)?;
+    db::audit(&tx, Some(actor), "invoice_cancelled", &format!("{}: {}", number.unwrap_or_default(), reason.trim()));
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[derive(Serialize)]
+pub struct CreditNoteRow {
+    pub id: i64,
+    pub number: String,
+    pub issue_date: String,
+    pub reason: String,
+    pub total_display: String,
+}
+
+pub fn list_credit_notes(conn: &Connection, invoice_id: i64) -> Result<Vec<CreditNoteRow>, String> {
+    let mut stmt = conn
+        .prepare("SELECT id, number, issue_date, reason, total_paise FROM credit_notes WHERE invoice_id = ?1 ORDER BY id")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![invoice_id], |r| Ok(CreditNoteRow { id: r.get(0)?, number: r.get(1)?, issue_date: r.get(2)?, reason: r.get(3)?, total_display: fmt_inr(r.get(4)?) }))
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<_, _>>().map_err(|e| e.to_string())
+}
+
+/// Issues a credit note against an issued tax invoice. It reduces the amount still owed and is never edited afterwards.
+pub fn issue_credit_note(conn: &mut Connection, files_root: &std::path::Path, actor: i64, invoice_id: i64, issue_date: &str, reason: &str, lines: Vec<LineInput>) -> Result<String, String> {
+    validate_date(issue_date)?;
+    if reason.trim().is_empty() {
+        return Err("Give the reason for the credit note.".into());
+    }
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let (status, kind, snap_json): (String, String, Option<String>) = tx
+        .query_row("SELECT status, kind, snapshot_json FROM invoices WHERE id = ?1", params![invoice_id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+        .map_err(|_| "Invoice not found.".to_string())?;
+    if status != "issued" || kind != "tax_invoice" {
+        return Err("Credit notes can only be raised against issued invoices.".into());
+    }
+    let mut snap: Snapshot = serde_json::from_str(&snap_json.ok_or("The invoice has no stored snapshot.")?).map_err(|e| e.to_string())?;
+    let input = InvoiceInput {
+        id: None, project_id: 0, kind: "tax_invoice".into(), issue_date: issue_date.into(), due_date: String::new(),
+        gst_mode: snap.gst_mode.clone(), gst_rate: String::new(), notes: String::new(), lines,
+    };
+    let totals = calculate(&input, &snap.scheme)?;
+    if totals.total_paise <= 0 {
+        return Err("The credit note total must be more than zero.".into());
+    }
+    let b = crate::receipts::balance(&tx, invoice_id)?;
+    if totals.total_paise > b.balance_paise {
+        return Err(format!(
+            "A credit note cannot exceed the amount still owed on the invoice ({}). Reverse a payment first if a refund is involved.",
+            b.balance_display
+        ));
+    }
+    let number = allocate_number(&tx, "credit_note", issue_date)?;
+    snap.against = std::mem::replace(&mut snap.number, number.clone());
+    snap.kind = "credit_note".into();
+    snap.issue_date = issue_date.into();
+    snap.due_date = String::new();
+    snap.notes = reason.trim().to_string();
+    snap.upi_uri = String::new();
+    snap.totals = totals.clone();
+    let rendered = render(&snap)?;
+    let sha = sha256_hex(&rendered.bytes);
+    let key = format!("credit-notes/{}.pdf", number.replace('/', "_"));
+    let path = files_root.join(&key);
+    std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
+    if path.exists() {
+        return Err("A PDF for this number already exists; refusing to overwrite.".into());
+    }
+    std::fs::write(&path, &rendered.bytes).map_err(|e| e.to_string())?;
+    let snapshot_json = serde_json::to_string(&snap).map_err(|e| e.to_string())?;
+    let res = tx
+        .execute(
+            "INSERT INTO credit_notes (number, invoice_id, issue_date, reason, gst_mode, gst_rate_bp, subtotal_paise, tax_paise, total_paise, snapshot_json, pdf_key, pdf_sha256, issued_by)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",
+            params![number, invoice_id, issue_date, reason.trim(), totals.gst_mode, totals.gst_rate_bp, totals.subtotal_paise, totals.tax_paise, totals.total_paise, snapshot_json, key, sha, actor],
+        )
+        .map_err(|e| e.to_string())
+        .and_then(|_| {
+            let cn_id = tx.last_insert_rowid();
+            crate::ledger::post_credit_note(&tx, Some(actor), cn_id)?;
+            db::audit(&tx, Some(actor), "credit_note_issued", &format!("{number} against invoice {invoice_id}"));
+            tx.commit().map_err(|e| e.to_string())
+        });
+    if let Err(e) = res {
+        let _ = std::fs::remove_file(&path);
+        return Err(e);
+    }
+    Ok(number)
+}
+
+pub fn credit_note_pdf(conn: &Connection, files_root: &std::path::Path, id: i64) -> Result<Vec<u8>, String> {
+    let (key, sha): (String, String) = conn
+        .query_row("SELECT pdf_key, pdf_sha256 FROM credit_notes WHERE id = ?1", params![id], |r| Ok((r.get(0)?, r.get(1)?)))
+        .map_err(|_| "Credit note not found.".to_string())?;
+    let bytes = std::fs::read(files_root.join(key)).map_err(|_| "The stored PDF could not be read.".to_string())?;
+    if sha256_hex(&bytes) != sha {
+        return Err("The stored PDF failed its integrity check.".into());
+    }
+    Ok(bytes)
+}
+
+// ---------- commands ----------
+
+#[tauri::command]
+pub fn invoice_cancel(state: State<AppState>, id: i64, reason: String) -> Result<(), String> {
+    let uid = require(&state, Permission::Issue)?;
+    let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
+    cancel(&mut conn, uid, id, &reason)
+}
+
+#[tauri::command]
+pub fn credit_note_issue(state: State<AppState>, invoice_id: i64, issue_date: String, reason: String, lines: Vec<LineInput>) -> Result<String, String> {
+    let uid = require(&state, Permission::Issue)?;
+    let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
+    issue_credit_note(&mut conn, &state.files_root, uid, invoice_id, &issue_date, &reason, lines)
+}
+
+#[tauri::command]
+pub fn credit_note_list(state: State<AppState>, invoice_id: i64) -> Result<Vec<CreditNoteRow>, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    list_credit_notes(&conn, invoice_id)
+}
+
+#[tauri::command]
+pub fn credit_note_pdf_data(state: State<AppState>, id: i64) -> Result<String, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(credit_note_pdf(&conn, &state.files_root, id)?))
+}
+
+#[tauri::command]
+pub fn invoice_calculate(state: State<AppState>, input: InvoiceInput) -> Result<Totals, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    calculate(&input, &company_scheme(&conn)?)
+}
+
+#[tauri::command]
+pub fn invoice_list(state: State<AppState>) -> Result<Vec<InvoiceRow>, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    list(&conn)
+}
+
+#[tauri::command]
+pub fn invoice_get(state: State<AppState>, id: i64) -> Result<InvoiceDetail, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    get(&conn, id)
+}
+
+#[tauri::command]
+pub fn invoice_save_draft(state: State<AppState>, input: InvoiceInput) -> Result<i64, String> {
+    let uid = require(&state, Permission::Edit)?;
+    let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
+    let id = save_draft(&mut conn, &input)?;
+    db::audit(&conn, Some(uid), "invoice_draft_saved", &format!("invoice {id}"));
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn invoice_issue(state: State<AppState>, id: i64) -> Result<String, String> {
+    let uid = require(&state, Permission::Issue)?;
+    let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
+    let number = issue_by(&mut conn, &state.files_root, Some(uid), id)?;
+    db::audit(&conn, Some(uid), "invoice_issued", &format!("invoice {id} as {number}"));
+    Ok(number)
+}
+
+#[tauri::command]
+pub fn invoice_convert_proforma(state: State<AppState>, id: i64, today: String) -> Result<i64, String> {
+    let uid = require(&state, Permission::Edit)?;
+    let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
+    let new_id = convert_proforma(&mut conn, id, &today)?;
+    db::audit(&conn, Some(uid), "proforma_converted", &format!("invoice {id} -> draft {new_id}"));
+    Ok(new_id)
+}
+
+/// Returns the PDF as base64 (a rendered draft preview, or the stored issued PDF).
+#[tauri::command]
+pub fn invoice_pdf(state: State<AppState>, id: i64) -> Result<String, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    let bytes = pdf_bytes(&conn, &state.files_root, id)?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
+}
+
+pub(crate) mod sha2_lite {
+    //! Minimal SHA-256 (FIPS 180-4) so issued PDFs can be hashed without another dependency.
+    const K: [u32; 64] = [
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+        0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+        0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+        0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+    ];
+
+    pub fn sha256_hex(data: &[u8]) -> String {
+        let mut h: [u32; 8] = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+        let mut msg = data.to_vec();
+        msg.push(0x80);
+        while msg.len() % 64 != 56 {
+            msg.push(0);
+        }
+        msg.extend_from_slice(&((data.len() as u64) * 8).to_be_bytes());
+        for chunk in msg.chunks(64) {
+            let mut w = [0u32; 64];
+            for i in 0..16 {
+                w[i] = u32::from_be_bytes([chunk[4 * i], chunk[4 * i + 1], chunk[4 * i + 2], chunk[4 * i + 3]]);
+            }
+            for i in 16..64 {
+                let s0 = w[i - 15].rotate_right(7) ^ w[i - 15].rotate_right(18) ^ (w[i - 15] >> 3);
+                let s1 = w[i - 2].rotate_right(17) ^ w[i - 2].rotate_right(19) ^ (w[i - 2] >> 10);
+                w[i] = w[i - 16].wrapping_add(s0).wrapping_add(w[i - 7]).wrapping_add(s1);
+            }
+            let mut v = h;
+            for i in 0..64 {
+                let s1 = v[4].rotate_right(6) ^ v[4].rotate_right(11) ^ v[4].rotate_right(25);
+                let ch = (v[4] & v[5]) ^ (!v[4] & v[6]);
+                let t1 = v[7].wrapping_add(s1).wrapping_add(ch).wrapping_add(K[i]).wrapping_add(w[i]);
+                let s0 = v[0].rotate_right(2) ^ v[0].rotate_right(13) ^ v[0].rotate_right(22);
+                let maj = (v[0] & v[1]) ^ (v[0] & v[2]) ^ (v[1] & v[2]);
+                let t2 = s0.wrapping_add(maj);
+                v = [t1.wrapping_add(t2), v[0], v[1], v[2], v[3].wrapping_add(t1), v[4], v[5], v[6]];
+            }
+            for i in 0..8 {
+                h[i] = h[i].wrapping_add(v[i]);
+            }
+        }
+        h.iter().map(|x| format!("{x:08x}")).collect()
+    }
+
+    #[cfg(test)]
+    mod tests {
+        #[test]
+        fn known_vectors() {
+            assert_eq!(super::sha256_hex(b""), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+            assert_eq!(super::sha256_hex(b"abc"), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn line(d: &str, q: &str, r: &str) -> LineInput {
+        LineInput { description: d.into(), qty: q.into(), rate: r.into() }
+    }
+
+    fn input(mode: &str, rate: &str, lines: Vec<LineInput>) -> InvoiceInput {
+        InvoiceInput { id: None, project_id: 1, kind: "tax_invoice".into(), issue_date: "2026-10-12".into(), due_date: "".into(), gst_mode: mode.into(), gst_rate: rate.into(), notes: "".into(), lines }
+    }
+
+    fn db_with_project() -> Connection {
+        let mut c = Connection::open_in_memory().unwrap();
+        c.pragma_update(None, "foreign_keys", "ON").unwrap();
+        db::migrate(&mut c).unwrap();
+        c.execute("INSERT INTO users (username, password_hash, role) VALUES ('o','x','owner')", []).unwrap();
+        c.execute("INSERT INTO clients (name, address) VALUES ('Acme','Pune')", []).unwrap();
+        c.execute("INSERT INTO projects (client_id, name) VALUES (1,'Villa')", []).unwrap();
+        c.execute("UPDATE company_profile SET name='Studio X', gstin='27ABCDE1234F1Z5', gst_scheme='regular'", []).unwrap();
+        c
+    }
+
+    #[test]
+    fn decimals_parse_exactly() {
+        assert_eq!(parse_decimal("12500.50", 2).unwrap(), 1_250_050);
+        assert_eq!(parse_decimal("1,25,000", 2).unwrap(), 12_500_000);
+        assert_eq!(parse_decimal("2.5", 3).unwrap(), 2500);
+        assert!(parse_decimal("1.234", 2).is_err());
+        assert!(parse_decimal("-5", 2).is_err());
+        assert!(parse_decimal("abc", 2).is_err());
+        assert!(parse_decimal("", 2).is_err());
+    }
+
+    #[test]
+    fn inr_grouping() {
+        assert_eq!(fmt_inr(12_345_678), "₹1,23,456.78");
+        assert_eq!(fmt_inr(99_900), "₹999.00");
+        assert_eq!(fmt_inr(100_000), "₹1,000.00");
+        assert_eq!(fmt_inr(0), "₹0.00");
+    }
+
+    #[test]
+    fn financial_year_boundaries() {
+        assert_eq!(financial_year("2026-03-31").unwrap(), "2025-26");
+        assert_eq!(financial_year("2026-04-01").unwrap(), "2026-27");
+        assert_eq!(financial_year("2099-12-31").unwrap(), "2099-00");
+        assert!(financial_year("2026-02-30").is_err());
+    }
+
+    #[test]
+    fn intra_state_gst_splits_exactly() {
+        let t = calculate(&input("intra", "18", vec![line("Fee", "1", "10001.00")]), "regular").unwrap();
+        assert_eq!(t.subtotal_paise, 1_000_100);
+        assert_eq!(t.cgst_paise + t.sgst_paise, t.tax_paise);
+        assert_eq!(t.tax_paise, 180_018);
+        assert_eq!(t.total_paise, 1_180_118);
+        assert_eq!(t.igst_paise, 0);
+    }
+
+    #[test]
+    fn inter_state_and_no_gst() {
+        let t = calculate(&input("inter", "18", vec![line("Fee", "2", "500")]), "regular").unwrap();
+        assert_eq!((t.igst_paise, t.cgst_paise, t.total_paise), (18_000, 0, 118_000));
+        let n = calculate(&input("none", "", vec![line("Fee", "1", "500")]), "none").unwrap();
+        assert_eq!((n.tax_paise, n.total_paise), (0, 50_000));
+    }
+
+    #[test]
+    fn composition_charges_nothing_but_tracks_six_percent() {
+        let t = calculate(&input("intra", "18", vec![line("Fee", "1", "100000")]), "composition").unwrap();
+        assert_eq!((t.tax_paise, t.total_paise, t.gst_mode.as_str()), (0, 10_000_000, "none"));
+        assert_eq!(t.composition_paise, 600_000);
+    }
+
+    #[test]
+    fn scheme_overrides_whatever_the_form_sends() {
+        // Unregistered firm: a client-side "inter" request must not add tax.
+        let n = calculate(&input("inter", "18", vec![line("Fee", "1", "1000")]), "none").unwrap();
+        assert_eq!((n.tax_paise, n.gst_mode.as_str()), (0, "none"));
+        // Regular: 18% total, 9 + 9 intra-state.
+        let r = calculate(&input("none", "0", vec![line("Fee", "1", "1000")]), "regular").unwrap();
+        assert_eq!((r.cgst_paise, r.sgst_paise, r.gst_mode.as_str()), (9_000, 9_000, "intra"));
+    }
+
+    #[test]
+    fn rejects_bad_lines() {
+        assert!(calculate(&input("none", "", vec![]), "none").is_err());
+        assert!(calculate(&input("none", "", vec![line(" ", "1", "5")]), "none").is_err());
+        assert!(calculate(&input("none", "", vec![line("x", "abc", "5")]), "none").is_err());
+    }
+
+    #[test]
+    fn issue_allocates_sequential_numbers_and_freezes_invoice() {
+        let mut c = db_with_project();
+        let dir = std::env::temp_dir().join(format!("ao_test_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let a = save_draft(&mut c, &input("intra", "18", vec![line("Stage 1", "1", "100000")])).unwrap();
+        let b = save_draft(&mut c, &input("none", "", vec![line("Stage 2", "1", "5000")])).unwrap();
+        assert_eq!(issue(&mut c, &dir, a).unwrap(), "INV/2026-27/0001");
+        assert_eq!(issue(&mut c, &dir, b).unwrap(), "INV/2026-27/0002");
+        // issued: cannot be edited, re-issued or altered at the SQL level
+        let mut edit = input("none", "", vec![line("Changed", "1", "1")]);
+        edit.id = Some(a);
+        assert!(save_draft(&mut c, &edit).is_err());
+        assert!(issue(&mut c, &dir, a).is_err());
+        assert!(c.execute("UPDATE invoices SET total_paise = 1 WHERE id = ?1", params![a]).is_err());
+        assert!(c.execute("DELETE FROM invoice_lines WHERE invoice_id = ?1", params![a]).is_err());
+        assert!(c.execute("DELETE FROM invoices WHERE id = ?1", params![a]).is_err());
+        // stored PDF verifies, and later master-data edits don't change it
+        c.execute("UPDATE clients SET name = 'Renamed'", []).unwrap();
+        let bytes = pdf_bytes(&c, &dir, a).unwrap();
+        assert!(bytes.starts_with(b"%PDF"));
+        // tampering is detected
+        let path = dir.join("issued-pdfs/INV_2026-27_0001.pdf");
+        std::fs::write(&path, b"tampered").unwrap();
+        assert!(pdf_bytes(&c, &dir, a).unwrap_err().contains("integrity"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn numbers_restart_each_financial_year() {
+        let mut c = db_with_project();
+        let dir = std::env::temp_dir().join(format!("ao_test_fy_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let mut early = input("none", "", vec![line("x", "1", "1")]);
+        early.issue_date = "2027-03-31".into();
+        let mut late = early.clone();
+        late.issue_date = "2027-04-01".into();
+        let a = save_draft(&mut c, &early).unwrap();
+        let b = save_draft(&mut c, &late).unwrap();
+        assert_eq!(issue(&mut c, &dir, a).unwrap(), "INV/2026-27/0001");
+        assert_eq!(issue(&mut c, &dir, b).unwrap(), "INV/2027-28/0001");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn proforma_converts_once_into_a_draft_tax_invoice() {
+        let mut c = db_with_project();
+        let dir = std::env::temp_dir().join(format!("ao_pi_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let mut pi = input("intra", "18", vec![line("Advance", "1", "25000")]);
+        pi.kind = "proforma".into();
+        let id = save_draft(&mut c, &pi).unwrap();
+        assert!(convert_proforma(&mut c, id, "2026-10-13").is_err(), "drafts cannot be converted");
+        assert_eq!(issue(&mut c, &dir, id).unwrap(), "PI/2026-27/0001");
+        let tax = convert_proforma(&mut c, id, "2026-10-13").unwrap();
+        assert!(convert_proforma(&mut c, id, "2026-10-13").unwrap_err().contains("already been converted"));
+        let d = get(&c, tax).unwrap();
+        assert_eq!((d.status.as_str(), d.input.kind.as_str(), d.input.lines.len()), ("draft", "tax_invoice", 1));
+        // tax invoices use their own number series
+        assert_eq!(issue(&mut c, &dir, tax).unwrap(), "INV/2026-27/0001");
+        let rows = list(&c).unwrap();
+        assert_eq!(rows.iter().find(|r| r.id == id).unwrap().converted_to.as_deref(), Some("INV/2026-27/0001"));
+        // a tax invoice is not convertible
+        assert!(convert_proforma(&mut c, tax, "2026-10-13").is_err());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn html_escapes_user_text() {
+        let c = db_with_project();
+        let mut i = input("none", "", vec![line("<b>x</b> & y", "1", "1")]);
+        i.notes = "<script>".into();
+        let html = invoice_html(&build_snapshot(&c, &i, "N").unwrap());
+        assert!(html.contains("&lt;b&gt;x&lt;/b&gt; &amp; y"));
+        assert!(!html.contains("<script>"));
+    }
+    #[test]
+    fn cancel_blocks_when_money_is_involved_and_freezes_the_row() {
+        let mut c = db_with_project();
+        let dir = std::env::temp_dir().join(format!("ao_cx_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let id = save_draft(&mut c, &input("none", "", vec![line("Fee", "1", "1000")])).unwrap();
+        assert!(cancel(&mut c, 1, id, "x").is_err(), "drafts are not cancelled");
+        issue(&mut c, &dir, id).unwrap();
+        assert!(cancel(&mut c, 1, id, " ").is_err());
+        cancel(&mut c, 1, id, "Raised in error").unwrap();
+        assert_eq!(get(&c, id).unwrap().status, "cancelled");
+        assert!(c.execute("UPDATE invoices SET total_paise = 1 WHERE id = ?1", params![id]).is_err());
+        assert!(cancel(&mut c, 1, id, "again").is_err());
+        // a paid invoice cannot be cancelled
+        let paid = save_draft(&mut c, &input("none", "", vec![line("Fee", "1", "1000")])).unwrap();
+        issue(&mut c, &dir, paid).unwrap();
+        crate::receipts::record(&mut c, 1, &crate::receipts::ReceiptInput { invoice_id: paid, received_date: "2026-10-20".into(), amount: "500".into(), tds: "".into(), tds_section: "".into(), mode: "bank".into(), reference: "".into(), notes: "".into(), bank_account_id: None }).unwrap();
+        assert!(cancel(&mut c, 1, paid, "oops").unwrap_err().contains("payments"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn credit_note_reduces_the_balance_and_is_capped() {
+        let mut c = db_with_project();
+        let dir = std::env::temp_dir().join(format!("ao_cn_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let id = save_draft(&mut c, &input("intra", "", vec![line("Fee", "1", "10000")])).unwrap();
+        issue(&mut c, &dir, id).unwrap();
+        // invoice total 11,800 (10,000 + 18%). Credit 2,000 + 18% = 2,360.
+        let n = issue_credit_note(&mut c, &dir, 1, id, "2026-10-20", "Scope reduced", vec![line("Reduction", "1", "2000")]).unwrap();
+        assert_eq!(n, "CN/2026-27/0001");
+        let b = crate::receipts::balance(&c, id).unwrap();
+        assert_eq!((b.credited_paise, b.balance_paise), (236_000, 944_000));
+        assert_eq!(list_credit_notes(&c, id).unwrap().len(), 1);
+        assert!(credit_note_pdf(&c, &dir, list_credit_notes(&c, id).unwrap()[0].id).unwrap().starts_with(b"%PDF"));
+        // more than what is still owed is refused; nothing is consumed by the failed attempt
+        assert!(issue_credit_note(&mut c, &dir, 1, id, "2026-10-21", "Too much", vec![line("x", "1", "9000")]).unwrap_err().contains("cannot exceed"));
+        assert!(issue_credit_note(&mut c, &dir, 1, id, "2026-10-21", " ", vec![line("x", "1", "1")]).is_err());
+        assert!(c.execute("DELETE FROM credit_notes", []).is_err());
+        // a credited invoice cannot be cancelled
+        assert!(cancel(&mut c, 1, id, "x").unwrap_err().contains("credit notes"));
+        // the invoice list shows the credit
+        let row = list(&c).unwrap().into_iter().find(|r| r.id == id).unwrap();
+        assert_eq!((row.balance_paise, row.credited_display.as_str()), (944_000, "₹2,360.00"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn upi_qr_is_rendered_when_a_upi_id_is_set() {
+        let mut c = db_with_project();
+        c.execute("UPDATE company_profile SET upi_id = 'studio@bank'", []).unwrap();
+        let snap = build_snapshot(&c, &input("none", "", vec![line("Fee", "1", "1000")]), "INV/2026-27/0001").unwrap();
+        assert!(snap.upi_uri.starts_with("upi://pay?pa=studio%40bank&pn=Studio%20X&am=1180.00&cu=INR"));
+        let html = invoice_html(&snap);
+        assert!(html.contains("pay by UPI"));
+        let r = render(&snap).unwrap();
+        assert!(r.bytes.starts_with(b"%PDF"));
+        if let Ok(dir) = std::env::var("AO_PREVIEW_DIR") {
+            std::fs::write(std::path::Path::new(&dir).join("invoice_qr.pdf"), &r.bytes).unwrap();
+        }
+        // credit notes never carry a QR
+        let mut cn = build_snapshot(&c, &input("none", "", vec![line("Fee", "1", "1000")]), "CN/1").unwrap();
+        cn.kind = "credit_note".into();
+        assert!(!invoice_html(&cn).contains("pay by UPI"));
+    }
+}

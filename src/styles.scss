@@ -1,0 +1,111 @@
+// Carbon only: the official styles with the white theme (selected in the app through GlobalTheme).
+// Fonts are bundled locally so the app never reaches a CDN.
+@use "@carbon/react" with (
+  $font-path: "@ibm/plex"
+);
+
+// ---------------------------------------------------------------------------
+// Layout integration only. Everything below arranges Carbon components using
+// Carbon spacing tokens; nothing here restyles a Carbon component.
+// ---------------------------------------------------------------------------
+
+.ao-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cds-spacing-03);
+}
+
+.ao-page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--cds-spacing-05);
+  margin-block: var(--cds-spacing-04) var(--cds-spacing-05);
+}
+
+.ao-muted {
+  color: var(--cds-text-secondary);
+}
+
+// Documented exception: Carbon's table cells have no numeric-alignment option.
+// Amounts and quantities are end-aligned with tabular figures (a supported font feature).
+.ao-num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.ao-filter {
+  min-inline-size: 11rem;
+}
+
+.ao-block {
+  margin-block-end: var(--cds-spacing-05);
+}
+
+.ao-footnote {
+  margin-block: var(--cds-spacing-03);
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--cds-spacing-03);
+}
+
+.toolbar > div {
+  display: flex;
+  gap: var(--cds-spacing-03);
+}
+
+// Forms: Carbon form controls laid out in columns that fit the window.
+.ao-form > .cds--stack-vertical {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--cds-spacing-05);
+  max-inline-size: 70rem;
+}
+
+.ao-form > .cds--stack-vertical > h2,
+.ao-form > .cds--stack-vertical > h3,
+.ao-form > .cds--stack-vertical > h4,
+.ao-form > .cds--stack-vertical > h5,
+.ao-form > .cds--stack-vertical > p,
+.ao-form > .cds--stack-vertical > .toolbar,
+.ao-form > .cds--stack-vertical > .cds--inline-notification,
+.ao-form > .cds--stack-vertical > .ao-span {
+  grid-column: 1 / -1;
+}
+
+.ao-span {
+  grid-column: 1 / -1;
+}
+
+.ao-alloc-row {
+  display: grid;
+  grid-template-columns: minmax(16rem, 3fr) 1fr 1fr 1fr auto;
+  gap: var(--cds-spacing-03);
+  align-items: end;
+  margin-block-end: var(--cds-spacing-03);
+}
+
+.ao-cols-4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--cds-spacing-05);
+}
+
+// Sign-in screens
+.centered {
+  min-block-size: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.panel {
+  inline-size: 28rem;
+  max-inline-size: 100%;
+  display: grid;
+  gap: var(--cds-spacing-05);
+  padding: var(--cds-spacing-07);
+}
