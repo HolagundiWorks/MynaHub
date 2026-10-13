@@ -12,6 +12,7 @@ import DataTable, { type Column } from "../../components/data-table/DataTable";
 import { useServerTable } from "../../components/data-table/useServerTable";
 import { downloadBase64, readFileAsBase64 } from "../../components/files";
 import { Add, ArrowLeft, Save } from "@carbon/icons-react";
+import { DraftGuard, DraftSave } from "../../app/unsaved";
 
 const FAMILY_SHORT: Record<string, string> = { consultancy: "Consultancy", billing: "Billing", administration: "Administration" };
 
@@ -30,6 +31,7 @@ function Editor({ doc, projects, onClose }: { doc: DocInput; projects: Project[]
   const [fields, setFields] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [pdf, setPdf] = useState<string | null>(null);
+  const [cleanToken, setCleanToken] = useState(0);
 
   useEffect(() => {
     api.templateList(d.kind === "agreement" ? "agreement" : "letter").then(setTemplates).catch((e) => setError(errorText(e)));
@@ -43,13 +45,21 @@ function Editor({ doc, projects, onClose }: { doc: DocInput; projects: Project[]
   const isRecord = templates.find((t) => t.latest_version_id === d.template_version_id)?.layout === "record";
 
   const save = async (): Promise<number | null> => {
-    try { const id = await api.docSaveDraft(d); setD({ ...d, id }); setError(""); return id; } catch (e) { setError(errorText(e)); return null; }
+    try {
+      const id = await api.docSaveDraft(d);
+      setD({ ...d, id });
+      setCleanToken((n) => n + 1);
+      setError("");
+      return id;
+    } catch (e) { setError(errorText(e)); return null; }
   };
 
   if (pdf) return <PdfViewer base64={pdf} filename="document.pdf" onClose={() => setPdf(null)} />;
 
   return (
     <Form className="ao-form" onSubmit={(e) => e.preventDefault()}>
+      <DraftGuard value={d} cleanToken={cleanToken} />
+      <DraftSave save={() => { void save(); }} />
       <Stack gap={5}>
         <h3>{d.id ? "Edit draft" : "New"} {KIND_LABEL[d.kind].toLowerCase()}</h3>
         <Select size="sm" id="d-project" labelText={d.kind === "agreement" ? "Project" : "Project (optional)"} value={d.project_id ?? ""}
@@ -138,6 +148,7 @@ function InwardForm({ projects, onClose }: { projects: Project[]; onClose: () =>
       e.preventDefault();
       try { await api.docRegisterInward(i); onClose(); } catch (err) { setError(errorText(err)); }
     }}>
+      <DraftGuard value={i} />
       <Stack gap={5}>
         <h3>Register an inward letter</h3>
         <TextInput size="sm" id="in-party" labelText="Received from" value={i.party_name} onChange={(e) => set("party_name", e.target.value)} />

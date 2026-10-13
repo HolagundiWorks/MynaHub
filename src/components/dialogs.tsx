@@ -49,6 +49,7 @@ export function DialogHost() {
       primaryButtonDisabled={current?.kind === "reason" && !text.trim()}
       onRequestClose={() => finish(false)}
       onRequestSubmit={() => finish(true)}
+      selectorPrimaryFocus={current?.kind === "reason" ? "[data-modal-primary-focus]" : ".cds--btn--danger, .cds--btn--primary"}
     >
       <p className="ao-block">{current?.message}</p>
       {current?.kind === "reason" && (

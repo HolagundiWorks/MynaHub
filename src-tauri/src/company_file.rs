@@ -1,11 +1,10 @@
 //! The ADMS company file: one `.adms` SQLite database holds a whole company (data, documents, audit history).
 //! The extension is a convention, not protection: the file is NOT encrypted. Opening trusts content, never the name.
-use crate::commands::{create_owner, AppState, INTERNAL};
+use crate::commands::{HostState, create_owner, AppState, INTERNAL};
 use crate::db;
 use rusqlite::{params, Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use tauri::State;
 
 pub const EXTENSION: &str = "adms";
 /// Files made by the first builds used `.aorms`; they are the same format and still open.
@@ -376,7 +375,7 @@ pub fn backup_dir(state: &AppState) -> Result<PathBuf, String> {
 // ---------------- commands (usable before sign-in: they only act on files the user chose) ----------------
 
 #[tauri::command]
-pub fn company_active(state: State<AppState>) -> Result<Option<CompanySummary>, String> {
+pub fn company_active(state: HostState<'_>) -> Result<Option<CompanySummary>, String> {
     Ok(active_summary(&state))
 }
 
@@ -386,36 +385,46 @@ pub fn company_validate(path: String) -> Result<FileCheck, String> {
 }
 
 #[tauri::command]
-pub fn company_recent_list(state: State<AppState>) -> Result<Vec<RecentRow>, String> {
+pub fn company_recent_list(state: HostState<'_>) -> Result<Vec<RecentRow>, String> {
     Ok(load_recent(&state.app_dir).into_iter().map(|r| RecentRow { exists: Path::new(&r.path).is_file(), recent: r }).collect())
 }
 
 #[tauri::command]
-pub fn company_recent_remove(state: State<AppState>, uuid: String) -> Result<(), String> {
+pub fn company_recent_remove(state: HostState<'_>, uuid: String) -> Result<(), String> {
     let mut list = load_recent(&state.app_dir);
     list.retain(|r| r.uuid != uuid);
     save_recent(&state.app_dir, &list);
     Ok(())
 }
 
-#[tauri::command]
-pub fn company_open(state: State<AppState>, path: String) -> Result<CompanySummary, String> {
-    ensure_closed(&state)?;
-    let (conn, summary) = open_file(Path::new(&path))?;
-    install(&state, conn, summary.clone())?;
+/// Opens a company into the application session. Refuses a second company until the first is closed.
+pub fn open_company(state: &AppState, path: &str) -> Result<CompanySummary, String> {
+    ensure_closed(state)?;
+    let (conn, summary) = open_file(Path::new(path))?;
+    install(state, conn, summary.clone())?;
     remember(&state.app_dir, &summary);
     Ok(summary)
 }
 
 /// Creates a company file and its first owner, then opens it. Returns the one-time recovery code.
-#[tauri::command]
-pub fn company_create(state: State<AppState>, path: String, name: String, username: String, password: String, confirm: String) -> Result<(CompanySummary, String), String> {
-    ensure_closed(&state)?;
-    let (file, recovery) = create_file(Path::new(&path), &NewCompany { name: &name, username: &username, password: &password, confirm: &confirm })?;
+pub fn create_company(state: &AppState, path: &str, name: &str, username: &str, password: &str, confirm: &str) -> Result<(CompanySummary, String), String> {
+    ensure_closed(state)?;
+    let (file, recovery) = create_file(Path::new(path), &NewCompany { name, username, password, confirm })?;
     let (conn, summary) = open_file(&file)?;
-    install(&state, conn, summary.clone())?;
+    install(state, conn, summary.clone())?;
     remember(&state.app_dir, &summary);
     Ok((summary, recovery))
+}
+
+#[tauri::command]
+pub fn company_open(state: HostState<'_>, path: String) -> Result<CompanySummary, String> {
+    open_company(&state, &path)
+}
+
+/// Creates a company file and its first owner, then opens it. Returns the one-time recovery code.
+#[tauri::command]
+pub fn company_create(state: HostState<'_>, path: String, name: String, username: String, password: String, confirm: String) -> Result<(CompanySummary, String), String> {
+    create_company(&state, &path, &name, &username, &password, &confirm)
 }
 
 #[derive(Serialize)]
@@ -425,12 +434,12 @@ pub struct LegacyInfo {
 
 /// Reports data left by the first release so the user can convert it into a company file.
 #[tauri::command]
-pub fn company_legacy_info(state: State<AppState>) -> Result<Option<LegacyInfo>, String> {
+pub fn company_legacy_info(state: HostState<'_>) -> Result<Option<LegacyInfo>, String> {
     Ok(legacy_paths(&state.app_dir).map(|(db, _)| LegacyInfo { path: path_str(&db) }))
 }
 
 #[tauri::command]
-pub fn company_convert_legacy(state: State<AppState>, path: String) -> Result<CompanySummary, String> {
+pub fn company_convert_legacy(state: HostState<'_>, path: String) -> Result<CompanySummary, String> {
     ensure_closed(&state)?;
     let (db, files) = legacy_paths(&state.app_dir).ok_or_else(|| fail("No earlier data was found."))?;
     let file = convert_legacy(&db, &files, Path::new(&path))?;
@@ -441,7 +450,7 @@ pub fn company_convert_legacy(state: State<AppState>, path: String) -> Result<Co
 }
 
 #[tauri::command]
-pub fn company_close(state: State<AppState>) -> Result<(), String> {
+pub fn company_close(state: HostState<'_>) -> Result<(), String> {
     close(&state)
 }
 

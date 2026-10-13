@@ -1,9 +1,8 @@
 use crate::auth::Permission;
-use crate::commands::{require, AppState, INTERNAL};
+use crate::commands::{HostState, require, INTERNAL};
 use crate::db;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
-use tauri::State;
 
 #[derive(Serialize, Deserialize)]
 pub struct Client {
@@ -189,14 +188,14 @@ pub fn set_project_archived(conn: &Connection, id: i64, archived: bool) -> Resul
 }
 
 #[tauri::command]
-pub fn client_list(state: State<AppState>, include_archived: bool) -> Result<Vec<Client>, String> {
+pub fn client_list(state: HostState<'_>, include_archived: bool) -> Result<Vec<Client>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list_clients(&conn, include_archived)
 }
 
 #[tauri::command]
-pub fn client_save(state: State<AppState>, client: Client) -> Result<i64, String> {
+pub fn client_save(state: HostState<'_>, client: Client) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     let id = save_client(&conn, &client)?;
@@ -205,7 +204,7 @@ pub fn client_save(state: State<AppState>, client: Client) -> Result<i64, String
 }
 
 #[tauri::command]
-pub fn client_set_archived(state: State<AppState>, id: i64, archived: bool) -> Result<(), String> {
+pub fn client_set_archived(state: HostState<'_>, id: i64, archived: bool) -> Result<(), String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     set_client_archived(&conn, id, archived)?;
@@ -214,14 +213,14 @@ pub fn client_set_archived(state: State<AppState>, id: i64, archived: bool) -> R
 }
 
 #[tauri::command]
-pub fn project_list(state: State<AppState>, client_id: Option<i64>, include_archived: bool) -> Result<Vec<Project>, String> {
+pub fn project_list(state: HostState<'_>, client_id: Option<i64>, include_archived: bool) -> Result<Vec<Project>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list_projects(&conn, client_id, include_archived)
 }
 
 #[tauri::command]
-pub fn project_save(state: State<AppState>, project: Project) -> Result<i64, String> {
+pub fn project_save(state: HostState<'_>, project: Project) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     let id = save_project(&conn, &project)?;
@@ -230,7 +229,7 @@ pub fn project_save(state: State<AppState>, project: Project) -> Result<i64, Str
 }
 
 #[tauri::command]
-pub fn project_set_archived(state: State<AppState>, id: i64, archived: bool) -> Result<(), String> {
+pub fn project_set_archived(state: HostState<'_>, id: i64, archived: bool) -> Result<(), String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     set_project_archived(&conn, id, archived)?;

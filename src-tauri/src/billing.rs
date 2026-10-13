@@ -1,11 +1,10 @@
 use crate::auth::Permission;
-use crate::commands::{require, AppState, INTERNAL};
+use crate::commands::{HostState, require, INTERNAL};
 use crate::{db, pdf};
 use base64::Engine;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use sha2_lite::sha256_hex;
-use tauri::State;
 
 // ---------- money ----------
 
@@ -755,56 +754,56 @@ pub fn credit_note_pdf(conn: &Connection, id: i64) -> Result<Vec<u8>, String> {
 // ---------- commands ----------
 
 #[tauri::command]
-pub fn invoice_cancel(state: State<AppState>, id: i64, reason: String) -> Result<(), String> {
+pub fn invoice_cancel(state: HostState<'_>, id: i64, reason: String) -> Result<(), String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     cancel(&mut conn, uid, id, &reason)
 }
 
 #[tauri::command]
-pub fn credit_note_issue(state: State<AppState>, invoice_id: i64, issue_date: String, reason: String, lines: Vec<LineInput>) -> Result<String, String> {
+pub fn credit_note_issue(state: HostState<'_>, invoice_id: i64, issue_date: String, reason: String, lines: Vec<LineInput>) -> Result<String, String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     issue_credit_note(&mut conn, uid, invoice_id, &issue_date, &reason, lines)
 }
 
 #[tauri::command]
-pub fn credit_note_list(state: State<AppState>, invoice_id: i64) -> Result<Vec<CreditNoteRow>, String> {
+pub fn credit_note_list(state: HostState<'_>, invoice_id: i64) -> Result<Vec<CreditNoteRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list_credit_notes(&conn, invoice_id)
 }
 
 #[tauri::command]
-pub fn credit_note_pdf_data(state: State<AppState>, id: i64) -> Result<String, String> {
+pub fn credit_note_pdf_data(state: HostState<'_>, id: i64) -> Result<String, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     Ok(base64::engine::general_purpose::STANDARD.encode(credit_note_pdf(&conn, id)?))
 }
 
 #[tauri::command]
-pub fn invoice_calculate(state: State<AppState>, input: InvoiceInput) -> Result<Totals, String> {
+pub fn invoice_calculate(state: HostState<'_>, input: InvoiceInput) -> Result<Totals, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     calculate(&input, &company_scheme(&conn)?)
 }
 
 #[tauri::command]
-pub fn invoice_list(state: State<AppState>) -> Result<Vec<InvoiceRow>, String> {
+pub fn invoice_list(state: HostState<'_>) -> Result<Vec<InvoiceRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list(&conn)
 }
 
 #[tauri::command]
-pub fn invoice_get(state: State<AppState>, id: i64) -> Result<InvoiceDetail, String> {
+pub fn invoice_get(state: HostState<'_>, id: i64) -> Result<InvoiceDetail, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     get(&conn, id)
 }
 
 #[tauri::command]
-pub fn invoice_save_draft(state: State<AppState>, input: InvoiceInput) -> Result<i64, String> {
+pub fn invoice_save_draft(state: HostState<'_>, input: InvoiceInput) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     let id = save_draft(&mut conn, &input)?;
@@ -813,7 +812,7 @@ pub fn invoice_save_draft(state: State<AppState>, input: InvoiceInput) -> Result
 }
 
 #[tauri::command]
-pub fn invoice_issue(state: State<AppState>, id: i64) -> Result<String, String> {
+pub fn invoice_issue(state: HostState<'_>, id: i64) -> Result<String, String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     let number = issue_by(&mut conn, Some(uid), id)?;
@@ -822,7 +821,7 @@ pub fn invoice_issue(state: State<AppState>, id: i64) -> Result<String, String> 
 }
 
 #[tauri::command]
-pub fn invoice_convert_proforma(state: State<AppState>, id: i64, today: String) -> Result<i64, String> {
+pub fn invoice_convert_proforma(state: HostState<'_>, id: i64, today: String) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     let new_id = convert_proforma(&mut conn, id, &today)?;
@@ -832,7 +831,7 @@ pub fn invoice_convert_proforma(state: State<AppState>, id: i64, today: String) 
 
 /// Returns the PDF as base64 (a rendered draft preview, or the stored issued PDF).
 #[tauri::command]
-pub fn invoice_pdf(state: State<AppState>, id: i64) -> Result<String, String> {
+pub fn invoice_pdf(state: HostState<'_>, id: i64) -> Result<String, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     let bytes = pdf_bytes(&conn, id)?;

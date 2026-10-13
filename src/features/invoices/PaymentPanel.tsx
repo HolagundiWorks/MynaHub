@@ -5,6 +5,7 @@ import {
 } from "@carbon/react";
 import { api, errorText, type Balance, type ReceiptInput, type ReceiptRow } from "../../api";
 import { askReason } from "../../components/dialogs";
+import { DraftGuard } from "../../app/unsaved";
 import PdfViewer from "../../components/PdfViewer";
 import { ArrowLeft, Money } from "@carbon/icons-react";
 
@@ -28,6 +29,7 @@ export default function PaymentPanel({ invoiceId, number, onClose }: { invoiceId
   const [error, setError] = useState("");
   const [done, setDone] = useState("");
   const [pdf, setPdf] = useState<string | null>(null);
+  const [cleanToken, setCleanToken] = useState(0);
 
   const load = () => {
     api.receiptBalance(invoiceId).then(setBalance).catch((e) => setError(errorText(e)));
@@ -57,10 +59,12 @@ export default function PaymentPanel({ invoiceId, number, onClose }: { invoiceId
           setDone(`Recorded as ${n}.`);
           setError("");
           setForm({ ...form, amount: "", tds: "", tds_section: "", reference: "", notes: "" });
+          setCleanToken((n) => n + 1);
           load();
         } catch (err) { setError(errorText(err)); setDone(""); }
       }}
     >
+      <DraftGuard value={form} cleanToken={cleanToken} />
       <Stack gap={5}>
         <h3>Record payment — {number}</h3>
         {balance && (

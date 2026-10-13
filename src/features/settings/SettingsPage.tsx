@@ -8,6 +8,7 @@ import StatusBadge from "../../components/StatusBadge";
 import DataTable, { type Column } from "../../components/data-table/DataTable";
 import { usePersisted } from "../../design/density";
 import { Add, DataBackup, Password, Renew, Save } from "@carbon/icons-react";
+import { DraftGuard } from "../../app/unsaved";
 
 const ROLES = [
   ["owner", "Owner / Admin"], ["principal", "Principal / Architect"], ["accounts", "Accounts"],
@@ -35,6 +36,7 @@ function PasswordCard() {
       try { await api.changePassword(cur, next, confirm); setOk("Password changed."); setError(""); setCur(""); setNext(""); setConfirm(""); }
       catch (err) { setError(errorText(err)); setOk(""); }
     }}>
+      <DraftGuard value={{ cur, next, confirm }} />
       <Stack gap={4}>
         <h4>Change password</h4>
         <PasswordInput size="sm" id="pw-cur" labelText="Current password" value={cur} onChange={(e) => setCur(e.target.value)} />
@@ -52,13 +54,15 @@ function IdleCard() {
   const [pw, setPw] = useState("");
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
-  useEffect(() => { api.securityGet().then(setMinutes).catch((e) => setError(errorText(e))); }, []);
+  const [cleanToken, setCleanToken] = useState(0);
+  useEffect(() => { api.securityGet().then((m) => { setMinutes(m); setCleanToken((n) => n + 1); }).catch((e) => setError(errorText(e))); }, []);
   return (
     <Form className="ao-form" onSubmit={async (e) => {
       e.preventDefault();
       try { await api.securitySetIdle(minutes, pw); setOk("Saved."); setError(""); setPw(""); }
       catch (err) { setError(errorText(err)); setOk(""); }
     }}>
+      <DraftGuard value={{ minutes, pw }} cleanToken={cleanToken} />
       <Stack gap={4}>
         <h4>Auto-lock</h4>
         <Select size="sm" id="idle" labelText="Lock after inactivity" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))}>
@@ -118,6 +122,7 @@ function UsersCard() {
           catch (err) { setError(errorText(err)); setOk(""); }
           setBusy(false);
         }}>
+          <DraftGuard value={{ username, password, role, adminPw }} />
           <Stack gap={4}>
             <TextInput size="sm" id="nu-name" labelText="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
             <PasswordInput size="sm" id="nu-pw" labelText="Initial password (12+ characters)" value={password} onChange={(e) => setPassword(e.target.value)} />
@@ -159,6 +164,7 @@ function BackupCard() {
       e.preventDefault();
       try { setInfo(await api.backupCreate(pw)); setError(""); setPw(""); } catch (err) { setError(errorText(err)); setInfo(null); }
     }}>
+      <DraftGuard value={{ pw }} />
       <Stack gap={4}>
         <h4>Backup</h4>
         <p>Creates a verified copy of the whole company: records, issued documents, attachments and audit history. A backup is itself a company file you can open.</p>
@@ -179,6 +185,7 @@ function RestoreCard({ onRestored }: { onRestored: () => void }) {
   useEffect(() => { api.backupList().then(setFiles).catch((e) => setError(errorText(e))); }, []);
   return (
     <Stack gap={4}>
+      <DraftGuard value={{ pick, pw }} />
       <h4>Restore a backup</h4>
       <p>
         This replaces all current data with the backup. A safety backup of the current data is made first, and everyone is

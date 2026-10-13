@@ -12,6 +12,7 @@ import RowMenu from "../../components/data-table/RowMenu";
 import { useServerTable } from "../../components/data-table/useServerTable";
 import { Grid, Notice, PaySelect, currentFy, inr, today, useLoad } from "./shared";
 import { Add, ArrowLeft } from "@carbon/icons-react";
+import { DraftGuard } from "../../app/unsaved";
 
 const canPostRole = (role: string) => role === "Owner" || role === "Accounts";
 
@@ -210,6 +211,7 @@ export function JournalsSection({ role }: { role: string }) {
           try { await api.journalReverse(j.id, reason, pw); setView("list"); setReason(""); setPw(""); setError(""); reload(); } catch (err) { setError(errorText(err)); }
           setBusy(false);
         }}>
+          <DraftGuard value={{ reason, pw }} />
           <Stack gap={5}>
             <TextInput size="sm" id="rv-reason" labelText="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
             <PasswordInput size="sm" id="rv-pw" labelText="Your password" value={pw} onChange={(e) => setPw(e.target.value)} />
@@ -237,6 +239,7 @@ export function JournalsSection({ role }: { role: string }) {
           } catch (err) { setError(errorText(err)); }
           setBusy(false);
         }}>
+          <DraftGuard value={{ date, narration, jl }} />
           <Stack gap={4}>
             <TextInput size="sm" id="mj-date" type="date" labelText="Date" value={date} onChange={(e) => setDate(e.target.value)} />
             <TextInput size="sm" id="mj-narr" labelText="Narration" value={narration} onChange={(e) => setNarration(e.target.value)} />
@@ -334,6 +337,7 @@ export function ExpensesSection({ role }: { role: string }) {
           try { await api.expenseSettle(e.id, payDate, payVia); setView("list"); setError(""); reload(); } catch (err) { setError(errorText(err)); }
           setBusy(false);
         }}>
+          <DraftGuard value={{ payDate, payVia }} />
           <Stack gap={5}>
             <TextInput size="sm" id="pay-date" type="date" labelText="Payment date" value={payDate} onChange={(x) => setPayDate(x.target.value)} />
             <PaySelect id="pay-via" label="Paid from" value={payVia} onChange={setPayVia} allowPayable={false} />
@@ -356,6 +360,7 @@ export function ExpensesSection({ role }: { role: string }) {
           try { await api.expenseRecord({ ...f, vendor_id: f.vendor_id || null }); setF(blank); setView("list"); setError(""); reload(); } catch (err) { setError(errorText(err)); }
           setBusy(false);
         }}>
+          <DraftGuard value={f} />
           <Stack gap={4}>
             <TextInput size="sm" id="ex-date" type="date" labelText="Date" value={f.date} onChange={(e) => set({ date: e.target.value })} />
             <Select size="sm" id="ex-vendor" labelText="Vendor (optional)" value={f.vendor_id || ""} onChange={(e) => set({ vendor_id: Number(e.target.value) })}>
@@ -444,6 +449,7 @@ export function IncomeSection({ role }: { role: string }) {
           try { await api.incomeRecord({ ...f, property_id: f.property_id || null }); setF(blank); setView("list"); setError(""); reload(); } catch (err) { setError(errorText(err)); }
           setBusy(false);
         }}>
+          <DraftGuard value={{ f, pname, pkind }} />
           <Stack gap={4}>
             <TextInput size="sm" id="in-date" type="date" labelText="Date received" value={f.date} onChange={(e) => set({ date: e.target.value })} />
             <Select size="sm" id="in-kind" labelText="Type" value={f.kind} onChange={(e) => set({ kind: e.target.value as typeof f.kind })}>
@@ -531,6 +537,7 @@ export function SalariesSection({ role }: { role: string }) {
           try { await api.payrollRecord(f); setF({ ...blank, date: f.date, paid_via: f.paid_via }); setView("list"); setError(""); reload(); } catch (err) { setError(errorText(err)); }
           setBusy(false);
         }}>
+          <DraftGuard value={{ f, basic, rates }} />
           <Stack gap={4}>
             <TextInput size="sm" id="pr-date" type="date" labelText="Date paid" value={f.date} onChange={(e) => set({ date: e.target.value })} />
             <TextInput size="sm" id="pr-emp" labelText="Employee" value={f.employee} onChange={(e) => set({ employee: e.target.value })} />
@@ -619,6 +626,7 @@ export function AssetsSection({ role }: { role: string }) {
           try { await api.assetAdd(f); setF(blank); setView("list"); setError(""); reload(); } catch (err) { setError(errorText(err)); }
           setBusy(false);
         }}>
+          <DraftGuard value={f} />
           <Stack gap={4}>
             <TextInput size="sm" id="as-name" labelText="Asset" value={f.name} onChange={(e) => set({ name: e.target.value })} />
             <TextInput size="sm" id="as-date" type="date" labelText="Purchase date" value={f.purchase_date} onChange={(e) => set({ purchase_date: e.target.value })} />
@@ -662,6 +670,7 @@ export function TaxPaymentsSection({ role }: { role: string }) {
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cleanToken, setCleanToken] = useState(0);
   const set = (patch: Partial<typeof f>) => setF({ ...f, ...patch });
   return (
     <>
@@ -671,9 +680,10 @@ export function TaxPaymentsSection({ role }: { role: string }) {
           e.preventDefault();
           if (busy) return;
           setBusy(true);
-          try { await api.taxPayment(f.kind, f.date, f.amount, f.paid_via, f.narration); setOk("Payment recorded."); setError(""); setF({ ...f, amount: "", narration: "" }); } catch (err) { setError(errorText(err)); setOk(""); }
+          try { await api.taxPayment(f.kind, f.date, f.amount, f.paid_via, f.narration); setOk("Payment recorded."); setError(""); setF({ ...f, amount: "", narration: "" }); setCleanToken((n) => n + 1); } catch (err) { setError(errorText(err)); setOk(""); }
           setBusy(false);
         }}>
+          <DraftGuard value={f} cleanToken={cleanToken} />
           <Stack gap={4}>
             <Select size="sm" id="tp-kind" labelText="Tax" value={f.kind} onChange={(e) => set({ kind: e.target.value })}>
               <SelectItem value="tds" text="TDS deposited" /><SelectItem value="cgst" text="GST - CGST" /><SelectItem value="sgst" text="GST - SGST" />
@@ -735,6 +745,7 @@ export function AccountSetup({ role }: { role: string }) {
           try { await api.accountCreate(code, name, kind); setCode(""); setName(""); setView("list"); setError(""); accounts.reload(); } catch (err) { setError(errorText(err)); }
           setBusy(false);
         }}>
+          <DraftGuard value={{ code, name, kind }} />
           <Stack gap={4}>
             <TextInput size="sm" id="na-code" labelText="Code" value={code} onChange={(e) => setCode(e.target.value)} />
             <TextInput size="sm" id="na-name" labelText="Name" value={name} onChange={(e) => setName(e.target.value)} />
@@ -762,6 +773,7 @@ export function AccountSetup({ role }: { role: string }) {
           try { await api.periodSet(p.fy, closing, pw); setPw(""); setView("list"); setError(""); setOk(`${p.fy} ${closing ? "closed" : "reopened"}.`); periods.reload(); } catch (err) { setError(errorText(err)); setOk(""); }
           setBusy(false);
         }}>
+          <DraftGuard value={{ pw }} />
           <Stack gap={4}>
             <PasswordInput size="sm" id="per-pw" labelText="Your password" value={pw} onChange={(e) => setPw(e.target.value)} />
             <Notice error={error} />

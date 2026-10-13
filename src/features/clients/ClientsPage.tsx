@@ -6,6 +6,7 @@ import StatusBadge from "../../components/StatusBadge";
 import DataTable, { type Column } from "../../components/data-table/DataTable";
 import RowMenu from "../../components/data-table/RowMenu";
 import { Add, Edit } from "@carbon/icons-react";
+import { DraftGuard } from "../../app/unsaved";
 
 const BLANK: Client = {
   id: null, name: "", contact_person: "", email: "", phone: "", address: "", pan: "", gstin: "", archived: false,
@@ -53,6 +54,7 @@ export default function ClientsPage() {
             setSaving(false);
           }}
         >
+          <DraftGuard value={editing} />
           <Stack gap={5}>
             {text("name", "Client name")}
             {text("contact_person", "Contact person")}

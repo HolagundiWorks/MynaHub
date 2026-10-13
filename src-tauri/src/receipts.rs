@@ -1,10 +1,9 @@
 use crate::auth::Permission;
 use crate::billing::{allocate_number, fmt_inr, parse_decimal};
-use crate::commands::{require, AppState, INTERNAL};
+use crate::commands::{HostState, require, INTERNAL};
 use crate::db;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
-use tauri::State;
 
 #[derive(Serialize, Deserialize)]
 pub struct ReceiptInput {
@@ -236,14 +235,14 @@ pub fn receipt_pdf_bytes(conn: &Connection, receipt_id: i64) -> Result<Vec<u8>, 
 }
 
 #[tauri::command]
-pub fn receipt_reverse(state: State<AppState>, receipt_id: i64, reason: String) -> Result<(), String> {
+pub fn receipt_reverse(state: HostState<'_>, receipt_id: i64, reason: String) -> Result<(), String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     reverse(&mut conn, uid, receipt_id, &reason)
 }
 
 #[tauri::command]
-pub fn receipt_pdf(state: State<AppState>, receipt_id: i64) -> Result<String, String> {
+pub fn receipt_pdf(state: HostState<'_>, receipt_id: i64) -> Result<String, String> {
     use base64::Engine;
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
@@ -251,28 +250,28 @@ pub fn receipt_pdf(state: State<AppState>, receipt_id: i64) -> Result<String, St
 }
 
 #[tauri::command]
-pub fn receipt_balance(state: State<AppState>, invoice_id: i64) -> Result<Balance, String> {
+pub fn receipt_balance(state: HostState<'_>, invoice_id: i64) -> Result<Balance, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     balance(&conn, invoice_id)
 }
 
 #[tauri::command]
-pub fn receipt_list(state: State<AppState>, invoice_id: i64) -> Result<Vec<ReceiptRow>, String> {
+pub fn receipt_list(state: HostState<'_>, invoice_id: i64) -> Result<Vec<ReceiptRow>, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list(&conn, invoice_id)
 }
 
 #[tauri::command]
-pub fn receipt_suggest_tds(state: State<AppState>, invoice_id: i64, rate: String) -> Result<String, String> {
+pub fn receipt_suggest_tds(state: HostState<'_>, invoice_id: i64, rate: String) -> Result<String, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     suggest_tds(&conn, invoice_id, &rate)
 }
 
 #[tauri::command]
-pub fn receipt_record(state: State<AppState>, input: ReceiptInput) -> Result<String, String> {
+pub fn receipt_record(state: HostState<'_>, input: ReceiptInput) -> Result<String, String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     record(&mut conn, uid, &input)

@@ -4,12 +4,11 @@
 
 use crate::auth::Permission;
 use crate::billing::{fmt_inr, parse_decimal, sha2_lite::sha256_hex, validate_date};
-use crate::commands::{require, AppState, INTERNAL};
+use crate::commands::{HostState, require, INTERNAL};
 use crate::db;
 use crate::receipts::{insert_receipt, ReceiptInput};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
-use tauri::State;
 
 // ---------- parsing ----------
 
@@ -746,49 +745,49 @@ pub fn unmatch(conn: &mut Connection, actor: i64, txn_id: i64, reason: &str) -> 
 // ---------- commands ----------
 
 #[tauri::command]
-pub fn bank_account_list(state: State<AppState>) -> Result<Vec<Account>, String> {
+pub fn bank_account_list(state: HostState<'_>) -> Result<Vec<Account>, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list_accounts(&conn)
 }
 
 #[tauri::command]
-pub fn bank_account_save(state: State<AppState>, account: Account) -> Result<i64, String> {
+pub fn bank_account_save(state: HostState<'_>, account: Account) -> Result<i64, String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     save_account(&mut conn, uid, &account)
 }
 
 #[tauri::command]
-pub fn bank_manual_entry(state: State<AppState>, entry: ManualEntry) -> Result<i64, String> {
+pub fn bank_manual_entry(state: HostState<'_>, entry: ManualEntry) -> Result<i64, String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     add_manual(&mut conn, uid, &entry)
 }
 
 #[tauri::command]
-pub fn bank_unlinked_receipts(state: State<AppState>) -> Result<Vec<UnlinkedReceipt>, String> {
+pub fn bank_unlinked_receipts(state: HostState<'_>) -> Result<Vec<UnlinkedReceipt>, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     unlinked_receipts(&conn)
 }
 
 #[tauri::command]
-pub fn bank_link_receipts(state: State<AppState>, txn_id: i64, receipt_ids: Vec<i64>) -> Result<(), String> {
+pub fn bank_link_receipts(state: HostState<'_>, txn_id: i64, receipt_ids: Vec<i64>) -> Result<(), String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     link_receipts(&mut conn, uid, txn_id, &receipt_ids)
 }
 
 #[tauri::command]
-pub fn bank_unmatch(state: State<AppState>, txn_id: i64, reason: String) -> Result<(), String> {
+pub fn bank_unmatch(state: HostState<'_>, txn_id: i64, reason: String) -> Result<(), String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     unmatch(&mut conn, uid, txn_id, &reason)
 }
 
 #[tauri::command]
-pub fn bank_csv_preview(state: State<AppState>, text: String, mapping: Mapping) -> Result<Vec<ParsedRow>, String> {
+pub fn bank_csv_preview(state: HostState<'_>, text: String, mapping: Mapping) -> Result<Vec<ParsedRow>, String> {
     require(&state, Permission::Finance)?;
     let mut rows = parse_statement(&text, &mapping)?;
     rows.truncate(200);
@@ -796,49 +795,49 @@ pub fn bank_csv_preview(state: State<AppState>, text: String, mapping: Mapping) 
 }
 
 #[tauri::command]
-pub fn bank_import_commit(state: State<AppState>, account_id: i64, filename: String, text: String, mapping: Mapping) -> Result<ImportResult, String> {
+pub fn bank_import_commit(state: HostState<'_>, account_id: i64, filename: String, text: String, mapping: Mapping) -> Result<ImportResult, String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     import(&mut conn, uid, account_id, &filename, &text, &mapping)
 }
 
 #[tauri::command]
-pub fn bank_txn_list(state: State<AppState>, status: Option<String>, account_id: Option<i64>) -> Result<Vec<TxnRow>, String> {
+pub fn bank_txn_list(state: HostState<'_>, status: Option<String>, account_id: Option<i64>) -> Result<Vec<TxnRow>, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list_txns(&conn, status.as_deref(), account_id)
 }
 
 #[tauri::command]
-pub fn bank_summary(state: State<AppState>, account_id: Option<i64>) -> Result<Summary, String> {
+pub fn bank_summary(state: HostState<'_>, account_id: Option<i64>) -> Result<Summary, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     summary(&conn, account_id)
 }
 
 #[tauri::command]
-pub fn bank_rejected_list(state: State<AppState>) -> Result<Vec<RejectedRow>, String> {
+pub fn bank_rejected_list(state: HostState<'_>) -> Result<Vec<RejectedRow>, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list_rejected(&conn)
 }
 
 #[tauri::command]
-pub fn bank_txn_suggest(state: State<AppState>, txn_id: i64) -> Result<Vec<Suggestion>, String> {
+pub fn bank_txn_suggest(state: HostState<'_>, txn_id: i64) -> Result<Vec<Suggestion>, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     suggest(&conn, txn_id)
 }
 
 #[tauri::command]
-pub fn bank_reconcile(state: State<AppState>, txn_id: i64, allocations: Vec<Allocation>) -> Result<Vec<String>, String> {
+pub fn bank_reconcile(state: HostState<'_>, txn_id: i64, allocations: Vec<Allocation>) -> Result<Vec<String>, String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     reconcile(&mut conn, uid, txn_id, &allocations)
 }
 
 #[tauri::command]
-pub fn bank_txn_ignore(state: State<AppState>, txn_id: i64, note: String, undo: bool) -> Result<(), String> {
+pub fn bank_txn_ignore(state: HostState<'_>, txn_id: i64, note: String, undo: bool) -> Result<(), String> {
     let uid = require(&state, Permission::Issue)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     ignore(&conn, uid, txn_id, &note, undo)

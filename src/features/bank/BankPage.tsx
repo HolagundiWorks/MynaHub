@@ -12,6 +12,7 @@ import DataTable, { type Column } from "../../components/data-table/DataTable";
 import RowMenu, { type MenuItem } from "../../components/data-table/RowMenu";
 import { useServerTable } from "../../components/data-table/useServerTable";
 import { Add, ArrowLeft, Edit, Link, Upload } from "@carbon/icons-react";
+import { DraftGuard } from "../../app/unsaved";
 
 const inr = (paise: number) => (paise / 100).toLocaleString("en-IN", { style: "currency", currency: "INR" });
 const TDS_SECTIONS = ["194J", "194C-1", "194C-2", "194M", "Other"];
@@ -110,6 +111,7 @@ function ImportView({ accounts, defaultAccount, onDone }: { accounts: BankAccoun
 
       {mapping && (
         <Form className="ao-form" onSubmit={(e) => e.preventDefault()}>
+          <DraftGuard value={mapping} />
           <Stack gap={5}>
             <h4>Map the columns</h4>
             <div className="ao-cols-4 ao-span">
@@ -176,6 +178,7 @@ function ManualView({ accounts, defaultAccount, onDone }: { accounts: BankAccoun
       try { await api.bankManualEntry(e); onDone(); } catch (err) { setError(errorText(err)); }
       setBusy(false);
     }}>
+      <DraftGuard value={e} />
       <Stack gap={5}>
         <AccountSelect id="me-account" label="Bank account" value={e.account_id} accounts={accounts} onChange={(v) => set("account_id", v)} />
         <TextInput size="sm" id="me-date" type="date" labelText="Date" value={e.txn_date} onChange={(x) => set("txn_date", x.target.value)} />
@@ -216,6 +219,7 @@ function AccountsView({ accounts, onChange }: { accounts: BankAccount[]; onChang
         try { await api.bankAccountSave(editing); setEditing(null); setError(""); onChange(); } catch (err) { setError(errorText(err)); }
         setBusy(false);
       }}>
+        <DraftGuard value={editing} />
         <Stack gap={5}>
           <h4>{editing.id ? "Edit bank account" : "New bank account"}</h4>
           <TextInput size="sm" id="ba-name" labelText="Name shown in lists (e.g. HDFC current)" value={editing.name} onChange={(e) => set("name", e.target.value)} />
@@ -382,6 +386,7 @@ function PostView({ txn, onClose }: { txn: TxnRow; onClose: () => void }) {
       <PageHeader title="Post to the ledger" description={`${txn.txn_date} · ${txn.narration} · ${isCredit ? `${txn.credit_display} credit` : `${txn.debit_display} debit`}`} actions={<Button renderIcon={ArrowLeft} size="sm" kind="secondary" onClick={onClose}>Back to transactions</Button>} />
       <p className="ao-block">For bank charges, interest, refunds and other lines that are not invoice payments. It records the entry and takes the line out of matching.</p>
       <Form className="ao-form" onSubmit={(e) => e.preventDefault()}>
+        <DraftGuard value={{ accountId, tds }} />
         <Stack gap={5}>
           <Select size="sm" id="pl-acct" labelText={isCredit ? "Credit to (where the money came from)" : "Debit to (what the money was spent on)"} value={accountId || ""} onChange={(e) => setAccountId(Number(e.target.value))}>
             <SelectItem value="" text="Select an account" />{accounts.map((a) => <SelectItem key={a.id} value={a.id} text={`${a.code} ${a.name}`} />)}

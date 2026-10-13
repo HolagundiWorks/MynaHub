@@ -3,6 +3,7 @@ mod admin;
 mod auth;
 mod bank;
 mod billing;
+mod bridge;
 mod builtin_html;
 mod builtin_templates;
 mod clients;
@@ -11,6 +12,7 @@ mod company_file;
 mod db;
 mod documents;
 mod entries;
+mod ffi;
 mod ledger;
 mod pdf;
 #[cfg(test)]

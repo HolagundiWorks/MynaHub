@@ -7,6 +7,7 @@ import StatusBadge from "../../components/StatusBadge";
 import DataTable, { type Column } from "../../components/data-table/DataTable";
 import RowMenu from "../../components/data-table/RowMenu";
 import { Edit } from "@carbon/icons-react";
+import { DraftGuard } from "../../app/unsaved";
 
 const STATUS_LABEL = { active: "Active", on_hold: "On hold", completed: "Completed" } as const;
 
@@ -53,6 +54,7 @@ export default function ProjectsPage() {
             setSaving(false);
           }}
         >
+          <DraftGuard value={editing} />
           <Stack gap={5}>
             <Select size="sm" id="p-client" labelText="Client" value={editing.client_id || ""} disabled={editing.id !== null} onChange={(e) => setEditing({ ...editing, client_id: Number(e.target.value) })}>
               <SelectItem value="" text="Select a client" />

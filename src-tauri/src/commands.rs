@@ -4,7 +4,6 @@ use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use std::time::Instant;
-use tauri::State;
 
 pub struct AppState {
     pub db: Mutex<Connection>,
@@ -29,6 +28,33 @@ impl AppState {
 
     pub fn idle(&self) -> std::time::Duration {
         std::time::Duration::from_secs(self.idle_secs.load(std::sync::atomic::Ordering::Relaxed))
+    }
+}
+
+/// Borrowed application session shared by Tauri commands and the C ABI.
+pub struct HostState<'a>(&'a AppState);
+
+impl std::ops::Deref for HostState<'_> {
+    type Target = AppState;
+    fn deref(&self) -> &AppState {
+        self.0
+    }
+}
+
+impl<'a> HostState<'a> {
+    pub fn new(state: &'a AppState) -> Self {
+        Self(state)
+    }
+}
+
+impl<'a, R: tauri::Runtime> tauri::ipc::CommandArg<'a, R> for HostState<'a> {
+    fn from_command(command: tauri::ipc::CommandItem<'a, R>) -> Result<Self, tauri::ipc::InvokeError> {
+        let state = tauri::State::<'a, AppState>::from_command(command)?;
+        // `State` is a reference-sized wrapper around the managed session. Take the inner address
+        // before the wrapper is dropped; the session itself lives for `'a`.
+        let inner: &AppState = std::ops::Deref::deref(&state);
+        let extended: &'a AppState = unsafe { &*std::ptr::from_ref(inner) };
+        Ok(HostState(extended))
     }
 }
 
@@ -74,8 +100,7 @@ pub struct AuthStatus {
     pub user: Option<SessionInfo>,
 }
 
-#[tauri::command]
-pub fn auth_status(state: State<AppState>) -> Result<AuthStatus, String> {
+pub fn read_auth_status(state: &AppState) -> Result<AuthStatus, String> {
     let company = crate::company_file::active_summary(&state);
     if company.is_none() {
         return Ok(AuthStatus { company: None, setup_required: false, locked: false, user: None });
@@ -103,10 +128,15 @@ pub fn auth_status(state: State<AppState>) -> Result<AuthStatus, String> {
     Ok(AuthStatus { company, setup_required, locked, user })
 }
 
+#[tauri::command]
+pub fn auth_status(state: HostState<'_>) -> Result<AuthStatus, String> {
+    read_auth_status(&state)
+}
+
 /// Creates the first (owner) account. Returns the one-time recovery code.
 #[tauri::command]
 pub fn auth_setup(
-    state: State<AppState>,
+    state: HostState<'_>,
     username: String,
     password: String,
     confirm: String,
@@ -188,24 +218,28 @@ pub(crate) fn check_credentials(conn: &Connection, username: &str, password: &st
     Ok((id, uname, role))
 }
 
-#[tauri::command]
-pub fn auth_login(state: State<AppState>, username: String, password: String) -> Result<SessionInfo, String> {
-    if crate::company_file::active_summary(&state).is_none() {
+pub fn login(state: &AppState, username: &str, password: &str) -> Result<SessionInfo, String> {
+    if crate::company_file::active_summary(state).is_none() {
         return Err("Open or create a company first.".into());
     }
     let (id, uname, role) = {
         let conn = state.db.lock().map_err(|_| INTERNAL)?;
-        let r = check_credentials(&conn, username.trim(), &password)?;
+        let r = check_credentials(&conn, username.trim(), password)?;
         db::audit(&conn, Some(r.0), "login_ok", "");
         r
     };
-    start_session(&state, id, uname.clone(), &role)?;
+    start_session(state, id, uname.clone(), &role)?;
     Ok(SessionInfo { username: uname, role })
+}
+
+#[tauri::command]
+pub fn auth_login(state: HostState<'_>, username: String, password: String) -> Result<SessionInfo, String> {
+    login(&state, &username, &password)
 }
 
 /// Unlocks the current locked session; the password must belong to the same user.
 #[tauri::command]
-pub fn auth_unlock(state: State<AppState>, password: String) -> Result<(), String> {
+pub fn auth_unlock(state: HostState<'_>, password: String) -> Result<(), String> {
     let (uid, uname) = {
         let g = state.session.lock().map_err(|_| INTERNAL)?;
         let s = g.as_ref().ok_or("Not signed in.")?;
@@ -225,7 +259,7 @@ pub fn auth_unlock(state: State<AppState>, password: String) -> Result<(), Strin
 }
 
 #[tauri::command]
-pub fn auth_lock(state: State<AppState>) -> Result<(), String> {
+pub fn auth_lock(state: HostState<'_>) -> Result<(), String> {
     let mut g = state.session.lock().map_err(|_| INTERNAL)?;
     if let Some(s) = g.as_mut() {
         s.locked = true;
@@ -234,13 +268,17 @@ pub fn auth_lock(state: State<AppState>) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-pub fn auth_logout(state: State<AppState>) -> Result<(), String> {
+pub fn logout(state: &AppState) -> Result<(), String> {
     let mut g = state.session.lock().map_err(|_| INTERNAL)?;
     if let Some(s) = g.take() {
-        audit_state(&state, s.user_id, "logout");
+        audit_state(state, s.user_id, "logout");
     }
     Ok(())
+}
+
+#[tauri::command]
+pub fn auth_logout(state: HostState<'_>) -> Result<(), String> {
+    logout(&state)
 }
 
 #[derive(Serialize, Deserialize)]
@@ -265,10 +303,13 @@ pub struct CompanyProfile {
     pub letterhead_style: String,
 }
 
-#[tauri::command]
-pub fn company_get_profile(state: State<AppState>) -> Result<CompanyProfile, String> {
-    require(&state, Permission::View)?;
+pub fn read_profile(state: &AppState) -> Result<CompanyProfile, String> {
+    require(state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    read_profile_row(&conn)
+}
+
+fn read_profile_row(conn: &Connection) -> Result<CompanyProfile, String> {
     conn.query_row(
         "SELECT name, address, email, phone, pan, gstin, coa_registration, bank_details, gst_scheme, upi_id, architect_name, letterhead_style FROM company_profile WHERE id = 1",
         [],
@@ -293,7 +334,13 @@ pub fn company_get_profile(state: State<AppState>) -> Result<CompanyProfile, Str
 }
 
 #[tauri::command]
-pub fn company_save_profile(state: State<AppState>, profile: CompanyProfile) -> Result<(), String> {
+pub fn company_get_profile(state: HostState<'_>) -> Result<CompanyProfile, String> {
+    require(&state, Permission::View)?;
+    read_profile(&state)
+}
+
+#[tauri::command]
+pub fn company_save_profile(state: HostState<'_>, profile: CompanyProfile) -> Result<(), String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     conn.execute(

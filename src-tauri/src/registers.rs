@@ -5,13 +5,12 @@
 use crate::auth::Permission;
 use crate::bank::TxnRow;
 use crate::billing::{fmt_inr, parse_decimal, InvoiceRow};
-use crate::commands::{require, AppState, INTERNAL};
+use crate::commands::{HostState, require, INTERNAL};
 use crate::documents::DocRow;
 use crate::ledger::JournalRow;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use tauri::State;
 
 #[derive(Deserialize, Clone, Default)]
 pub struct PageQuery {
@@ -294,21 +293,21 @@ pub fn page_audit(conn: &Connection, q: &PageQuery) -> Result<Page<AuditPageRow>
 // ---------- commands ----------
 
 #[tauri::command]
-pub fn bank_txn_page(state: State<AppState>, query: PageQuery) -> Result<Page<TxnRow>, String> {
+pub fn bank_txn_page(state: HostState<'_>, query: PageQuery) -> Result<Page<TxnRow>, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     page_txns(&conn, &query)
 }
 
 #[tauri::command]
-pub fn journal_page(state: State<AppState>, query: PageQuery) -> Result<Page<JournalRow>, String> {
+pub fn journal_page(state: HostState<'_>, query: PageQuery) -> Result<Page<JournalRow>, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     page_journals(&conn, &query)
 }
 
 #[tauri::command]
-pub fn invoice_page(state: State<AppState>, query: PageQuery) -> Result<Page<InvoiceRegisterRow>, String> {
+pub fn invoice_page(state: HostState<'_>, query: PageQuery) -> Result<Page<InvoiceRegisterRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     let today: String = conn.query_row("SELECT date('now')", [], |r| r.get(0)).map_err(|e| e.to_string())?;
@@ -316,14 +315,14 @@ pub fn invoice_page(state: State<AppState>, query: PageQuery) -> Result<Page<Inv
 }
 
 #[tauri::command]
-pub fn doc_page(state: State<AppState>, query: PageQuery) -> Result<Page<DocRow>, String> {
+pub fn doc_page(state: HostState<'_>, query: PageQuery) -> Result<Page<DocRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     page_docs(&conn, &query)
 }
 
 #[tauri::command]
-pub fn audit_page(state: State<AppState>, query: PageQuery) -> Result<Page<AuditPageRow>, String> {
+pub fn audit_page(state: HostState<'_>, query: PageQuery) -> Result<Page<AuditPageRow>, String> {
     require(&state, Permission::ViewAudit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     page_audit(&conn, &query)

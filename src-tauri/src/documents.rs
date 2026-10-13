@@ -4,12 +4,11 @@
 
 use crate::auth::Permission;
 use crate::billing::{allocate_number, esc, fmt_inr, parse_decimal, sha2_lite::sha256_hex, validate_date, InvoiceInput, LineInput};
-use crate::commands::{require, AppState, INTERNAL};
+use crate::commands::{HostState, require, INTERNAL};
 use crate::{db, pdf};
 use base64::Engine;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
-use tauri::State;
 
 // ---------- fields ----------
 
@@ -1050,27 +1049,27 @@ pub fn preview_template(conn: &Connection, body: &str, layout: &str, kind: &str,
 // ---------- commands ----------
 
 #[tauri::command]
-pub fn doc_fields(state: State<AppState>) -> Result<Vec<String>, String> {
+pub fn doc_fields(state: HostState<'_>) -> Result<Vec<String>, String> {
     require(&state, Permission::View)?;
     Ok(FIELDS.iter().map(|s| s.to_string()).collect())
 }
 
 #[tauri::command]
-pub fn doc_list(state: State<AppState>, kind: Option<String>, q: Option<String>) -> Result<Vec<DocRow>, String> {
+pub fn doc_list(state: HostState<'_>, kind: Option<String>, q: Option<String>) -> Result<Vec<DocRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list(&conn, kind.as_deref(), q.as_deref())
 }
 
 #[tauri::command]
-pub fn doc_get(state: State<AppState>, id: i64) -> Result<DocDetail, String> {
+pub fn doc_get(state: HostState<'_>, id: i64) -> Result<DocDetail, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     get(&conn, id)
 }
 
 #[tauri::command]
-pub fn doc_save_draft(state: State<AppState>, input: DocInput) -> Result<i64, String> {
+pub fn doc_save_draft(state: HostState<'_>, input: DocInput) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     let id = save_draft(&mut conn, uid, &input)?;
@@ -1079,56 +1078,56 @@ pub fn doc_save_draft(state: State<AppState>, input: DocInput) -> Result<i64, St
 }
 
 #[tauri::command]
-pub fn doc_issue(state: State<AppState>, id: i64) -> Result<String, String> {
+pub fn doc_issue(state: HostState<'_>, id: i64) -> Result<String, String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     issue(&mut conn, uid, id)
 }
 
 #[tauri::command]
-pub fn doc_register_inward(state: State<AppState>, input: InwardInput) -> Result<String, String> {
+pub fn doc_register_inward(state: HostState<'_>, input: InwardInput) -> Result<String, String> {
     let uid = require(&state, Permission::Edit)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     Ok(register_inward(&mut conn, uid, &input)?.1)
 }
 
 #[tauri::command]
-pub fn doc_pdf(state: State<AppState>, id: i64) -> Result<String, String> {
+pub fn doc_pdf(state: HostState<'_>, id: i64) -> Result<String, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     Ok(base64::engine::general_purpose::STANDARD.encode(pdf_bytes(&conn, id)?))
 }
 
 #[tauri::command]
-pub fn doc_revise(state: State<AppState>, id: i64) -> Result<i64, String> {
+pub fn doc_revise(state: HostState<'_>, id: i64) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     revise(&mut conn, uid, id)
 }
 
 #[tauri::command]
-pub fn doc_mark_signed(state: State<AppState>, id: i64) -> Result<(), String> {
+pub fn doc_mark_signed(state: HostState<'_>, id: i64) -> Result<(), String> {
     let uid = require(&state, Permission::Issue)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     mark_signed(&conn, uid, id)
 }
 
 #[tauri::command]
-pub fn doc_cancel(state: State<AppState>, id: i64, reason: String) -> Result<(), String> {
+pub fn doc_cancel(state: HostState<'_>, id: i64, reason: String) -> Result<(), String> {
     let uid = require(&state, Permission::Issue)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     cancel(&conn, uid, id, &reason)
 }
 
 #[tauri::command]
-pub fn doc_bill_milestone(state: State<AppState>, milestone_id: i64, invoice_date: String) -> Result<i64, String> {
+pub fn doc_bill_milestone(state: HostState<'_>, milestone_id: i64, invoice_date: String) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     bill_milestone(&mut conn, uid, milestone_id, &invoice_date)
 }
 
 #[tauri::command]
-pub fn doc_attach(state: State<AppState>, doc_id: i64, kind: String, filename: String, base64_data: String) -> Result<i64, String> {
+pub fn doc_attach(state: HostState<'_>, doc_id: i64, kind: String, filename: String, base64_data: String) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let data = base64::engine::general_purpose::STANDARD.decode(base64_data.as_bytes()).map_err(|_| "The file could not be read.".to_string())?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
@@ -1136,7 +1135,7 @@ pub fn doc_attach(state: State<AppState>, doc_id: i64, kind: String, filename: S
 }
 
 #[tauri::command]
-pub fn doc_attachments(state: State<AppState>, doc_id: i64) -> Result<Vec<AttachmentRow>, String> {
+pub fn doc_attachments(state: HostState<'_>, doc_id: i64) -> Result<Vec<AttachmentRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list_attachments(&conn, doc_id)
@@ -1149,7 +1148,7 @@ pub struct AttachmentData {
 }
 
 #[tauri::command]
-pub fn doc_attachment_data(state: State<AppState>, id: i64) -> Result<AttachmentData, String> {
+pub fn doc_attachment_data(state: HostState<'_>, id: i64) -> Result<AttachmentData, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     let (filename, bytes) = attachment_bytes(&conn, id)?;
@@ -1157,49 +1156,49 @@ pub fn doc_attachment_data(state: State<AppState>, id: i64) -> Result<Attachment
 }
 
 #[tauri::command]
-pub fn template_list(state: State<AppState>, kind: Option<String>, include_archived: Option<bool>) -> Result<Vec<TemplateRow>, String> {
+pub fn template_list(state: HostState<'_>, kind: Option<String>, include_archived: Option<bool>) -> Result<Vec<TemplateRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list_templates(&conn, kind.as_deref(), include_archived.unwrap_or(false))
 }
 
 #[tauri::command]
-pub fn template_versions_list(state: State<AppState>, template_id: i64) -> Result<Vec<VersionRow>, String> {
+pub fn template_versions_list(state: HostState<'_>, template_id: i64) -> Result<Vec<VersionRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     template_versions(&conn, template_id)
 }
 
 #[tauri::command]
-pub fn template_create(state: State<AppState>, kind: String, family: String, layout: String, name: String, body: String) -> Result<i64, String> {
+pub fn template_create(state: HostState<'_>, kind: String, family: String, layout: String, name: String, body: String) -> Result<i64, String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     create_template(&mut conn, uid, &kind, &family, &layout, &name, &body)
 }
 
 #[tauri::command]
-pub fn template_duplicate(state: State<AppState>, template_id: i64, name: String) -> Result<i64, String> {
+pub fn template_duplicate(state: HostState<'_>, template_id: i64, name: String) -> Result<i64, String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     duplicate_template(&mut conn, uid, template_id, &name)
 }
 
 #[tauri::command]
-pub fn template_set_archived(state: State<AppState>, template_id: i64, archived: bool) -> Result<(), String> {
+pub fn template_set_archived(state: HostState<'_>, template_id: i64, archived: bool) -> Result<(), String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     set_template_archived(&conn, uid, template_id, archived)
 }
 
 #[tauri::command]
-pub fn template_publish(state: State<AppState>, template_id: i64, body: String) -> Result<i64, String> {
+pub fn template_publish(state: HostState<'_>, template_id: i64, body: String) -> Result<i64, String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     publish_template(&mut conn, uid, template_id, &body)
 }
 
 #[tauri::command]
-pub fn template_preview(state: State<AppState>, body: String, layout: String, kind: String, name: String) -> Result<Preview, String> {
+pub fn template_preview(state: HostState<'_>, body: String, layout: String, kind: String, name: String) -> Result<Preview, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     preview_template(&conn, &body, &layout, &kind, &name)

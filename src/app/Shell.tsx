@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  Content, ContainedList, ContainedListItem, GlobalTheme, Header, HeaderGlobalAction, HeaderGlobalBar, HeaderMenuButton, HeaderName, HeaderPanel, Modal, Search,
+  Button, Content, ContainedList, ContainedListItem, GlobalTheme, Header, HeaderGlobalAction, HeaderGlobalBar, HeaderMenuButton, HeaderName, HeaderPanel, InlineNotification, Modal, Search,
   SideNav, SideNavItems, SideNavMenu, SideNavMenuItem, SkipToContent, Switcher, SwitcherDivider, SwitcherItem,
 } from "@carbon/react";
 import { Calculator, Folder, Receipt, Search as SearchIcon, Settings } from "@carbon/icons-react";
@@ -8,6 +8,8 @@ import { api, type AuthStatus } from "../api";
 import { DensityContext, usePersisted, type Density } from "../design/density";
 import { GroupContext } from "../components/PageHeader";
 import { DialogHost, confirmDialog } from "../components/dialogs";
+import { UnsavedProvider, useLeaveGuard, useRunSave } from "./unsaved";
+import { computerFinancialYear, headerFinancialYear, todayIso } from "./financialYear";
 import ClientsPage from "../features/clients/ClientsPage";
 import ProjectsPage from "../features/projects/ProjectsPage";
 import InvoicesPage from "../features/invoices/InvoicesPage";
@@ -44,12 +46,6 @@ const NAV: NavItem[] = [
   { id: "settings", label: "Security, users and backup", group: "Settings", keywords: "password users audit backup restore lock" },
 ];
 
-function financialYear(): string {
-  const d = new Date();
-  const y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
-  return `${y}-${String((y + 1) % 100).padStart(2, "0")}`;
-}
-
 type PaletteItem = { label: string; hint: string; run: () => void };
 
 function Palette({ open, items, onClose }: { open: boolean; items: PaletteItem[]; onClose: () => void }) {
@@ -72,7 +68,7 @@ function Palette({ open, items, onClose }: { open: boolean; items: PaletteItem[]
   );
 }
 
-export default function Shell({ status, refresh }: { status: AuthStatus; refresh: () => void }) {
+function ShellView({ status, refresh }: { status: AuthStatus; refresh: () => void }) {
   const role = status.user?.role ?? "";
   const [density, setDensity] = usePersisted<Density>("ao.density", "compact");
   const [page, setPage] = usePersisted<string>("ao.page", "documents");
@@ -80,35 +76,58 @@ export default function Shell({ status, refresh }: { status: AuthStatus; refresh
   const [panelOpen, setPanelOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [company, setCompany] = useState("");
+  const [fyLabel, setFyLabel] = useState(() => computerFinancialYear());
+  const leave = useLeaveGuard();
+  const runSave = useRunSave();
 
   const current = NAV.find((n) => n.id === page) ?? NAV[0];
   const loadCompany = useCallback(() => { api.companyGet().then((c) => setCompany(c.name)).catch(() => setCompany("")); }, []);
   useEffect(loadCompany, [loadCompany, page]);
 
   useEffect(() => {
+    let cancel = false;
+    api.periodList()
+      .then((rows) => { if (!cancel) setFyLabel(headerFinancialYear(rows, todayIso(), computerFinancialYear())); })
+      .catch(() => { if (!cancel) setFyLabel(computerFinancialYear()); });
+    return () => { cancel = true; };
+  }, [status.company?.uuid]);
+
+  const go = useCallback(async (id: string) => {
+    if (id === page) return;
+    if (!(await leave())) return;
+    setPage(id);
+  }, [page, leave, setPage]);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaletteOpen((o) => !o); }
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const key = e.key.toLowerCase();
+      if (key === "k") { e.preventDefault(); setPaletteOpen((o) => !o); }
+      if (key === "s") {
+        e.preventDefault();
+        if (document.querySelector("[role='dialog']")) return;
+        runSave();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [runSave]);
 
-  const lock = async () => { await api.authLock(); refresh(); };
-  const logout = async () => { await api.authLogout(); refresh(); };
-  const closeCompany = async () => {
+  const lock = useCallback(async () => { await api.authLock(); refresh(); }, [refresh]);
+  const logout = useCallback(async () => { await api.authLogout(); refresh(); }, [refresh]);
+  const closeCompany = useCallback(async () => {
     if (!(await confirmDialog(`Close ${status.company?.name ?? "this company"}? Anything you are typing that is not saved will be lost.`))) return;
     await api.companyClose();
     refresh();
-  };
+  }, [status.company?.name, refresh]);
 
   const paletteItems: PaletteItem[] = useMemo(() => [
-    ...NAV.map((n) => ({ label: n.label, hint: n.group, run: () => setPage(n.id) })),
-    { label: "Lock the screen", hint: "Command", run: lock },
-    { label: "Log out", hint: "Command", run: logout },
-    { label: "Close company", hint: "Command", run: closeCompany },
+    ...NAV.map((n) => ({ label: n.label, hint: n.group, run: () => { void go(n.id); } })),
+    { label: "Lock the screen", hint: "Command", run: () => { void lock(); } },
+    { label: "Log out", hint: "Command", run: () => { void logout(); } },
+    { label: "Close company", hint: "Command", run: () => { void closeCompany(); } },
     ...(["compact", "comfortable", "expanded"] as Density[]).map((d) => ({ label: `Table size: ${d}`, hint: "Command", run: () => setDensity(d) })),
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], []);
+  ], [go, lock, logout, closeCompany, setDensity]);
 
   const body: Record<string, ReactNode> = {
     documents: <DocumentsPage />,
@@ -139,7 +158,7 @@ export default function Shell({ status, refresh }: { status: AuthStatus; refresh
         <Header aria-label="ADMS">
           <SkipToContent />
           <HeaderMenuButton aria-label={navOpen ? "Close navigation" : "Open navigation"} isCollapsible onClick={() => setNavOpen(!navOpen)} isActive={navOpen} />
-          <HeaderName href="#" prefix="ADMS" onClick={(e: { preventDefault: () => void }) => e.preventDefault()}>{company || "Company not set up"} · FY {financialYear()}</HeaderName>
+          <HeaderName href="#" prefix="ADMS" onClick={(e: { preventDefault: () => void }) => e.preventDefault()}>{company || "Company not set up"} · FY {fyLabel}</HeaderName>
           <HeaderGlobalBar>
             <HeaderGlobalAction aria-label="Go to page or command (Ctrl+K)" tooltipAlignment="end" onClick={() => setPaletteOpen(true)}><SearchIcon size={20} /></HeaderGlobalAction>
             <HeaderGlobalAction aria-label="Preferences and session" tooltipAlignment="end" isActive={panelOpen} onClick={() => setPanelOpen(!panelOpen)}><Settings size={20} /></HeaderGlobalAction>
@@ -167,7 +186,7 @@ export default function Shell({ status, refresh }: { status: AuthStatus; refresh
               <SideNavMenu key={g} title={g} renderIcon={GROUP_ICON[g as keyof typeof GROUP_ICON]} defaultExpanded isActive={current.group === g}>
                 {NAV.filter((n) => n.group === g).map((n) => (
                   <SideNavMenuItem key={n.id} href="#" isActive={n.id === current.id} aria-current={n.id === current.id ? "page" : undefined}
-                    onClick={(e: { preventDefault: () => void }) => { e.preventDefault(); setPage(n.id); }}>
+                    onClick={(e: { preventDefault: () => void }) => { e.preventDefault(); void go(n.id); }}>
                     {n.label}
                   </SideNavMenuItem>
                 ))}
@@ -178,7 +197,12 @@ export default function Shell({ status, refresh }: { status: AuthStatus; refresh
 
         <Content id="main-content" key={current.id}>
           <GroupContext.Provider value={current.group}>
-            {accountingBlocked ? <p>Accounting is not available for your role.</p> : body[current.id]}
+            {accountingBlocked ? (
+              <>
+                <InlineNotification kind="info" lowContrast hideCloseButton title="Accounting is not available for your role." subtitle="Letters, clients, projects, and templates stay available." />
+                <Button size="sm" onClick={() => setPage("documents")}>Go to letters and agreements</Button>
+              </>
+            ) : body[current.id]}
           </GroupContext.Provider>
         </Content>
 
@@ -187,4 +211,8 @@ export default function Shell({ status, refresh }: { status: AuthStatus; refresh
       </DensityContext.Provider>
     </GlobalTheme>
   );
+}
+
+export default function Shell(props: { status: AuthStatus; refresh: () => void }) {
+  return <UnsavedProvider><ShellView {...props} /></UnsavedProvider>;
 }

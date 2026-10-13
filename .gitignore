@@ -21,4 +21,9 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
+!native/Adms.sln
 *.sw?
+
+# Native WinUI build output
+native/**/bin/
+native/**/obj/

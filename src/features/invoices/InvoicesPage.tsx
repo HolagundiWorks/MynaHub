@@ -17,6 +17,7 @@ import DataTable, { type Column } from "../../components/data-table/DataTable";
 import { useServerTable } from "../../components/data-table/useServerTable";
 import RowMenu, { type MenuItem } from "../../components/data-table/RowMenu";
 import { Add, Money, Save } from "@carbon/icons-react";
+import { DraftGuard, DraftSave } from "../../app/unsaved";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -38,6 +39,7 @@ export default function InvoicesPage() {
   const [calcError, setCalcError] = useState("");
   const [error, setError] = useState("");
   const [pdf, setPdf] = useState<string | null>(null);
+  const [cleanToken, setCleanToken] = useState(0);
   const calcSeq = useRef(0);
 
   const [kindFilter, setKindFilter] = useState("");
@@ -80,6 +82,7 @@ export default function InvoicesPage() {
     try {
       const id = await api.invoiceSaveDraft(draft);
       setDraft({ ...draft, id });
+      setCleanToken((n) => n + 1);
       setError("");
       return id;
     } catch (e) { setError(errorText(e)); return null; }
@@ -97,6 +100,8 @@ export default function InvoicesPage() {
       set("lines", draft.lines.map((l, j) => (j === i ? { ...l, [k]: v } : l)));
     return (
       <Form className="ao-form" onSubmit={(e) => e.preventDefault()}>
+        <DraftGuard value={draft} cleanToken={cleanToken} enabled={!locked} />
+        <DraftSave enabled={!locked} save={() => { void save(); }} />
         <Stack gap={5}>
           <h3>{locked ? `${draft.kind === "proforma" ? "Pro forma" : "Invoice"} ${status?.number}` : `${draft.id ? "Edit" : "New"} ${draft.kind === "proforma" ? "pro forma invoice" : "invoice"}`}</h3>
           <Select size="sm" id="i-project" labelText="Project" value={draft.project_id || ""} disabled={locked}

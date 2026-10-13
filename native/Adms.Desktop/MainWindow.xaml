@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Adms.Desktop.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="ADMS">
+    <Grid x:Name="Root" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="Escape" Invoked="DismissNotice"/>
+            <KeyboardAccelerator Key="N" Modifiers="Control" Invoked="NewCommand"/>
+            <KeyboardAccelerator Key="S" Modifiers="Control" Invoked="SaveCommand"/>
+            <KeyboardAccelerator Key="P" Modifiers="Control" Invoked="PrintCommand"/>
+            <KeyboardAccelerator Key="F" Modifiers="Control" Invoked="FindCommand"/>
+            <KeyboardAccelerator Key="K" Modifiers="Control" Invoked="GoToCommand"/>
+        </Grid.KeyboardAccelerators>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+        <MenuBar VerticalAlignment="Center">
+            <MenuBarItem Title="File" AccessKey="F">
+                <MenuFlyoutItem x:Name="NewCompanyItem" Text="New company" AccessKey="N" Click="CreateCompany"/>
+                <MenuFlyoutItem x:Name="OpenItem" Text="Open company" AccessKey="O" Click="OpenCompany">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="O" Modifiers="Control"/>
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="CloseItem" Text="Close company" AccessKey="C" Click="CloseCompany">
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="W" Modifiers="Control"/>
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator/>
+                <MenuFlyoutItem x:Name="LockItem" Text="Lock" Click="LockSession"/>
+                <MenuFlyoutItem x:Name="LogoutItem" Text="Log out" Click="LogOut"/>
+                <MenuFlyoutSeparator/>
+                <MenuFlyoutItem Text="Exit" AccessKey="X" Click="ExitApplication"/>
+            </MenuBarItem>
+            <MenuBarItem Title="Help" AccessKey="H">
+                <MenuFlyoutItem x:Name="PreviewItem" Text="Sample letterhead PDF" Click="GeneratePreview"/>
+                <MenuFlyoutItem Text="About" Click="ShowAbout"/>
+            </MenuBarItem>
+        </MenuBar>
+            <ToggleSwitch x:Name="ThemeSwitch" Grid.Column="1" Margin="12,0,16,0" VerticalAlignment="Center"
+                          OffContent="Light" OnContent="Dark" Toggled="ThemeToggled"/>
+        </Grid>
+
+        <InfoBar x:Name="Notice" Grid.Row="1" Margin="16,8,16,0" IsOpen="False" IsClosable="True" Severity="Error"/>
+
+        <Grid Grid.Row="2">
+            <ScrollViewer x:Name="WelcomePanel" Padding="24">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" MaxWidth="640">
+                    <TextBlock Text="ADMS" Style="{ThemeResource TitleTextBlockStyle}"/>
+                    <TextBlock Text="Architects Documents Management System. Create a company file or open an existing one. The file stays in the Rust engine." TextWrapping="WrapWholeWords"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="NewCompanyButton" Content="Create a new company" Click="CreateCompany"/>
+                        <Button x:Name="OpenCompanyButton" Content="Open an existing company" Click="OpenCompany"/>
+                    </StackPanel>
+                    <InfoBar x:Name="LegacyNotice" IsOpen="False" IsClosable="False" Severity="Informational"
+                             Title="Data from the earlier version was found on this computer."
+                             Message="Convert it into a company file. The original is left untouched.">
+                        <InfoBar.ActionButton>
+                            <Button Content="Convert" Click="ConvertLegacy"/>
+                        </InfoBar.ActionButton>
+                    </InfoBar>
+                    <TextBlock x:Name="RecentHeading" Text="Recent companies" Style="{ThemeResource BodyStrongTextBlockStyle}" Visibility="Collapsed"/>
+                    <ListView x:Name="RecentList" SelectionMode="None">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnSpacing="12" Padding="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Name}"/>
+                                        <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" Opacity="0.7"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <Button Content="Open" Click="OpenRecent" Tag="{Binding}" IsEnabled="{Binding Exists}"/>
+                                        <Button Content="Remove" Click="RemoveRecent" Tag="{Binding}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </StackPanel>
+            </ScrollViewer>
+
+            <ScrollViewer x:Name="LoginPanel" Visibility="Collapsed" Padding="24">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" Width="380">
+                    <TextBlock x:Name="LoginHeading" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+                    <TextBox x:Name="UsernameBox" Header="Username" PlaceholderText="Username"/>
+                    <PasswordBox x:Name="PasswordBox" Header="Password" KeyDown="PasswordKeyDown"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="SignInButton" Content="Sign in" Click="SignIn"/>
+                        <Button x:Name="SwitchFromLogin" Content="Switch company" Click="CloseCompany"/>
+                    </StackPanel>
+                    <Button x:Name="ForgotButton" Content="Forgot password? Use recovery code" Click="ShowRecover"/>
+                </StackPanel>
+            </ScrollViewer>
+
+            <ScrollViewer x:Name="SetupPanel" Visibility="Collapsed" Padding="24">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" Width="380">
+                    <TextBlock x:Name="SetupHeading" Style="{ThemeResource SubtitleTextBlockStyle}" Text="Set up the owner account"/>
+                    <TextBlock Text="This company has no users yet. The recovery code is shown once." TextWrapping="WrapWholeWords"/>
+                    <TextBox x:Name="SetupUser" Header="Username"/>
+                    <PasswordBox x:Name="SetupPassword" Header="Password (12 or more characters)"/>
+                    <PasswordBox x:Name="SetupConfirm" Header="Confirm password" KeyDown="SetupKeyDown"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="SetupButton" Content="Create account" Click="CreateOwner"/>
+                        <Button Content="Switch company" Click="CloseCompany"/>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <ScrollViewer x:Name="RecoverPanel" Visibility="Collapsed" Padding="24">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" Width="380">
+                    <TextBlock Style="{ThemeResource SubtitleTextBlockStyle}" Text="Reset password"/>
+                    <TextBlock Text="The old recovery code stops working. A new one is shown once." TextWrapping="WrapWholeWords"/>
+                    <TextBox x:Name="RecoverUser" Header="Username"/>
+                    <TextBox x:Name="RecoverCode" Header="Recovery code"/>
+                    <PasswordBox x:Name="RecoverPassword" Header="New password (12 or more characters)"/>
+                    <PasswordBox x:Name="RecoverConfirm" Header="Confirm new password" KeyDown="RecoverKeyDown"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="RecoverButton" Content="Reset password" Click="ResetPassword"/>
+                        <Button Content="Back to sign in" Click="BackToSignIn"/>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <ScrollViewer x:Name="UnlockPanel" Visibility="Collapsed" Padding="24">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" Width="380">
+                    <TextBlock x:Name="UnlockHeading" Style="{ThemeResource SubtitleTextBlockStyle}" Text="Session locked"/>
+                    <PasswordBox x:Name="UnlockPassword" Header="Password" KeyDown="UnlockKeyDown"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="UnlockButton" Content="Unlock" Click="Unlock"/>
+                        <Button Content="Switch company" Click="CloseCompany"/>
+                    </StackPanel>
+                    <Button Content="Use recovery code" Click="ShowRecover"/>
+                </StackPanel>
+            </ScrollViewer>
+
+            <Grid x:Name="WorkspaceHost" Visibility="Collapsed"/>
+        </Grid>
+
+        <Grid Grid.Row="3" Padding="24,8,24,16" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <ProgressRing x:Name="BusyRing" Width="20" Height="20" IsActive="False"/>
+            <TextBlock x:Name="StatusText" Grid.Column="1" VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+        </Grid>
+    </Grid>
+</Window>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useDraftSave, useUnsaved } from "../../app/unsaved";
 import { Button, Form, InlineNotification, Select, SelectItem, Stack, TextArea, TextInput } from "@carbon/react";
 import { api, errorText, type CompanyProfile } from "../../api";
 import PageHeader from "../../components/PageHeader";
@@ -16,6 +17,14 @@ export default function CompanyPage() {
   useEffect(() => { api.companyGet().then((p) => { setProfile(p); setLoaded(true); }).catch((e) => setError(errorText(e))); }, []);
 
   const set = (patch: Partial<CompanyProfile>) => { setProfile({ ...profile, ...patch }); setDirty(true); setOk(""); };
+  useUnsaved(dirty);
+  const save = async () => {
+    if (saving || !dirty) return;
+    setSaving(true);
+    try { await api.companySave(profile); setOk("Saved."); setDirty(false); setError(""); } catch (err) { setError(errorText(err)); setOk(""); }
+    setSaving(false);
+  };
+  useDraftSave(loaded ? () => { void save(); } : null);
   const field = (key: keyof CompanyProfile, label: string, extra?: { placeholder?: string }) => (
     <TextInput size="sm" id={key} labelText={label} placeholder={extra?.placeholder} value={profile[key]} onChange={(e) => set({ [key]: e.target.value } as Partial<CompanyProfile>)} />
   );
@@ -26,13 +35,7 @@ export default function CompanyPage() {
       {!loaded && !error && <p>Loading…</p>}
       {error && <InlineNotification kind="error" title="Could not load or save the profile" subtitle={error} hideCloseButton lowContrast />}
       {loaded && (
-        <Form className="ao-form" onSubmit={async (e) => {
-          e.preventDefault();
-          if (saving) return;
-          setSaving(true);
-          try { await api.companySave(profile); setOk("Saved."); setDirty(false); setError(""); } catch (err) { setError(errorText(err)); setOk(""); }
-          setSaving(false);
-        }}>
+        <Form className="ao-form" onSubmit={async (e) => { e.preventDefault(); await save(); }}>
           <Stack gap={5}>
             {field("name", "Firm name")}
             {field("architect_name", "Architect name (signature block)")}

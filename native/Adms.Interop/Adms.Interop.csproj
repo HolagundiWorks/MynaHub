@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>Adms.Interop</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\..\src-tauri\target\debug\architect_office_desktop_lib.dll"
+          Link="architect_office_desktop_lib.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          Visible="false"
+          Condition="Exists('$(MSBuildThisFileDirectory)..\..\src-tauri\target\debug\architect_office_desktop_lib.dll')" />
+  </ItemGroup>
+</Project>

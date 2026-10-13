@@ -13,6 +13,7 @@ import FilterSelect from "../../components/FilterSelect";
 import RowMenu from "../../components/data-table/RowMenu";
 import DataTable, { type Column } from "../../components/data-table/DataTable";
 import { askReason } from "../../components/dialogs";
+import { DraftGuard } from "../../app/unsaved";
 
 const FAMILY: Record<string, string> = { consultancy: "Consultancy", billing: "Billing and accounts", administration: "Project administration" };
 const LAYOUT: Record<string, string> = { letter: "Letter with addressee", record: "Titled record" };
@@ -133,6 +134,7 @@ export default function TemplatesPage({ role }: { role: string }) {
           setCreating(null); setBody(""); setError(""); load();
         } catch (err) { setError(errorText(err)); }
       }}>
+        <DraftGuard value={{ creating, body }} />
         <Stack gap={4}>
           <h3>New template</h3>
           <Select size="sm" id="nt-format" labelText="Format" value={creating.format} helperText="HTML templates are designed in the Template Studio with a code editor and live preview." onChange={(e) => setCreating({ ...creating, format: e.target.value as "wording" | "html" })}>

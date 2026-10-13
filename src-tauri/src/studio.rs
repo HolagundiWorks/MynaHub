@@ -1,14 +1,13 @@
 //! Template Studio: HTML/CSS templates with drafts, immutable published versions, validation and preview.
 //! The PDF is produced by the same renderer used for issued documents, from the same resolved HTML, so a preview is the real output.
 use crate::auth::Permission;
-use crate::commands::{require, AppState, INTERNAL};
+use crate::commands::{HostState, require, INTERNAL};
 use crate::template_engine::{self as eng, Diagnostic};
 use crate::{db, pdf};
 use base64::Engine;
 use rusqlite::{params, Connection};
 use serde::Serialize;
 use serde_json::{json, Value};
-use tauri::State;
 
 const SKELETON_HTML: &str = "<header class=\"document-header\">
   <div class=\"firm-name\">{{ company.name }}</div>
@@ -233,61 +232,61 @@ pub fn preview(conn: &Connection, html: &str, css: &str, profile: &str) -> Resul
 // ---------------------------------------------------------------- commands
 
 #[tauri::command]
-pub fn studio_fields(state: State<AppState>) -> Result<Vec<eng::FieldDef>, String> {
+pub fn studio_fields(state: HostState<'_>) -> Result<Vec<eng::FieldDef>, String> {
     require(&state, Permission::View)?;
     Ok(eng::FIELDS.to_vec())
 }
 
 #[tauri::command]
-pub fn studio_open(state: State<AppState>, template_id: i64) -> Result<StudioState, String> {
+pub fn studio_open(state: HostState<'_>, template_id: i64) -> Result<StudioState, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     open(&conn, template_id)
 }
 
 #[tauri::command]
-pub fn studio_validate(state: State<AppState>, html: String, css: String) -> Result<Vec<Diagnostic>, String> {
+pub fn studio_validate(state: HostState<'_>, html: String, css: String) -> Result<Vec<Diagnostic>, String> {
     require(&state, Permission::View)?;
     Ok(eng::validate(&html, &css))
 }
 
 #[tauri::command]
-pub fn studio_preview(state: State<AppState>, html: String, css: String, profile: String) -> Result<StudioPreview, String> {
+pub fn studio_preview(state: HostState<'_>, html: String, css: String, profile: String) -> Result<StudioPreview, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     preview(&conn, &html, &css, &profile)
 }
 
 #[tauri::command]
-pub fn studio_save_draft(state: State<AppState>, template_id: i64, html: String, css: String) -> Result<(), String> {
+pub fn studio_save_draft(state: HostState<'_>, template_id: i64, html: String, css: String) -> Result<(), String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     save_draft(&conn, uid, template_id, &html, &css)
 }
 
 #[tauri::command]
-pub fn studio_publish(state: State<AppState>, template_id: i64, summary: String) -> Result<i64, String> {
+pub fn studio_publish(state: HostState<'_>, template_id: i64, summary: String) -> Result<i64, String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     publish(&mut conn, uid, template_id, &summary)
 }
 
 #[tauri::command]
-pub fn studio_restore(state: State<AppState>, template_id: i64, version: i64) -> Result<(), String> {
+pub fn studio_restore(state: HostState<'_>, template_id: i64, version: i64) -> Result<(), String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     restore(&conn, uid, template_id, version)
 }
 
 #[tauri::command]
-pub fn studio_discard_draft(state: State<AppState>, template_id: i64) -> Result<(), String> {
+pub fn studio_discard_draft(state: HostState<'_>, template_id: i64) -> Result<(), String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     discard_draft(&conn, uid, template_id)
 }
 
 #[tauri::command]
-pub fn studio_create(state: State<AppState>, name: String, family: String, kind: String) -> Result<i64, String> {
+pub fn studio_create(state: HostState<'_>, name: String, family: String, kind: String) -> Result<i64, String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     create_blank(&mut conn, uid, &name, &family, &kind)

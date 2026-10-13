@@ -4,6 +4,7 @@ import {
 } from "@carbon/react";
 import { api, errorText, type CreditNoteRow, type LineInput, type Totals } from "../../api";
 import { confirmDialog } from "../../components/dialogs";
+import { DraftGuard } from "../../app/unsaved";
 import PdfViewer from "../../components/PdfViewer";
 import { ArrowLeft, Document } from "@carbon/icons-react";
 
@@ -19,6 +20,7 @@ export default function CreditNotePanel({ invoiceId, number, onClose }: { invoic
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
   const [pdf, setPdf] = useState<string | null>(null);
+  const [cleanToken, setCleanToken] = useState(0);
 
   const load = () => api.creditNoteList(invoiceId).then(setNotes).catch((e) => setError(errorText(e)));
   useEffect(() => { load(); }, [invoiceId]);
@@ -40,9 +42,10 @@ export default function CreditNotePanel({ invoiceId, number, onClose }: { invoic
       if (!(await confirmDialog("Issue this credit note? It cannot be edited afterwards."))) return;
       try {
         const n = await api.creditNoteIssue(invoiceId, date, reason, lines);
-        setOk(`Issued ${n}.`); setError(""); setReason(""); setLines([{ description: "", qty: "1", rate: "" }]); load();
+        setOk(`Issued ${n}.`); setError(""); setReason(""); setLines([{ description: "", qty: "1", rate: "" }]); setCleanToken((t) => t + 1); load();
       } catch (err) { setError(errorText(err)); setOk(""); }
     }}>
+      <DraftGuard value={{ date, reason, lines }} cleanToken={cleanToken} />
       <Stack gap={5}>
         <h3>Credit notes — {number}</h3>
         {notes.length > 0 && (

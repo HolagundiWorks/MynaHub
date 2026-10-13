@@ -8,6 +8,7 @@ import { api, errorText, type FieldDef, type StudioDiagnostic, type StudioPrevie
 import CodeEditor, { type CodeEditorHandle } from "../../components/CodeEditor";
 import PdfViewer from "../../components/PdfViewer";
 import { askReason, confirmDialog } from "../../components/dialogs";
+import { useDraftSave, useUnsaved } from "../../app/unsaved";
 
 const FAMILY: Record<string, string> = { consultancy: "Consultancy", billing: "Billing and accounts", administration: "Project administration" };
 const MODES = ["code", "preview", "fields"] as const;
@@ -103,6 +104,7 @@ export default function StudioPage({ templateId, role, onBack, onOpenOther }: { 
 
   const canEdit = role === "Owner" && !!studio && !studio.built_in && !studio.archived;
   const dirty = !!studio && (html !== baseline.html || css !== baseline.css);
+  useUnsaved(dirty);
 
   // Validation as you type (debounced), shown as markers in the editors and in the results list.
   useEffect(() => {
@@ -135,6 +137,7 @@ export default function StudioPage({ templateId, role, onBack, onOpenOther }: { 
   };
 
   const save = () => run(async () => { await api.studioSaveDraft(templateId, html, css); await reload(true); setOk("Draft saved."); });
+  useDraftSave(canEdit ? save : null);
   const publish = () => run(async () => {
     const summary = await askReason("What changed in this version?");
     if (summary === null) return;
