@@ -1,6 +1,6 @@
-# ADMS: Architects Documents Management System (desktop)
+# ADMS: Architects Documents Management System
 
-Local-first, offline desktop app for an architectural consultancy: documents, billing and accounting.
+Local-first, offline desktop app for an architectural consultancy: documents, billing and accounting. Developed by Human Centric Works.
 Built from `native_desktop_development_guidelines_with_login.md` (Tauri 2 + React + TypeScript + Vite + Carbon + Rust + SQLite).
 
 ## What is in it

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Button, Form, PasswordInput, Select, SelectItem, Stack, TableCell, TableRow, TextInput } from "@carbon/react";
 import {
   api, errorText, type AccountRow, type AssetRow, type ExpenseRow, type IncomeRow, type JournalLineRow, type JournalRow, type PayrollRow, type PeriodRow, type Vendor, type Property,
@@ -13,6 +13,7 @@ import { useServerTable } from "../../components/data-table/useServerTable";
 import { Grid, Notice, PaySelect, currentFy, inr, today, useLoad } from "./shared";
 import { Add, ArrowLeft } from "@carbon/icons-react";
 import { DraftGuard } from "../../app/unsaved";
+import { useCreateIntent } from "../../app/intent";
 
 const canPostRole = (role: string) => role === "Owner" || role === "Accounts";
 
@@ -298,6 +299,8 @@ export function ExpensesSection({ role }: { role: string }) {
   const canPost = canPostRole(role);
   const { data: rows, loading, error: loadError, reload } = useLoad(() => api.expenseList(), [] as ExpenseRow[]);
   const [view, setView] = useState<"list" | "new" | { pay: ExpenseRow }>("list");
+  const openNew = useCallback(() => { if (canPost) setView("new"); }, [canPost]);
+  useCreateIntent("acc-expenses", openNew);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [vname, setVname] = useState("");

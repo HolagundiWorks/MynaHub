@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Windows.UI;
+using Windows.UI.ViewManagement;
 
 namespace Adms.Desktop;
 
@@ -45,13 +46,49 @@ internal static class AppTheme
         File.WriteAllText(FilePath, JsonSerializer.Serialize(new SavedTheme { Theme = name }));
     }
 
+    public static bool InHighContrast => new AccessibilitySettings().HighContrast;
+
+    public static ElementTheme Active { get; private set; } = ElementTheme.Light;
+
+    public static string ActiveDictionary =>
+        InHighContrast ? "HighContrast" : Active == ElementTheme.Dark ? "Dark" : "Light";
+
     public static void Apply(FrameworkElement root, AppWindow window, nint hwnd, ElementTheme theme)
     {
+        root.HighContrastAdjustment = ElementHighContrastAdjustment.Auto;
+        if (InHighContrast)
+        {
+            Active = ElementTheme.Default;
+            root.RequestedTheme = ElementTheme.Default;
+            ResetTitleBar(window);
+            ResetFrame(hwnd);
+            return;
+        }
         if (theme == ElementTheme.Default)
             theme = ElementTheme.Light;
+        Active = theme;
         root.RequestedTheme = theme;
         ApplyTitleBar(window, theme);
         ApplyFrame(hwnd, theme == ElementTheme.Dark);
+    }
+
+    private static void ResetTitleBar(AppWindow window)
+    {
+        if (!AppWindowTitleBar.IsCustomizationSupported())
+            return;
+        var titleBar = window.TitleBar;
+        titleBar.BackgroundColor = null;
+        titleBar.ForegroundColor = null;
+        titleBar.InactiveBackgroundColor = null;
+        titleBar.InactiveForegroundColor = null;
+        titleBar.ButtonBackgroundColor = null;
+        titleBar.ButtonForegroundColor = null;
+        titleBar.ButtonHoverBackgroundColor = null;
+        titleBar.ButtonHoverForegroundColor = null;
+        titleBar.ButtonPressedBackgroundColor = null;
+        titleBar.ButtonPressedForegroundColor = null;
+        titleBar.ButtonInactiveBackgroundColor = null;
+        titleBar.ButtonInactiveForegroundColor = null;
     }
 
     public static void ApplyTitleBar(AppWindow window, ElementTheme theme)
@@ -63,11 +100,11 @@ internal static class AppTheme
         var titleBar = window.TitleBar;
         titleBar.PreferredTheme = theme == ElementTheme.Dark ? TitleBarTheme.Dark : TitleBarTheme.Light;
         var dark = theme == ElementTheme.Dark;
-        var background = dark ? Color(32, 32, 32) : Color(243, 243, 243);
-        var foreground = dark ? Color(255, 255, 255) : Color(26, 26, 26);
-        var inactiveForeground = dark ? Color(160, 160, 160) : Color(110, 110, 110);
-        var hover = dark ? Color(48, 48, 48) : Color(229, 229, 229);
-        var pressed = dark ? Color(64, 64, 64) : Color(214, 214, 214);
+        var background = dark ? Color(28, 28, 26) : Color(240, 239, 234);
+        var foreground = dark ? Color(240, 239, 234) : Color(26, 26, 26);
+        var inactiveForeground = dark ? Color(183, 181, 174) : Color(95, 95, 95);
+        var hover = dark ? Color(42, 42, 39) : Color(231, 228, 220);
+        var pressed = dark ? Color(60, 59, 54) : Color(213, 210, 202);
         titleBar.BackgroundColor = background;
         titleBar.ForegroundColor = foreground;
         titleBar.InactiveBackgroundColor = background;
@@ -82,15 +119,25 @@ internal static class AppTheme
         titleBar.ButtonInactiveForegroundColor = inactiveForeground;
     }
 
+    private static void ResetFrame(nint hwnd)
+    {
+        if (hwnd == 0)
+            return;
+        var color = unchecked((int)0xFFFFFFFF);
+        _ = DwmSetWindowAttribute(hwnd, DwmCaptionColor, ref color, sizeof(int));
+        _ = DwmSetWindowAttribute(hwnd, DwmTextColor, ref color, sizeof(int));
+        _ = DwmSetWindowAttribute(hwnd, DwmBorderColor, ref color, sizeof(int));
+    }
+
     private static void ApplyFrame(nint hwnd, bool dark)
     {
         if (hwnd == 0)
             return;
         var immersive = dark ? 1 : 0;
         _ = DwmSetWindowAttribute(hwnd, DwmUseImmersiveDarkMode, ref immersive, sizeof(int));
-        var caption = dark ? ColorRef(32, 32, 32) : ColorRef(243, 243, 243);
-        var text = dark ? ColorRef(255, 255, 255) : ColorRef(26, 26, 26);
-        var border = dark ? ColorRef(45, 45, 45) : ColorRef(218, 218, 218);
+        var caption = dark ? ColorRef(28, 28, 26) : ColorRef(240, 239, 234);
+        var text = dark ? ColorRef(240, 239, 234) : ColorRef(26, 26, 26);
+        var border = dark ? ColorRef(60, 59, 54) : ColorRef(213, 210, 202);
         _ = DwmSetWindowAttribute(hwnd, DwmCaptionColor, ref caption, sizeof(int));
         _ = DwmSetWindowAttribute(hwnd, DwmTextColor, ref text, sizeof(int));
         _ = DwmSetWindowAttribute(hwnd, DwmBorderColor, ref border, sizeof(int));

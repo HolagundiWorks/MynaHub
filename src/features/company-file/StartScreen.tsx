@@ -4,6 +4,7 @@ import {
   ActionableNotification, Button, ContainedList, ContainedListItem, Form, InlineNotification, Modal, PasswordInput, Stack, TextInput, Tile,
 } from "@carbon/react";
 import { api, errorText, type FileCheck, type RecentCompany } from "../../api";
+import { PRODUCT, PRODUCT_FULL, ProductCredit } from "../../brand";
 import { Add, Folder, FolderOpen } from "@carbon/icons-react";
 
 // New files use .adms; files saved by earlier builds (.aorms) are the same format and still open.
@@ -156,8 +157,9 @@ export default function StartScreen({ onOpened }: { onOpened: () => void }) {
       <Tile className="panel ao-start">
         <Stack gap={5}>
           <div>
-            <h1>ADMS</h1>
-            <p className="ao-muted">Architects Documents Management System. Create a company file or open an existing one.</p>
+            <h1>{PRODUCT}</h1>
+            <p className="ao-muted">{PRODUCT_FULL}. Create a company file or open an existing one.</p>
+            <ProductCredit />
           </div>
           <div className="ao-actions">
             <Button renderIcon={Add} size="md" onClick={() => setCreating(true)}>Create a new company</Button>

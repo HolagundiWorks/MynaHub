@@ -13,6 +13,7 @@ import RowMenu, { type MenuItem } from "../../components/data-table/RowMenu";
 import { useServerTable } from "../../components/data-table/useServerTable";
 import { Add, ArrowLeft, Edit, Link, Upload } from "@carbon/icons-react";
 import { DraftGuard } from "../../app/unsaved";
+import { useCreateIntent } from "../../app/intent";
 
 const inr = (paise: number) => (paise / 100).toLocaleString("en-IN", { style: "currency", currency: "INR" });
 const TDS_SECTIONS = ["194J", "194C-1", "194C-2", "194M", "Other"];
@@ -197,6 +198,12 @@ function ManualView({ accounts, defaultAccount, onDone }: { accounts: BankAccoun
 
 // ============================================================ accounts
 
+function maskedAccount(number: string) {
+  const digits = number.replace(/\s/g, "");
+  if (digits.length <= 4) return digits;
+  return `ending ${digits.slice(-4)}`;
+}
+
 function AccountsView({ accounts, onChange }: { accounts: BankAccount[]; onChange: () => void }) {
   const [editing, setEditing] = useState<BankAccount | null>(null);
   const [error, setError] = useState("");
@@ -204,7 +211,7 @@ function AccountsView({ accounts, onChange }: { accounts: BankAccount[]; onChang
   const columns: Column<BankAccount>[] = [
     { id: "name", header: "Account", locked: true, minWidth: 200, sortValue: (a) => a.name.toLowerCase(), render: (a) => <span>{a.name} {a.is_primary && <StatusBadge status="open" label="Primary" />}</span> },
     { id: "bank", header: "Bank", sortValue: (a) => a.bank_name.toLowerCase(), render: (a) => a.bank_name },
-    { id: "no", header: "Account number", render: (a) => a.account_number },
+    { id: "no", header: "Account number", render: (a) => maskedAccount(a.account_number), csv: (a) => maskedAccount(a.account_number) },
     { id: "ifsc", header: "IFSC", render: (a) => a.ifsc },
     { id: "status", header: "Status", sortValue: (a) => (a.active ? 0 : 1), render: (a) => <StatusBadge status={a.active ? "active" : "inactive"} /> },
   ];
@@ -234,7 +241,7 @@ function AccountsView({ accounts, onChange }: { accounts: BankAccount[]; onChang
           <div className="ao-span"><Err text={error} /></div>
           <div className="ao-actions ao-span">
             <Button size="sm" kind="secondary" onClick={() => { setEditing(null); setError(""); }}>Cancel</Button>
-            <Button size="sm" type="submit" disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
+            <Button size="sm" type="submit" disabled={busy}>{busy ? "Saving…" : editing.id ? "Save changes" : "Create"}</Button>
           </div>
         </Stack>
       </Form>
@@ -243,7 +250,7 @@ function AccountsView({ accounts, onChange }: { accounts: BankAccount[]; onChang
 
   return (
     <>
-      <div className="ao-actions ao-block"><Button renderIcon={Add} size="sm" onClick={() => setEditing({ id: null, name: "", bank_name: "", account_holder: "", account_number: "", ifsc: "", is_primary: false, active: true })}>Add account</Button></div>
+      <div className="ao-actions ao-block"><Button renderIcon={Add} size="sm" onClick={() => setEditing({ id: null, name: "", bank_name: "", account_holder: "", account_number: "", ifsc: "", is_primary: false, active: true })}>New account</Button></div>
       <DataTable
         id="bank-accounts" rows={accounts} columns={columns} rowKey={(a) => a.id!} pageSizes={[50]} defaultSort={{ id: "name", dir: "asc" }}
         emptyTitle="No bank accounts" emptyHint="Add the account before importing its statement."
@@ -415,6 +422,8 @@ export default function BankPage() {
   const [accountFilter, setAccountFilter] = useState(0);
   const [status, setStatus] = useState("");
   const [mode, setMode] = useState<Mode>("list");
+  const openImport = useCallback(() => setMode("import"), []);
+  useCreateIntent("bank", openImport);
   const [matching, setMatching] = useState<TxnRow | null>(null);
   const [linking, setLinking] = useState<TxnRow | null>(null);
   const [posting, setPosting] = useState<TxnRow | null>(null);

@@ -3,6 +3,7 @@ import { Button, Form, GlobalTheme, InlineNotification, PasswordInput, Stack, Te
 import { api, errorText, type AuthStatus } from "./api";
 import Shell from "./app/Shell";
 import StartScreen from "./features/company-file/StartScreen";
+import { ProductCredit } from "./brand";
 import { ArrowLeft, Password, Switcher, UserFollow } from "@carbon/icons-react";
 
 function Setup({ company, onDone, onSwitch }: { company: string; onDone: () => void; onSwitch: () => void }) {
@@ -42,6 +43,7 @@ function Setup({ company, onDone, onSwitch }: { company: string; onDone: () => v
         <Stack gap={4}>
           <CompanyBar name={company} onSwitch={onSwitch} />
           <h2>Set up owner account</h2>
+          <ProductCredit />
           <TextInput size="sm" id="u" labelText="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
           <PasswordInput size="sm" id="p" labelText="Password (12+ characters)" value={password} onChange={(e) => setPassword(e.target.value)} />
           <PasswordInput size="sm" id="c" labelText="Confirm password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
@@ -78,6 +80,7 @@ function Recover({ onBack }: { onBack: () => void }) {
       }}>
         <Stack gap={4}>
           <h2>Reset password</h2>
+          <ProductCredit />
           <TextInput size="sm" id="ru" labelText="Username" value={user} onChange={(e) => setUser(e.target.value)} />
           <TextInput size="sm" id="rc" labelText="Recovery code" value={code} onChange={(e) => setCode(e.target.value)} />
           <PasswordInput size="sm" id="rp" labelText="New password (12+ characters)" value={pw} onChange={(e) => setPw(e.target.value)} />
@@ -127,6 +130,7 @@ function Login({ locked, username, company, onDone, onSwitch }: { locked: boolea
         <Stack gap={4}>
           <CompanyBar name={company} onSwitch={onSwitch} />
           <h2>{locked ? "Session locked" : "Sign in"}</h2>
+          <ProductCredit />
           {!locked && <TextInput size="sm" id="lu" labelText="Username" value={user} onChange={(e) => setUser(e.target.value)} />}
           <PasswordInput size="sm" id="lp" labelText="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
           {error && <InlineNotification kind="error" title={error} hideCloseButton lowContrast />}

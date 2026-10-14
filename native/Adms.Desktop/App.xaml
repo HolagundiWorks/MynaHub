@@ -9,6 +9,39 @@
             <ResourceDictionary.MergedDictionaries>
                 <controls:XamlControlsResources />
             </ResourceDictionary.MergedDictionaries>
+            <Thickness x:Key="PageMargin">24,16,24,24</Thickness>
+            <x:Double x:Key="Space8">8</x:Double>
+            <x:Double x:Key="Space12">12</x:Double>
+            <x:Double x:Key="Space16">16</x:Double>
+            <x:Double x:Key="Space24">24</x:Double>
+            <Style x:Key="PageTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource TitleTextBlockStyle}">
+                <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
+            </Style>
+            <Style x:Key="SectionTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource SubtitleTextBlockStyle}">
+                <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
+                <Setter Property="Margin" Value="0,8,0,0"/>
+            </Style>
+            <Style x:Key="BodyStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextBlockStyle}">
+                <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
+            </Style>
+            <Style x:Key="SecondaryStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextBlockStyle}">
+                <Setter Property="Foreground" Value="{ThemeResource TextSecondaryBrush}"/>
+            </Style>
+            <Style x:Key="CaptionStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionTextBlockStyle}">
+                <Setter Property="Foreground" Value="{ThemeResource TextSecondaryBrush}"/>
+            </Style>
+            <Style x:Key="MetricValueStyle" TargetType="TextBlock" BasedOn="{StaticResource TitleLargeTextBlockStyle}">
+                <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
+            </Style>
+            <Style x:Key="TableHeaderStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyStrongTextBlockStyle}">
+                <Setter Property="Foreground" Value="{ThemeResource TextSecondaryBrush}"/>
+            </Style>
+            <Style x:Key="TableCellStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextBlockStyle}">
+                <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
+            </Style>
+            <Style x:Key="ErrorStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyStrongTextBlockStyle}">
+                <Setter Property="Foreground" Value="{ThemeResource TextPrimaryBrush}"/>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

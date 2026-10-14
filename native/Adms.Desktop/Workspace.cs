@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Adms.Interop;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.Storage;
@@ -13,6 +14,7 @@ internal interface IPageCommands
     void Save();
     void Print();
     void FocusSearch();
+    Task<bool> CanLeave() => Task.FromResult(true);
 }
 
 internal sealed class AppShell
@@ -21,6 +23,15 @@ internal sealed class AppShell
     public required MainWindow Window { get; init; }
     public string Role { get; set; } = "";
     public IPageCommands? Page { get; set; }
+    public Action<string>? Navigate { get; set; }
+    public string? PendingCreate { get; set; }
+
+    public bool CanEdit => Role != "Auditor";
+    public bool CanIssue => Role is "Owner" or "Principal" or "Accounts";
+    public bool CanPost => Role is "Owner" or "Accounts";
+    public bool CanAudit => Role is "Owner" or "Auditor";
+    public bool CanFinance => Role != "DocumentEditor";
+    public bool CanManage => Role == "Owner";
 
     public JsonElement Call(string operation, object? args = null) => Session.Call(operation, args);
 
@@ -41,7 +52,7 @@ internal sealed class WorkspaceView : UserControl
         IsPaneToggleButtonVisible = false,
         IsPaneOpen = true,
         IsSettingsVisible = false,
-        OpenPaneLength = 280,
+        OpenPaneLength = 320,
         CompactModeThresholdWidth = 0,
         ExpandedModeThresholdWidth = 0,
     };
@@ -55,6 +66,8 @@ internal sealed class WorkspaceView : UserControl
     public void Print() => _shell.Page?.Print();
     public void FocusSearch() => _shell.Page?.FocusSearch();
 
+    public Task<bool> ConfirmLeave() => _shell.Page?.CanLeave() ?? Task.FromResult(true);
+
     public WorkspaceView(AppShell shell)
     {
         _shell = shell;
@@ -66,12 +79,23 @@ internal sealed class WorkspaceView : UserControl
                 Show(id);
         };
         Content = _nav;
+        SizeChanged += (_, _) => _nav.OpenPaneLength = ActualWidth < 1100 ? 220 : 320;
+        _shell.Navigate = Show;
         BuildMenu();
-        Show("documents");
+        Show("dashboard");
     }
 
-    public void Show(string id)
+    private string _shown = "";
+
+    public void Show(string id) => _ = ShowAsync(id);
+
+    private async Task ShowAsync(string id)
     {
+        if (id == _shown && _host.Children.Count > 0)
+            return;
+        if (_shell.Page != null && !await _shell.Page.CanLeave())
+            return;
+        _shown = id;
         _host.Children.Clear();
         var page = PageFor(id);
         _shell.Page = page as IPageCommands;
@@ -82,64 +106,74 @@ internal sealed class WorkspaceView : UserControl
 
     private void BuildMenu()
     {
-        AddGroup("Work",
-            ("documents", "Letters and agreements", "\uE8A5"),
-            ("clients", "Clients", "\uE716"),
-            ("projects", "Projects", "\uE8F1"));
-        AddGroup("Billing",
-            ("invoices", "Invoices and receipts", "\uE8A1"),
-            ("bank", "Bank reconciliation", "\uE825"));
+        // Same drawing-set order as the AORMS Office Hub, limited to the records this desktop file actually keeps.
+        AddTop("dashboard", "00", "Pulse", "\uE9D2");
+        AddTop("projects", "01", "Projects", "\uE8F1");
+        AddGroup("02", "Third Parties", ("clients", "01", "Clients", "\uE716"));
+        AddGroup("03", "Office",
+            ("documents", "01", "Letters", "\uE8A5"),
+            ("templates", "02", "Office Templates", "\uE943"));
         if (_shell.Role != "DocumentEditor")
         {
-            AddGroup("Accounting",
-                ("acc-reports", "Reports", "\uE9F9"),
-                ("acc-journals", "Journals", "\uE8A5"),
-                ("acc-expenses", "Expenses", "\uE8C7"),
-                ("acc-income", "Rent and interest", "\uEAFD"),
-                ("acc-salaries", "Salaries", "\uE77B"),
-                ("acc-assets", "Fixed assets", "\uE7C5"),
-                ("acc-tax", "Tax payments", "\uE9D9"),
-                ("acc-setup", "Chart and financial years", "\uE9D2"));
+            AddGroup("04", "Accounts",
+                ("invoices", "01", "Invoices", "\uE8A1"),
+                ("acc-reports", "02", "Financial Reports", "\uE9F9"),
+                ("acc-journals", "03", "Journals", "\uE8A5"),
+                ("acc-expenses", "04", "Office Expenses", "\uE8C7"),
+                ("acc-income", "05", "Rent and interest", "\uEAFD"),
+                ("acc-salaries", "06", "Salaries", "\uE77B"),
+                ("acc-assets", "07", "Fixed assets", "\uE7C5"),
+                ("acc-tax", "08", "Tax payments", "\uE9D9"),
+                ("bank", "09", "Reconciliation", "\uE825"),
+                ("acc-setup", "10", "Chart and financial years", "\uE9D2"));
         }
-        AddGroup("Settings",
-            ("templates", "Templates", "\uE943"),
-            ("company", "Company profile", "\uE731"),
-            ("settings", "Security, users and backup", "\uE713"));
+        AddGroup("05", "Admin",
+            ("company", "01", "Firm Settings", "\uE731"),
+            ("settings", "02", "Security, users and backup", "\uE713"));
     }
 
-    private void AddGroup(string title, params (string Id, string Label, string Glyph)[] items)
+    private void AddTop(string id, string sheet, string label, string glyph)
     {
-        _nav.MenuItems.Add(new NavigationViewItemHeader { Content = title });
-        foreach (var (id, label, glyph) in items)
+        _destinations.Add((id, label));
+        _nav.MenuItems.Add(Item(id, $"ADMS-{sheet}", label, glyph));
+    }
+
+    private void AddGroup(string sheet, string title, params (string Id, string Item, string Label, string Glyph)[] items)
+    {
+        _nav.MenuItems.Add(new NavigationViewItemHeader { Content = $"ADMS-{sheet}  {title.ToUpperInvariant()}" });
+        foreach (var (id, item, label, glyph) in items)
         {
             _destinations.Add((id, label));
-            _nav.MenuItems.Add(new NavigationViewItem
-            {
-                Content = label,
-                Tag = id,
-                Icon = new FontIcon { Glyph = glyph, FontFamily = IconFont, FontSize = 16 },
-            });
+            _nav.MenuItems.Add(Item(id, $"{sheet}.{item}", label, glyph));
         }
     }
+
+    private static NavigationViewItem Item(string id, string sheet, string label, string glyph) => new()
+    {
+        Content = $"{sheet}  {label}",
+        Tag = id,
+        Icon = new FontIcon { Glyph = glyph, FontFamily = IconFont, FontSize = 16 },
+    };
 
     private UIElement PageFor(string id) => id switch
     {
-        "documents" => Pages.Documents(_shell),
-        "clients" => Pages.Clients(_shell),
-        "projects" => Pages.Projects(_shell),
-        "invoices" => Pages.Invoices(_shell),
-        "bank" => Pages.Bank(_shell),
+        "dashboard" => new DashboardPage(_shell),
+        "documents" => new LettersPage(_shell),
+        "clients" => new ClientsPage(_shell),
+        "projects" => new ProjectsPage(_shell),
+        "invoices" => new InvoicesPage(_shell),
+        "bank" => new BankWorkspace(_shell),
         "acc-reports" => Pages.Reports(_shell),
-        "acc-journals" => Pages.Journals(_shell),
-        "acc-expenses" => Pages.Expenses(_shell),
-        "acc-income" => Pages.Income(_shell),
-        "acc-salaries" => Pages.Salaries(_shell),
-        "acc-assets" => Pages.Assets(_shell),
-        "acc-tax" => Pages.Tax(_shell),
-        "acc-setup" => Pages.Accounts(_shell),
+        "acc-journals" => Ledgers.Journals(_shell),
+        "acc-expenses" => Ledgers.Expenses(_shell),
+        "acc-income" => Ledgers.Income(_shell),
+        "acc-salaries" => Ledgers.Salaries(_shell),
+        "acc-assets" => Ledgers.Assets(_shell),
+        "acc-tax" => Ledgers.Tax(_shell),
+        "acc-setup" => Ledgers.Accounts(_shell),
         "templates" => Pages.Templates(_shell),
-        "company" => Pages.Company(_shell),
-        "settings" => Pages.Settings(_shell),
+        "company" => Ledgers.Company(_shell),
+        "settings" => Ledgers.Settings(_shell),
         _ => new TextBlock { Text = id, Margin = new Thickness(16) },
     };
 }
@@ -151,6 +185,7 @@ internal sealed class WorkPage : UserControl, IPageCommands
     public StackPanel Actions { get; set; } = new();
     public ListView List { get; set; } = new();
     public TextBlock Detail { get; set; } = new();
+    public StackPanel Extra { get; set; } = new();
     public TextBox? SearchBox { get; set; }
     public Action Reload { get; set; } = () => { };
     public Action<JsonElement>? OnSelect { get; set; }
@@ -221,7 +256,7 @@ internal static class Pages
             shell.Run("Preparing PDF…", () =>
             {
                 var encoded = shell.Call("doc_pdf", new { id = docId }).GetString() ?? "";
-                shell.Window.DispatcherQueue.TryEnqueue(async () => await Kit.SavePdf(shell, encoded, "document"));
+                shell.Window.DispatcherQueue.TryEnqueue(async () => await Kit.PreviewPdf(shell, encoded, "document"));
             });
         };
     });
@@ -357,7 +392,7 @@ internal static class Pages
             shell.Run("Preparing PDF…", () =>
             {
                 var encoded = shell.Call("invoice_pdf", new { id = invoiceId }).GetString() ?? "";
-                shell.Window.DispatcherQueue.TryEnqueue(async () => await Kit.SavePdf(shell, encoded, "invoice"));
+                shell.Window.DispatcherQueue.TryEnqueue(async () => await Kit.PreviewPdf(shell, encoded, "invoice"));
             });
         };
     });
@@ -398,31 +433,20 @@ internal static class Pages
         page.Actions.Children.Add(Kit.Button("Summary", () => shell.Run("Loading summary…", () =>
         {
             var summary = shell.Call("bank_summary", new { account_id = (long?)null });
-            shell.Window.DispatcherQueue.TryEnqueue(() => page.Detail.Text = Kit.Pretty(summary));
+            shell.Window.DispatcherQueue.TryEnqueue(() => Kit.ShowPairs(page.Extra, "Reconciliation", summary,
+            [
+                ("Unmatched", "unmatched"),
+                ("Partly matched", "partial"),
+                ("Matched", "matched"),
+                ("Ignored", "ignored"),
+                ("Duplicate", "duplicate"),
+                ("Rejected rows", "rejected_rows"),
+                ("Unallocated credits", "unallocated_credits_display"),
+            ]));
         })));
     });
 
-    public static UIElement Reports(AppShell shell)
-    {
-        var page = Kit.Page("Reports");
-        var fromDate = Kit.Field(page.Form, "From", Kit.YearStart());
-        var toDate = Kit.Field(page.Form, "To", Kit.Today());
-        var output = new TextBlock { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
-        page.Form.Children.Add(output);
-        void Report(string op, object args) => shell.Run("Preparing report…", () =>
-        {
-            var result = shell.Call(op, args);
-            shell.Window.DispatcherQueue.TryEnqueue(() => output.Text = Kit.Pretty(result));
-        });
-        Dictionary<string, string> Range() => new() { ["from"] = fromDate.Text, ["to"] = toDate.Text };
-        page.Actions.Children.Add(Kit.Button("Trial balance", () => Report("report_trial_balance", new { as_of = toDate.Text })));
-        page.Actions.Children.Add(Kit.Button("Profit and loss", () => Report("report_pnl", Range())));
-        page.Actions.Children.Add(Kit.Button("Balance sheet", () => Report("report_balance_sheet", new { as_of = toDate.Text })));
-        page.Actions.Children.Add(Kit.Button("GST and TDS", () => Report("report_tax_summary", Range())));
-        page.Reload = () => Report("report_trial_balance", new { as_of = toDate.Text });
-        page.Reload();
-        return page;
-    }
+    public static UIElement Reports(AppShell shell) => new ReportsPage(shell);
 
     public static UIElement Journals(AppShell shell) => Register(shell, "Journals", "journal_list", _ => new { from = Kit.YearStart(), to = Kit.Today(), limit = 200 }, row => Kit.Line(row, "number", "date", "narration", "total_display"), page =>
     {
@@ -438,7 +462,7 @@ internal static class Pages
             shell.Run("Loading journal…", () =>
             {
                 var lines = shell.Call("journal_lines", new { id = journalId });
-                shell.Window.DispatcherQueue.TryEnqueue(() => page.Detail.Text = Kit.Pretty(lines));
+                shell.Window.DispatcherQueue.TryEnqueue(() => Kit.ShowTable(page.Extra, lines, "Journal lines", ["Account", "Memo", "Debit", "Credit"], ["account", "memo", "debit_display", "credit_display"], [false, false, true, true]));
             });
         };
         page.SaveAction = () =>
@@ -540,44 +564,11 @@ internal static class Pages
         page.Actions.Children.Add(Kit.Button("Financial years", () => shell.Run("Loading years…", () =>
         {
             var years = shell.Call("period_list");
-            shell.Window.DispatcherQueue.TryEnqueue(() => page.Detail.Text = Kit.Pretty(years));
+            shell.Window.DispatcherQueue.TryEnqueue(() => Kit.ShowTable(page.Extra, years, "Financial years", ["Year", "Start", "End", "Status", "Journals"], ["fy", "start_date", "end_date", "status", "journals"], [false, false, false, false, true]));
         })));
     });
 
-    public static UIElement Templates(AppShell shell) => Register(shell, "Templates", "template_list", _ => new { kind = (string?)null, include_archived = false }, row => Kit.Line(row, "family", "name", "format", "latest_version"), page =>
-    {
-        var body = Kit.Field(page.Form, "Body");
-        body.AcceptsReturn = true;
-        body.Height = 180;
-        var layout = "letter";
-        var kind = "letter_out";
-        var name = "";
-        page.OnSelect = row =>
-        {
-            body.Text = Kit.Str(row, "body");
-            layout = Kit.Str(row, "layout");
-            kind = Kit.Str(row, "kind");
-            name = Kit.Str(row, "name");
-            if (Kit.Str(row, "format") == "html" && Kit.Id(row) is long templateId)
-            {
-                shell.Run("Opening template…", () =>
-                {
-                    var state = shell.Call("studio_open", new { template_id = templateId });
-                    shell.Window.DispatcherQueue.TryEnqueue(() => body.Text = state.TryGetProperty("html", out var html) ? html.GetString() ?? "" : body.Text);
-                });
-            }
-        };
-        page.PrintAction = () =>
-        {
-            var text = body.Text;
-            shell.Run("Rendering preview…", () =>
-            {
-                var preview = shell.Call("template_preview", new { body = text, layout, kind, name });
-                var encoded = preview.TryGetProperty("pdf_base64", out var pdf) ? pdf.GetString() ?? "" : "";
-                shell.Window.DispatcherQueue.TryEnqueue(async () => await Kit.SavePdf(shell, encoded, "template-preview"));
-            });
-        };
-    });
+    public static UIElement Templates(AppShell shell) => new StudioEditor(shell);
 
     public static UIElement Company(AppShell shell)
     {
@@ -611,36 +602,40 @@ internal static class Pages
     public static UIElement Settings(AppShell shell)
     {
         var page = Kit.Page("Security, users and backup");
-        var output = new TextBlock { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
+        var output = new StackPanel { Spacing = 8 };
         page.Form.Children.Add(output);
         var username = Kit.Field(page.Form, "New username");
         var password = Kit.Field(page.Form, "Password");
         var role = Kit.Field(page.Form, "Role", "accounts");
         var admin = Kit.Field(page.Form, "Your password");
-        page.Actions.Children.Add(Kit.Button("Users", () => shell.Run("Loading users…", () => Show(shell, output, shell.Call("user_list")))));
+        page.Actions.Children.Add(Kit.Button("Users", () => shell.Run("Loading users…", () => Show(shell, output, "Users", shell.Call("user_list"), ["Username", "Role", "Disabled"], ["username", "role", "disabled"], [false, false, false]))));
         page.Actions.Children.Add(Kit.Button("Create user", () =>
         {
             var user = new { username = username.Text, password = password.Text, role = role.Text, admin_password = admin.Text };
             shell.Run("Creating user…", () => shell.Call("user_create", user));
         }));
-        page.Actions.Children.Add(Kit.Button("Audit", () => shell.Run("Loading audit…", () => Show(shell, output, shell.Call("audit_list", new { limit = 100 })))));
+        page.Actions.Children.Add(Kit.Button("Audit", () => shell.Run("Loading audit…", () => Show(shell, output, "Audit", shell.Call("audit_list", new { limit = 100 }), ["When", "Person", "Event", "Detail"], ["at", "user", "event", "detail"], [false, false, false, false]))));
         page.Actions.Children.Add(Kit.Button("Backup", () =>
         {
             var password = admin.Text;
-            shell.Run("Creating backup…", () => Show(shell, output, shell.Call("backup_create", new { password })));
+            shell.Run("Creating backup…", () => Show(shell, output, "Backup", shell.Call("backup_create", new { password }), ["File", "SHA-256", "Bytes", "Folder"], ["filename", "sha256", "bytes", "folder"], [false, false, true, false]));
         }));
-        page.Actions.Children.Add(Kit.Button("Backups", () => shell.Run("Loading backups…", () => Show(shell, output, shell.Call("backup_list")))));
+        page.Actions.Children.Add(Kit.Button("Backups", () => shell.Run("Loading backups…", () => Show(shell, output, "Backups", shell.Call("backup_list"), ["File", "Bytes"], ["filename", "bytes"], [false, true]))));
         page.Reload = () => shell.Run("Loading security…", () =>
         {
             var minutes = shell.Call("security_get");
-            shell.Window.DispatcherQueue.TryEnqueue(() => output.Text = $"Idle timeout: {minutes} minutes");
+            shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                output.Children.Clear();
+                output.Children.Add(new TextBlock { Text = $"Idle timeout: {minutes} minutes", Style = Flow.Look("BodyStyle") });
+            });
         });
         page.Reload();
         return page;
     }
 
-    private static void Show(AppShell shell, TextBlock output, JsonElement value) =>
-        shell.Window.DispatcherQueue.TryEnqueue(() => output.Text = Kit.Pretty(value));
+    public static void Show(AppShell shell, Panel output, string name, JsonElement value, string[] headers, string[] keys, bool[] alignEnd) =>
+        shell.Window.DispatcherQueue.TryEnqueue(() => Kit.ShowTable(output, value, name, headers, keys, alignEnd));
 
     private static void Commit(AppShell shell, WorkPage page, string status, Action work)
     {
@@ -654,7 +649,8 @@ internal static class Pages
     private static WorkPage Register(AppShell shell, string title, string operation, Func<string, object> args, Func<JsonElement, string> label, Action<WorkPage> build)
     {
         var page = Kit.Page(title);
-        page.SearchBox = new TextBox { PlaceholderText = "Search", Margin = new Thickness(0, 0, 0, 8) };
+        page.SearchBox = new TextBox { PlaceholderText = "Search", Header = "Search", Margin = new Thickness(0, 0, 0, 8), MaxWidth = 420, HorizontalAlignment = HorizontalAlignment.Left };
+        AutomationProperties.SetName(page.SearchBox, $"Search {title}");
         Grid.SetRow(page.SearchBox, 0);
         page.ListPane.Children.Insert(0, page.SearchBox);
         page.Reload = () =>
@@ -682,34 +678,74 @@ internal static class Kit
     public static WorkPage Page(string title)
     {
         var page = new WorkPage();
-        var root = new Grid { Margin = new Thickness(8) };
-        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(360) });
-        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var root = new Grid();
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        var heading = Flow.Heading(title);
+        heading.Margin = (Thickness)Application.Current.Resources["PageMargin"];
+        heading.Margin = new Thickness(heading.Margin.Left, heading.Margin.Top, heading.Margin.Right, 8);
+        root.Children.Add(heading);
+        var split = new Grid { Margin = new Thickness(24, 0, 24, 24) };
         var list = new Grid();
         list.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         list.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        var form = new StackPanel { Spacing = 8, Margin = new Thickness(16, 0, 0, 0) };
+        var form = new StackPanel { Spacing = 8, MaxWidth = 480 };
         var scroller = new ScrollViewer { Content = form };
-        Grid.SetColumn(scroller, 1);
-        root.Children.Add(list);
-        root.Children.Add(scroller);
-        form.Children.Add(new TextBlock { Text = title, Style = (Style)Application.Current.Resources["SubtitleTextBlockStyle"] });
+        split.Children.Add(list);
+        split.Children.Add(scroller);
+        Grid.SetRow(split, 1);
+        root.Children.Add(split);
         page.ListPane = list;
         page.Form = form;
         page.List = new ListView { SelectionMode = ListViewSelectionMode.Single };
+        AutomationProperties.SetName(page.List, title);
+        Flow.UseTable(page.List);
         Grid.SetRow(page.List, 1);
         page.List.SelectionChanged += (_, _) =>
         {
-            if (page.List.SelectedItem is Row row)
+            if (page.List.SelectedItem is ListViewItem item && item.Tag is Row row)
                 page.OnSelect?.Invoke(row.Data);
         };
         list.Children.Add(page.List);
         page.Actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         form.Children.Add(page.Actions);
-        page.Detail = new TextBlock { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
+        page.Detail = new TextBlock { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true, Style = Flow.Look("BodyStyle") };
         form.Children.Add(page.Detail);
+        page.Extra = new StackPanel { Spacing = 8 };
+        form.Children.Add(page.Extra);
+        page.SizeChanged += (_, _) => Arrange(split, list, scroller, form, page.ActualWidth);
+        Arrange(split, list, scroller, form, 1200);
         page.Content = root;
         return page;
+    }
+
+    private static void Arrange(Grid split, Grid list, ScrollViewer formScroll, StackPanel form, double width)
+    {
+        var narrow = width > 0 && width < 960;
+        split.ColumnDefinitions.Clear();
+        split.RowDefinitions.Clear();
+        if (narrow)
+        {
+            split.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            split.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            Grid.SetColumn(list, 0);
+            Grid.SetRow(list, 0);
+            Grid.SetColumn(formScroll, 0);
+            Grid.SetRow(formScroll, 1);
+            form.Margin = new Thickness(0, 16, 0, 0);
+            form.MaxWidth = 640;
+        }
+        else
+        {
+            split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.4, GridUnitType.Star), MinWidth = 320 });
+            split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = 480 });
+            Grid.SetRow(list, 0);
+            Grid.SetColumn(list, 0);
+            Grid.SetRow(formScroll, 0);
+            Grid.SetColumn(formScroll, 1);
+            form.Margin = new Thickness(24, 0, 0, 0);
+            form.MaxWidth = 480;
+        }
     }
 
     public static TextBox Field(Panel panel, string header, string value = "")
@@ -737,6 +773,64 @@ internal static class Kit
         return button;
     }
 
+    public static void ShowTable(Panel host, JsonElement value, string name, string[] headers, string[] keys, bool[] alignEnd)
+    {
+        host.Children.Clear();
+        var rows = new List<string[]>();
+        if (value.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var row in value.EnumerateArray())
+                rows.Add(Cells(row, keys));
+        }
+        else if (value.ValueKind == JsonValueKind.Object)
+        {
+            rows.Add(Cells(value, keys));
+        }
+        if (rows.Count == 0)
+        {
+            host.Children.Add(Flow.Secondary($"No {name.ToLowerInvariant()} to show."));
+            return;
+        }
+        host.Children.Add(Flow.Table(name, headers, rows, alignEnd));
+    }
+
+    public static UIElement TableOf(JsonElement value, string name, string[] headers, string[] keys, bool[] alignEnd)
+    {
+        var host = new StackPanel();
+        ShowTable(host, value, name, headers, keys, alignEnd);
+        return host;
+    }
+
+    public static void ShowPairs(Panel host, string name, JsonElement value, (string Label, string Key)[] pairs)
+    {
+        host.Children.Clear();
+        var rows = new List<string[]>();
+        foreach (var (label, key) in pairs)
+            rows.Add([label, Cell(value, key)]);
+        host.Children.Add(Flow.Table(name, ["Item", "Value"], rows, [false, true]));
+    }
+
+    private static string[] Cells(JsonElement row, string[] keys)
+    {
+        var cells = new string[keys.Length];
+        for (var i = 0; i < keys.Length; i++)
+            cells[i] = Cell(row, keys[i]);
+        return cells;
+    }
+
+    private static string Cell(JsonElement row, string key)
+    {
+        if (!row.TryGetProperty(key, out var value) || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return "";
+        return value.ValueKind switch
+        {
+            JsonValueKind.True => "Yes",
+            JsonValueKind.False => "No",
+            JsonValueKind.String => value.GetString() ?? "",
+            _ => value.ToString(),
+        };
+    }
+
     public static void Fill(WorkPage page, JsonElement rows, Func<JsonElement, string> label)
     {
         page.List.Items.Clear();
@@ -746,7 +840,7 @@ internal static class Kit
             return;
         }
         foreach (var row in rows.EnumerateArray())
-            page.List.Items.Add(new Row { Label = label(row), Data = row });
+            page.List.Items.Add(new ListViewItem { Content = Flow.Columns(label(row)), Tag = new Row { Label = label(row), Data = row.Clone() } });
     }
 
     public static string Line(JsonElement row, params string[] keys)
@@ -794,6 +888,19 @@ internal static class Kit
 
     public static string Pretty(JsonElement value) =>
         JsonSerializer.Serialize(value, new JsonSerializerOptions { WriteIndented = true });
+
+    public static async Task PreviewPdf(AppShell shell, string base64, string name)
+    {
+        if (string.IsNullOrWhiteSpace(base64))
+        {
+            shell.Problem("There is no PDF to preview.");
+            return;
+        }
+        byte[] bytes;
+        try { bytes = Convert.FromBase64String(base64); }
+        catch (FormatException) { shell.Problem("The engine did not return a PDF."); return; }
+        await shell.Window.ShowPdf(bytes, name);
+    }
 
     public static async Task SavePdf(AppShell shell, string base64, string name)
     {

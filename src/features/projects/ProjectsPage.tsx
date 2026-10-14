@@ -8,6 +8,7 @@ import DataTable, { type Column } from "../../components/data-table/DataTable";
 import RowMenu from "../../components/data-table/RowMenu";
 import { Edit } from "@carbon/icons-react";
 import { DraftGuard } from "../../app/unsaved";
+import { useCreateIntent } from "../../app/intent";
 
 const STATUS_LABEL = { active: "Active", on_hold: "On hold", completed: "Completed" } as const;
 
@@ -30,6 +31,10 @@ export default function ProjectsPage() {
       .finally(() => setLoading(false));
   }, [showArchived]);
   useEffect(load, [load]);
+  const openNew = useCallback(() => {
+    setEditing({ id: null, client_id: 0, code: "", name: "", site_address: "", status: "active", archived: false, client_name: "" });
+  }, []);
+  useCreateIntent("projects", openNew);
 
   const shown = status ? projects.filter((p) => p.status === status) : projects;
 
@@ -56,6 +61,7 @@ export default function ProjectsPage() {
         >
           <DraftGuard value={editing} />
           <Stack gap={5}>
+          <h3>Project</h3>
             <Select size="sm" id="p-client" labelText="Client" value={editing.client_id || ""} disabled={editing.id !== null} onChange={(e) => setEditing({ ...editing, client_id: Number(e.target.value) })}>
               <SelectItem value="" text="Select a client" />
               {clients.map((c) => <SelectItem key={c.id} value={c.id!} text={c.name} />)}
@@ -65,11 +71,12 @@ export default function ProjectsPage() {
             <Select size="sm" id="p-status" labelText="Status" value={editing.status} onChange={(e) => setEditing({ ...editing, status: e.target.value as Project["status"] })}>
               {Object.entries(STATUS_LABEL).map(([v, t]) => <SelectItem key={v} value={v} text={t} />)}
             </Select>
+            <h3>Site</h3>
             <TextArea id="p-site" labelText="Site address" rows={3} value={editing.site_address} onChange={(e) => setEditing({ ...editing, site_address: e.target.value })} />
             {error && <InlineNotification kind="error" title={error} hideCloseButton lowContrast />}
             <div className="toolbar">
               <Button size="sm" kind="secondary" onClick={() => { setEditing(null); setError(""); }}>Cancel</Button>
-              <Button size="sm" type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+              <Button size="sm" type="submit" disabled={saving}>{saving ? "Saving…" : editing.id ? "Save changes" : "Create"}</Button>
             </div>
           </Stack>
         </Form>

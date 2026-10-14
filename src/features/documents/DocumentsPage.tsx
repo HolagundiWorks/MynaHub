@@ -13,6 +13,7 @@ import { useServerTable } from "../../components/data-table/useServerTable";
 import { downloadBase64, readFileAsBase64 } from "../../components/files";
 import { Add, ArrowLeft, Save } from "@carbon/icons-react";
 import { DraftGuard, DraftSave } from "../../app/unsaved";
+import { useCreateIntent } from "../../app/intent";
 
 const FAMILY_SHORT: Record<string, string> = { consultancy: "Consultancy", billing: "Billing", administration: "Administration" };
 
@@ -269,6 +270,8 @@ export default function DocumentsPage() {
   const [kind, setKind] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const openNew = useCallback(() => setView({ type: "edit", doc: blankDoc("letter_out") }), []);
+  useCreateIntent("documents", openNew);
 
   const table = useServerTable<DocRow>({ id: "documents", fetch: api.docPage, filters: { kind, status }, defaultSort: { id: "date", dir: "desc" } });
   const reloadTable = table.reload;

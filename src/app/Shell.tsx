@@ -3,13 +3,14 @@ import {
   Button, Content, ContainedList, ContainedListItem, GlobalTheme, Header, HeaderGlobalAction, HeaderGlobalBar, HeaderMenuButton, HeaderName, HeaderPanel, InlineNotification, Modal, Search,
   SideNav, SideNavItems, SideNavMenu, SideNavMenuItem, SkipToContent, Switcher, SwitcherDivider, SwitcherItem,
 } from "@carbon/react";
-import { Calculator, Folder, Receipt, Search as SearchIcon, Settings } from "@carbon/icons-react";
+import { Calculator, Dashboard, Folder, Receipt, Search as SearchIcon, Settings } from "@carbon/icons-react";
 import { api, type AuthStatus } from "../api";
 import { DensityContext, usePersisted, type Density } from "../design/density";
 import { GroupContext } from "../components/PageHeader";
 import { DialogHost, confirmDialog } from "../components/dialogs";
 import { UnsavedProvider, useLeaveGuard, useRunSave } from "./unsaved";
 import { computerFinancialYear, headerFinancialYear, todayIso } from "./financialYear";
+import { PRODUCT, ProductCredit } from "../brand";
 import ClientsPage from "../features/clients/ClientsPage";
 import ProjectsPage from "../features/projects/ProjectsPage";
 import InvoicesPage from "../features/invoices/InvoicesPage";
@@ -21,13 +22,15 @@ import CompanyPage from "../features/company/CompanyPage";
 import {
   AccountSetup, AssetsSection, ExpensesSection, IncomeSection, JournalsSection, ReportsSection, SalariesSection, TaxPaymentsSection,
 } from "../features/accounting/AccountingPage";
+import DashboardPage from "../features/dashboard/DashboardPage";
 
 type NavItem = { id: string; label: string; group: string; keywords?: string };
 
 /** One Carbon icon per navigation group, used the same way everywhere. */
-const GROUP_ICON = { Work: Folder, Billing: Receipt, Accounting: Calculator, Settings: Settings } as const;
+const GROUP_ICON = { Overview: Dashboard, Work: Folder, Billing: Receipt, Accounting: Calculator, Settings: Settings } as const;
 
 const NAV: NavItem[] = [
+  { id: "dashboard", label: "Dashboard", group: "Overview", keywords: "home overview attention" },
   { id: "documents", label: "Letters and agreements", group: "Work", keywords: "letters agreements inward outward register" },
   { id: "clients", label: "Clients", group: "Work" },
   { id: "projects", label: "Projects", group: "Work" },
@@ -71,7 +74,7 @@ function Palette({ open, items, onClose }: { open: boolean; items: PaletteItem[]
 function ShellView({ status, refresh }: { status: AuthStatus; refresh: () => void }) {
   const role = status.user?.role ?? "";
   const [density, setDensity] = usePersisted<Density>("ao.density", "compact");
-  const [page, setPage] = usePersisted<string>("ao.page", "documents");
+  const [page, setPage] = usePersisted<string>("ao.page", "dashboard");
   const [navOpen, setNavOpen] = usePersisted<boolean>("ao.navOpen", true);
   const [panelOpen, setPanelOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -93,9 +96,10 @@ function ShellView({ status, refresh }: { status: AuthStatus; refresh: () => voi
   }, [status.company?.uuid]);
 
   const go = useCallback(async (id: string) => {
-    if (id === page) return;
-    if (!(await leave())) return;
+    if (id === page) return true;
+    if (!(await leave())) return false;
     setPage(id);
+    return true;
   }, [page, leave, setPage]);
 
   useEffect(() => {
@@ -130,6 +134,7 @@ function ShellView({ status, refresh }: { status: AuthStatus; refresh: () => voi
   ], [go, lock, logout, closeCompany, setDensity]);
 
   const body: Record<string, ReactNode> = {
+    dashboard: <DashboardPage role={role} company={company} fy={fyLabel} onOpen={go} />,
     documents: <DocumentsPage />,
     clients: <ClientsPage />,
     projects: <ProjectsPage />,
@@ -155,10 +160,10 @@ function ShellView({ status, refresh }: { status: AuthStatus; refresh: () => voi
   return (
     <GlobalTheme theme="white">
       <DensityContext.Provider value={density}>
-        <Header aria-label="ADMS">
+        <Header aria-label={PRODUCT}>
           <SkipToContent />
           <HeaderMenuButton aria-label={navOpen ? "Close navigation" : "Open navigation"} isCollapsible onClick={() => setNavOpen(!navOpen)} isActive={navOpen} />
-          <HeaderName href="#" prefix="ADMS" onClick={(e: { preventDefault: () => void }) => e.preventDefault()}>{company || "Company not set up"} · FY {fyLabel}</HeaderName>
+          <HeaderName href="#" prefix={PRODUCT} onClick={(e: { preventDefault: () => void }) => e.preventDefault()}>{company || "Company not set up"} · FY {fyLabel}</HeaderName>
           <HeaderGlobalBar>
             <HeaderGlobalAction aria-label="Go to page or command (Ctrl+K)" tooltipAlignment="end" onClick={() => setPaletteOpen(true)}><SearchIcon size={20} /></HeaderGlobalAction>
             <HeaderGlobalAction aria-label="Preferences and session" tooltipAlignment="end" isActive={panelOpen} onClick={() => setPanelOpen(!panelOpen)}><Settings size={20} /></HeaderGlobalAction>
@@ -177,6 +182,7 @@ function ShellView({ status, refresh }: { status: AuthStatus; refresh: () => voi
               <SwitcherItem aria-label="Log out" href="#" onClick={(e: { preventDefault: () => void }) => { e.preventDefault(); logout(); }}>Log out</SwitcherItem>
               <SwitcherItem aria-label="Close company" href="#" onClick={(e: { preventDefault: () => void }) => { e.preventDefault(); setPanelOpen(false); closeCompany(); }}>Close company</SwitcherItem>
             </Switcher>
+            <div className="ao-pad"><ProductCredit /></div>
           </HeaderPanel>
         </Header>
 

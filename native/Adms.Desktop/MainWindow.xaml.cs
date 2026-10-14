@@ -2,11 +2,15 @@ using System.Text.Json;
 using Adms.Interop;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Printing;
 using Windows.Graphics;
+using Windows.Graphics.Printing;
 using Windows.Storage;
 using Windows.System;
+using Windows.UI.ViewManagement;
 using WinRT.Interop;
 
 namespace Adms.Desktop;
@@ -34,8 +38,14 @@ public sealed partial class MainWindow : Window
     private string _companyUuid = "";
     private string _role = "";
     private bool _applyingTheme;
+    private bool _allowClose;
     private RectInt32 _restored;
     private bool _maximized;
+    private readonly AccessibilitySettings _accessibility = new();
+    private PrintDocument? _printDocument;
+    private IPrintDocumentSource? _printSource;
+    private IReadOnlyList<UIElement> _printPages = [];
+    private string _printJob = "ADMS";
 
     public MainWindow()
     {
@@ -71,6 +81,15 @@ public sealed partial class MainWindow : Window
             ShowError("The accounting engine could not be loaded. " + ex.Message);
         }
         ShowWelcome();
+        try
+        {
+            _accessibility.HighContrastChanged += (_, _) => DispatcherQueue.TryEnqueue(RestoreTheme);
+        }
+        catch (Exception)
+        {
+            // This machine does not expose the high-contrast change event to an unpackaged app.
+            // The current setting is still read when the theme is applied.
+        }
         Root.Loaded += (_, _) => RestoreTheme();
         RestoreTheme();
         _ = LoadWelcomeAsync();
@@ -97,7 +116,12 @@ public sealed partial class MainWindow : Window
         try
         {
             AppTheme.Apply(Root, AppWindow, Hwnd, theme);
-            ThemeSwitch.IsOn = theme == ElementTheme.Dark;
+            var contrast = AppTheme.InHighContrast;
+            ThemeSwitch.IsEnabled = !contrast;
+            ThemeSwitch.IsOn = !contrast && theme == ElementTheme.Dark;
+            AutomationProperties.SetHelpText(ThemeSwitch, contrast
+                ? "Windows high contrast is on, so ADMS uses those colours."
+                : "Switches the application between light and dark.");
             if (!save)
                 return;
             try
@@ -122,6 +146,69 @@ public sealed partial class MainWindow : Window
     internal Task<bool> RunWork(string status, Action work) => RunEngineAsync(status, work);
 
     internal void ShowProblem(string message) => ShowError(message);
+
+    private PdfViewer? _pdf;
+
+    internal async Task ShowPdf(byte[] pdf, string name)
+    {
+        _pdf ??= new PdfViewer(() => ClosePdf());
+        if (PdfHost.Children.Count == 0)
+            PdfHost.Children.Add(_pdf);
+        PdfHost.Visibility = Visibility.Visible;
+        await _pdf.Load(this, pdf, name);
+    }
+
+    internal async Task PrintPagesAsync(string jobName, IReadOnlyList<UIElement> pages)
+    {
+        if (pages.Count == 0)
+        {
+            ShowProblem("There is nothing to print.");
+            return;
+        }
+        _printPages = pages;
+        _printJob = jobName;
+        EnsurePrinter();
+        try
+        {
+            await PrintManagerInterop.ShowPrintUIForWindowAsync(Hwnd);
+        }
+        catch (Exception ex)
+        {
+            ShowProblem("Printing could not be opened. " + ex.Message);
+        }
+    }
+
+    private void EnsurePrinter()
+    {
+        if (_printDocument != null)
+            return;
+        _printDocument = new PrintDocument();
+        _printSource = _printDocument.DocumentSource;
+        _printDocument.Paginate += (_, _) => _printDocument.SetPreviewPageCount(_printPages.Count, PreviewPageCountType.Final);
+        _printDocument.GetPreviewPage += (_, args) =>
+        {
+            if (args.PageNumber >= 1 && args.PageNumber <= _printPages.Count)
+                _printDocument.SetPreviewPage(args.PageNumber, _printPages[args.PageNumber - 1]);
+        };
+        _printDocument.AddPages += (_, _) =>
+        {
+            foreach (var page in _printPages)
+                _printDocument.AddPage(page);
+            _printDocument.AddPagesComplete();
+        };
+        var manager = PrintManagerInterop.GetForWindow(Hwnd);
+        manager.PrintTaskRequested += (_, args) => args.Request.CreatePrintTask(_printJob, source => source.SetSource(_printSource));
+    }
+
+    private bool ClosePdf()
+    {
+        if (PdfHost.Visibility != Visibility.Visible)
+            return false;
+        PdfHost.Visibility = Visibility.Collapsed;
+        _pdf?.Clear();
+        StatusText.Text = "Preview closed";
+        return true;
+    }
 
     private void RememberPlacement(AppWindow sender, AppWindowChangedEventArgs args)
     {
@@ -151,8 +238,22 @@ public sealed partial class MainWindow : Window
             ShowError("ADMS will close after the current operation finishes. Nothing is written until you confirm a save.");
             return;
         }
+        if (!_allowClose && _signedIn && _workspace != null)
+        {
+            args.Cancel = true;
+            _ = ConfirmClose();
+            return;
+        }
         _shuttingDown = true;
         ReleaseSession();
+    }
+
+    private async Task ConfirmClose()
+    {
+        if (_workspace != null && !await _workspace.ConfirmLeave())
+            return;
+        _allowClose = true;
+        Close();
     }
 
     private void SavePlacement()
@@ -276,11 +377,13 @@ public sealed partial class MainWindow : Window
             await LoadWelcomeAsync();
     }
 
-    private void CloseCompany(object sender, RoutedEventArgs e) => CloseCompanyNow();
+    private void CloseCompany(object sender, RoutedEventArgs e) => _ = CloseCompanyNow();
 
-    private void CloseCompanyNow()
+    private async Task CloseCompanyNow()
     {
         if (_busy || !_companyOpen || _session == null)
+            return;
+        if (_workspace != null && !await _workspace.ConfirmLeave())
             return;
         try
         {
@@ -580,6 +683,8 @@ public sealed partial class MainWindow : Window
     {
         if (_busy || _session == null || !_signedIn)
             return;
+        if (_workspace != null && !await _workspace.ConfirmLeave())
+            return;
         await RunEngineAsync("Locking…", () =>
         {
             _session.Call("auth_lock");
@@ -591,6 +696,8 @@ public sealed partial class MainWindow : Window
     private async void LogOut(object sender, RoutedEventArgs e)
     {
         if (_busy || _session == null || !_signedIn)
+            return;
+        if (_workspace != null && !await _workspace.ConfirmLeave())
             return;
         await RunEngineAsync("Signing out…", () =>
         {
@@ -611,32 +718,9 @@ public sealed partial class MainWindow : Window
         });
         if (!produced || pdf == null || _closeAfterBusy || _shuttingDown)
             return;
-
-        StorageFile? destination;
-        try
-        {
-            destination = await FileDialogs.PickPdfDestination(Hwnd, SafeFileName(_companyName));
-        }
-        catch (Exception ex)
-        {
-            ShowError("The save picker could not be opened. " + ex.Message);
-            return;
-        }
-        if (destination == null)
-        {
-            StatusText.Text = "Preview discarded";
-            return;
-        }
-        try
-        {
-            await FileIO.WriteBytesAsync(destination, pdf);
-            StatusText.Text = "Preview saved";
-            Notice.IsOpen = false;
-        }
-        catch (Exception ex)
-        {
-            ShowError("The preview could not be saved. " + ex.Message);
-        }
+        await ShowPdf(pdf, SafeFileName(_companyName));
+        StatusText.Text = "Preview ready";
+        Notice.IsOpen = false;
     }
 
     private async void ShowAbout(object sender, RoutedEventArgs e)
@@ -651,8 +735,18 @@ public sealed partial class MainWindow : Window
         }
         var dialog = new ContentDialog
         {
-            Title = "ADMS",
-            Content = $"Architects Documents Management System\nNative Windows shell\nEngine ABI version {version}\n\nCtrl+N new record, Ctrl+S save draft, Ctrl+P print, Ctrl+F search, Ctrl+K go to a page.",
+            Title = "About ADMS",
+            Content = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock { Text = "Architects Documents Management System", TextWrapping = TextWrapping.WrapWholeWords },
+                    new TextBlock { Text = "Developed by Human Centric Works" },
+                    new TextBlock { Text = $"Version 0.1.0 · Engine ABI {version}", Opacity = 0.7 },
+                    new TextBlock { Text = "Ctrl+N new record, Ctrl+S save draft, Ctrl+P print, Ctrl+F search, Ctrl+K go to a page.", TextWrapping = TextWrapping.WrapWholeWords },
+                },
+            },
             CloseButtonText = "Close",
             XamlRoot = Content.XamlRoot,
             RequestedTheme = Root.ActualTheme,
@@ -662,11 +756,36 @@ public sealed partial class MainWindow : Window
 
     private void ExitApplication(object sender, RoutedEventArgs e) => Close();
 
+    private void NewRecord(object sender, RoutedEventArgs e)
+    {
+        if (_signedIn && !_busy)
+            _workspace?.NewItem();
+    }
+
+    private void SaveRecord(object sender, RoutedEventArgs e)
+    {
+        if (_signedIn && !_busy)
+            _workspace?.Save();
+    }
+
+    private void GoDashboard(object sender, RoutedEventArgs e)
+    {
+        if (_signedIn)
+            _workspace?.Show("dashboard");
+    }
+
+    private void GoCompany(object sender, RoutedEventArgs e)
+    {
+        if (_signedIn)
+            _workspace?.Show("company");
+    }
+
     private void DismissNotice(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
-        if (!Notice.IsOpen)
+        if (!Notice.IsOpen && !ClosePdf())
             return;
-        Notice.IsOpen = false;
+        if (Notice.IsOpen)
+            Notice.IsOpen = false;
         args.Handled = true;
     }
 
@@ -686,6 +805,12 @@ public sealed partial class MainWindow : Window
 
     private void SaveCommand(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
+        if (PdfHost.Visibility == Visibility.Visible)
+        {
+            args.Handled = true;
+            _pdf?.Save();
+            return;
+        }
         if (!_signedIn || _busy)
             return;
         args.Handled = true;
@@ -945,13 +1070,23 @@ public sealed partial class MainWindow : Window
         UnlockPassword.Focus(FocusState.Programmatic);
     }
 
+    private static string CanonicalRole(string role) => role.Trim().ToLowerInvariant() switch
+    {
+        "owner" => "Owner",
+        "principal" => "Principal",
+        "accounts" => "Accounts",
+        "document_editor" or "documenteditor" => "DocumentEditor",
+        "auditor" => "Auditor",
+        _ => role,
+    };
+
     private void ShowWorkspace(string username, string role)
     {
         _signedIn = true;
-        _role = role;
+        _role = CanonicalRole(role);
         ClearWorkspace();
         _signedIn = true;
-        _workspace = new WorkspaceView(new AppShell { Session = _session!, Window = this, Role = role });
+        _workspace = new WorkspaceView(new AppShell { Session = _session!, Window = this, Role = _role });
         WorkspaceHost.Children.Add(_workspace);
         ShowOnly(WorkspaceHost);
         Notice.IsOpen = false;
@@ -1023,10 +1158,8 @@ public sealed partial class MainWindow : Window
             Notice.IsOpen = false;
             return;
         }
-        var dark = Root.ActualTheme == ElementTheme.Dark;
-        Notice.RequestedTheme = dark ? ElementTheme.Dark : ElementTheme.Light;
-        Notice.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-            Windows.UI.Color.FromArgb(255, dark ? (byte)255 : (byte)26, dark ? (byte)255 : (byte)26, dark ? (byte)255 : (byte)26));
+        Notice.RequestedTheme = AppTheme.InHighContrast ? ElementTheme.Default : AppTheme.Active == ElementTheme.Dark ? ElementTheme.Dark : ElementTheme.Light;
+        Notice.Foreground = Flow.Ink("TextPrimaryBrush");
         Notice.Severity = InfoBarSeverity.Error;
         Notice.Title = message.Trim();
         Notice.Message = "";

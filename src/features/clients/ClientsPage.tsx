@@ -7,6 +7,7 @@ import DataTable, { type Column } from "../../components/data-table/DataTable";
 import RowMenu from "../../components/data-table/RowMenu";
 import { Add, Edit } from "@carbon/icons-react";
 import { DraftGuard } from "../../app/unsaved";
+import { useCreateIntent } from "../../app/intent";
 
 const BLANK: Client = {
   id: null, name: "", contact_person: "", email: "", phone: "", address: "", pan: "", gstin: "", archived: false,
@@ -26,6 +27,8 @@ export default function ClientsPage() {
     api.clientList(showArchived).then((l) => { setClients(l); setLoadError(""); }).catch((e) => setLoadError(errorText(e))).finally(() => setLoading(false));
   }, [showArchived]);
   useEffect(load, [load]);
+  const openNew = useCallback(() => setEditing(BLANK), []);
+  useCreateIntent("clients", openNew);
 
   const columns: Column<Client>[] = [
     { id: "name", header: "Client", locked: true, minWidth: 220, sortValue: (c) => c.name.toLowerCase(), render: (c) => <strong>{c.name}</strong>, csv: (c) => c.name },
@@ -66,7 +69,7 @@ export default function ClientsPage() {
             {error && <InlineNotification kind="error" title={error} hideCloseButton lowContrast />}
             <div className="toolbar">
               <Button size="sm" kind="secondary" onClick={() => { setEditing(null); setError(""); }}>Cancel</Button>
-              <Button size="sm" type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+              <Button size="sm" type="submit" disabled={saving}>{saving ? "Saving…" : editing.id ? "Save changes" : "Create"}</Button>
             </div>
           </Stack>
         </Form>

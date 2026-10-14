@@ -18,6 +18,7 @@ import { useServerTable } from "../../components/data-table/useServerTable";
 import RowMenu, { type MenuItem } from "../../components/data-table/RowMenu";
 import { Add, Money, Save } from "@carbon/icons-react";
 import { DraftGuard, DraftSave } from "../../app/unsaved";
+import { useCreateIntent } from "../../app/intent";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -56,6 +57,10 @@ export default function InvoicesPage() {
   const reloadTable = table.reload;
   const load = useCallback(() => { loadSupport(); reloadTable(); }, [loadSupport, reloadTable]);
   useEffect(loadSupport, [loadSupport]);
+  const openNew = useCallback(() => {
+    api.projectList(null, false).then((list) => { setProjects(list); setDraft(blank(list[0]?.id ?? 0)); setStatus(null); }).catch(() => setDraft(blank()));
+  }, []);
+  useCreateIntent("invoices", openNew);
 
   // Totals always come from the native layer; the UI never does money arithmetic.
   useEffect(() => {
