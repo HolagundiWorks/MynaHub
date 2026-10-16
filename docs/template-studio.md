@@ -10,4 +10,4 @@
 
 **Versions.** Published versions are immutable (database triggers). Work in progress is a separate draft. Restoring an earlier version only copies it into the draft. Built-ins are never edited; copies are. Issued documents store the exact resolved HTML and paper setup, so later template changes never alter them.
 
-**Known gaps.** Invoices, receipts and credit notes still use the built-in billing layout (accounting output was deliberately not moved into user-editable templates). No template package export/import. No DOCX output. The preview uses the system PDF viewer's page and zoom controls rather than custom ones. Scope, appointment and user fields are not yet separate data sources.
+**Known gaps.** Invoices, receipts and credit notes still use the built-in billing layout (accounting output was deliberately not moved into user-editable templates). No template package export/import. Word templates are stored as `.docx`; the HTML family remains the Template Studio path described above. The preview uses the system PDF viewer's page and zoom controls rather than custom ones. Scope, appointment and user fields are not yet separate data sources.
