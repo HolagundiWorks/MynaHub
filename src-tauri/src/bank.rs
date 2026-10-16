@@ -136,6 +136,10 @@ pub fn parse_statement(text: &str, m: &Mapping) -> Result<Vec<ParsedRow>, String
         if rec.iter().all(|c| c.trim().is_empty()) {
             continue;
         }
+        // A blank date is not a transaction. Particulars, amounts and any other cells on that row are left out.
+        if rec.get(m.date).unwrap_or("").trim().is_empty() {
+            continue;
+        }
         let cell = |idx: Option<usize>| idx.and_then(|i| rec.get(i)).unwrap_or("").trim().to_string();
         let mut row = ParsedRow {
             row_no, raw, txn_date: String::new(), narration: cell(m.narration), reference: cell(m.reference),
@@ -856,7 +860,8 @@ mod tests {
 12/10/2026,NEFT ACME DEVELOPERS INV/2026-27/0001,UTR111,,\"1,08,000.00\",\"2,00,000.00\"\n\
 13-Oct-2026,Bank charges,CHG1,45.00,,\"1,99,955.00\"\n\
 bad-date,Oops,X,,10.00,\n\
-14/10/2026,No amount,X,,,\n";
+14/10/2026,No amount,X,,,\n\
+,Carried forward,NOTE,100.00,,\n";
 
     fn setup() -> (Connection, Vec<i64>, std::path::PathBuf) {
         let mut c = Connection::open_in_memory().unwrap();
@@ -893,6 +898,7 @@ bad-date,Oops,X,,10.00,\n\
         assert_eq!(rows[1].debit_paise, 4_500);
         assert!(rows[2].error.as_deref().unwrap().contains("not a recognised date"));
         assert!(rows[3].error.as_deref().unwrap().contains("no amount"));
+        assert!(rows.iter().all(|row| row.narration != "Carried forward"));
         // single signed-amount column
         let m = Mapping { debit: None, credit: None, amount: Some(3), ..mapping() };
         let r = parse_statement("d,n,r,a\n01/01/2026,x,y,-500.00\n02/01/2026,x,y,700 Cr\n03/01/2026,x,y,250 Dr", &m).unwrap();

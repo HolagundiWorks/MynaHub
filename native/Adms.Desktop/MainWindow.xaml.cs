@@ -37,7 +37,6 @@ public sealed partial class MainWindow : Window
     private string _companyPath = "";
     private string _companyUuid = "";
     private string _role = "";
-    private bool _applyingTheme;
     private bool _allowClose;
     private RectInt32 _restored;
     private bool _maximized;
@@ -45,12 +44,12 @@ public sealed partial class MainWindow : Window
     private PrintDocument? _printDocument;
     private IPrintDocumentSource? _printSource;
     private IReadOnlyList<UIElement> _printPages = [];
-    private string _printJob = "ADMS";
+    private string _printJob = "AOS";
 
     public MainWindow()
     {
         InitializeComponent();
-        Title = "ADMS";
+        Title = "AOS";
         var icon = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
         if (File.Exists(icon))
             AppWindow.SetIcon(icon);
@@ -95,49 +94,7 @@ public sealed partial class MainWindow : Window
         _ = LoadWelcomeAsync();
     }
 
-    private void RestoreTheme()
-    {
-        var theme = AppTheme.Load();
-        if (theme == ElementTheme.Default)
-            theme = Application.Current.RequestedTheme == ApplicationTheme.Dark ? ElementTheme.Dark : ElementTheme.Light;
-        ApplyTheme(theme, save: false);
-    }
-
-    private void ThemeToggled(object sender, RoutedEventArgs e)
-    {
-        if (_applyingTheme)
-            return;
-        ApplyTheme(ThemeSwitch.IsOn ? ElementTheme.Dark : ElementTheme.Light, save: true);
-    }
-
-    private void ApplyTheme(ElementTheme theme, bool save)
-    {
-        _applyingTheme = true;
-        try
-        {
-            AppTheme.Apply(Root, AppWindow, Hwnd, theme);
-            var contrast = AppTheme.InHighContrast;
-            ThemeSwitch.IsEnabled = !contrast;
-            ThemeSwitch.IsOn = !contrast && theme == ElementTheme.Dark;
-            AutomationProperties.SetHelpText(ThemeSwitch, contrast
-                ? "Windows high contrast is on, so ADMS uses those colours."
-                : "Switches the application between light and dark.");
-            if (!save)
-                return;
-            try
-            {
-                AppTheme.Save(theme);
-            }
-            catch (IOException ex)
-            {
-                ShowError("The theme could not be remembered. " + ex.Message);
-            }
-        }
-        finally
-        {
-            _applyingTheme = false;
-        }
-    }
+    private void RestoreTheme() => AppTheme.Apply(Root, AppWindow, Hwnd);
 
     private nint Hwnd => WindowNative.GetWindowHandle(this);
 
@@ -235,7 +192,7 @@ public sealed partial class MainWindow : Window
         {
             args.Cancel = true;
             _closeAfterBusy = true;
-            ShowError("ADMS will close after the current operation finishes. Nothing is written until you confirm a save.");
+            ShowError("AOS will close after the current operation finishes. Nothing is written until you confirm a save.");
             return;
         }
         if (!_allowClose && _signedIn && _workspace != null)
@@ -394,7 +351,7 @@ public sealed partial class MainWindow : Window
             _companyPath = "";
             _companyUuid = "";
             _role = "";
-            Title = "ADMS";
+            Title = "AOS";
             ClearSecrets();
             ClearWorkspace();
             ShowWelcome();
@@ -449,9 +406,7 @@ public sealed partial class MainWindow : Window
         form.Children.Add(fileBox);
         form.Children.Add(choose);
         form.Children.Add(folderText);
-        form.Children.Add(new TextBox { Header = "Owner username", Name = "OwnerUser" });
-        var owner = (TextBox)form.Children[^1];
-        var password = new PasswordBox { Header = "Owner password (12 or more characters)" };
+        var password = new PasswordBox { Header = "Admin password (12 or more characters)" };
         var confirm = new PasswordBox { Header = "Confirm password" };
         form.Children.Add(password);
         form.Children.Add(confirm);
@@ -474,17 +429,17 @@ public sealed partial class MainWindow : Window
             try
             {
                 var fileName = fileBox.Text.Trim();
-                if (nameBox.Text.Trim().Length == 0 || owner.Text.Trim().Length == 0 || password.Password.Length == 0 || folder == null || fileName.Length == 0)
+                if (nameBox.Text.Trim().Length == 0 || password.Password.Length == 0 || folder == null || fileName.Length == 0)
                 {
                     args.Cancel = true;
-                    error.Text = "Enter the company, a folder, the owner, and a password.";
+                    error.Text = "Enter the company, a folder, and the admin password.";
                     return;
                 }
                 if (!fileName.EndsWith(".adms", StringComparison.OrdinalIgnoreCase))
                     fileName += ".adms";
                 var path = Path.Combine(folder, fileName);
                 dialog.IsPrimaryButtonEnabled = false;
-                var created = await Task.Run(() => _session.CreateCompany(path, nameBox.Text.Trim(), owner.Text.Trim(), password.Password, confirm.Password));
+                var created = await Task.Run(() => _session.CreateCompany(path, nameBox.Text.Trim(), "admin", password.Password, confirm.Password));
                 recovery = created.Recovery;
                 password.Password = "";
                 confirm.Password = "";
@@ -568,16 +523,15 @@ public sealed partial class MainWindow : Window
     {
         if (_busy || _session == null || !_companyOpen)
             return;
-        var username = UsernameBox.Text.Trim();
         var password = PasswordBox.Password;
-        if (username.Length == 0 || password.Length == 0)
+        if (password.Length == 0)
         {
-            ShowError("Enter your username and password.");
+            ShowError("Enter the admin password.");
             return;
         }
         await RunEngineAsync("Signing in…", () =>
         {
-            _session.Login(username, password);
+            _session.Login("admin", password);
             var status = _session.Call("auth_status");
             DispatcherQueue.TryEnqueue(() =>
             {
@@ -591,18 +545,17 @@ public sealed partial class MainWindow : Window
     {
         if (_busy || _session == null || !_companyOpen)
             return;
-        var username = SetupUser.Text.Trim();
         var password = SetupPassword.Password;
         var confirm = SetupConfirm.Password;
-        if (username.Length == 0 || password.Length == 0)
+        if (password.Length == 0)
         {
-            ShowError("Enter a username and password.");
+            ShowError("Enter the admin password.");
             return;
         }
         string? code = null;
-        var created = await RunEngineAsync("Creating the owner account…", () =>
+        var created = await RunEngineAsync("Creating the admin account…", () =>
         {
-            code = _session.Call("auth_setup", new { username, password, confirm }).GetString();
+            code = _session.Call("auth_setup", new { username = "admin", password, confirm }).GetString();
         });
         SetupPassword.Password = "";
         SetupConfirm.Password = "";
@@ -616,9 +569,8 @@ public sealed partial class MainWindow : Window
     {
         if (_busy || !_companyOpen)
             return;
-        RecoverUser.Text = UsernameBox.Text;
         ShowOnly(RecoverPanel);
-        RecoverUser.Focus(FocusState.Programmatic);
+        RecoverCode.Focus(FocusState.Programmatic);
     }
 
     private void BackToSignIn(object sender, RoutedEventArgs e) => ShowLogin(_companyName);
@@ -627,13 +579,12 @@ public sealed partial class MainWindow : Window
     {
         if (_busy || _session == null || !_companyOpen)
             return;
-        var username = RecoverUser.Text.Trim();
         var code = RecoverCode.Text.Trim();
         var password = RecoverPassword.Password;
         var confirm = RecoverConfirm.Password;
-        if (username.Length == 0 || code.Length == 0 || password.Length == 0)
+        if (code.Length == 0 || password.Length == 0)
         {
-            ShowError("Enter the username, recovery code, and a new password.");
+            ShowError("Enter the recovery code and a new password.");
             return;
         }
         string? fresh = null;
@@ -641,7 +592,7 @@ public sealed partial class MainWindow : Window
         {
             var args = new Dictionary<string, string>
             {
-                ["username"] = username,
+                ["username"] = "admin",
                 ["code"] = code,
                 ["new"] = password,
                 ["confirm"] = confirm,
@@ -735,13 +686,13 @@ public sealed partial class MainWindow : Window
         }
         var dialog = new ContentDialog
         {
-            Title = "About ADMS",
+            Title = "About AOS",
             Content = new StackPanel
             {
                 Spacing = 8,
                 Children =
                 {
-                    new TextBlock { Text = "Architects Documents Management System", TextWrapping = TextWrapping.WrapWholeWords },
+                    new TextBlock { Text = "Architecture Office Suite", TextWrapping = TextWrapping.WrapWholeWords },
                     new TextBlock { Text = "Developed by Human Centric Works" },
                     new TextBlock { Text = $"Version 0.1.0 · Engine ABI {version}", Opacity = 0.7 },
                     new TextBlock { Text = "Ctrl+N new record, Ctrl+S save draft, Ctrl+P print, Ctrl+F search, Ctrl+K go to a page.", TextWrapping = TextWrapping.WrapWholeWords },
@@ -990,7 +941,7 @@ public sealed partial class MainWindow : Window
         _companyName = Text(company, "name");
         _companyPath = Text(company, "path");
         _companyUuid = Text(company, "uuid");
-        Title = string.IsNullOrWhiteSpace(_companyName) ? "ADMS" : $"ADMS — {_companyName}";
+        Title = string.IsNullOrWhiteSpace(_companyName) ? "AOS" : $"{_companyName} — AOS";
         var setup = status.TryGetProperty("setup_required", out var setupFlag) && setupFlag.ValueKind == JsonValueKind.True;
         if (setup)
         {
@@ -1051,20 +1002,20 @@ public sealed partial class MainWindow : Window
         LoginHeading.Text = string.IsNullOrWhiteSpace(name) ? "Sign in" : name;
         ShowOnly(LoginPanel);
         Notice.IsOpen = false;
-        UsernameBox.Focus(FocusState.Programmatic);
+        PasswordBox.Focus(FocusState.Programmatic);
     }
 
     private void ShowSetup()
     {
-        SetupHeading.Text = string.IsNullOrWhiteSpace(_companyName) ? "Set up the owner account" : _companyName;
+        SetupHeading.Text = string.IsNullOrWhiteSpace(_companyName) ? "Set up the admin password" : _companyName;
         ShowOnly(SetupPanel);
         Notice.IsOpen = false;
-        SetupUser.Focus(FocusState.Programmatic);
+        SetupPassword.Focus(FocusState.Programmatic);
     }
 
     private void ShowUnlock(string username)
     {
-        UnlockHeading.Text = string.IsNullOrWhiteSpace(username) ? "Session locked" : $"Session locked · {username}";
+        UnlockHeading.Text = "Session locked";
         ShowOnly(UnlockPanel);
         Notice.IsOpen = false;
         UnlockPassword.Focus(FocusState.Programmatic);
@@ -1090,7 +1041,7 @@ public sealed partial class MainWindow : Window
         WorkspaceHost.Children.Add(_workspace);
         ShowOnly(WorkspaceHost);
         Notice.IsOpen = false;
-        StatusText.Text = string.IsNullOrWhiteSpace(username) ? "Signed in" : $"Signed in as {username}";
+        StatusText.Text = "Signed in";
     }
 
     private void ClearWorkspace()
@@ -1158,7 +1109,7 @@ public sealed partial class MainWindow : Window
             Notice.IsOpen = false;
             return;
         }
-        Notice.RequestedTheme = AppTheme.InHighContrast ? ElementTheme.Default : AppTheme.Active == ElementTheme.Dark ? ElementTheme.Dark : ElementTheme.Light;
+        Notice.RequestedTheme = AppTheme.InHighContrast ? ElementTheme.Default : ElementTheme.Light;
         Notice.Foreground = Flow.Ink("TextPrimaryBrush");
         Notice.Severity = InfoBarSeverity.Error;
         Notice.Title = message.Trim();
@@ -1184,7 +1135,7 @@ public sealed partial class MainWindow : Window
         var invalid = Path.GetInvalidFileNameChars();
         var cleaned = new string(company.Select(ch => invalid.Contains(ch) ? '-' : ch).ToArray()).Trim();
         if (cleaned.Length == 0)
-            cleaned = "ADMS";
+            cleaned = "AOS";
         return cleaned + " preview";
     }
 

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Adms.Interop;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -25,6 +26,7 @@ internal sealed class AppShell
     public IPageCommands? Page { get; set; }
     public Action<string>? Navigate { get; set; }
     public string? PendingCreate { get; set; }
+    public long? PendingTemplateId { get; set; }
 
     public bool CanEdit => Role != "Auditor";
     public bool CanIssue => Role is "Owner" or "Principal" or "Accounts";
@@ -52,7 +54,7 @@ internal sealed class WorkspaceView : UserControl
         IsPaneToggleButtonVisible = false,
         IsPaneOpen = true,
         IsSettingsVisible = false,
-        OpenPaneLength = 320,
+        OpenPaneLength = 232,
         CompactModeThresholdWidth = 0,
         ExpandedModeThresholdWidth = 0,
     };
@@ -71,15 +73,36 @@ internal sealed class WorkspaceView : UserControl
     public WorkspaceView(AppShell shell)
     {
         _shell = shell;
-        _nav.Content = _host;
         _nav.PaneClosing += (_, args) => args.Cancel = true;
         _nav.ItemInvoked += (_, args) =>
         {
             if (args.InvokedItemContainer is NavigationViewItem item && item.Tag is string id)
                 Show(id);
         };
+        _nav.PaneHeader = new StackPanel
+        {
+            Spacing = 2,
+            Margin = new Thickness(4, 8, 12, 8),
+            Children =
+            {
+                new TextBlock { Text = "AOS", FontSize = 17, FontWeight = FontWeights.SemiBold, Foreground = Flow.Ink("TextPrimaryBrush") },
+                new TextBlock { Text = "Architecture Office Suite", FontSize = 11, TextWrapping = TextWrapping.Wrap, Foreground = Flow.Ink("TextSecondaryBrush") },
+            },
+        };
+        _host.Background = Flow.Ink("SurfaceBackgroundBrush");
+        var sheet = new Border
+        {
+            Margin = new Thickness(8),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            CornerRadius = new CornerRadius(8),
+            BorderBrush = Flow.Ink("BorderSubtleBrush"),
+            BorderThickness = new Thickness(1),
+            Background = Flow.Ink("SurfaceBackgroundBrush"),
+            Child = _host,
+        };
+        _nav.Content = sheet;
         Content = _nav;
-        SizeChanged += (_, _) => _nav.OpenPaneLength = ActualWidth < 1100 ? 220 : 320;
         _shell.Navigate = Show;
         BuildMenu();
         Show("dashboard");
@@ -100,58 +123,70 @@ internal sealed class WorkspaceView : UserControl
         var page = PageFor(id);
         _shell.Page = page as IPageCommands;
         _host.Children.Add(page);
+        var marked = id == "template-editor" ? "templates" : id;
         foreach (var item in _nav.MenuItems.OfType<NavigationViewItem>())
-            item.IsSelected = item.Tag as string == id;
+            item.IsSelected = item.Tag as string == marked;
     }
 
     private void BuildMenu()
     {
-        // Same drawing-set order as the AORMS Office Hub, limited to the records this desktop file actually keeps.
-        AddTop("dashboard", "00", "Pulse", "\uE9D2");
-        AddTop("projects", "01", "Projects", "\uE8F1");
-        AddGroup("02", "Third Parties", ("clients", "01", "Clients", "\uE716"));
-        AddGroup("03", "Office",
+        AddGroup("01", "Practice",
+            ("dashboard", "01", "Pulse", "\uE9D2"),
+            ("clients", "02", "Clients", "\uE716"),
+            ("projects", "03", "Projects", "\uE8F1"));
+        AddGroup("02", "Documents",
             ("documents", "01", "Letters", "\uE8A5"),
-            ("templates", "02", "Office Templates", "\uE943"));
+            ("templates", "02", "Templates", "\uE943"));
         if (_shell.Role != "DocumentEditor")
         {
-            AddGroup("04", "Accounts",
+            AddGroup("03", "Accounts",
                 ("invoices", "01", "Invoices", "\uE8A1"),
-                ("acc-reports", "02", "Financial Reports", "\uE9F9"),
+                ("acc-reports", "02", "Reports", "\uE9F9"),
                 ("acc-journals", "03", "Journals", "\uE8A5"),
-                ("acc-expenses", "04", "Office Expenses", "\uE8C7"),
-                ("acc-income", "05", "Rent and interest", "\uEAFD"),
+                ("acc-expenses", "04", "Expenses", "\uE8C7"),
+                ("acc-income", "05", "Income", "\uEAFD"),
                 ("acc-salaries", "06", "Salaries", "\uE77B"),
-                ("acc-assets", "07", "Fixed assets", "\uE7C5"),
-                ("acc-tax", "08", "Tax payments", "\uE9D9"),
+                ("acc-assets", "07", "Assets", "\uE7C5"),
+                ("acc-tax", "08", "Tax", "\uE9D9"),
                 ("bank", "09", "Reconciliation", "\uE825"),
-                ("acc-setup", "10", "Chart and financial years", "\uE9D2"));
+                ("acc-setup", "10", "Chart and years", "\uE9D2"));
         }
-        AddGroup("05", "Admin",
-            ("company", "01", "Firm Settings", "\uE731"),
-            ("settings", "02", "Security, users and backup", "\uE713"));
+        AddGroup("04", "Office",
+            ("company", "01", "Firm", "\uE731"),
+            ("settings", "02", "Security", "\uE713"));
     }
 
     private void AddTop(string id, string sheet, string label, string glyph)
     {
         _destinations.Add((id, label));
-        _nav.MenuItems.Add(Item(id, $"ADMS-{sheet}", label, glyph));
+        _nav.MenuItems.Add(Item(id, label, glyph));
     }
 
     private void AddGroup(string sheet, string title, params (string Id, string Item, string Label, string Glyph)[] items)
     {
-        _nav.MenuItems.Add(new NavigationViewItemHeader { Content = $"ADMS-{sheet}  {title.ToUpperInvariant()}" });
-        foreach (var (id, item, label, glyph) in items)
+        _nav.MenuItems.Add(new NavigationViewItemHeader
+        {
+            Content = new TextBlock
+            {
+                Text = title,
+                FontSize = 11,
+                Margin = new Thickness(0, 8, 0, 0),
+                Foreground = Flow.Ink("TextSecondaryBrush"),
+            },
+        });
+        foreach (var (id, _, label, glyph) in items)
         {
             _destinations.Add((id, label));
-            _nav.MenuItems.Add(Item(id, $"{sheet}.{item}", label, glyph));
+            _nav.MenuItems.Add(Item(id, label, glyph));
         }
     }
 
-    private static NavigationViewItem Item(string id, string sheet, string label, string glyph) => new()
+    private static NavigationViewItem Item(string id, string label, string glyph) => new()
     {
-        Content = $"{sheet}  {label}",
+        Content = label,
         Tag = id,
+        MinHeight = 32,
+        FontSize = 13,
         Icon = new FontIcon { Glyph = glyph, FontFamily = IconFont, FontSize = 16 },
     };
 
@@ -171,7 +206,8 @@ internal sealed class WorkspaceView : UserControl
         "acc-assets" => Ledgers.Assets(_shell),
         "acc-tax" => Ledgers.Tax(_shell),
         "acc-setup" => Ledgers.Accounts(_shell),
-        "templates" => Pages.Templates(_shell),
+        "templates" => new TemplateListPage(_shell),
+        "template-editor" => new StudioEditor(_shell),
         "company" => Ledgers.Company(_shell),
         "settings" => Ledgers.Settings(_shell),
         _ => new TextBlock { Text = id, Margin = new Thickness(16) },
@@ -568,7 +604,7 @@ internal static class Pages
         })));
     });
 
-    public static UIElement Templates(AppShell shell) => new StudioEditor(shell);
+    public static UIElement Templates(AppShell shell) => new TemplateListPage(shell);
 
     public static UIElement Company(AppShell shell)
     {
@@ -649,7 +685,7 @@ internal static class Pages
     private static WorkPage Register(AppShell shell, string title, string operation, Func<string, object> args, Func<JsonElement, string> label, Action<WorkPage> build)
     {
         var page = Kit.Page(title);
-        page.SearchBox = new TextBox { PlaceholderText = "Search", Header = "Search", Margin = new Thickness(0, 0, 0, 8), MaxWidth = 420, HorizontalAlignment = HorizontalAlignment.Left };
+        page.SearchBox = new TextBox { PlaceholderText = "Search", Header = "Search", Margin = new Thickness(0, 0, 0, 8), HorizontalAlignment = HorizontalAlignment.Stretch };
         AutomationProperties.SetName(page.SearchBox, $"Search {title}");
         Grid.SetRow(page.SearchBox, 0);
         page.ListPane.Children.Insert(0, page.SearchBox);
@@ -689,8 +725,8 @@ internal static class Kit
         var list = new Grid();
         list.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         list.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        var form = new StackPanel { Spacing = 8, MaxWidth = 480 };
-        var scroller = new ScrollViewer { Content = form };
+        var form = new StackPanel { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
+        var scroller = Flow.Scroll(form);
         split.Children.Add(list);
         split.Children.Add(scroller);
         Grid.SetRow(split, 1);
@@ -733,18 +769,18 @@ internal static class Kit
             Grid.SetColumn(formScroll, 0);
             Grid.SetRow(formScroll, 1);
             form.Margin = new Thickness(0, 16, 0, 0);
-            form.MaxWidth = 640;
+            form.HorizontalAlignment = HorizontalAlignment.Stretch;
         }
         else
         {
             split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.4, GridUnitType.Star), MinWidth = 320 });
-            split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = 480 });
+            split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 280 });
             Grid.SetRow(list, 0);
             Grid.SetColumn(list, 0);
             Grid.SetRow(formScroll, 0);
             Grid.SetColumn(formScroll, 1);
             form.Margin = new Thickness(24, 0, 0, 0);
-            form.MaxWidth = 480;
+            form.HorizontalAlignment = HorizontalAlignment.Stretch;
         }
     }
 

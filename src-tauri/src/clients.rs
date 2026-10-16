@@ -26,10 +26,39 @@ pub struct Project {
     pub name: String,
     pub site_address: String,
     pub status: String,
+    /// Council of Architecture service, from the Conditions of Engagement and Scale of Charges.
+    #[serde(default = "default_consultancy")]
+    pub consultancy_type: String,
     #[serde(default)]
     pub archived: bool,
     #[serde(default)]
     pub client_name: String,
+}
+
+fn default_consultancy() -> String {
+    "comprehensive".into()
+}
+
+/// Services named in the Council of Architecture Conditions of Engagement and Scale of Charges.
+const CONSULTANCY: &[(&str, &str)] = &[
+    ("comprehensive", "Comprehensive architectural services"),
+    ("interior", "Interior architecture"),
+    ("landscape", "Landscape architecture"),
+    ("urban", "Urban design and urban renewal"),
+    ("site", "Site development"),
+    ("conservation", "Architectural conservation"),
+    ("retrofitting", "Retrofitting of buildings"),
+    ("signage", "Graphic design and signage"),
+];
+
+fn consultancy(value: &str) -> Result<String, String> {
+    let key = value.trim();
+    let key = if key.is_empty() { "comprehensive" } else { key };
+    if CONSULTANCY.iter().any(|(id, _)| *id == key) {
+        Ok(key.to_string())
+    } else {
+        Err("Choose a consultancy type from the Council of Architecture schedule.".into())
+    }
 }
 
 fn nonempty(s: &str, label: &str) -> Result<String, String> {
@@ -117,7 +146,7 @@ pub fn set_client_archived(conn: &Connection, id: i64, archived: bool) -> Result
 pub fn list_projects(conn: &Connection, client_id: Option<i64>, include_archived: bool) -> Result<Vec<Project>, String> {
     let mut stmt = conn
         .prepare(
-            "SELECT p.id, p.client_id, p.code, p.name, p.site_address, p.status, p.archived, c.name
+            "SELECT p.id, p.client_id, p.code, p.name, p.site_address, p.status, p.consultancy_type, p.archived, c.name
              FROM projects p JOIN clients c ON c.id = p.client_id
              WHERE (p.archived = 0 OR ?1) AND (?2 IS NULL OR p.client_id = ?2)
              ORDER BY c.name, p.name",
@@ -132,8 +161,9 @@ pub fn list_projects(conn: &Connection, client_id: Option<i64>, include_archived
                 name: r.get(3)?,
                 site_address: r.get(4)?,
                 status: r.get(5)?,
-                archived: r.get::<_, i64>(6)? != 0,
-                client_name: r.get(7)?,
+                consultancy_type: r.get(6)?,
+                archived: r.get::<_, i64>(7)? != 0,
+                client_name: r.get(8)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -145,6 +175,7 @@ pub fn save_project(conn: &Connection, p: &Project) -> Result<i64, String> {
     if !["active", "on_hold", "completed"].contains(&p.status.as_str()) {
         return Err("Invalid project status.".into());
     }
+    let consultancy_type = consultancy(&p.consultancy_type)?;
     let client_archived: Option<i64> = conn
         .query_row("SELECT archived FROM clients WHERE id=?1", params![p.client_id], |r| r.get(0))
         .ok();
@@ -157,8 +188,8 @@ pub fn save_project(conn: &Connection, p: &Project) -> Result<i64, String> {
         Some(id) => {
             let n = conn
                 .execute(
-                    "UPDATE projects SET client_id=?1, code=?2, name=?3, site_address=?4, status=?5, updated_at=datetime('now') WHERE id=?6",
-                    params![p.client_id, p.code.trim(), name, p.site_address.trim(), p.status, id],
+                    "UPDATE projects SET client_id=?1, code=?2, name=?3, site_address=?4, status=?5, consultancy_type=?6, updated_at=datetime('now') WHERE id=?7",
+                    params![p.client_id, p.code.trim(), name, p.site_address.trim(), p.status, consultancy_type, id],
                 )
                 .map_err(|e| map_unique(e, "This client already has a project with this name; it"))?;
             if n == 0 {
@@ -168,8 +199,8 @@ pub fn save_project(conn: &Connection, p: &Project) -> Result<i64, String> {
         }
         None => {
             conn.execute(
-                "INSERT INTO projects (client_id, code, name, site_address, status) VALUES (?1,?2,?3,?4,?5)",
-                params![p.client_id, p.code.trim(), name, p.site_address.trim(), p.status],
+                "INSERT INTO projects (client_id, code, name, site_address, status, consultancy_type) VALUES (?1,?2,?3,?4,?5,?6)",
+                params![p.client_id, p.code.trim(), name, p.site_address.trim(), p.status, consultancy_type],
             )
             .map_err(|e| map_unique(e, "This client already has a project with this name; it"))?;
             Ok(conn.last_insert_rowid())
@@ -253,7 +284,7 @@ mod tests {
     }
 
     fn project(client_id: i64, name: &str) -> Project {
-        Project { id: None, client_id, code: "".into(), name: name.into(), site_address: "".into(), status: "active".into(), archived: false, client_name: "".into() }
+        Project { id: None, client_id, code: "".into(), name: name.into(), site_address: "".into(), status: "active".into(), consultancy_type: "comprehensive".into(), archived: false, client_name: "".into() }
     }
 
     #[test]
@@ -296,5 +327,12 @@ mod tests {
         p.client_id = id;
         p.status = "bogus".into();
         assert!(save_project(&c, &p).is_err());
+        p.status = "active".into();
+        p.consultancy_type = "not-a-service".into();
+        assert!(save_project(&c, &p).unwrap_err().contains("Council of Architecture"));
+        p.consultancy_type = "interior".into();
+        let saved_id = save_project(&c, &p).unwrap();
+        let saved = list_projects(&c, None, false).unwrap();
+        assert_eq!(saved.iter().find(|row| row.id == Some(saved_id)).unwrap().consultancy_type, "interior");
     }
 }

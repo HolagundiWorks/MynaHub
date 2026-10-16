@@ -8,7 +8,7 @@ namespace Adms.Desktop;
 internal sealed class Book : UserControl, IPageCommands
 {
     private readonly ListView _list = new() { SelectionMode = ListViewSelectionMode.Single };
-    private readonly TextBox _search = new() { Header = "Search", PlaceholderText = "Search this list", MaxWidth = 360, HorizontalAlignment = HorizontalAlignment.Left };
+    private readonly TextBox _search = new() { Header = "Search", PlaceholderText = "Search this list", HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly TextBlock _summary = Flow.Secondary("");
     private readonly ContentControl _tableHead = new();
     private readonly Grid _split = new();
@@ -27,7 +27,7 @@ internal sealed class Book : UserControl, IPageCommands
     private string _loadOperation = "";
     private object? _loadArgs;
 
-    public StackPanel Form { get; } = new() { Spacing = 8, MaxWidth = 560 };
+    public StackPanel Form { get; } = new() { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
     public StackPanel Detail { get; } = new() { Spacing = 8 };
     public Action? SaveAction { get; set; }
     public Action<JsonElement>? Chosen { get; set; }
@@ -53,8 +53,17 @@ internal sealed class Book : UserControl, IPageCommands
         heading.Children.Add(Flow.Heading(title));
         heading.Children.Add(Flow.Secondary(result));
         _listPane.Children.Add(heading);
-        Grid.SetRow(_search, 1);
-        _listPane.Children.Add(_search);
+        var filters = new Grid { ColumnSpacing = 8 };
+        filters.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        filters.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        filters.Children.Add(_search);
+        var refresh = new Button { Content = "Refresh", VerticalAlignment = VerticalAlignment.Bottom };
+        AutomationProperties.SetName(refresh, $"Refresh {title}");
+        refresh.Click += (_, _) => Refresh();
+        Grid.SetColumn(refresh, 1);
+        filters.Children.Add(refresh);
+        Grid.SetRow(filters, 1);
+        _listPane.Children.Add(filters);
         Grid.SetRow(_summary, 2);
         _listPane.Children.Add(_summary);
         var table = new Grid();
@@ -68,13 +77,16 @@ internal sealed class Book : UserControl, IPageCommands
         Form.Children.Add(Detail);
         _split.Margin = (Thickness)Application.Current.Resources["PageMargin"];
         _split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.4, GridUnitType.Star), MinWidth = 280 });
-        _split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = 560 });
+        _split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 280 });
         _split.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         _split.RowDefinitions.Add(new RowDefinition { Height = new GridLength(0) });
         _split.Children.Add(_listPane);
-        _formScroll = new ScrollViewer { Content = Form, Margin = new Thickness(24, 0, 0, 0) };
+        _formScroll = Flow.Scroll(Form);
+        _formScroll.Margin = new Thickness(24, 0, 0, 0);
         Grid.SetColumn(_formScroll, 1);
         _split.Children.Add(_formScroll);
+        _pageScroll.HorizontalScrollMode = ScrollMode.Disabled;
+        _pageScroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
         Content = _split;
         SizeChanged += (_, _) => Reflow();
         _filling = false;
@@ -91,6 +103,7 @@ internal sealed class Book : UserControl, IPageCommands
             _split.ColumnDefinitions[0].Width = new GridLength(1, GridUnitType.Star);
             _split.ColumnDefinitions[0].MinWidth = 0;
             _split.ColumnDefinitions[1].Width = new GridLength(0);
+            _split.ColumnDefinitions[1].MinWidth = 0;
             _split.RowDefinitions[0].Height = GridLength.Auto;
             _split.RowDefinitions[1].Height = GridLength.Auto;
             _list.MaxHeight = 420;
@@ -107,7 +120,7 @@ internal sealed class Book : UserControl, IPageCommands
             _split.ColumnDefinitions[0].Width = new GridLength(1.4, GridUnitType.Star);
             _split.ColumnDefinitions[0].MinWidth = 280;
             _split.ColumnDefinitions[1].Width = new GridLength(1, GridUnitType.Star);
-            _split.ColumnDefinitions[1].MaxWidth = 560;
+            _split.ColumnDefinitions[1].MinWidth = 280;
             _split.RowDefinitions[0].Height = new GridLength(1, GridUnitType.Star);
             _split.RowDefinitions[1].Height = new GridLength(0);
             _list.MaxHeight = double.PositiveInfinity;
@@ -276,6 +289,16 @@ internal static class Ledgers
     public static UIElement Journals(AppShell shell)
     {
         var book = new Book("04.03", "Accounts", "Journals", "Posted journals stay as they were posted. A correction is a reversal.");
+        var from = Flow.Input("From");
+        from.Text = Kit.YearStart();
+        var to = Flow.Input("To");
+        to.Text = Kit.Today();
+        object Period() => new { from = from.Text.Trim(), to = to.Text.Trim(), limit = 200 };
+        var show = new Button { Content = "Show journals", MinHeight = 32 };
+        show.Click += (_, _) => book.Reload(shell, "Loading journals…", "journal_list", Period(), JournalHeaders, JournalKeys, JournalMoney);
+        book.Form.Children.Add(Flow.Section("Period"));
+        book.Form.Children.Add(Flow.Pair(from, to));
+        book.Form.Children.Add(show);
         var date = Flow.Input("Date");
         date.Text = Kit.Today();
         var narration = Flow.Input("Narration");
@@ -291,7 +314,7 @@ internal static class Ledgers
             book.Form.Children.Add(debit);
             book.Form.Children.Add(credit);
             book.Form.Children.Add(amount);
-            var post = new Button { Content = "Post journal", MinHeight = 32 };
+            var post = new Button { Content = "Post journal", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
             post.Click += async (_, _) =>
             {
                 if (!await Flow.Confirm(book, "Post this journal?", "A posted journal cannot be edited. A correction is a new reversal journal.", "Post"))
@@ -310,7 +333,7 @@ internal static class Ledgers
                     },
                 };
                 _ = shell.Run("Posting journal…", () => shell.Call("journal_post", posted)).ContinueWith(task =>
-                    shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) book.Reload(shell, "Loading journals…", "journal_list", new { from = Kit.YearStart(), to = Kit.Today(), limit = 200 }, JournalHeaders, JournalKeys, JournalMoney); }));
+                    shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) book.Reload(shell, "Loading journals…", "journal_list", Period(), JournalHeaders, JournalKeys, JournalMoney); }));
             };
             book.Form.Children.Add(post);
             book.Watch(date, narration, debit, credit, amount);
@@ -338,7 +361,7 @@ internal static class Ledgers
                 debit = Find(book.Form, "Debit account");
                 credit = Find(book.Form, "Credit account");
             });
-        book.Reload(shell, "Loading journals…", "journal_list", new { from = Kit.YearStart(), to = Kit.Today(), limit = 200 }, JournalHeaders, JournalKeys, JournalMoney);
+        book.Reload(shell, "Loading journals…", "journal_list", Period(), JournalHeaders, JournalKeys, JournalMoney);
         return book;
     }
 
@@ -605,7 +628,7 @@ internal static class Ledgers
             book.Form.Children.Add(Flow.Section("Record a payment"));
             foreach (var control in new Control[] { kind, date, amount, narration, via })
                 book.Form.Children.Add(control);
-            var pay = new Button { Content = "Record payment", MinHeight = 32 };
+            var pay = new Button { Content = "Record payment", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
             pay.Click += async (_, _) =>
             {
                 if (!await Flow.Confirm(book, "Record this tax payment?", "This posts a journal in the company file.", "Record payment"))
@@ -656,7 +679,7 @@ internal static class Ledgers
             book.Form.Children.Add(code);
             book.Form.Children.Add(name);
             book.Form.Children.Add(kind);
-            var create = new Button { Content = "Create account", MinHeight = 32 };
+            var create = new Button { Content = "Create account", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
             create.Click += (_, _) =>
             {
                 var created = new { code = code.Text.Trim(), name = name.Text.Trim(), kind = Book.Selected(kind, "expense") };
@@ -667,24 +690,24 @@ internal static class Ledgers
             book.Watch(code, name, kind);
         }
         var years = new StackPanel { Spacing = 8 };
-        string? selectedYear = null;
-        book.Chosen = row => selectedYear = Kit.Str(row, "fy");
+        var yearBox = new ComboBox { Header = "Financial year to close", HorizontalAlignment = HorizontalAlignment.Stretch };
         book.Form.Children.Add(Flow.Section("Financial years"));
         book.Form.Children.Add(years);
+        book.Form.Children.Add(yearBox);
         if (shell.CanManage)
         {
             var password = new PasswordBox { Header = "Your password" };
             var close = new Button { Content = "Close selected year", MinHeight = 32 };
             close.Click += async (_, _) =>
             {
-                if (string.IsNullOrWhiteSpace(selectedYear))
+                var fy = yearBox.SelectedItem is ComboBoxItem item && item.Tag is string tag ? tag : "";
+                if (fy.Length == 0)
                 {
-                    shell.Problem("Select a financial year in the list first.");
+                    shell.Problem("Select a financial year first.");
                     return;
                 }
                 if (!await Flow.Confirm(book, "Close this financial year?", "Closing a year blocks new postings in that year. Your password confirms it.", "Close year"))
                     return;
-                var fy = selectedYear;
                 var secret = password.Password;
                 _ = shell.Run("Updating the year…", () => shell.Call("period_set", new { fy, closed = true, password = secret }));
             };
@@ -698,6 +721,17 @@ internal static class Ledgers
             shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 years.Children.Clear();
+                yearBox.Items.Clear();
+                if (list.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var row in list.EnumerateArray())
+                    {
+                        var fy = Kit.Str(row, "fy");
+                        yearBox.Items.Add(new ComboBoxItem { Content = $"{fy} · {Kit.Str(row, "status")}", Tag = fy });
+                    }
+                }
+                if (yearBox.Items.Count > 0)
+                    yearBox.SelectedIndex = 0;
                 years.Children.Add(Kit.TableOf(list, "Financial years", ["Year", "Start", "End", "Status", "Journals"], ["fy", "start_date", "end_date", "status", "journals"], [false, false, false, false, true]));
             });
         });
@@ -706,7 +740,7 @@ internal static class Ledgers
 
     public static UIElement Company(AppShell shell)
     {
-        var form = new DraftForm(640);
+        var form = new DraftForm();
         var page = form.Body;
         page.Children.Add(Flow.SheetMark("05.01", "Admin", "Firm settings"));
         page.Children.Add(Flow.Heading("Firm settings"));
@@ -726,23 +760,31 @@ internal static class Ledgers
                 box.MinHeight = 80;
             }
             fields[key] = box;
-            page.Children.Add(box);
         }
+        page.Children.Add(Flow.Pair(fields["name"], fields["architect_name"]));
+        page.Children.Add(Flow.Pair(fields["email"], fields["phone"]));
+        page.Children.Add(fields["address"]);
+        page.Children.Add(Flow.Pair(fields["pan"], fields["gstin"]));
+        page.Children.Add(Flow.Pair(fields["coa_registration"], fields["upi_id"]));
+        page.Children.Add(fields["bank_details"]);
         var scheme = Book.Choices("GST scheme", ("Not registered", "none"), ("Composition", "composition"), ("Regular", "regular"));
         var letterhead = Book.Choices("Letterhead", ("Classic", "classic"), ("Minimal", "minimal"));
-        page.Children.Add(scheme);
-        page.Children.Add(letterhead);
-        var save = new Button { Content = "Save profile", MinHeight = 32 };
+        page.Children.Add(Flow.Pair(scheme, letterhead));
+        var save = new Button { Content = "Save profile", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
         save.Visibility = shell.CanManage ? Visibility.Visible : Visibility.Collapsed;
-        save.Click += (_, _) =>
+        void SaveProfile()
         {
+            if (!shell.CanManage)
+                return;
             var profile = fields.ToDictionary(pair => pair.Key, pair => pair.Value.Text);
             profile["gst_scheme"] = Book.Selected(scheme, "none");
             profile["letterhead_style"] = Book.Selected(letterhead, "classic");
             _ = shell.Run("Saving profile…", () => shell.Call("company_save_profile", new { profile })).ContinueWith(task =>
                 shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) form.ClearDirty(); }));
-        };
+        }
+        save.Click += (_, _) => SaveProfile();
         page.Children.Add(save);
+        form.SaveAction = SaveProfile;
         if (shell.CanManage)
             form.Watch([.. fields.Values, scheme, letterhead]);
         _ = shell.Run("Loading profile…", () =>
@@ -762,57 +804,88 @@ internal static class Ledgers
 
     public static UIElement Settings(AppShell shell)
     {
-        var form = new DraftForm(720);
+        var form = new DraftForm();
         var page = form.Body;
         page.Children.Add(Flow.SheetMark("05.02", "Admin", "Security"));
-        page.Children.Add(Flow.Heading("Security, users and backup"));
+        page.Children.Add(Flow.Heading("Security and backup"));
+        if (shell.CanAudit)
+        {
+            var activity = new StackPanel { Spacing = 0 };
+            page.Children.Add(Flow.Section("Recent activity"));
+            page.Children.Add(Flow.Secondary("Latest events recorded in this company file."));
+            page.Children.Add(activity);
+            var refreshActivity = new Button { Content = "Refresh activity", MinHeight = 32 };
+            refreshActivity.Click += (_, _) => LoadActivity(shell, activity);
+            page.Children.Add(refreshActivity);
+            LoadActivity(shell, activity);
+        }
         var output = new StackPanel { Spacing = 8 };
         page.Children.Add(output);
         if (shell.CanManage)
         {
-            var username = Flow.Input("New username");
-            var password = new PasswordBox { Header = "Password" };
-            var role = Book.Choices("Role", ("Accounts", "accounts"), ("Principal", "principal"), ("Document editor", "document_editor"), ("Auditor", "auditor"), ("Owner", "owner"));
-            var admin = new PasswordBox { Header = "Your password" };
-            page.Children.Add(Flow.Section("New user"));
-            page.Children.Add(username);
-            page.Children.Add(password);
-            page.Children.Add(role);
+            var admin = new PasswordBox { Header = "Admin password" };
+            page.Children.Add(Flow.Section("Backup"));
+            page.Children.Add(Flow.Secondary("A backup of this company file needs the admin password."));
             page.Children.Add(admin);
-            var create = new Button { Content = "Create user", MinHeight = 32 };
-            create.Click += (_, _) =>
-            {
-                var user = new { username = username.Text.Trim(), password = password.Password, role = Book.Selected(role, "accounts"), admin_password = admin.Password };
-                _ = shell.Run("Creating user…", () => shell.Call("user_create", user)).ContinueWith(task =>
-                    shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) LoadUsers(shell, output); }));
-            };
             var backup = new Button { Content = "Create backup", MinHeight = 32 };
             backup.Click += (_, _) =>
             {
                 var adminPassword = admin.Password;
                 shell.Run("Creating backup…", () => Pages.Show(shell, output, "Backup", shell.Call("backup_create", new { password = adminPassword }), ["File", "SHA-256", "Bytes", "Folder"], ["filename", "sha256", "bytes", "folder"], [false, false, true, false]));
             };
-            page.Children.Add(create);
             page.Children.Add(backup);
-            form.Watch(username, password, role, admin);
+            form.Watch(admin);
             form.Arm();
         }
-        var users = new Button { Content = "Show users", MinHeight = 32 };
-        users.Click += (_, _) => LoadUsers(shell, output);
         var audit = new Button { Content = "Show audit", MinHeight = 32 };
         audit.Click += (_, _) => shell.Run("Loading audit…", () => Pages.Show(shell, output, "Audit", shell.Call("audit_list", new { limit = 100 }), ["When", "Person", "Event", "Detail"], ["at", "user", "event", "detail"], [false, false, false, false]));
         var backups = new Button { Content = "Show backups", MinHeight = 32 };
         backups.Click += (_, _) => shell.Run("Loading backups…", () => Pages.Show(shell, output, "Backups", shell.Call("backup_list"), ["File", "Bytes"], ["filename", "bytes"], [false, true]));
         var commands = new StackPanel { Spacing = 8 };
-        commands.Children.Add(users);
         if (shell.CanAudit)
             commands.Children.Add(audit);
         if (shell.CanManage)
             commands.Children.Add(backups);
         page.Children.Add(commands);
-        if (shell.CanManage)
-            LoadUsers(shell, output);
         return form;
+    }
+
+    private static readonly GridLength[] ActivityWidths = [new(200), new(160), new(180), new(2, GridUnitType.Star)];
+
+    private static void LoadActivity(AppShell shell, StackPanel activity)
+    {
+        _ = shell.Run("Loading recent activity…", () =>
+        {
+            var audit = Flow.Try(shell, "audit_page", new { query = Flow.PageQuery(pageSize: 20) });
+            shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                activity.Children.Clear();
+                if (audit is JsonElement auditPage && auditPage.TryGetProperty("rows", out var rows) && rows.ValueKind == JsonValueKind.Array && rows.GetArrayLength() > 0)
+                {
+                    activity.Children.Add(Flow.Header(["When", "Person", "Event", "Detail"], ActivityWidths));
+                    foreach (var row in rows.EnumerateArray())
+                    {
+                        var when = Kit.Str(row, "at");
+                        var who = Kit.Str(row, "user");
+                        var ev = EventLabel(Kit.Str(row, "event"));
+                        var detail = Kit.Str(row, "detail");
+                        var line = Flow.Columns([when, who.Length == 0 ? "—" : who, ev, detail.Length == 0 ? "—" : detail], ActivityWidths);
+                        AutomationProperties.SetName(line, $"{when}, {who}, {ev}. {detail}");
+                        activity.Children.Add(line);
+                    }
+                }
+                else
+                    activity.Children.Add(Flow.Secondary("No audit events yet."));
+            });
+        });
+    }
+
+    private static string EventLabel(string value)
+    {
+        if (value.Length == 0)
+            return "Event";
+        var words = value.Replace('_', ' ');
+        return char.ToUpperInvariant(words[0]) + words[1..];
     }
 
     private sealed class DraftForm : UserControl, IPageCommands
@@ -820,14 +893,18 @@ internal static class Ledgers
         private bool _dirty;
         private bool _filling = true;
 
-        public StackPanel Body { get; } = new() { Spacing = 12 };
+        public StackPanel Body { get; } = new() { Spacing = 12, HorizontalAlignment = HorizontalAlignment.Stretch };
+        public Action? SaveAction { get; set; }
 
-        public DraftForm(double maxWidth)
+        public DraftForm()
         {
-            if (maxWidth > 0)
-                Body.MaxWidth = maxWidth;
             Body.Margin = (Thickness)Application.Current.Resources["PageMargin"];
-            Content = new ScrollViewer { Content = Body };
+            Content = new ScrollViewer
+            {
+                Content = Body,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                HorizontalScrollMode = ScrollMode.Disabled,
+            };
         }
 
         public void Watch(params Control[] controls)
@@ -855,7 +932,7 @@ internal static class Ledgers
 
         public void NewItem() => Body.Children.OfType<Control>().FirstOrDefault()?.Focus(FocusState.Programmatic);
 
-        public void Save() { }
+        public void Save() => SaveAction?.Invoke();
 
         public void Print() { }
 
@@ -863,9 +940,6 @@ internal static class Ledgers
 
         public Task<bool> CanLeave() => Flow.Discard(this, _dirty);
     }
-
-    private static void LoadUsers(AppShell shell, Panel output) =>
-        shell.Run("Loading users…", () => Pages.Show(shell, output, "Users", shell.Call("user_list"), ["Username", "Role", "Disabled"], ["username", "role", "disabled"], [false, false, false]));
 
     private static UIElement Entry(AppShell shell, string sheet, string title, string result, string operation, string[] headers, string[] keys, bool[] money, Action<Book, JsonElement> build)
     {
@@ -884,7 +958,7 @@ internal static class Ledgers
 
     private static void AddPost(AppShell shell, Book book, string label, string title, string message, Func<object?> capture, string operation, string status)
     {
-        var button = new Button { Content = label, MinHeight = 32 };
+        var button = new Button { Content = label, MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
         button.Click += async (_, _) =>
         {
             if (!await Flow.Confirm(book, title, message, label))

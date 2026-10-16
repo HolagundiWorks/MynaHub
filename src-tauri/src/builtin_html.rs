@@ -1,4 +1,4 @@
-//! Built-in HTML/CSS templates for the Template Studio. Like the wording library these are practice templates, not official
+//! Built-in Word templates. Like the wording library these are practice templates, not official
 //! Council of Architecture forms. They are added to each company file once (matched by key), never overwritten, and are
 //! duplicated into a company-owned copy before they are customised.
 use rusqlite::{params, Connection};
@@ -30,9 +30,38 @@ table.schedule th.amount, table.schedule td.amount { text-align: right; }
 table.sign { width: 100%; margin-top: 28pt; break-inside: avoid; }
 table.sign td { width: 50%; vertical-align: top; padding-top: 30pt; font-size: 9pt; }";
 
+/// A practice proposal for one service in the Council of Architecture Conditions of Engagement.
+/// These are not official Council forms.
+macro_rules! service_letter {
+    ($key:literal, $name:literal, $service:literal) => {
+        HtmlTemplate {
+            key: $key,
+            name: $name,
+            family: "consultancy",
+            kind: "letter",
+            description: "Practice proposal for a Council of Architecture service. Not an official Council form.",
+            html: concat!(
+                "<header class=\"document-header\"><div class=\"firm-name\">{{ company.name }}</div>",
+                "<div class=\"meta\">{{ company.address }}</div>",
+                "<div class=\"registration\">{{#if company.coa_registration_number}}COA Reg. No.: {{ company.coa_registration_number }}{{/if}}</div>",
+                "<div class=\"rule\"></div></header>",
+                "<p><span class=\"doc-ref\">{{ document.number }}</span> &nbsp; {{ document.date | date }}</p>",
+                "{{#if addressee.name}}<p>To,<br/>{{ addressee.name }}<br/>{{ addressee.address }}</p>{{/if}}",
+                "<h1>Proposal for ", $service, "</h1>",
+                "<p>This proposal is for ", $service, ", following the Council of Architecture Conditions of Engagement and Scale of Charges for that service.</p>",
+                "<p>{{ project.name }}<br/>{{ project.site_address }}</p>",
+                "<p>Client: {{ client.name }}</p>",
+                "<h2>Services</h2><main>{{ document.body }}</main>",
+                "<table class=\"sign\"><tr><td>Yours sincerely,<br/>For {{ signatory.firm }}<br/>{{ signatory.name }}</td><td></td></tr></table>"
+            ),
+            css: BASE,
+        }
+    };
+}
+
 pub const LIBRARY: &[HtmlTemplate] = &[
     HtmlTemplate {
-        key: "html-letterhead-classic", name: "Letterhead (classic, HTML)", family: "administration", kind: "letter",
+        key: "html-letterhead-classic", name: "Letterhead (classic)", family: "administration", kind: "letter",
         description: "A letter on a classic letterhead: firm name, address and registration above a rule.",
         html: "<header class=\"document-header\">
   <div class=\"firm-name\">{{ company.name }}</div>
@@ -53,7 +82,7 @@ pub const LIBRARY: &[HtmlTemplate] = &[
         css: BASE,
     },
     HtmlTemplate {
-        key: "html-letterhead-minimal", name: "Letterhead (minimal, HTML)", family: "administration", kind: "letter",
+        key: "html-letterhead-minimal", name: "Letterhead (minimal)", family: "administration", kind: "letter",
         description: "A letter on a minimal letterhead: a small name line and one line of details.",
         html: "<header class=\"document-header\">
   <div class=\"minimal-name\">{{ company.name | upper }}</div>
@@ -76,7 +105,7 @@ table.sign { width: 100%; margin-top: 28pt; break-inside: avoid; }
 table.sign td { width: 50%; vertical-align: top; font-size: 9pt; }",
     },
     HtmlTemplate {
-        key: "html-consultancy-proposal", name: "Consultancy proposal (HTML)", family: "consultancy", kind: "letter",
+        key: "html-consultancy-proposal", name: "Consultancy proposal", family: "consultancy", kind: "letter",
         description: "A proposal with a title block, project details, the document text and a fee schedule that repeats the milestone rows.",
         html: "<header class=\"document-header\">
   <div class=\"firm-name\">{{ company.name }}</div>
@@ -111,7 +140,7 @@ table.sign td { width: 50%; vertical-align: top; font-size: 9pt; }",
         css: BASE,
     },
     HtmlTemplate {
-        key: "html-appointment-letter", name: "Appointment letter (HTML)", family: "consultancy", kind: "letter",
+        key: "html-appointment-letter", name: "Appointment letter", family: "consultancy", kind: "letter",
         description: "Confirms the appointment of the practice, with the fee and a countersignature block.",
         html: "<header class=\"document-header\">
   <div class=\"firm-name\">{{ company.name }}</div>
@@ -130,7 +159,7 @@ table.sign td { width: 50%; vertical-align: top; font-size: 9pt; }",
         css: BASE,
     },
     HtmlTemplate {
-        key: "html-meeting-minutes", name: "Meeting minutes (HTML)", family: "consultancy", kind: "letter",
+        key: "html-meeting-minutes", name: "Meeting minutes", family: "consultancy", kind: "letter",
         description: "Minutes record: project block, the minutes text and a prepared-by line.",
         html: "<header class=\"document-header\">
   <div class=\"firm-name\">{{ company.name }}</div>
@@ -148,7 +177,7 @@ table.sign td { width: 50%; vertical-align: top; font-size: 9pt; }",
         css: BASE,
     },
     HtmlTemplate {
-        key: "html-drawing-transmittal", name: "Drawing transmittal (HTML)", family: "consultancy", kind: "letter",
+        key: "html-drawing-transmittal", name: "Drawing transmittal", family: "consultancy", kind: "letter",
         description: "Transmittal of drawings and documents: who it is sent to, what is sent (written in the text) and the purpose.",
         html: "<header class=\"document-header\">
   <div class=\"firm-name\">{{ company.name }}</div>
@@ -168,7 +197,7 @@ table.sign td { width: 50%; vertical-align: top; font-size: 9pt; }",
         css: BASE,
     },
     HtmlTemplate {
-        key: "html-fee-schedule", name: "Fee schedule annexure (HTML)", family: "consultancy", kind: "agreement",
+        key: "html-fee-schedule", name: "Fee schedule annexure", family: "consultancy", kind: "agreement",
         description: "Annexure that lists the fee milestones. Use with an agreement so the schedule matches the agreement exactly.",
         html: "<header class=\"document-header\">
   <div class=\"firm-name\">{{ company.name }}</div>
@@ -188,10 +217,18 @@ table.sign td { width: 50%; vertical-align: top; font-size: 9pt; }",
 <p class=\"meta\">Taxes are charged in addition as applicable ({{ tax.scheme }}). {{ document.body }}</p>",
         css: BASE,
     },
+    service_letter!("html-coa-comprehensive", "Proposal — Comprehensive architectural services", "comprehensive architectural services"),
+    service_letter!("html-coa-interior", "Proposal — Interior architecture", "interior architecture"),
+    service_letter!("html-coa-landscape", "Proposal — Landscape architecture", "landscape architecture"),
+    service_letter!("html-coa-urban", "Proposal — Urban design and urban renewal", "urban design and urban renewal"),
+    service_letter!("html-coa-site", "Proposal — Site development", "site development"),
+    service_letter!("html-coa-conservation", "Proposal — Architectural conservation", "architectural conservation"),
+    service_letter!("html-coa-retrofitting", "Proposal — Retrofitting of buildings", "retrofitting of buildings"),
+    service_letter!("html-coa-signage", "Proposal — Graphic design and signage", "graphic design and signage"),
 ];
 
 
-/// Adds any HTML built-in that is missing, matched by key. Existing rows are never changed.
+/// Adds any built-in Word template that is missing, matched by key. An older HTML original is published again as a Word document.
 pub fn seed(conn: &Connection) -> Result<usize, String> {
     let mut added = 0;
     for t in LIBRARY {
@@ -200,7 +237,8 @@ pub fn seed(conn: &Connection) -> Result<usize, String> {
             continue;
         }
         let taken: i64 = conn.query_row("SELECT COUNT(*) FROM templates WHERE name = ?1", params![t.name], |r| r.get(0)).map_err(|e| e.to_string())?;
-        let name = if taken > 0 { format!("{} (ADMS built-in)", t.name) } else { t.name.to_string() };
+        let name = if taken > 0 { format!("{} (AOS built-in)", t.name) } else { t.name.to_string() };
+        let (html, css) = crate::docx::store(t.html, t.css)?;
         conn.execute(
             "INSERT INTO templates (kind, name, template_key, family, layout, description, built_in, format) VALUES (?1,?2,?3,?4,'letter',?5,1,'html')",
             params![t.kind, name, t.key, t.family, t.description],
@@ -209,12 +247,47 @@ pub fn seed(conn: &Connection) -> Result<usize, String> {
         let id = conn.last_insert_rowid();
         conn.execute(
             "INSERT INTO template_versions (template_id, version, body, html_source, css_source, change_summary) VALUES (?1, 1, '', ?2, ?3, 'Built-in original')",
-            params![id, t.html, t.css],
+            params![id, html, css],
         )
         .map_err(|e| e.to_string())?;
         added += 1;
     }
+    publish_word_versions(conn)?;
     Ok(added)
+}
+
+/// Company files that already stored an HTML template get a new published version that is a Word document.
+fn publish_word_versions(conn: &Connection) -> Result<(), String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT t.id, t.name, COALESCE(v.html_source,''), COALESCE(v.css_source,''), v.version FROM templates t
+             JOIN template_versions v ON v.template_id = t.id AND v.version = (SELECT MAX(version) FROM template_versions WHERE template_id = t.id)
+             WHERE t.format = 'html' AND COALESCE(v.css_source,'') != 'docx'",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?, r.get::<_, String>(3)?, r.get::<_, i64>(4)?)))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    for (id, name, html, css, version) in rows {
+        let (document, marker) = crate::docx::store(&html, &css)?;
+        conn.execute(
+            "INSERT INTO template_versions (template_id, version, body, html_source, css_source, change_summary) VALUES (?1, ?2, '', ?3, ?4, 'Saved as a Word document')",
+            params![id, version + 1, document, marker],
+        )
+        .map_err(|e| e.to_string())?;
+        let cleaned = name.replace(" (HTML)", "").replace(", HTML)", ")");
+        if cleaned != name {
+            let taken: i64 = conn
+                .query_row("SELECT COUNT(*) FROM templates WHERE name = ?1 COLLATE NOCASE AND id != ?2", params![cleaned, id], |r| r.get(0))
+                .map_err(|e| e.to_string())?;
+            if taken == 0 {
+                conn.execute("UPDATE templates SET name = ?1 WHERE id = ?2", params![cleaned, id]).map_err(|e| e.to_string())?;
+            }
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

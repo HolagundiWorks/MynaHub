@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using System.Text.Json;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Windows.UI;
@@ -7,53 +6,16 @@ using Windows.UI.ViewManagement;
 
 namespace Adms.Desktop;
 
+/// <summary>AOS is a light application. Windows high contrast still supplies its own colours.</summary>
 internal static class AppTheme
 {
-    private static string FilePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "ADMS",
-        "theme.json");
-
-    public static ElementTheme Load()
-    {
-        try
-        {
-            if (!File.Exists(FilePath))
-                return ElementTheme.Default;
-            var saved = JsonSerializer.Deserialize<SavedTheme>(File.ReadAllText(FilePath));
-            return saved?.Theme switch
-            {
-                "light" => ElementTheme.Light,
-                "dark" => ElementTheme.Dark,
-                _ => ElementTheme.Default,
-            };
-        }
-        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
-        {
-            return ElementTheme.Default;
-        }
-    }
-
-    public static void Save(ElementTheme theme)
-    {
-        var name = theme switch
-        {
-            ElementTheme.Light => "light",
-            ElementTheme.Dark => "dark",
-            _ => "system",
-        };
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        File.WriteAllText(FilePath, JsonSerializer.Serialize(new SavedTheme { Theme = name }));
-    }
-
     public static bool InHighContrast => new AccessibilitySettings().HighContrast;
 
     public static ElementTheme Active { get; private set; } = ElementTheme.Light;
 
-    public static string ActiveDictionary =>
-        InHighContrast ? "HighContrast" : Active == ElementTheme.Dark ? "Dark" : "Light";
+    public static string ActiveDictionary => InHighContrast ? "HighContrast" : "Light";
 
-    public static void Apply(FrameworkElement root, AppWindow window, nint hwnd, ElementTheme theme)
+    public static void Apply(FrameworkElement root, AppWindow window, nint hwnd)
     {
         root.HighContrastAdjustment = ElementHighContrastAdjustment.Auto;
         if (InHighContrast)
@@ -64,12 +26,10 @@ internal static class AppTheme
             ResetFrame(hwnd);
             return;
         }
-        if (theme == ElementTheme.Default)
-            theme = ElementTheme.Light;
-        Active = theme;
-        root.RequestedTheme = theme;
-        ApplyTitleBar(window, theme);
-        ApplyFrame(hwnd, theme == ElementTheme.Dark);
+        Active = ElementTheme.Light;
+        root.RequestedTheme = ElementTheme.Light;
+        ApplyTitleBar(window);
+        ApplyFrame(hwnd);
     }
 
     private static void ResetTitleBar(AppWindow window)
@@ -91,20 +51,17 @@ internal static class AppTheme
         titleBar.ButtonInactiveForegroundColor = null;
     }
 
-    public static void ApplyTitleBar(AppWindow window, ElementTheme theme)
+    private static void ApplyTitleBar(AppWindow window)
     {
         if (!AppWindowTitleBar.IsCustomizationSupported())
             return;
-        if (theme == ElementTheme.Default)
-            theme = ElementTheme.Light;
         var titleBar = window.TitleBar;
-        titleBar.PreferredTheme = theme == ElementTheme.Dark ? TitleBarTheme.Dark : TitleBarTheme.Light;
-        var dark = theme == ElementTheme.Dark;
-        var background = dark ? Color(28, 28, 26) : Color(240, 239, 234);
-        var foreground = dark ? Color(240, 239, 234) : Color(26, 26, 26);
-        var inactiveForeground = dark ? Color(183, 181, 174) : Color(95, 95, 95);
-        var hover = dark ? Color(42, 42, 39) : Color(231, 228, 220);
-        var pressed = dark ? Color(60, 59, 54) : Color(213, 210, 202);
+        titleBar.PreferredTheme = TitleBarTheme.Light;
+        var background = Color(245, 245, 242);
+        var foreground = Color(37, 40, 43);
+        var inactiveForeground = Color(78, 85, 90);
+        var hover = Color(232, 232, 227);
+        var pressed = Color(213, 214, 208);
         titleBar.BackgroundColor = background;
         titleBar.ForegroundColor = foreground;
         titleBar.InactiveBackgroundColor = background;
@@ -129,15 +86,15 @@ internal static class AppTheme
         _ = DwmSetWindowAttribute(hwnd, DwmBorderColor, ref color, sizeof(int));
     }
 
-    private static void ApplyFrame(nint hwnd, bool dark)
+    private static void ApplyFrame(nint hwnd)
     {
         if (hwnd == 0)
             return;
-        var immersive = dark ? 1 : 0;
+        var immersive = 0;
         _ = DwmSetWindowAttribute(hwnd, DwmUseImmersiveDarkMode, ref immersive, sizeof(int));
-        var caption = dark ? ColorRef(28, 28, 26) : ColorRef(240, 239, 234);
-        var text = dark ? ColorRef(240, 239, 234) : ColorRef(26, 26, 26);
-        var border = dark ? ColorRef(60, 59, 54) : ColorRef(213, 210, 202);
+        var caption = ColorRef(245, 245, 242);
+        var text = ColorRef(37, 40, 43);
+        var border = ColorRef(213, 214, 208);
         _ = DwmSetWindowAttribute(hwnd, DwmCaptionColor, ref caption, sizeof(int));
         _ = DwmSetWindowAttribute(hwnd, DwmTextColor, ref text, sizeof(int));
         _ = DwmSetWindowAttribute(hwnd, DwmBorderColor, ref border, sizeof(int));
@@ -154,9 +111,4 @@ internal static class AppTheme
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(nint hwnd, int attribute, ref int value, int size);
-
-    private sealed class SavedTheme
-    {
-        public string Theme { get; set; } = "system";
-    }
 }

@@ -14,9 +14,9 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     private readonly ContentControl _header = new();
     private readonly TextBlock _summary = Flow.Secondary("Loading invoices…");
     private readonly TextBlock _empty = Flow.Secondary("");
-    private readonly TextBox _search = new() { PlaceholderText = "Number, client or project", Header = "Search", MaxWidth = 360, HorizontalAlignment = HorizontalAlignment.Left };
-    private readonly ComboBox _status = new() { Header = "Status", Width = 180 };
-    private readonly StackPanel _editor = new() { Spacing = 8, MaxWidth = 720 };
+    private readonly TextBox _search = new() { PlaceholderText = "Number, client or project", Header = "Search", HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly ComboBox _status = new() { Header = "Status", HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly StackPanel _editor = new() { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly ComboBox _project = new() { Header = "Project" };
     private readonly ComboBox _kind = new() { Header = "Kind" };
     private readonly ComboBox _gst = new() { Header = "GST mode" };
@@ -29,6 +29,9 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     private readonly Button _save = new();
     private readonly Button _issueButton = new() { Content = "Issue" };
     private readonly Button _preview = new() { Content = "Preview PDF" };
+    private readonly Button _convert = new() { Content = "Convert to tax invoice", Visibility = Visibility.Collapsed };
+    private readonly TextBox _cancelReason = Flow.Input("Reason for cancelling");
+    private readonly Button _cancelInvoice = new() { Content = "Cancel invoice", Visibility = Visibility.Collapsed };
     private readonly TextBox _receiptAmount = Flow.Input("Receipt amount");
     private readonly TextBox _receiptDate = Flow.Input("Received");
     private readonly ComboBox _receiptMode = new() { Header = "Mode" };
@@ -91,9 +94,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         create.VerticalAlignment = VerticalAlignment.Top;
         titleRow.Children.Add(create);
 
-        var filters = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
-        filters.Children.Add(_search);
-        filters.Children.Add(_status);
+        var filters = new Grid();
         var listPane = new Grid { RowSpacing = 12 };
         listPane.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         listPane.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -116,12 +117,17 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         table.Children.Add(_empty);
         Grid.SetRow(table, 3);
         listPane.Children.Add(table);
+        SizeChanged += (_, _) => Flow.Place(filters, [_search, _status], 280, true);
 
+        _save.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
         _save.Click += (_, _) => SaveDraft();
         _issueButton.Click += async (_, _) => await Issue();
         _preview.Click += (_, _) => Preview();
-        var cancel = new Button { Content = "Cancel" };
+        var cancel = new Button { Content = "Back" };
         cancel.Click += async (_, _) => { if (await CanLeave()) ShowList(); };
+        _convert.Click += (_, _) => ConvertProforma();
+        _cancelInvoice.Click += async (_, _) => await CancelInvoice();
+        _cancelReason.Visibility = Visibility.Collapsed;
         var addLine = new Button { Content = "Add line", MinHeight = 32 };
         AutomationProperties.SetName(addLine, "Add invoice line");
         addLine.Click += (_, _) => AddLine("", "1", "0");
@@ -129,23 +135,17 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         record.Click += (_, _) => RecordReceipt();
         _receipt.Children.Add(Flow.Section("Receipt"));
         _receipt.Children.Add(Flow.Secondary("Record money received against this issued invoice. The company file posts the receipt."));
-        _receipt.Children.Add(_receiptDate);
-        _receipt.Children.Add(_receiptAmount);
+        _receipt.Children.Add(Flow.Pair(_receiptDate, _receiptAmount));
         _receipt.Children.Add(_receiptMode);
         _receipt.Children.Add(record);
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        actions.Children.Add(cancel);
-        actions.Children.Add(_save);
-        actions.Children.Add(_preview);
-        actions.Children.Add(_issueButton);
+        var actions = Flow.Bar(cancel, _save, _preview, _issueButton, _convert, _cancelInvoice);
         _editor.Children.Add(_title);
         _editor.Children.Add(_state);
         _editor.Children.Add(Flow.Section("Invoice"));
         _editor.Children.Add(_project);
-        _editor.Children.Add(_kind);
-        _editor.Children.Add(_issue);
-        _editor.Children.Add(_due);
-        _editor.Children.Add(_gst);
+        _editor.Children.Add(Flow.Pair(_kind, _gst));
+        _editor.Children.Add(Flow.Pair(_issue, _due));
+        _editor.Children.Add(_cancelReason);
         _editor.Children.Add(Flow.Section("Lines"));
         _editor.Children.Add(_lines);
         _editor.Children.Add(addLine);
@@ -156,7 +156,11 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
 
         var host = new Grid { Margin = (Thickness)Application.Current.Resources["PageMargin"] };
         host.Children.Add(listPane);
-        host.Children.Add(new ScrollViewer { Content = _editor, Visibility = Visibility.Collapsed });
+        var editorScroll = Flow.Scroll(_editor);
+        editorScroll.Visibility = Visibility.Collapsed;
+        host.Children.Add(editorScroll);
+        if (_shell.CanIssue)
+            Flow.Pin(host, ("New invoice", () => _ = BeginNew()));
         Content = host;
         Reload();
     }
@@ -269,7 +273,12 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         _save.Content = _id == null ? "Create" : "Save draft";
         _issueButton.Visibility = editable && _shell.CanIssue ? Visibility.Visible : Visibility.Collapsed;
         _preview.Visibility = _id == null ? Visibility.Collapsed : Visibility.Visible;
-        _receipt.Visibility = !editable && _docStatus == "issued" && _shell.CanIssue ? Visibility.Visible : Visibility.Collapsed;
+        var issued = !editable && _docStatus == "issued";
+        _receipt.Visibility = issued && _shell.CanIssue ? Visibility.Visible : Visibility.Collapsed;
+        var kind = ((ComboBoxItem?)_kind.SelectedItem)?.Tag as string ?? "";
+        _convert.Visibility = issued && kind == "proforma" && _shell.CanEdit ? Visibility.Visible : Visibility.Collapsed;
+        _cancelInvoice.Visibility = issued && _shell.CanIssue ? Visibility.Visible : Visibility.Collapsed;
+        _cancelReason.Visibility = _cancelInvoice.Visibility;
     }
 
     private void AddLine(string description, string qty, string rate)
@@ -316,7 +325,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             if (needle.Length > 0 && !blob.Contains(needle))
                 continue;
             var cells = new[] { number, Kit.Str(row, "project_name"), Kit.Str(row, "client_name"), StatusLabel(effective), Kit.Str(row, "total_display"), Kit.Str(row, "balance_display") };
-            var item = new ListViewItem { Content = Flow.Columns(cells, Widths, Money), Tag = row };
+            var item = new ListViewItem { Content = Flow.Line(Flow.Columns(cells, Widths, Money), Flow.Edit(() => Open(row))), Tag = row };
             AutomationProperties.SetName(item, $"{cells[0]}, {cells[1]}, {cells[2]}, {cells[3]}, total {cells[4]}, balance {cells[5]}");
             _list.Items.Add(item);
             count++;
@@ -423,6 +432,42 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             var encoded = _shell.Call("invoice_pdf", new { id }).GetString() ?? "";
             _shell.Window.DispatcherQueue.TryEnqueue(async () => await Kit.PreviewPdf(_shell, encoded, "invoice"));
         });
+    }
+
+    private void ConvertProforma()
+    {
+        if (_id is not long id)
+            return;
+        _ = _shell.Run("Converting pro forma…", () =>
+        {
+            var created = _shell.Call("invoice_convert_proforma", new { id, today = Kit.Today() });
+            var next = created.ValueKind == JsonValueKind.Number ? created.GetInt64() : id;
+            var detail = _shell.Call("invoice_get", new { id = next });
+            _shell.Window.DispatcherQueue.TryEnqueue(() => Apply(detail));
+        });
+    }
+
+    private async Task CancelInvoice()
+    {
+        if (_id is not long id || !_shell.CanIssue)
+            return;
+        var reason = _cancelReason.Text.Trim();
+        if (reason.Length == 0)
+        {
+            Fail("Give a reason for the cancellation.");
+            return;
+        }
+        if (!await Flow.Confirm(this, "Cancel this invoice?", "The number stays used. Cancel only when nothing has been received against it.", "Cancel invoice"))
+            return;
+        _ = _shell.Run("Cancelling invoice…", () => _shell.Call("invoice_cancel", new { id, reason }))
+            .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (!task.Result)
+                    return;
+                _dirty = false;
+                ShowList();
+                Reload();
+            }));
     }
 
     private void RecordReceipt()

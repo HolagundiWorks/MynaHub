@@ -10,6 +10,7 @@ mod clients;
 mod commands;
 mod company_file;
 mod db;
+mod docx;
 mod documents;
 mod entries;
 mod ffi;

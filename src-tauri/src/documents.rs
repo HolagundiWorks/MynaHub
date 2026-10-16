@@ -399,11 +399,12 @@ fn build_snapshot(conn: &Connection, i: &DocInput, number: &str) -> Result<DocSn
     let title = if layout == "record" { if ctx.subject.is_empty() { template_name } else { ctx.subject.clone() } } else { String::new() };
     let (rendered_html, page_setup) = match &studio {
         Some((html, css)) => {
+            let (html, css) = crate::docx::prepare(html, css)?;
             let mut data = studio_data(conn, &ctx, fee, &ms);
             data["document"]["body"] = serde_json::Value::String(text.clone());
-            let fragment = crate::template_engine::render_fragment(html, &data)?;
+            let fragment = crate::template_engine::render_fragment(&html, &data)?;
             let mut notes = Vec::new();
-            let (setup, css) = crate::template_engine::split_page_rule(css, &mut notes);
+            let (setup, css) = crate::template_engine::split_page_rule(&css, &mut notes);
             (crate::template_engine::full_document(&fragment, &css), Some(setup))
         }
         None => (String::new(), None),

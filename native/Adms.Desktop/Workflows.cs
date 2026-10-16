@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Adms.Interop;
 using Microsoft.UI.Xaml;
+using Windows.Foundation;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
@@ -42,20 +43,12 @@ internal static class Flow
     {
         var mark = new TextBlock
         {
-            Text = $"ADMS-{sheet}  /  {section.ToUpperInvariant()}  /  {page.ToUpperInvariant()}",
+            Text = $"AOS-{sheet}  ·  {section}",
             Style = Look("CaptionStyle"),
-            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
         };
-        var rule = new Border
-        {
-            Height = 1,
-            Margin = new Thickness(0, 6, 0, 0),
-            Background = Ink("TextPrimaryBrush"),
-        };
-        var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
+        var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 2) };
         panel.Children.Add(mark);
-        panel.Children.Add(rule);
-        AutomationProperties.SetName(panel, $"ADMS {sheet}, {section}, {page}");
+        AutomationProperties.SetName(panel, $"AOS {sheet}, {section}, {page}");
         return panel;
     }
 
@@ -94,6 +87,98 @@ internal static class Flow
         if (primary)
             button.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
         button.Click += (_, _) => action();
+        return button;
+    }
+
+    public static void Pin(Panel host, params (string Label, Action Run)[] actions)
+    {
+        if (actions.Length == 0)
+            return;
+        var button = new Button
+        {
+            Content = actions.Length == 1 ? actions[0].Label : "Create",
+            Style = (Style)Application.Current.Resources["AccentButtonStyle"],
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(0, 0, 12, 12),
+            MinHeight = 36,
+            Padding = new Thickness(16, 4, 16, 4),
+            CornerRadius = new CornerRadius(8),
+        };
+        AutomationProperties.SetName(button, actions.Length == 1 ? actions[0].Label : "Create");
+        if (actions.Length == 1)
+            button.Click += (_, _) => actions[0].Run();
+        else
+        {
+            var menu = new MenuFlyout();
+            foreach (var (label, run) in actions)
+            {
+                var item = new MenuFlyoutItem { Text = label };
+                item.Click += (_, _) => run();
+                menu.Items.Add(item);
+            }
+            button.Flyout = menu;
+        }
+        host.Children.Add(button);
+    }
+
+    public static ScrollViewer Scroll(UIElement content) => new()
+    {
+        Content = content,
+        HorizontalScrollMode = ScrollMode.Disabled,
+        HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+    };
+
+    public static FlexBar Bar(params UIElement[] items)
+    {
+        var bar = new FlexBar();
+        foreach (var item in items)
+            bar.Children.Add(item);
+        return bar;
+    }
+
+    public static Grid Pair(UIElement left, UIElement right)
+    {
+        var grid = new Grid { ColumnSpacing = 12, RowSpacing = 8 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        grid.Children.Add(left);
+        grid.Children.Add(right);
+        if (right is FrameworkElement start)
+            Grid.SetColumn(start, 1);
+        void PlacePair()
+        {
+            var narrow = grid.ActualWidth > 0 && grid.ActualWidth < 560;
+            grid.ColumnDefinitions[1].Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+            if (right is FrameworkElement field)
+            {
+                Grid.SetColumn(field, narrow ? 0 : 1);
+                Grid.SetRow(field, narrow ? 1 : 0);
+            }
+        }
+        grid.SizeChanged += (_, _) => PlacePair();
+        return grid;
+    }
+
+    public static Grid Line(UIElement body, Button action)
+    {
+        var line = new Grid { ColumnSpacing = 8 };
+        line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        line.Children.Add(body);
+        action.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(action, 1);
+        line.Children.Add(action);
+        return line;
+    }
+
+    public static Button Edit(Action open)
+    {
+        var button = new Button { Content = "Edit", MinWidth = 72 };
+        AutomationProperties.SetName(button, "Edit");
+        button.Click += (_, _) => open();
         return button;
     }
 
@@ -309,65 +394,102 @@ internal static class Flow
     }
 }
 
+internal sealed class FlexBar : Panel
+{
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        var limit = double.IsInfinity(availableSize.Width) ? 1600 : Math.Max(0, availableSize.Width);
+        double x = 0, y = 0, row = 0, width = 0;
+        foreach (var child in Children)
+        {
+            child.Measure(new Size(limit, double.PositiveInfinity));
+            var w = child.DesiredSize.Width;
+            var h = child.DesiredSize.Height;
+            if (x > 0 && x + w > limit)
+            {
+                y += row + 8;
+                x = 0;
+                row = 0;
+            }
+            if (x > 0)
+                x += 8;
+            x += w;
+            row = Math.Max(row, h);
+            width = Math.Max(width, x);
+        }
+        return new Size(Math.Min(limit, width), y + row);
+    }
+
+    protected override Size ArrangeOverride(Size finalSize)
+    {
+        double x = 0, y = 0, row = 0;
+        foreach (var child in Children)
+        {
+            var w = child.DesiredSize.Width;
+            var h = child.DesiredSize.Height;
+            if (x > 0 && x + w > finalSize.Width + 0.5)
+            {
+                y += row + 8;
+                x = 0;
+                row = 0;
+            }
+            child.Arrange(new Rect(x, y, w, h));
+            x += w + 8;
+            row = Math.Max(row, h);
+        }
+        return finalSize;
+    }
+}
+
 internal sealed class DashboardPage : UserControl, IPageCommands
 {
     private readonly AppShell _shell;
-    private readonly Grid _metrics = new() { RowSpacing = 12, ColumnSpacing = 12 };
-    private readonly Grid _actions = new();
+    private readonly Grid _metrics = new() { RowSpacing = 8, ColumnSpacing = 8 };
     private readonly StackPanel _attention = new() { Spacing = 8, Visibility = Visibility.Collapsed };
     private readonly TextBlock _attentionHeading;
-    private readonly StackPanel _activity = new() { Spacing = 0 };
+    private readonly StackPanel _projectList = new() { Spacing = 4 };
     private readonly TextBlock _context = Flow.Secondary("Loading the company overview…");
     private readonly List<UIElement> _metricItems = [];
-    private readonly List<UIElement> _actionItems = [];
-    private static readonly GridLength[] ActivityWidths = [new(200), new(160), new(180), new(2, GridUnitType.Star)];
+    private readonly List<(string Label, Action Run)> _creates = [];
 
     public DashboardPage(AppShell shell)
     {
         _shell = shell;
         if (shell.CanEdit)
         {
-            _actionItems.Add(Flow.Command("New client", () => shell.Navigate?.Invoke(Mark("clients"))));
-            _actionItems.Add(Flow.Command("New project", () => shell.Navigate?.Invoke(Mark("projects"))));
-            _actionItems.Add(Flow.Command("New letter", () => shell.Navigate?.Invoke(Mark("documents"))));
+            _creates.Add(("New client", () => shell.Navigate?.Invoke(Mark("clients"))));
+            _creates.Add(("New project", () => shell.Navigate?.Invoke(Mark("projects"))));
+            _creates.Add(("New letter", () => shell.Navigate?.Invoke(Mark("documents"))));
         }
         if (shell.CanIssue)
-        {
-            _actionItems.Add(Flow.Command("New invoice", () => shell.Navigate?.Invoke(Mark("invoices"))));
-            _actionItems.Add(Flow.Command("Import bank statement", () => shell.Navigate?.Invoke(Mark("bank"))));
-        }
+            _creates.Add(("New invoice", () => shell.Navigate?.Invoke(Mark("invoices"))));
         if (shell.CanPost)
-            _actionItems.Add(Flow.Command("Record expense", () => shell.Navigate?.Invoke(Mark("acc-expenses"))));
+            _creates.Add(("Record expense", () => shell.Navigate?.Invoke(Mark("acc-expenses"))));
 
-        var page = new StackPanel { Spacing = 16, Margin = (Thickness)Application.Current.Resources["PageMargin"] };
-        page.Children.Add(Flow.SheetMark("00", "The office", "Pulse"));
-        page.Children.Add(Flow.Heading("Pulse"));
-        page.Children.Add(Flow.Secondary("The result   A practice that knows what needs attention today."));
-        page.Children.Add(_context);
-        page.Children.Add(Flow.Section("Overview"));
-        page.Children.Add(_metrics);
-        if (_actionItems.Count > 0)
+        var page = new StackPanel
         {
-            page.Children.Add(Flow.Section("Quick actions"));
-            page.Children.Add(_actions);
-        }
+            Spacing = 12,
+            Margin = (Thickness)Application.Current.Resources["PageMargin"],
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+        };
+        page.Children.Add(Flow.SheetMark("00", "Practice", "Pulse"));
+        page.Children.Add(Flow.Heading("Pulse"));
+        page.Children.Add(_context);
+        page.Children.Add(Flow.Command("Refresh", Load));
         _attentionHeading = Flow.Section("Needs attention");
         _attentionHeading.Visibility = Visibility.Collapsed;
         page.Children.Add(_attentionHeading);
         page.Children.Add(_attention);
-        if (shell.CanAudit)
-        {
-            page.Children.Add(Flow.Section("Recent activity"));
-            page.Children.Add(Flow.Secondary("Latest events recorded in this company file."));
-            page.Children.Add(_activity);
-        }
-        var scroller = new ScrollViewer { Content = page };
-        Content = scroller;
-        SizeChanged += (_, _) =>
-        {
-            Flow.Place(_metrics, _metricItems, 260, true);
-            Flow.Place(_actions, _actionItems, 180, false);
-        };
+        page.Children.Add(Flow.Section("Overview"));
+        page.Children.Add(_metrics);
+        page.Children.Add(Flow.Section("Projects"));
+        page.Children.Add(_projectList);
+        var scroller = Flow.Scroll(page);
+        var layer = new Grid();
+        layer.Children.Add(scroller);
+        Flow.Pin(layer, [.. _creates]);
+        Content = layer;
+        SizeChanged += (_, _) => Flow.Place(_metrics, _metricItems, 220, true);
         Load();
     }
 
@@ -390,9 +512,8 @@ internal sealed class DashboardPage : UserControl, IPageCommands
             JsonElement? invoices = _shell.CanFinance ? Flow.Try(_shell, "invoice_page", new { query = Flow.PageQuery() }) : null;
             JsonElement? draftInvoices = _shell.CanFinance ? Flow.Try(_shell, "invoice_page", new { query = Flow.PageQuery(new Dictionary<string, string> { ["status"] = "draft" }) }) : null;
             JsonElement? bank = _shell.CanFinance ? Flow.Try(_shell, "bank_summary", new { account_id = (long?)null }) : null;
-            JsonElement? audit = _shell.CanAudit ? Flow.Try(_shell, "audit_page", new { query = Flow.PageQuery(pageSize: 20) }) : null;
             var year = FinancialYear();
-            _shell.Window.DispatcherQueue.TryEnqueue(() => Paint(company, year, clients, projects, drafts, draftInvoices, invoices, bank, audit));
+            _shell.Window.DispatcherQueue.TryEnqueue(() => Paint(company, year, clients, projects, drafts, draftInvoices, invoices, bank));
         });
     }
 
@@ -416,7 +537,7 @@ internal sealed class DashboardPage : UserControl, IPageCommands
         return open;
     }
 
-    private void Paint(string company, string? year, JsonElement? clients, JsonElement? projects, JsonElement? drafts, JsonElement? draftInvoices, JsonElement? invoices, JsonElement? bank, JsonElement? audit)
+    private void Paint(string company, string? year, JsonElement? clients, JsonElement? projects, JsonElement? drafts, JsonElement? draftInvoices, JsonElement? invoices, JsonElement? bank)
     {
         _context.Text = string.IsNullOrWhiteSpace(company)
             ? "Figures come from the open company file."
@@ -468,53 +589,93 @@ internal sealed class DashboardPage : UserControl, IPageCommands
         }
         if (_metricItems.Count == 0)
             _metricItems.Add(Flow.Secondary("The overview could not be loaded."));
-        Flow.Place(_metrics, _metricItems, 260, true);
-        Flow.Place(_actions, _actionItems, 180, false);
+        Flow.Place(_metrics, _metricItems, 220, true);
+        PaintProjects(projects);
         var showAttention = _attention.Children.Count > 0;
         _attention.Visibility = showAttention ? Visibility.Visible : Visibility.Collapsed;
         _attentionHeading.Visibility = showAttention ? Visibility.Visible : Visibility.Collapsed;
+    }
 
-        _activity.Children.Clear();
-        if (audit is JsonElement auditPage && auditPage.TryGetProperty("rows", out var rows) && rows.ValueKind == JsonValueKind.Array && rows.GetArrayLength() > 0)
+    private void PaintProjects(JsonElement? projects)
+    {
+        _projectList.Children.Clear();
+        if (projects is not JsonElement rows || rows.ValueKind != JsonValueKind.Array)
         {
-            _activity.Children.Add(Flow.Header(["When", "Person", "Event", "Detail"], ActivityWidths));
-            foreach (var row in rows.EnumerateArray())
-            {
-                var when = Kit.Str(row, "at");
-                var who = Kit.Str(row, "user");
-                var ev = EventLabel(Kit.Str(row, "event"));
-                var detail = Kit.Str(row, "detail");
-                var line = Flow.Columns([when, who.Length == 0 ? "—" : who, ev, detail.Length == 0 ? "—" : detail], ActivityWidths);
-                AutomationProperties.SetName(line, $"{when}, {who}, {ev}. {detail}");
-                _activity.Children.Add(line);
-            }
+            _projectList.Children.Add(Flow.Secondary("Projects could not be loaded."));
+            return;
         }
-        else if (_shell.CanAudit)
-            _activity.Children.Add(Flow.Secondary("No audit events yet."));
+        var shown = 0;
+        foreach (var row in rows.EnumerateArray())
+        {
+            if (row.TryGetProperty("archived", out var archived) && archived.ValueKind == JsonValueKind.True)
+                continue;
+            if (Kit.Str(row, "status") != "active")
+                continue;
+            if (shown == 8)
+                break;
+            shown++;
+            var name = Kit.Str(row, "name");
+            var client = Kit.Str(row, "client_name");
+            var service = Consultancy.Label(Kit.Str(row, "consultancy_type"));
+            var button = new Button
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Content = $"{name}  ·  {client}  ·  {service}",
+            };
+            AutomationProperties.SetName(button, $"{name}, {client}, {service}");
+            button.Click += (_, _) => _shell.Navigate?.Invoke("projects");
+            _projectList.Children.Add(button);
+        }
+        if (shown == 0)
+            _projectList.Children.Add(Flow.Secondary("No active projects yet. Create one when a client engages the practice."));
     }
 
     private void Metric(string label, string value, string hint, string page)
     {
+        var caption = new TextBlock
+        {
+            Text = label,
+            Style = Flow.Look("CaptionStyle"),
+        };
+        var figure = new TextBlock
+        {
+            Text = value,
+            Style = Flow.Look("MetricValueStyle"),
+            Margin = new Thickness(0, 2, 0, 2),
+        };
+        var note = new TextBlock
+        {
+            Text = hint,
+            Style = Flow.Look("CaptionStyle"),
+            TextWrapping = TextWrapping.WrapWholeWords,
+            MaxHeight = 32,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        };
+        var copy = new StackPanel { Spacing = 0, VerticalAlignment = VerticalAlignment.Center };
+        copy.Children.Add(caption);
+        copy.Children.Add(figure);
+        copy.Children.Add(note);
+        var body = new Grid();
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var mark = new Border { Background = Flow.Ink("BrandAccentBrush") };
+        Grid.SetColumn(copy, 1);
+        copy.Margin = new Thickness(12, 10, 12, 10);
+        body.Children.Add(mark);
+        body.Children.Add(copy);
         var button = new Button
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Stretch,
             Padding = new Thickness(0),
-            BorderThickness = new Thickness(0),
-            Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
-            MinHeight = 44,
-        };
-        var body = new StackPanel { Spacing = 4 };
-        body.Children.Add(new TextBlock { Text = label, Style = Flow.Look("SecondaryStyle") });
-        body.Children.Add(new TextBlock { Text = value, Style = Flow.Look("MetricValueStyle") });
-        body.Children.Add(new TextBlock { Text = hint, Style = Flow.Look("BodyStyle"), TextWrapping = TextWrapping.WrapWholeWords });
-        button.Content = new Border
-        {
+            MinHeight = 88,
             Background = Flow.Ink("SurfaceBackgroundBrush"),
             BorderBrush = Flow.Ink("BorderSubtleBrush"),
             BorderThickness = new Thickness(1),
-            Padding = new Thickness(16),
-            Child = body,
+            CornerRadius = new CornerRadius(4),
+            Content = body,
         };
         AutomationProperties.SetName(button, $"{label}, {value}. {hint}");
         button.Click += (_, _) => _shell.Navigate?.Invoke(page);
@@ -523,18 +684,10 @@ internal sealed class DashboardPage : UserControl, IPageCommands
 
     private void Attention(string text, string page)
     {
-        var button = new Button { Content = text, HorizontalAlignment = HorizontalAlignment.Left, MinHeight = 32 };
+        var button = new Button { Content = text, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Left, MinHeight = 32 };
         AutomationProperties.SetName(button, text);
         button.Click += (_, _) => _shell.Navigate?.Invoke(page);
         _attention.Children.Add(button);
-    }
-
-    private static string EventLabel(string value)
-    {
-        if (value.Length == 0)
-            return "Event";
-        var words = value.Replace('_', ' ');
-        return char.ToUpperInvariant(words[0]) + words[1..];
     }
 
     public void NewItem() { }
@@ -553,12 +706,13 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
     private readonly TextBlock _empty = Flow.Secondary("No projects match.");
     private readonly TextBox _search = new() { PlaceholderText = "Code, name, client or site", Header = "Search" };
     private readonly ComboBox _status = new() { Header = "Status" };
-    private static readonly GridLength[] ProjectWidths = [new(150), new(2, GridUnitType.Star), new(1.4, GridUnitType.Star), new(140)];
-    private readonly StackPanel _editor = new() { Spacing = 8, MaxWidth = 640 };
+    private static readonly GridLength[] ProjectWidths = [new(120), new(1.6, GridUnitType.Star), new(1.8, GridUnitType.Star), new(1.2, GridUnitType.Star), new(110)];
+    private readonly StackPanel _editor = new() { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly ComboBox _client = new() { Header = "Client" };
     private readonly TextBox _code = Flow.Input("Project code");
     private readonly TextBox _name = Flow.Input("Project name");
     private readonly ComboBox _state = new() { Header = "Status" };
+    private readonly ComboBox _consultancy = new() { Header = "Consultancy type" };
     private readonly TextBox _site = Flow.Input("Site address", true);
     private readonly TextBlock _title = Flow.Heading("Projects");
     private readonly Button _save = new();
@@ -587,6 +741,9 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
         _state.Items.Add(Item("Active", "active"));
         _state.Items.Add(Item("On hold", "on_hold"));
         _state.Items.Add(Item("Completed", "completed"));
+        foreach (var (key, label) in Consultancy.Types)
+            _consultancy.Items.Add(Item(label, key));
+        _consultancy.SelectedIndex = 0;
         _search.TextChanged += (_, _) => PaintList();
         _status.SelectionChanged += (_, _) => PaintList();
         _list.SelectionChanged += (_, _) =>
@@ -598,6 +755,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
             box.TextChanged += (_, _) => { if (!_filling) _dirty = true; };
         _client.SelectionChanged += (_, _) => { if (!_filling) _dirty = true; };
         _state.SelectionChanged += (_, _) => { if (!_filling) _dirty = true; };
+        _consultancy.SelectionChanged += (_, _) => { if (!_filling) _dirty = true; };
 
         var create = Flow.Command("New project", () => _ = BeginNew(), primary: true);
         AutomationProperties.SetName(create, "New project");
@@ -621,14 +779,12 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
         listPane.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         listPane.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         var filters = new Grid();
-        _search.MinWidth = 220;
-        _search.MaxWidth = 360;
-        _search.Width = 320;
-        _status.Width = 180;
+        _search.HorizontalAlignment = HorizontalAlignment.Stretch;
+        _status.HorizontalAlignment = HorizontalAlignment.Stretch;
         listPane.Children.Add(titleRow);
         Grid.SetRow(filters, 1);
         listPane.Children.Add(filters);
-        SizeChanged += (_, _) => Flow.Place(filters, [_search, _status], 340, false);
+        SizeChanged += (_, _) => Flow.Place(filters, [_search, _status], 280, true);
         Grid.SetRow(_summary, 2);
         listPane.Children.Add(_summary);
         var table = new Grid();
@@ -645,6 +801,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
         Grid.SetRowSpan(table, 2);
         listPane.Children.Add(table);
 
+        _save.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
         _save.Click += (_, _) => SaveProject();
         var cancel = new Button { Content = "Cancel" };
         cancel.Click += async (_, _) => { if (await CanLeave()) ShowList(); };
@@ -653,17 +810,15 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
         archive.Click += async (_, _) => await ArchiveProject();
         archive.Visibility = Visibility.Collapsed;
         _archive = archive;
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        actions.Children.Add(cancel);
-        actions.Children.Add(archive);
-        actions.Children.Add(_save);
+        var actions = Flow.Bar(cancel, archive, _save);
         _editor.Children.Add(_title);
         _editor.Children.Add(Flow.Secondary("A client can have many projects. Each project keeps its own agreements, letters and invoices."));
         _editor.Children.Add(Flow.Section("Project details"));
-        _editor.Children.Add(_client);
-        _editor.Children.Add(_name);
-        _editor.Children.Add(_code);
-        _editor.Children.Add(_state);
+        _editor.Children.Add(Flow.Pair(_name, _code));
+        _editor.Children.Add(Flow.Pair(_client, _state));
+        _editor.Children.Add(Flow.Section("Consultancy"));
+        _editor.Children.Add(Flow.Secondary("The service follows the Council of Architecture Conditions of Engagement."));
+        _editor.Children.Add(_consultancy);
         _editor.Children.Add(Flow.Section("Site"));
         _editor.Children.Add(_site);
         _editor.Children.Add(_error);
@@ -671,7 +826,11 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
 
         var host = new Grid { Margin = (Thickness)Application.Current.Resources["PageMargin"] };
         host.Children.Add(listPane);
-        host.Children.Add(new ScrollViewer { Content = _editor, Visibility = Visibility.Collapsed });
+        var editorScroll = Flow.Scroll(_editor);
+        editorScroll.Visibility = Visibility.Collapsed;
+        host.Children.Add(editorScroll);
+        if (_shell.CanEdit)
+            Flow.Pin(host, ("New project", () => _ = BeginNew()));
         Content = host;
         _ = _shell.Run("Loading projects…", () =>
         {
@@ -725,6 +884,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
         _client.SelectedIndex = 0;
         _client.IsEnabled = true;
         _state.SelectedIndex = 0;
+        _consultancy.SelectedIndex = 0;
         _title.Text = "New project";
         _save.Content = "Create";
         _archive.Visibility = Visibility.Collapsed;
@@ -746,6 +906,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
         Select(_client, Kit.Long(Kit.Str(row, "client_id")));
         _client.IsEnabled = false;
         Select(_state, Kit.Str(row, "status"));
+        Select(_consultancy, string.IsNullOrEmpty(Kit.Str(row, "consultancy_type")) ? "comprehensive" : Kit.Str(row, "consultancy_type"));
         _title.Text = _name.Text.Length == 0 ? "Project" : _name.Text;
         _save.Content = "Save changes";
         _archive.Visibility = _shell.CanEdit ? Visibility.Visible : Visibility.Collapsed;
@@ -761,17 +922,18 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
         var needle = _search.Text.Trim().ToLowerInvariant();
         var status = ((ComboBoxItem?)_status.SelectedItem)?.Tag as string ?? "";
         _list.Items.Clear();
-        _header.Content = Flow.Header(["Code", "Project", "Client", "Status"], ProjectWidths);
+        _header.Content = Flow.Header(["Code", "Project", "Consultancy", "Client", "Status"], ProjectWidths);
         var count = 0;
         foreach (var row in _rows)
         {
             if (status.Length > 0 && Kit.Str(row, "status") != status)
                 continue;
-            var blob = $"{Kit.Str(row, "code")} {Kit.Str(row, "name")} {Kit.Str(row, "client_name")} {Kit.Str(row, "site_address")}".ToLowerInvariant();
+            var service = Consultancy.Label(Kit.Str(row, "consultancy_type"));
+            var blob = $"{Kit.Str(row, "code")} {Kit.Str(row, "name")} {Kit.Str(row, "client_name")} {Kit.Str(row, "site_address")} {service}".ToLowerInvariant();
             if (needle.Length > 0 && !blob.Contains(needle))
                 continue;
-            var cells = new[] { Kit.Str(row, "code"), Kit.Str(row, "name"), Kit.Str(row, "client_name"), StatusLabel(Kit.Str(row, "status")) };
-            var item = new ListViewItem { Content = Flow.Columns(cells, ProjectWidths), Tag = row };
+            var cells = new[] { Kit.Str(row, "code"), Kit.Str(row, "name"), service, Kit.Str(row, "client_name"), StatusLabel(Kit.Str(row, "status")) };
+            var item = new ListViewItem { Content = Flow.Line(Flow.Columns(cells, ProjectWidths), Flow.Edit(() => Open(row))), Tag = row };
             AutomationProperties.SetName(item, $"{cells[1]}, code {cells[0]}, client {cells[2]}, {cells[3]}");
             _list.Items.Add(item);
             count++;
@@ -810,6 +972,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
             code = _code.Text.Trim(),
             name = _name.Text.Trim(),
             site_address = _site.Text.Trim(),
+            consultancy_type = ((ComboBoxItem?)_consultancy.SelectedItem)?.Tag as string ?? "comprehensive",
             status = ((ComboBoxItem?)_state.SelectedItem)?.Tag as string ?? "active",
             archived = false,
             client_name = "",
@@ -898,7 +1061,7 @@ internal sealed class ClientsPage : UserControl, IPageCommands
     private readonly ContentControl _header = new();
     private readonly TextBlock _summary = Flow.Secondary("Loading clients…");
     private readonly TextBlock _empty = Flow.Secondary("");
-    private readonly TextBox _search = new() { PlaceholderText = "Name, contact, phone or email", Header = "Search", MaxWidth = 420, HorizontalAlignment = HorizontalAlignment.Left };
+    private readonly TextBox _search = new() { PlaceholderText = "Name, contact, phone or email", Header = "Search", HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly TextBox _name = Flow.Input("Name");
     private readonly TextBox _contact = Flow.Input("Contact person");
     private readonly TextBox _email = Flow.Input("Email");
@@ -908,6 +1071,7 @@ internal sealed class ClientsPage : UserControl, IPageCommands
     private readonly TextBox _gstin = Flow.Input("GSTIN");
     private readonly TextBlock _title = Flow.Heading("New client");
     private readonly Button _save = new();
+    private readonly Button _archive = new() { Content = "Archive", Visibility = Visibility.Collapsed };
     private readonly InfoBar _error = new() { IsOpen = false, IsClosable = false, Severity = InfoBarSeverity.Error };
     private static readonly GridLength[] ClientWidths = [new(2, GridUnitType.Star), new(1.4, GridUnitType.Star), new(1, GridUnitType.Star)];
     private long? _id;
@@ -966,28 +1130,29 @@ internal sealed class ClientsPage : UserControl, IPageCommands
         table.Children.Add(_empty);
         Grid.SetRow(table, 3);
         list.Children.Add(table);
+        _save.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
         _save.Click += (_, _) => SaveClient();
         var cancel = new Button { Content = "Cancel" };
         cancel.Click += async (_, _) => { if (await CanLeave()) ShowList(); };
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        actions.Children.Add(cancel);
-        actions.Children.Add(_save);
-        var form = new StackPanel { Spacing = 8, MaxWidth = 640 };
+        _archive.Click += async (_, _) => await ArchiveClient();
+        var actions = Flow.Bar(cancel, _archive, _save);
+        var form = new StackPanel { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
         form.Children.Add(_title);
         form.Children.Add(Flow.Section("Client"));
-        form.Children.Add(_name);
-        form.Children.Add(_contact);
-        form.Children.Add(_phone);
-        form.Children.Add(_email);
+        form.Children.Add(Flow.Pair(_name, _contact));
+        form.Children.Add(Flow.Pair(_phone, _email));
         form.Children.Add(Flow.Section("Billing identity"));
         form.Children.Add(_address);
-        form.Children.Add(_pan);
-        form.Children.Add(_gstin);
+        form.Children.Add(Flow.Pair(_pan, _gstin));
         form.Children.Add(_error);
         form.Children.Add(actions);
         var host = new Grid { Margin = (Thickness)Application.Current.Resources["PageMargin"] };
         host.Children.Add(list);
-        host.Children.Add(new ScrollViewer { Content = form, Visibility = Visibility.Collapsed });
+        var editorScroll = Flow.Scroll(form);
+        editorScroll.Visibility = Visibility.Collapsed;
+        host.Children.Add(editorScroll);
+        if (_shell.CanEdit)
+            Flow.Pin(host, ("New client", () => _ = BeginNew()));
         Content = host;
         Reload();
         if (Flow.TakeCreate(_shell, "clients"))
@@ -1006,6 +1171,7 @@ internal sealed class ClientsPage : UserControl, IPageCommands
         foreach (var box in new[] { _name, _contact, _email, _phone, _address, _pan, _gstin }) box.Text = "";
         _title.Text = "New client";
         _save.Content = "Create";
+        _archive.Visibility = Visibility.Collapsed;
         _error.IsOpen = false;
         _filling = false;
         _dirty = false;
@@ -1028,6 +1194,7 @@ internal sealed class ClientsPage : UserControl, IPageCommands
         _gstin.Text = Kit.Str(row, "gstin");
         _title.Text = _name.Text;
         _save.Content = "Save changes";
+        _archive.Visibility = _shell.CanEdit ? Visibility.Visible : Visibility.Collapsed;
         _error.IsOpen = false;
         _filling = false;
         _dirty = false;
@@ -1046,7 +1213,7 @@ internal sealed class ClientsPage : UserControl, IPageCommands
             var blob = $"{Kit.Str(row, "name")} {Kit.Str(row, "contact_person")} {Kit.Str(row, "phone")} {Kit.Str(row, "email")}".ToLowerInvariant();
             if (needle.Length > 0 && !blob.Contains(needle)) continue;
             var cells = new[] { Kit.Str(row, "name"), Kit.Str(row, "contact_person"), Kit.Str(row, "phone") };
-            var item = new ListViewItem { Content = Flow.Columns(cells, ClientWidths), Tag = row };
+            var item = new ListViewItem { Content = Flow.Line(Flow.Columns(cells, ClientWidths), Flow.Edit(() => Open(row))), Tag = row };
             AutomationProperties.SetName(item, $"{cells[0]}, contact {cells[1]}, phone {cells[2]}");
             _list.Items.Add(item);
             count++;
@@ -1102,6 +1269,23 @@ internal sealed class ClientsPage : UserControl, IPageCommands
             }));
     }
 
+    private async Task ArchiveClient()
+    {
+        if (_id is not long id || !_shell.CanEdit)
+            return;
+        if (!await Flow.Confirm(this, "Archive this client?", "The client leaves the active list. Projects already recorded stay.", "Archive"))
+            return;
+        _ = _shell.Run("Archiving client…", () => _shell.Call("client_set_archived", new { id, archived = true }))
+            .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (!task.Result)
+                    return;
+                _dirty = false;
+                ShowList();
+                Reload();
+            }));
+    }
+
     public async void NewItem() => await BeginNew();
     public void Save() => SaveClient();
     public void Print() { }
@@ -1117,7 +1301,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
     private readonly ContentControl _header = new();
     private readonly TextBlock _summary = Flow.Secondary("Loading letters…");
     private readonly TextBlock _empty = Flow.Secondary("");
-    private readonly TextBox _search = new() { PlaceholderText = "Number, subject, party or reference", Header = "Search", MaxWidth = 480, HorizontalAlignment = HorizontalAlignment.Left };
+    private readonly TextBox _search = new() { PlaceholderText = "Number, subject, party or reference", Header = "Search", HorizontalAlignment = HorizontalAlignment.Stretch };
     private static readonly GridLength[] LetterWidths = [new(140), new(2, GridUnitType.Star), new(1.4, GridUnitType.Star), new(120)];
     private readonly ComboBox _kind = new() { Header = "Document type" };
     private readonly TextBox _date = Flow.Input("Date");
@@ -1132,6 +1316,11 @@ internal sealed class LettersPage : UserControl, IPageCommands
     private readonly Button _save = new() { Content = "Save draft" };
     private readonly Button _preview = new() { Content = "Preview" };
     private readonly Button _issue = new() { Content = "Issue" };
+    private readonly Button _revise = new() { Content = "Revise", Visibility = Visibility.Collapsed };
+    private readonly Button _attach = new() { Content = "Attach signed copy", Visibility = Visibility.Collapsed };
+    private readonly Button _sign = new() { Content = "Mark signed", Visibility = Visibility.Collapsed };
+    private readonly TextBox _cancelReason = Flow.Input("Reason for cancelling");
+    private readonly Button _cancelDoc = new() { Content = "Cancel document", Visibility = Visibility.Collapsed };
     private readonly InfoBar _error = new() { IsOpen = false, IsClosable = false, Severity = InfoBarSeverity.Error };
     private long? _id;
     private string _status = "draft";
@@ -1161,9 +1350,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
         AutomationProperties.SetName(agreement, "New agreement");
         if (!_shell.CanEdit)
             letter.Visibility = agreement.Visibility = Visibility.Collapsed;
-        var commands = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        commands.Children.Add(letter);
-        commands.Children.Add(agreement);
+        var commands = Flow.Bar(letter, agreement);
         var titleRow = new Grid { ColumnSpacing = 12 };
         titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -1198,35 +1385,40 @@ internal sealed class LettersPage : UserControl, IPageCommands
         Grid.SetRow(table, 3);
         list.Children.Add(table);
 
+        _save.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
         _save.Click += (_, _) => SaveDraft();
         _preview.Click += (_, _) => Preview();
         _issue.Click += async (_, _) => await Issue();
-        var cancel = new Button { Content = "Cancel" };
+        _revise.Click += async (_, _) => await Revise();
+        _attach.Click += async (_, _) => await AttachSigned();
+        _sign.Click += async (_, _) => await MarkSigned();
+        _cancelDoc.Click += async (_, _) => await CancelDocument();
+        _cancelReason.Visibility = Visibility.Collapsed;
+        var cancel = new Button { Content = "Back" };
         cancel.Click += async (_, _) => { if (await CanLeave()) ShowList(); };
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        actions.Children.Add(cancel);
-        actions.Children.Add(_save);
-        actions.Children.Add(_preview);
-        actions.Children.Add(_issue);
-        var form = new StackPanel { Spacing = 8, MaxWidth = 720 };
+        var actions = Flow.Bar(cancel, _save, _preview, _issue, _revise, _attach, _sign, _cancelDoc);
+        var form = new StackPanel { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
         form.Children.Add(_title);
         form.Children.Add(_state);
         form.Children.Add(Flow.Section("Document details"));
-        form.Children.Add(_kind);
-        form.Children.Add(_date);
-        form.Children.Add(_reference);
-        form.Children.Add(_project);
+        form.Children.Add(Flow.Pair(_kind, _date));
+        form.Children.Add(Flow.Pair(_reference, _project));
         form.Children.Add(Flow.Section("Recipient"));
         form.Children.Add(_party);
         form.Children.Add(_address);
         form.Children.Add(Flow.Section("Content"));
         form.Children.Add(_subject);
         form.Children.Add(_body);
+        form.Children.Add(_cancelReason);
         form.Children.Add(_error);
         form.Children.Add(actions);
         var host = new Grid { Margin = (Thickness)Application.Current.Resources["PageMargin"] };
         host.Children.Add(list);
-        host.Children.Add(new ScrollViewer { Content = form, Visibility = Visibility.Collapsed });
+        var editorScroll = Flow.Scroll(form);
+        editorScroll.Visibility = Visibility.Collapsed;
+        host.Children.Add(editorScroll);
+        if (_shell.CanEdit)
+            Flow.Pin(host, ("New letter", () => _ = BeginNew("letter_out")), ("New agreement", () => _ = BeginNew("agreement")));
         Content = host;
         Reload();
         if (Flow.TakeCreate(_shell, "documents"))
@@ -1249,6 +1441,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
         _title.Text = kind == "agreement" ? "New agreement" : "New letter";
         _state.Text = "Draft. Save draft keeps it editable. Issue gives it a number and freezes the content.";
         SetEditable(true);
+        ShowIssuedActions(false, false);
         _error.IsOpen = false;
         _filling = false;
         _dirty = false;
@@ -1290,6 +1483,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
         _state.Text = draft ? "Draft. Issue gives this document a number. After that, the content cannot be edited." : $"{_status}. This document is frozen. A change is a revision, not an edit.";
         SetEditable(draft && _shell.CanEdit);
         _issue.Visibility = draft && _shell.CanIssue ? Visibility.Visible : Visibility.Collapsed;
+        ShowIssuedActions(_status is "issued" or "signed", Kit.Str(input, "kind") == "agreement" && _status == "issued");
         _error.IsOpen = false;
         _filling = false;
         _dirty = false;
@@ -1302,6 +1496,84 @@ internal sealed class LettersPage : UserControl, IPageCommands
         foreach (var box in new Control[] { _kind, _date, _reference, _project, _party, _address, _subject, _body })
             box.IsEnabled = editable;
         _save.Visibility = editable ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void ShowIssuedActions(bool issued, bool signable)
+    {
+        _revise.Visibility = issued && _shell.CanEdit ? Visibility.Visible : Visibility.Collapsed;
+        _cancelDoc.Visibility = _status == "issued" && _shell.CanIssue ? Visibility.Visible : Visibility.Collapsed;
+        _cancelReason.Visibility = _cancelDoc.Visibility;
+        _attach.Visibility = signable && _shell.CanEdit ? Visibility.Visible : Visibility.Collapsed;
+        _sign.Visibility = signable && _shell.CanIssue ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private async Task Revise()
+    {
+        if (_id is not long id || !_shell.CanEdit)
+            return;
+        if (!await Flow.Confirm(this, "Revise this document?", "A new draft is created. The issued document stays as it was.", "Revise"))
+            return;
+        _ = _shell.Run("Creating a revision…", () =>
+        {
+            var created = _shell.Call("doc_revise", new { id });
+            var next = created.ValueKind == JsonValueKind.Number ? created.GetInt64() : id;
+            var detail = _shell.Call("doc_get", new { id = next });
+            _shell.Window.DispatcherQueue.TryEnqueue(() => Apply(detail));
+        });
+    }
+
+    private async Task AttachSigned()
+    {
+        if (_id is not long id)
+            return;
+        string? path;
+        try { path = await FileDialogs.PickFile(_shell.Window.Handle, ".pdf", ".png", ".jpg", ".jpeg"); }
+        catch (Exception ex) { _shell.Problem(ex.Message); return; }
+        if (path == null)
+            return;
+        var filename = Path.GetFileName(path);
+        var data = Convert.ToBase64String(await File.ReadAllBytesAsync(path));
+        _ = _shell.Run("Attaching the signed copy…", () => _shell.Call("doc_attach", new { doc_id = id, kind = "signed_copy", filename, base64_data = data }));
+    }
+
+    private async Task MarkSigned()
+    {
+        if (_id is not long id || !_shell.CanIssue)
+            return;
+        if (!await Flow.Confirm(this, "Mark this agreement as signed?", "The signed copy must already be attached. The agreement then stays on record.", "Mark signed"))
+            return;
+        _ = _shell.Run("Marking signed…", () => _shell.Call("doc_mark_signed", new { id }))
+            .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (!task.Result)
+                    return;
+                _dirty = false;
+                ShowList();
+                Reload();
+            }));
+    }
+
+    private async Task CancelDocument()
+    {
+        if (_id is not long id || !_shell.CanIssue)
+            return;
+        var reason = _cancelReason.Text.Trim();
+        if (reason.Length == 0)
+        {
+            _shell.Problem("Give a reason.");
+            return;
+        }
+        if (!await Flow.Confirm(this, "Cancel this document?", "The number stays used. A signed agreement stays on record.", "Cancel document"))
+            return;
+        _ = _shell.Run("Cancelling document…", () => _shell.Call("doc_cancel", new { id, reason }))
+            .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (!task.Result)
+                    return;
+                _dirty = false;
+                ShowList();
+                Reload();
+            }));
     }
 
     private void LoadProjects(long? selected)
@@ -1328,7 +1600,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
             var subject = Kit.Str(row, "subject");
             if (subject.Length == 0) subject = Kit.Str(row, "number");
             var cells = new[] { Kit.Str(row, "doc_date"), subject, Kit.Str(row, "party_name"), Kit.Str(row, "status") };
-            var item = new ListViewItem { Content = Flow.Columns(cells, LetterWidths), Tag = row };
+            var item = new ListViewItem { Content = Flow.Line(Flow.Columns(cells, LetterWidths), Flow.Edit(() => Open(row))), Tag = row };
             AutomationProperties.SetName(item, $"{cells[1]}, {cells[0]}, recipient {cells[2]}, {cells[3]}");
             _list.Items.Add(item);
             count++;
@@ -1458,10 +1730,12 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
     private readonly ListView _preview = new();
     private readonly ListView _transactions = new();
     private readonly ComboBox _importAccount = new() { Header = "Bank account" };
-    private readonly TextBox _colDate = new() { Header = "Date column", Text = "0", Width = 110 };
-    private readonly TextBox _colNarration = new() { Header = "Narration column", Text = "1", Width = 140 };
-    private readonly TextBox _colDebit = new() { Header = "Debit column", Text = "2", Width = 120 };
-    private readonly TextBox _colCredit = new() { Header = "Credit column", Text = "3", Width = 120 };
+    private readonly ComboBox _mapDate = new() { Header = "Date", HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly ComboBox _mapParticulars = new() { Header = "Particulars", HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly ComboBox _mapCredit = new() { Header = "Credit", HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly ComboBox _mapDebit = new() { Header = "Debit", HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly ComboBox _dateOrder = new() { Header = "Date order", HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly StackPanel _fileColumns = new() { Spacing = 4 };
     private readonly TextBlock _summary = new() { TextWrapping = TextWrapping.WrapWholeWords };
     private readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true };
     private readonly TextBox _accountName = Flow.Input("Account name");
@@ -1471,9 +1745,13 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
     private readonly Button _saveAccount = new() { Content = "Create" };
     private string? _csv;
     private string? _csvName;
+    private bool _heading = true;
+    private bool _mapping;
+    private int _previewTicket;
     private bool _previewClean;
     private long? _accountId;
     private bool _dirty;
+    private StackPanel? _accountForm;
 
     public BankWorkspace(AppShell shell)
     {
@@ -1481,12 +1759,21 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
         Flow.UseTable(_accounts);
         Flow.UseTable(_preview);
         Flow.UseTable(_transactions);
-        var pivot = new Pivot();
+        _dateOrder.Items.Add(new ComboBoxItem { Content = "Day, month, year", Tag = "dmy" });
+        _dateOrder.Items.Add(new ComboBoxItem { Content = "Month, day, year", Tag = "mdy" });
+        _dateOrder.Items.Add(new ComboBoxItem { Content = "Year, month, day", Tag = "ymd" });
+        _dateOrder.SelectedIndex = 0;
+        foreach (var box in new ComboBox[] { _mapDate, _mapParticulars, _mapCredit, _mapDebit, _dateOrder })
+            box.SelectionChanged += (_, _) => { if (!_mapping && _csv != null) CheckRows(); };
+        var pivot = new Pivot { HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch };
         pivot.Items.Add(new PivotItem { Header = "Accounts", Content = AccountsPane() });
         pivot.Items.Add(new PivotItem { Header = "Import statement", Content = ImportPane() });
         pivot.Items.Add(new PivotItem { Header = "Reconciliation", Content = ReconciliationPane() });
-        var column = new StackPanel { Margin = new Thickness(8) };
+        var column = new Grid { Margin = new Thickness(8) };
+        column.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        column.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         column.Children.Add(Flow.SheetMark("04.09", "Accounts", "Reconciliation"));
+        Grid.SetRow(pivot, 1);
         column.Children.Add(pivot);
         Content = column;
         LoadAccounts();
@@ -1496,23 +1783,21 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
 
     private UIElement AccountsPane()
     {
-        var form = new StackPanel { Spacing = 8, MaxWidth = 520 };
+        var form = new StackPanel { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
         form.Children.Add(Flow.Heading("Bank account"));
-        form.Children.Add(_accountName);
-        form.Children.Add(_bank);
-        form.Children.Add(_number);
-        form.Children.Add(_ifsc);
+        form.Children.Add(Flow.Pair(_accountName, _bank));
+        form.Children.Add(Flow.Pair(_number, _ifsc));
+        _saveAccount.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
         _saveAccount.Click += (_, _) => SaveAccount();
         var cancel = new Button { Content = "Cancel" };
         cancel.Click += (_, _) => { _dirty = false; form.Visibility = Visibility.Collapsed; };
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        actions.Children.Add(cancel);
-        actions.Children.Add(_saveAccount);
+        var actions = Flow.Bar(cancel, _saveAccount);
         form.Children.Add(actions);
         form.Visibility = Visibility.Collapsed;
+        _accountForm = form;
         foreach (var box in new[] { _accountName, _bank, _number, _ifsc })
             box.TextChanged += (_, _) => _dirty = true;
-        var add = new Button { Content = "New account" };
+        var add = new Button { Content = "New account", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
         add.Click += (_, _) => BeginAccount();
         var pane = new Grid { RowSpacing = 8, Margin = new Thickness(8) };
         pane.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -1533,38 +1818,42 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
 
     private UIElement ImportPane()
     {
-        var pick = new Button { Content = "Choose CSV" };
-        pick.Click += async (_, _) => await ChooseCsv();
-        var commit = new Button { Content = "Import" };
+        var pick = new Button { Content = "Choose statement" };
+        pick.Click += async (_, _) => await ChooseStatement();
+        var check = new Button { Content = "Check rows" };
+        check.Click += (_, _) => CheckRows();
+        var commit = new Button { Content = "Import", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
         commit.Click += (_, _) => CommitImport();
-        var bar = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        bar.Children.Add(_importAccount);
-        bar.Children.Add(pick);
-        bar.Children.Add(commit);
-        var columns = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        columns.Children.Add(_colDate);
-        columns.Children.Add(_colNarration);
-        columns.Children.Add(_colDebit);
-        columns.Children.Add(_colCredit);
-        var pane = new StackPanel { Spacing = 8, Margin = new Thickness(8) };
-        pane.Children.Add(new TextBlock { Text = "Choose the account and the column numbers. The first column is 0. Check the parsed rows, then import.", TextWrapping = TextWrapping.WrapWholeWords, Style = Flow.Look("BodyStyle") });
+        _importAccount.HorizontalAlignment = HorizontalAlignment.Stretch;
+        var bar = Flow.Bar(_importAccount, pick, check, commit);
+        var columns = new Grid();
+        var pane = new StackPanel { Spacing = 8, Margin = new Thickness(8), HorizontalAlignment = HorizontalAlignment.Stretch };
+        pane.Children.Add(new TextBlock { Text = "Banks keep Date, Particulars, Credit and Debit in their own order. Choose a CSV or Excel statement, map each column, check the rows, then import. A row with no date is left out, including any other text or amount on that row.", TextWrapping = TextWrapping.WrapWholeWords, Style = Flow.Look("BodyStyle") });
         pane.Children.Add(bar);
+        pane.Children.Add(_fileColumns);
+        pane.Children.Add(Flow.Section("Map the columns"));
         pane.Children.Add(columns);
         pane.Children.Add(_notice);
         pane.Children.Add(_preview);
-        return new ScrollViewer { Content = pane };
+        pane.SizeChanged += (_, _) => Flow.Place(columns, [_mapDate, _mapParticulars, _mapCredit, _mapDebit, _dateOrder], 180, true);
+        return Flow.Scroll(pane);
     }
 
     private UIElement ReconciliationPane()
     {
         var refresh = new Button { Content = "Refresh summary" };
         refresh.Click += (_, _) => LoadSummary();
-        var pane = new StackPanel { Spacing = 8, Margin = new Thickness(8) };
+        var pane = new Grid { RowSpacing = 8, Margin = new Thickness(8) };
+        pane.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        pane.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        pane.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         pane.Children.Add(_summary);
+        Grid.SetRow(refresh, 1);
         pane.Children.Add(refresh);
+        Grid.SetRow(_transactions, 2);
         pane.Children.Add(_transactions);
         LoadSummary();
-        return new ScrollViewer { Content = pane };
+        return pane;
     }
 
     private void BeginAccount()
@@ -1573,8 +1862,8 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
         _accountName.Text = _bank.Text = _number.Text = _ifsc.Text = "";
         _saveAccount.Content = "Create";
         _dirty = false;
-        if (Content is Pivot pivot && pivot.Items[0] is PivotItem item && item.Content is Grid grid)
-            grid.Children[2].Visibility = Visibility.Visible;
+        if (_accountForm != null)
+            _accountForm.Visibility = Visibility.Visible;
     }
 
     private void EditAccount(JsonElement row, StackPanel form)
@@ -1603,12 +1892,18 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
         {
             _accounts.Items.Clear();
             _importAccount.Items.Clear();
-            _accounts.Items.Add(Flow.Header("Account", "Bank", "Number", "IFSC"));
+            var widths = new GridLength[] { new(1.4, GridUnitType.Star), new(1.2, GridUnitType.Star), new(1, GridUnitType.Star), new(120) };
+            _accounts.Items.Add(Flow.Header(["Account", "Bank", "Number", "IFSC"], widths));
             if (rows.ValueKind != JsonValueKind.Array) return;
             foreach (var row in rows.EnumerateArray())
             {
                 var clone = row.Clone();
-                _accounts.Items.Add(new ListViewItem { Content = Flow.Columns(Kit.Str(clone, "name"), Kit.Str(clone, "bank_name"), Mask(Kit.Str(clone, "account_number")), Kit.Str(clone, "ifsc")), Tag = clone });
+                var edit = Flow.Edit(() => { if (_accountForm != null) EditAccount(clone, _accountForm); });
+                _accounts.Items.Add(new ListViewItem
+                {
+                    Content = Flow.Line(Flow.Columns([Kit.Str(clone, "name"), Kit.Str(clone, "bank_name"), Mask(Kit.Str(clone, "account_number")), Kit.Str(clone, "ifsc")], widths), edit),
+                    Tag = clone,
+                });
                 _importAccount.Items.Add(new ComboBoxItem { Content = Kit.Str(clone, "name"), Tag = Kit.Id(clone) ?? 0 });
             }
             if (_importAccount.Items.Count > 0 && _importAccount.SelectedIndex < 0)
@@ -1616,21 +1911,110 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
         });
     });
 
-    private async Task ChooseCsv()
+    private async Task ChooseStatement()
     {
         string? path;
-        try { path = await FileDialogs.PickFile(_shell.Window.Handle, ".csv", ".txt"); }
+        try { path = await FileDialogs.PickFile(_shell.Window.Handle, ".csv", ".txt", ".xlsx"); }
         catch (Exception ex) { _shell.Problem(ex.Message); return; }
-        if (path == null) return;
-        _csv = await File.ReadAllTextAsync(path);
+        if (path == null)
+            return;
+        StatementFile file;
+        try { file = await Task.Run(() => BankStatement.Open(path)); }
+        catch (Exception ex) { _shell.Problem(ex.Message); return; }
+        _csv = file.Text;
         _csvName = Path.GetFileName(path);
+        _heading = file.Heading;
         _previewClean = false;
+        ShowColumns(file);
+        CheckRows();
+    }
+
+    private void ShowColumns(StatementFile file)
+    {
+        _mapping = true;
+        _fileColumns.Children.Clear();
+        _fileColumns.Children.Add(Flow.Secondary(file.Heading
+            ? "Columns in this file, in the bank's order."
+            : "This file has no headings. The sample shows each column."));
+        if (file.Headers.Length > 0)
+            _fileColumns.Children.Add(Flow.Header(file.Headers));
+        foreach (var row in file.Sample)
+            _fileColumns.Children.Add(Flow.Columns(Pad(row, file.Headers.Length)));
+        foreach (var box in new[] { _mapDate, _mapParticulars, _mapCredit, _mapDebit })
+            box.Items.Clear();
+        for (var i = 0; i < file.Labels.Length; i++)
+        {
+            foreach (var box in new[] { _mapDate, _mapParticulars, _mapCredit, _mapDebit })
+                box.Items.Add(new ComboBoxItem { Content = file.Labels[i], Tag = i });
+        }
+        var used = new HashSet<int>();
+        Pick(_mapDate, Take(used, file.Labels.Length, BankStatement.Suggest(file.Headers, "date"), 0));
+        Pick(_mapParticulars, Take(used, file.Labels.Length, BankStatement.Suggest(file.Headers, "particulars", "narration", "description", "remarks", "details"), 1));
+        Pick(_mapCredit, Take(used, file.Labels.Length, BankStatement.Suggest(file.Headers, "credit", "deposit", "cr"), 2));
+        Pick(_mapDebit, Take(used, file.Labels.Length, BankStatement.Suggest(file.Headers, "debit", "withdrawal", "withdraw", "dr"), 3));
+        _mapping = false;
+    }
+
+    private static int Take(HashSet<int> used, int count, int? found, int fallback)
+    {
+        if (count <= 0)
+            return 0;
+        if (found is int match && match >= 0 && match < count && used.Add(match))
+            return match;
+        for (var index = Math.Clamp(fallback, 0, count - 1); index < count; index++)
+        {
+            if (used.Add(index))
+                return index;
+        }
+        for (var index = 0; index < count; index++)
+        {
+            if (used.Add(index))
+                return index;
+        }
+        return 0;
+    }
+
+    private static void Pick(ComboBox box, int index)
+    {
+        foreach (ComboBoxItem item in box.Items)
+        {
+            if (item.Tag is int value && value == index)
+            {
+                box.SelectedItem = item;
+                return;
+            }
+        }
+        if (box.Items.Count > 0)
+            box.SelectedIndex = 0;
+    }
+
+    private static string[] Pad(string[] row, int width)
+    {
+        var cells = new string[width];
+        for (var i = 0; i < width; i++)
+            cells[i] = i < row.Length ? row[i] : "";
+        return cells;
+    }
+
+    private void CheckRows()
+    {
+        if (_csv == null)
+        {
+            _shell.Problem("Choose a statement first.");
+            return;
+        }
+        var ticket = ++_previewTicket;
         var text = _csv;
         var mapping = Mapping();
+        _previewClean = false;
         _ = _shell.Run("Reading statement…", () =>
         {
             var parsed = _shell.Call("bank_csv_preview", new { text, mapping });
-            _shell.Window.DispatcherQueue.TryEnqueue(() => ShowPreview(parsed));
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (ticket == _previewTicket)
+                    ShowPreview(parsed);
+            });
         });
     }
 
@@ -1645,12 +2029,18 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
             _notice.IsOpen = true;
             return;
         }
+        var widths = new GridLength[] { new(120), new(2, GridUnitType.Star), new(140), new(140) };
+        var money = new[] { false, false, true, true };
+        _preview.Items.Add(Flow.Header(["Date", "Particulars", "Credit", "Debit"], widths, money));
         var errors = 0;
         foreach (var row in parsed.EnumerateArray())
         {
             var error = Kit.Str(row, "error");
             if (error.Length > 0) errors++;
-            _preview.Items.Add(Flow.Columns($"{Kit.Str(row, "row_no")}  {Kit.Str(row, "txn_date")}  {Kit.Str(row, "narration")}  {(error.Length == 0 ? "" : error)}"));
+            var particulars = Kit.Str(row, "narration");
+            if (error.Length > 0)
+                particulars = particulars.Length == 0 ? error : $"{particulars} — {error}";
+            _preview.Items.Add(Flow.Columns([Kit.Str(row, "txn_date"), particulars, Paise(row, "credit_paise"), Paise(row, "debit_paise")], widths, money));
         }
         _previewClean = errors == 0 && parsed.GetArrayLength() > 0;
         _notice.Severity = _previewClean ? InfoBarSeverity.Success : InfoBarSeverity.Error;
@@ -1695,27 +2085,38 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
         {
             _summary.Text = $"{Kit.Str(summary, "unmatched")} unmatched · {Kit.Str(summary, "partial")} partly matched · {Kit.Str(summary, "matched")} matched · {Kit.Str(summary, "rejected_rows")} rejected rows";
             _transactions.Items.Clear();
+            var widths = new GridLength[] { new(120), new(2, GridUnitType.Star), new(140), new(120) };
+            var money = new[] { false, false, true, false };
+            _transactions.Items.Add(Flow.Header(["Date", "Particulars", "Amount", "Status"], widths, money));
             if (txns.ValueKind != JsonValueKind.Array) return;
             foreach (var row in txns.EnumerateArray())
-                _transactions.Items.Add(Flow.Columns($"{Kit.Str(row, "txn_date")}  {Kit.Str(row, "narration")}  {Kit.Str(row, "amount_display")}  {Kit.Str(row, "status")}"));
+                _transactions.Items.Add(Flow.Columns([Kit.Str(row, "txn_date"), Kit.Str(row, "narration"), Kit.Str(row, "amount_display"), Kit.Str(row, "status")], widths, money));
         });
     });
+
+    private static string Paise(JsonElement row, string key)
+    {
+        if (!row.TryGetProperty(key, out var value) || !value.TryGetInt64(out var paise) || paise == 0)
+            return "";
+        return Flow.Money(paise);
+    }
 
     private object Mapping() => new
     {
         delimiter = ",",
-        has_header = true,
-        date_order = "dmy",
-        date = Column(_colDate, 0),
-        narration = Column(_colNarration, 1),
+        has_header = _heading,
+        date_order = _dateOrder.SelectedItem is ComboBoxItem order && order.Tag is string tag ? tag : "dmy",
+        date = SelectedColumn(_mapDate, 0),
+        narration = SelectedColumn(_mapParticulars, 1),
         reference = (int?)null,
-        debit = Column(_colDebit, 2),
-        credit = Column(_colCredit, 3),
+        debit = SelectedColumn(_mapDebit, 3),
+        credit = SelectedColumn(_mapCredit, 2),
         amount = (int?)null,
         balance = (int?)null,
     };
 
-    private static int Column(TextBox box, int fallback) => int.TryParse(box.Text.Trim(), out var value) && value >= 0 ? value : fallback;
+    private static int SelectedColumn(ComboBox box, int fallback) =>
+        box.SelectedItem is ComboBoxItem item && item.Tag is int index ? index : fallback;
 
     private static string Mask(string number)
     {

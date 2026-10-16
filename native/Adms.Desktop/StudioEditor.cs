@@ -2,7 +2,6 @@ using System.Text.Json;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Windows.System;
 
 namespace Adms.Desktop;
 
@@ -21,9 +20,7 @@ internal sealed class StudioEditor : UserControl, IPageCommands
     };
 
     private readonly AppShell _shell;
-    private readonly TextBox _search = new() { PlaceholderText = "Search templates", Margin = new Thickness(0, 0, 0, 8) };
-    private readonly ListView _list = new() { SelectionMode = ListViewSelectionMode.Single };
-    private readonly TextBlock _heading = new() { Text = "Templates", Style = (Style)Application.Current.Resources["PageTitleStyle"] };
+    private readonly TextBlock _heading = new() { Text = "Template", Style = (Style)Application.Current.Resources["PageTitleStyle"] };
     private readonly TextBlock _intro;
     private readonly TextBlock _status;
     private readonly TemplateSheet _sheet = new();
@@ -35,8 +32,6 @@ internal sealed class StudioEditor : UserControl, IPageCommands
     private readonly List<FieldChoice> _catalogue = new();
     private readonly Border _page;
 
-    private Row? _selected;
-    private bool _navLock;
     private bool _loading;
     private bool _sync;
     private bool _dirty;
@@ -58,7 +53,7 @@ internal sealed class StudioEditor : UserControl, IPageCommands
         _shell = shell;
         _intro = new TextBlock
         {
-            Text = "Write the letter on the page. The ribbon has the same jobs as a word processor: font, styles, alignment, tables, a horizontal line, and the header and footer. A built-in template stays as shipped; make a copy to change it.",
+            Text = "Write the letter on the page. The template is saved as a Word document. The ribbon covers font, styles, alignment, tables, a horizontal line, and the header and footer. A built-in template stays as shipped; make a copy to change it.",
             TextWrapping = TextWrapping.Wrap,
             Style = (Style)Application.Current.Resources["SecondaryStyle"],
         };
@@ -82,39 +77,24 @@ internal sealed class StudioEditor : UserControl, IPageCommands
         _profile.Items.Add(new ComboBoxItem { Content = "This company", Tag = "company" });
         _profile.SelectedIndex = 0;
 
-        var root = new Grid { Margin = new Thickness(8) };
-        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(320) });
-        root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-        var listPane = new Grid { Margin = new Thickness(0, 0, 12, 0) };
-        listPane.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        listPane.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        listPane.Children.Add(_search);
-        Grid.SetRow(_list, 1);
-        listPane.Children.Add(_list);
-        root.Children.Add(listPane);
-
-        var editor = new Grid();
+        var editor = new Grid { Margin = new Thickness(8) };
         editor.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         editor.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         editor.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         editor.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         editor.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        Grid.SetColumn(editor, 1);
-        root.Children.Add(editor);
 
         var header = new StackPanel { Spacing = 4 };
+        header.Children.Add(Kit.Button("Templates", () => _shell.Navigate?.Invoke("templates")));
+        header.Children.Add(Flow.SheetMark("03.03", "Office", "Template"));
         header.Children.Add(_heading);
         header.Children.Add(_intro);
         editor.Children.Add(header);
 
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 8, 0, 8) };
-        actions.Children.Add(Kit.Button("Save", Save));
-        actions.Children.Add(Kit.Button("Check", Validate));
-        actions.Children.Add(Kit.Button("Preview PDF", Print));
-        actions.Children.Add(Kit.Button("Publish", Publish));
-        actions.Children.Add(Kit.Button("Make a copy", Duplicate));
-        actions.Children.Add(Kit.Button("New template", NewItem));
+        var save = new Button { Content = "Save", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+        save.Click += (_, _) => Save();
+        var actions = Flow.Bar(save, Kit.Button("Check", Validate), Kit.Button("Preview PDF", Print), Kit.Button("Publish", Publish), Kit.Button("Make a copy", Duplicate), Kit.Button("Delete", Delete), Kit.Button("New template", NewItem));
+        actions.Margin = new Thickness(0, 8, 0, 8);
         Grid.SetRow(actions, 1);
         editor.Children.Add(actions);
 
@@ -125,14 +105,13 @@ internal sealed class StudioEditor : UserControl, IPageCommands
         editor.Children.Add(_page);
 
         var footer = new StackPanel { Spacing = 8, Margin = new Thickness(0, 8, 0, 0) };
-        footer.Children.Add(_fields);
-        footer.Children.Add(_profile);
-        footer.Children.Add(_copyName);
-        footer.Children.Add(_note);
+        _profile.HorizontalAlignment = HorizontalAlignment.Stretch;
+        footer.Children.Add(Flow.Pair(_fields, _profile));
+        footer.Children.Add(Flow.Pair(_copyName, _note));
         footer.Children.Add(_status);
         Grid.SetRow(footer, 4);
         editor.Children.Add(footer);
-        Content = root;
+        Content = editor;
 
         _sheet.Changed += () =>
         {
@@ -174,27 +153,6 @@ internal sealed class StudioEditor : UserControl, IPageCommands
             if (_htmlFormat)
                 _sheet.SetPaper((_ribbon.Paper.SelectedItem as ComboBoxItem)?.Tag as string ?? "A4");
         };
-        _search.KeyDown += (_, e) =>
-        {
-            if (e.Key == VirtualKey.Enter)
-                Reload();
-        };
-        _list.SelectionChanged += async (_, _) =>
-        {
-            if (_navLock)
-                return;
-            if (_list.SelectedItem is not Row row || ReferenceEquals(row, _selected))
-                return;
-            if (!await Flow.Discard(this, _dirty || _paperDirty))
-            {
-                _navLock = true;
-                _list.SelectedItem = _selected;
-                _navLock = false;
-                return;
-            }
-            _selected = row;
-            Open(row.Data);
-        };
         _fields.SelectionChanged += (_, _) =>
         {
             if (_fields.SelectedItem is ComboBoxItem item && item.Tag is string token && CanEdit())
@@ -215,7 +173,13 @@ internal sealed class StudioEditor : UserControl, IPageCommands
             }
         };
         ApplyMode();
-        Reload();
+        if (_shell.PendingTemplateId is long pending)
+        {
+            _shell.PendingTemplateId = null;
+            OpenById(pending);
+        }
+        else
+            _status.Text = "Choose a template from the list.";
     }
 
     public void NewItem()
@@ -234,7 +198,7 @@ internal sealed class StudioEditor : UserControl, IPageCommands
                 _status.Text = $"Created {name}.";
                 _dirty = false;
                 _paperDirty = false;
-                Reload(id);
+                OpenById(id);
             });
         });
     }
@@ -262,7 +226,7 @@ internal sealed class StudioEditor : UserControl, IPageCommands
                     _sourceCss = css;
                     _dirty = false;
                     _paperDirty = false;
-                    _status.Text = "Draft saved. Publish it when the wording is ready. Issued documents are not changed.";
+                    _status.Text = "Draft saved as a Word document. Publish it when the letter is ready. Issued documents are not changed.";
                 });
             });
             return;
@@ -289,7 +253,25 @@ internal sealed class StudioEditor : UserControl, IPageCommands
 
     public void Print() => Preview();
 
-    public void FocusSearch() => _search.Focus(FocusState.Programmatic);
+    private async void Delete()
+    {
+        if (_id is not long id)
+            return;
+        if (_builtIn)
+        {
+            _shell.Problem("A built-in template stays as shipped. Make a copy, then delete the copy.");
+            return;
+        }
+        if (!await Flow.Confirm(this, "Delete this template?", "It leaves the template list. Documents already issued stay as they were.", "Delete"))
+            return;
+        _dirty = false;
+        _paperDirty = false;
+        var removed = await _shell.Run("Deleting template…", () => _shell.Call("template_set_archived", new { template_id = id, archived = true }));
+        if (removed)
+            _shell.Navigate?.Invoke("templates");
+    }
+
+    public void FocusSearch() { }
 
     public Task<bool> CanLeave() => Flow.Discard(this, _dirty || _paperDirty);
 
@@ -392,7 +374,7 @@ internal sealed class StudioEditor : UserControl, IPageCommands
             {
                 _dirty = false;
                 _paperDirty = false;
-                Reload(copy);
+                OpenById(copy);
             });
         });
     }
@@ -402,6 +384,10 @@ internal sealed class StudioEditor : UserControl, IPageCommands
     private (string Html, string Css) CurrentHtml()
     {
         var paper = (_ribbon.Paper.SelectedItem as ComboBoxItem)?.Tag as string ?? "A4";
+        if (!_dirty && !_paperDirty)
+            return (_sourceHtml, _sourceCss);
+        if (!_dirty && DocxFile.TryOpen(_sourceHtml, _sourceCss, out var inner, out var style))
+            return (inner, WordPaper.WithPage(string.IsNullOrEmpty(style) ? WordPaper.DocumentCss(paper) : style, paper));
         if (!_dirty)
             return (_sourceHtml, WordPaper.WithPage(_sourceCss, paper));
         return (_sheet.Write(), WordPaper.DocumentCss(paper));
@@ -446,23 +432,22 @@ internal sealed class StudioEditor : UserControl, IPageCommands
                 _sourceCss = css;
                 _builtIn = state.TryGetProperty("built_in", out var built) && built.ValueKind == JsonValueKind.True;
                 ApplyMode();
-                ShowSheet(html, WordPaper.DetectPaper(css));
+                ShowSheet(html, css);
                 var published = Kit.Str(state, "published_version");
                 var draft = state.TryGetProperty("has_draft", out var has) && has.ValueKind == JsonValueKind.True;
                 _status.Text = _builtIn
-                    ? "Built-in template. Make a copy to edit it."
+                    ? "Built-in Word template. Make a copy to edit it."
                     : draft ? "This draft has not been published." : $"Published version {published}.";
             });
         });
     }
 
-    private void ShowSheet(string html, string paper)
+    private void ShowSheet(string html, string css)
     {
         _loading = true;
-        SelectPaper(paper);
-        _sheet.SetPaper(paper);
         _sheet.IsReadOnly = !CanEdit();
-        _sheet.Load(html);
+        var paper = _sheet.LoadDocument(html, css);
+        SelectPaper(paper);
         _loading = false;
         _dirty = false;
         _paperDirty = false;
@@ -493,40 +478,34 @@ internal sealed class StudioEditor : UserControl, IPageCommands
         _ribbon.Paper.SelectedIndex = 0;
     }
 
-    private void Reload(long? selectId = null)
+    private void OpenById(long id)
     {
-        var search = _search.Text.Trim();
         var loadFields = !_fieldsLoaded;
         _fieldsLoaded = true;
-        _shell.Run("Loading templates…", () =>
+        _shell.Run("Opening template…", () =>
         {
             var rows = _shell.Call("template_list", new { kind = (string?)null, include_archived = false });
             var fields = loadFields ? _shell.Call("studio_fields") : default;
+            JsonElement? match = null;
+            if (rows.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var row in rows.EnumerateArray())
+                {
+                    if (Kit.Id(row) == id)
+                    {
+                        match = row.Clone();
+                        break;
+                    }
+                }
+            }
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (loadFields)
                     RememberFields(fields);
-                _list.Items.Clear();
-                if (rows.ValueKind != JsonValueKind.Array)
-                    return;
-                Row? match = null;
-                foreach (var row in rows.EnumerateArray())
-                {
-                    if (search.Length > 0 && !Kit.Line(row, "name", "family", "format").Contains(search, StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    var item = new Row { Label = Kit.Line(row, "family", "name"), Data = row.Clone() };
-                    _list.Items.Add(item);
-                    if (selectId is long wanted && Kit.Id(row) == wanted)
-                        match = item;
-                }
-                if (match != null)
-                {
-                    _navLock = true;
-                    _selected = match;
-                    _list.SelectedItem = match;
-                    _navLock = false;
-                    Open(match.Data);
-                }
+                if (match is JsonElement row)
+                    Open(row);
+                else
+                    _status.Text = "That template is no longer in the list.";
             });
         });
     }
@@ -755,5 +734,160 @@ internal sealed class StudioEditor : UserControl, IPageCommands
         public string Label = "";
         public string Token = "";
         public bool Wording;
+    }
+}
+
+internal sealed class TemplateListPage : UserControl, IPageCommands
+{
+    private readonly AppShell _shell;
+    private readonly TextBox _search = new() { PlaceholderText = "Name or family", Header = "Search" };
+    private readonly TextBox _name = new() { Header = "Name for a new template", PlaceholderText = "Our letter", HorizontalAlignment = HorizontalAlignment.Stretch };
+    private readonly ListView _list = new() { SelectionMode = ListViewSelectionMode.None, IsItemClickEnabled = true };
+    private readonly TextBlock _empty = Flow.Secondary("No templates match.");
+    private readonly List<JsonElement> _rows = [];
+
+    public TemplateListPage(AppShell shell)
+    {
+        _shell = shell;
+        var page = new Grid { Margin = (Thickness)Application.Current.Resources["PageMargin"], RowSpacing = 12 };
+        page.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        page.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+        var header = new StackPanel { Spacing = 12 };
+        header.Children.Add(Flow.SheetMark("03.02", "Office", "Templates"));
+        header.Children.Add(Flow.Heading("Templates"));
+        header.Children.Add(Flow.Secondary("Edit opens the template. Save is on that page. Delete removes a copy from the list. A built-in template stays as shipped."));
+        header.Children.Add(_search);
+        if (shell.Role == "Owner")
+        {
+            header.Children.Add(_name);
+            header.Children.Add(Kit.Button("New template", NewItem));
+        }
+        page.Children.Add(header);
+
+        _list.IsItemClickEnabled = false;
+        var listHost = new Grid();
+        listHost.Children.Add(_list);
+        _empty.VerticalAlignment = VerticalAlignment.Top;
+        _empty.Margin = new Thickness(0, 8, 0, 0);
+        listHost.Children.Add(_empty);
+        Grid.SetRow(listHost, 1);
+        page.Children.Add(listHost);
+        if (shell.Role == "Owner")
+            Flow.Pin(page, ("New template", NewItem));
+        Content = page;
+
+        _search.TextChanged += (_, _) => Paint();
+        Load();
+    }
+
+    public void NewItem()
+    {
+        if (_shell.Role != "Owner")
+        {
+            _shell.Problem("Only the owner can create a template.");
+            return;
+        }
+        var name = string.IsNullOrWhiteSpace(_name.Text) ? "Our letter" : _name.Text.Trim();
+        _shell.Run("Creating template…", () =>
+        {
+            var id = _shell.Call("studio_create", new { name, family = "consultancy", kind = "letter" }).GetInt64();
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                _shell.PendingTemplateId = id;
+                _shell.Navigate?.Invoke("template-editor");
+            });
+        });
+    }
+
+    public void Save() { }
+    public void Print() { }
+    public void FocusSearch() => _search.Focus(FocusState.Programmatic);
+
+    private void Load()
+    {
+        _shell.Run("Loading templates…", () =>
+        {
+            var rows = _shell.Call("template_list", new { kind = (string?)null, include_archived = false });
+            var copy = new List<JsonElement>();
+            if (rows.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var row in rows.EnumerateArray())
+                    copy.Add(row.Clone());
+            }
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                _rows.Clear();
+                _rows.AddRange(copy);
+                Paint();
+            });
+        });
+    }
+
+    private void Paint()
+    {
+        var search = _search.Text.Trim();
+        _list.Items.Clear();
+        foreach (var row in _rows)
+        {
+            if (search.Length > 0 && !Kit.Line(row, "name", "family", "format", "kind").Contains(search, StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (Kit.Id(row) is not long id)
+                continue;
+            var name = Kit.Str(row, "name");
+            var builtIn = row.TryGetProperty("built_in", out var built) && built.ValueKind == JsonValueKind.True;
+            var text = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+            text.Children.Add(new TextBlock { Text = name, Style = Flow.Look("BodyStyle") });
+            text.Children.Add(new TextBlock { Text = Detail(row), Style = Flow.Look("CaptionStyle") });
+            var edit = new Button { Content = "Edit", MinWidth = 72 };
+            edit.Click += (_, _) => OpenEditor(id);
+            var delete = new Button { Content = "Delete", MinWidth = 72 };
+            delete.Click += async (_, _) => await DeleteTemplate(id, name, builtIn);
+            var commands = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+            commands.Children.Add(edit);
+            commands.Children.Add(delete);
+            var line = new Grid { ColumnSpacing = 12, Padding = new Thickness(0, 4, 0, 4) };
+            line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            Grid.SetColumn(commands, 1);
+            line.Children.Add(text);
+            line.Children.Add(commands);
+            _list.Items.Add(new ListViewItem { Content = line, Tag = id });
+        }
+        _empty.Visibility = _list.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        _list.Visibility = _list.Items.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void OpenEditor(long id)
+    {
+        _shell.PendingTemplateId = id;
+        _shell.Navigate?.Invoke("template-editor");
+    }
+
+    private async Task DeleteTemplate(long id, string name, bool builtIn)
+    {
+        if (_shell.Role != "Owner")
+        {
+            _shell.Problem("Only the admin can delete a template.");
+            return;
+        }
+        if (builtIn)
+        {
+            _shell.Problem("A built-in template stays as shipped. Make a copy, then delete the copy.");
+            return;
+        }
+        if (!await Flow.Confirm(this, "Delete this template?", $"{name} leaves the list. Documents already issued stay as they were.", "Delete"))
+            return;
+        var removed = await _shell.Run("Deleting template…", () => _shell.Call("template_set_archived", new { template_id = id, archived = true }));
+        if (removed)
+            Load();
+    }
+
+    private static string Detail(JsonElement row)
+    {
+        var kind = Kit.Str(row, "format") == "html" ? "Word document" : "Letter text";
+        var family = Kit.Str(row, "family");
+        var built = row.TryGetProperty("built_in", out var flag) && flag.ValueKind == JsonValueKind.True ? " · Built-in" : "";
+        return string.IsNullOrEmpty(family) ? kind + built : $"{family} · {kind}{built}";
     }
 }

@@ -9,8 +9,8 @@ namespace Adms.Desktop;
 internal sealed class ReportsPage : UserControl, IPageCommands
 {
     private readonly AppShell _shell;
-    private readonly TextBox _from = new() { Header = "From", Text = Kit.YearStart(), MaxWidth = 180, PlaceholderText = "yyyy-MM-dd" };
-    private readonly TextBox _to = new() { Header = "To", Text = Kit.Today(), MaxWidth = 180, PlaceholderText = "yyyy-MM-dd" };
+    private readonly TextBox _from = new() { Header = "From", Text = Kit.YearStart(), HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = "yyyy-MM-dd" };
+    private readonly TextBox _to = new() { Header = "To", Text = Kit.Today(), HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = "yyyy-MM-dd" };
     private readonly TextBlock _period = Flow.Secondary("");
     private readonly TextBlock _heading = Flow.Section("Trial balance");
     private readonly InfoBar _error = new() { IsOpen = false, IsClosable = true, Severity = InfoBarSeverity.Error };
@@ -47,11 +47,11 @@ internal sealed class ReportsPage : UserControl, IPageCommands
         page.Children.Add(_heading);
         page.Children.Add(_period);
         page.Children.Add(_body);
-        Content = new ScrollViewer { Content = page };
+        Content = Flow.Scroll(page);
         SizeChanged += (_, _) =>
         {
-            Flow.Place(_dates, [_from, _to], 200, false);
-            Flow.Place(_commands, _commandItems, 160, false);
+            Flow.Place(_dates, [_from, _to], 200, true);
+            Flow.Place(_commands, _commandItems, 160, true);
         };
         RunAsOf("Trial balance", "report_trial_balance", ShowTrial);
     }
@@ -82,6 +82,7 @@ internal sealed class ReportsPage : UserControl, IPageCommands
     {
         var button = Flow.Command(label, action);
         button.MinHeight = 32;
+        button.HorizontalAlignment = HorizontalAlignment.Stretch;
         AutomationProperties.SetName(button, label);
         return button;
     }

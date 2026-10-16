@@ -137,7 +137,7 @@ export default function TemplatesPage({ role }: { role: string }) {
         <DraftGuard value={{ creating, body }} />
         <Stack gap={4}>
           <h3>New template</h3>
-          <Select size="sm" id="nt-format" labelText="Format" value={creating.format} helperText="HTML templates are designed in the Template Studio with a code editor and live preview." onChange={(e) => setCreating({ ...creating, format: e.target.value as "wording" | "html" })}>
+          <Select size="sm" id="nt-format" labelText="Format" value={creating.format} helperText="Word templates are written on the page in the AOS window and saved as a .docx file." onChange={(e) => setCreating({ ...creating, format: e.target.value as "wording" | "html" })}>
             <SelectItem value="wording" text="Wording with the design canvas" /><SelectItem value="html" text="HTML and CSS (Template Studio)" />
           </Select>
           <Select size="sm" id="nt-kind" labelText="Type" value={creating.kind} onChange={(e) => setCreating({ ...creating, kind: e.target.value })}>
@@ -225,7 +225,7 @@ export default function TemplatesPage({ role }: { role: string }) {
   const columns: Column<TemplateRow>[] = [
     { id: "name", header: "Template", locked: true, minWidth: 260, sortValue: (t) => t.name.toLowerCase(), render: (t) => t.name, csv: (t) => t.name },
     { id: "family", header: "Family", sortValue: (t) => t.family, render: (t) => FAMILY[t.family], csv: (t) => FAMILY[t.family] },
-    { id: "type", header: "Type", sortValue: (t) => t.kind, render: (t) => (t.format === "html" ? "HTML template" : t.kind === "agreement" ? "Agreement" : LAYOUT[t.layout]), csv: (t) => (t.format === "html" ? "html" : t.kind) },
+    { id: "type", header: "Type", sortValue: (t) => t.kind, render: (t) => (t.format === "html" ? "Word document" : t.kind === "agreement" ? "Agreement" : LAYOUT[t.layout]), csv: (t) => (t.format === "html" ? "docx" : t.kind) },
     { id: "version", header: "Version", align: "end", sortValue: (t) => t.latest_version, render: (t) => `v${t.latest_version}`, csv: (t) => t.latest_version },
     {
       id: "status", header: "Status", sortValue: (t) => (t.archived ? 2 : t.built_in ? 0 : 1),
@@ -240,7 +240,7 @@ export default function TemplatesPage({ role }: { role: string }) {
         description="Wording for letters, agreements and records. Built-in originals are copied before editing; each publish is a new version."
         actions={canEdit && (
           <>
-            <Button renderIcon={Add} size="sm" onClick={() => { setCreating({ kind: "letter", family: "administration", layout: "letter", name: "", format: "html" }); setBody(""); setCanvasKey((k) => k + 1); }}>New HTML template</Button>
+            <Button renderIcon={Add} size="sm" onClick={() => { setCreating({ kind: "letter", family: "administration", layout: "letter", name: "", format: "html" }); setBody(""); setCanvasKey((k) => k + 1); }}>New Word template</Button>
             <Button renderIcon={Add} size="sm" kind="tertiary" onClick={() => { setCreating({ kind: "letter", family: "administration", layout: "letter", name: "", format: "wording" }); setBody(""); setCanvasKey((k) => k + 1); }}>New wording template</Button>
           </>
         )}
@@ -254,7 +254,7 @@ export default function TemplatesPage({ role }: { role: string }) {
         emptyTitle="No templates"
         toolbarEnd={
           <>
-            <FilterSelect label="Format" value={format} onChange={setFormat} options={[["", "All formats"], ["html", "HTML templates (Template Studio)"], ["wording", "Wording templates"]]} />
+            <FilterSelect label="Format" value={format} onChange={setFormat} options={[["", "All formats"], ["html", "Word documents"], ["wording", "Wording templates"]]} />
             <FilterSelect label="Family" value={family} onChange={setFamily} options={[["", "All families"], ...Object.entries(FAMILY)] as [string, string][]} />
             <Toggle id="tpl-archived" size="sm" labelText="Show archived" hideLabel labelA="Archived hidden" labelB="Archived shown" toggled={showArchived} onToggle={setShowArchived} />
           </>

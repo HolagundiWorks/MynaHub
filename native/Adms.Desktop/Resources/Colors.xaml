@@ -4,24 +4,26 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
-            <Color x:Key="AppBackgroundColor">#F0EFEA</Color>
+            <Color x:Key="AppBackgroundColor">#F5F5F2</Color>
+            <Color x:Key="SidebarBackgroundColor">#F5F5F2</Color>
             <Color x:Key="SurfaceBackgroundColor">#FFFFFF</Color>
-            <Color x:Key="TextPrimaryColor">#1A1A1A</Color>
-            <Color x:Key="TextSecondaryColor">#5F5F5F</Color>
-            <Color x:Key="BrandAccentColor">#8B8675</Color>
-            <Color x:Key="BrandAccentAccessibleColor">#6F6A5B</Color>
-            <Color x:Key="BorderSubtleColor">#D5D2CA</Color>
-            <Color x:Key="BorderStrongColor">#777367</Color>
-            <Color x:Key="FocusIndicatorColor">#1A1A1A</Color>
-            <Color x:Key="EmphasisFillColor">#1A1A1A</Color>
-            <Color x:Key="EmphasisHoverColor">#333333</Color>
-            <Color x:Key="EmphasisPressedColor">#000000</Color>
+            <Color x:Key="TextPrimaryColor">#25282B</Color>
+            <Color x:Key="TextSecondaryColor">#4E555A</Color>
+            <Color x:Key="BrandAccentColor">#647B62</Color>
+            <Color x:Key="BrandAccentAccessibleColor">#3E5240</Color>
+            <Color x:Key="BorderSubtleColor">#D5D6D0</Color>
+            <Color x:Key="BorderStrongColor">#8E928A</Color>
+            <Color x:Key="FocusIndicatorColor">#3E5240</Color>
+            <Color x:Key="EmphasisFillColor">#647B62</Color>
+            <Color x:Key="EmphasisHoverColor">#556852</Color>
+            <Color x:Key="EmphasisPressedColor">#465744</Color>
             <Color x:Key="TextOnEmphasisColor">#FFFFFF</Color>
-            <Color x:Key="SelectedFillColor">#E3DFD4</Color>
-            <Color x:Key="HoverFillColor">#E7E4DC</Color>
-            <Color x:Key="TextDisabledColor">#888888</Color>
+            <Color x:Key="SelectedFillColor">#647B62</Color>
+            <Color x:Key="HoverFillColor">#E8E8E3</Color>
+            <Color x:Key="TextDisabledColor">#8E928A</Color>
 
             <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource AppBackgroundColor}"/>
+            <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="{StaticResource SidebarBackgroundColor}"/>
             <SolidColorBrush x:Key="SurfaceBackgroundBrush" Color="{StaticResource SurfaceBackgroundColor}"/>
             <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}"/>
             <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}"/>
@@ -63,96 +65,23 @@
             <SolidColorBrush x:Key="TextOnAccentFillColorSecondaryBrush" Color="{StaticResource TextOnEmphasisColor}"/>
             <SolidColorBrush x:Key="AccentTextFillColorPrimaryBrush" Color="{StaticResource BrandAccentAccessibleColor}"/>
             <SolidColorBrush x:Key="AccentTextFillColorSecondaryBrush" Color="{StaticResource BrandAccentAccessibleColor}"/>
-            <SolidColorBrush x:Key="NavigationViewSelectionIndicatorForeground" Color="{StaticResource BrandAccentAccessibleColor}"/>
-            <SolidColorBrush x:Key="NavigationViewItemForegroundSelected" Color="{StaticResource TextPrimaryColor}"/>
-            <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPointerOver" Color="{StaticResource TextPrimaryColor}"/>
-            <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPressed" Color="{StaticResource TextPrimaryColor}"/>
+            <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="{StaticResource SidebarBackgroundColor}"/>
+            <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="{StaticResource SidebarBackgroundColor}"/>
+            <SolidColorBrush x:Key="NavigationViewContentBackground" Color="{StaticResource AppBackgroundColor}"/>
+            <SolidColorBrush x:Key="NavigationViewSelectionIndicatorForeground" Color="{StaticResource SelectedFillColor}"/>
+            <SolidColorBrush x:Key="NavigationViewItemForegroundSelected" Color="{StaticResource TextOnEmphasisColor}"/>
+            <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPointerOver" Color="{StaticResource TextOnEmphasisColor}"/>
+            <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPressed" Color="{StaticResource TextOnEmphasisColor}"/>
             <SolidColorBrush x:Key="NavigationViewItemBackgroundSelected" Color="{StaticResource SelectedFillColor}"/>
-            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPointerOver" Color="{StaticResource SelectedFillColor}"/>
-            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPressed" Color="{StaticResource SelectedFillColor}"/>
+            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPointerOver" Color="{StaticResource EmphasisHoverColor}"/>
+            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPressed" Color="{StaticResource EmphasisPressedColor}"/>
             <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="{StaticResource SelectedFillColor}"/>
-            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="{StaticResource SelectedFillColor}"/>
-            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="{StaticResource SelectedFillColor}"/>
+            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="{StaticResource EmphasisHoverColor}"/>
+            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="{StaticResource EmphasisPressedColor}"/>
             <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="{StaticResource HoverFillColor}"/>
-            <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="{StaticResource TextPrimaryColor}"/>
-            <SolidColorBrush x:Key="ListViewItemForegroundSelectedPointerOver" Color="{StaticResource TextPrimaryColor}"/>
-            <SolidColorBrush x:Key="ListViewItemForegroundSelectedPressed" Color="{StaticResource TextPrimaryColor}"/>
-        </ResourceDictionary>
-
-        <ResourceDictionary x:Key="Dark">
-            <Color x:Key="AppBackgroundColor">#1C1C1A</Color>
-            <Color x:Key="SurfaceBackgroundColor">#2A2A27</Color>
-            <Color x:Key="TextPrimaryColor">#F0EFEA</Color>
-            <Color x:Key="TextSecondaryColor">#B7B5AE</Color>
-            <Color x:Key="BrandAccentColor">#8B8675</Color>
-            <Color x:Key="BrandAccentAccessibleColor">#C4BBA8</Color>
-            <Color x:Key="BorderSubtleColor">#5A574F</Color>
-            <Color x:Key="BorderStrongColor">#8A867C</Color>
-            <Color x:Key="FocusIndicatorColor">#F0EFEA</Color>
-            <Color x:Key="EmphasisFillColor">#F0EFEA</Color>
-            <Color x:Key="EmphasisHoverColor">#E6E2D8</Color>
-            <Color x:Key="EmphasisPressedColor">#D9D4C8</Color>
-            <Color x:Key="TextOnEmphasisColor">#1A1A1A</Color>
-            <Color x:Key="SelectedFillColor">#3C3B36</Color>
-            <Color x:Key="HoverFillColor">#34342F</Color>
-            <Color x:Key="TextDisabledColor">#6E6A62</Color>
-
-            <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource AppBackgroundColor}"/>
-            <SolidColorBrush x:Key="SurfaceBackgroundBrush" Color="{StaticResource SurfaceBackgroundColor}"/>
-            <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}"/>
-            <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}"/>
-            <SolidColorBrush x:Key="BrandAccentBrush" Color="{StaticResource BrandAccentColor}"/>
-            <SolidColorBrush x:Key="BrandAccentAccessibleBrush" Color="{StaticResource BrandAccentAccessibleColor}"/>
-            <SolidColorBrush x:Key="BorderSubtleBrush" Color="{StaticResource BorderSubtleColor}"/>
-            <SolidColorBrush x:Key="BorderStrongBrush" Color="{StaticResource BorderStrongColor}"/>
-            <SolidColorBrush x:Key="FocusIndicatorBrush" Color="{StaticResource FocusIndicatorColor}"/>
-            <SolidColorBrush x:Key="EmphasisFillBrush" Color="{StaticResource EmphasisFillColor}"/>
-            <SolidColorBrush x:Key="TextOnEmphasisBrush" Color="{StaticResource TextOnEmphasisColor}"/>
-            <SolidColorBrush x:Key="SelectedFillBrush" Color="{StaticResource SelectedFillColor}"/>
-
-            <SolidColorBrush x:Key="ApplicationPageBackgroundThemeBrush" Color="{StaticResource AppBackgroundColor}"/>
-            <SolidColorBrush x:Key="SolidBackgroundFillColorBaseBrush" Color="{StaticResource AppBackgroundColor}"/>
-            <SolidColorBrush x:Key="SolidBackgroundFillColorSecondaryBrush" Color="{StaticResource SurfaceBackgroundColor}"/>
-            <SolidColorBrush x:Key="SolidBackgroundFillColorTertiaryBrush" Color="{StaticResource HoverFillColor}"/>
-            <SolidColorBrush x:Key="LayerFillColorDefaultBrush" Color="{StaticResource AppBackgroundColor}"/>
-            <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush" Color="{StaticResource SurfaceBackgroundColor}"/>
-            <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="{StaticResource BorderSubtleColor}"/>
-            <SolidColorBrush x:Key="ControlFillColorDefaultBrush" Color="{StaticResource SurfaceBackgroundColor}"/>
-            <SolidColorBrush x:Key="ControlFillColorSecondaryBrush" Color="{StaticResource HoverFillColor}"/>
-            <SolidColorBrush x:Key="ControlFillColorTertiaryBrush" Color="{StaticResource HoverFillColor}"/>
-            <SolidColorBrush x:Key="ControlFillColorDisabledBrush" Color="{StaticResource HoverFillColor}"/>
-            <SolidColorBrush x:Key="ControlFillColorInputActiveBrush" Color="{StaticResource SurfaceBackgroundColor}"/>
-            <SolidColorBrush x:Key="ControlStrokeColorDefaultBrush" Color="{StaticResource BorderStrongColor}"/>
-            <SolidColorBrush x:Key="ControlStrokeColorSecondaryBrush" Color="{StaticResource BorderSubtleColor}"/>
-            <SolidColorBrush x:Key="DividerStrokeColorDefaultBrush" Color="{StaticResource BorderSubtleColor}"/>
-            <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="{StaticResource TextPrimaryColor}"/>
-            <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="{StaticResource TextSecondaryColor}"/>
-            <SolidColorBrush x:Key="TextFillColorTertiaryBrush" Color="{StaticResource TextSecondaryColor}"/>
-            <SolidColorBrush x:Key="TextFillColorDisabledBrush" Color="{StaticResource TextDisabledColor}"/>
-            <SolidColorBrush x:Key="TextFillColorInverseBrush" Color="{StaticResource TextOnEmphasisColor}"/>
-            <SolidColorBrush x:Key="FocusStrokeColorOuterBrush" Color="{StaticResource FocusIndicatorColor}"/>
-            <SolidColorBrush x:Key="FocusStrokeColorInnerBrush" Color="{StaticResource SurfaceBackgroundColor}"/>
-            <SolidColorBrush x:Key="AccentFillColorDefaultBrush" Color="{StaticResource EmphasisFillColor}"/>
-            <SolidColorBrush x:Key="AccentFillColorSecondaryBrush" Color="{StaticResource EmphasisHoverColor}"/>
-            <SolidColorBrush x:Key="AccentFillColorTertiaryBrush" Color="{StaticResource EmphasisPressedColor}"/>
-            <SolidColorBrush x:Key="TextOnAccentFillColorPrimaryBrush" Color="{StaticResource TextOnEmphasisColor}"/>
-            <SolidColorBrush x:Key="TextOnAccentFillColorSecondaryBrush" Color="{StaticResource TextOnEmphasisColor}"/>
-            <SolidColorBrush x:Key="AccentTextFillColorPrimaryBrush" Color="{StaticResource BrandAccentAccessibleColor}"/>
-            <SolidColorBrush x:Key="AccentTextFillColorSecondaryBrush" Color="{StaticResource BrandAccentAccessibleColor}"/>
-            <SolidColorBrush x:Key="NavigationViewSelectionIndicatorForeground" Color="{StaticResource BrandAccentAccessibleColor}"/>
-            <SolidColorBrush x:Key="NavigationViewItemForegroundSelected" Color="{StaticResource TextPrimaryColor}"/>
-            <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPointerOver" Color="{StaticResource TextPrimaryColor}"/>
-            <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPressed" Color="{StaticResource TextPrimaryColor}"/>
-            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelected" Color="{StaticResource SelectedFillColor}"/>
-            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPointerOver" Color="{StaticResource SelectedFillColor}"/>
-            <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPressed" Color="{StaticResource SelectedFillColor}"/>
-            <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="{StaticResource SelectedFillColor}"/>
-            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="{StaticResource SelectedFillColor}"/>
-            <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPressed" Color="{StaticResource SelectedFillColor}"/>
-            <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="{StaticResource HoverFillColor}"/>
-            <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="{StaticResource TextPrimaryColor}"/>
-            <SolidColorBrush x:Key="ListViewItemForegroundSelectedPointerOver" Color="{StaticResource TextPrimaryColor}"/>
-            <SolidColorBrush x:Key="ListViewItemForegroundSelectedPressed" Color="{StaticResource TextPrimaryColor}"/>
+            <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="{StaticResource TextOnEmphasisColor}"/>
+            <SolidColorBrush x:Key="ListViewItemForegroundSelectedPointerOver" Color="{StaticResource TextOnEmphasisColor}"/>
+            <SolidColorBrush x:Key="ListViewItemForegroundSelectedPressed" Color="{StaticResource TextOnEmphasisColor}"/>
         </ResourceDictionary>
 
         <ResourceDictionary x:Key="HighContrast">

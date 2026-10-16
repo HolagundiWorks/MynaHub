@@ -1,4 +1,4 @@
-//! Template Studio: HTML/CSS templates with drafts, immutable published versions, validation and preview.
+//! Template documents: a Word file (.docx) with drafts, immutable published versions, validation and preview.
 //! The PDF is produced by the same renderer used for issued documents, from the same resolved HTML, so a preview is the real output.
 use crate::auth::Permission;
 use crate::commands::{HostState, require, INTERNAL};
@@ -57,7 +57,7 @@ fn template_row(conn: &Connection, id: i64) -> Result<(String, String, String, b
 fn require_html(conn: &Connection, id: i64) -> Result<(String, String, String, bool, bool), String> {
     let (name, family, kind, built_in, archived, format) = template_row(conn, id)?;
     if format != "html" {
-        return Err("This is a wording template. It is edited on the template page, not in the HTML studio.".into());
+        return Err("This is a wording template. It is edited as letter text, not as a Word document.".into());
     }
     Ok((name, family, kind, built_in, archived))
 }
@@ -80,6 +80,7 @@ pub fn open(conn: &Connection, id: i64) -> Result<StudioState, String> {
         .map_err(|e| e.to_string())?;
     let has_draft = draft.is_some();
     let (html, css) = draft.unwrap_or((html, css));
+    let (html, css) = crate::docx::present(&html, &css)?;
     Ok(StudioState { id, name, family, kind, built_in, archived, published_version, has_draft, html, css, versions })
 }
 
@@ -96,7 +97,8 @@ fn editable(conn: &Connection, id: i64) -> Result<(), String> {
 
 pub fn save_draft(conn: &Connection, actor: i64, id: i64, html: &str, css: &str) -> Result<(), String> {
     editable(conn, id)?;
-    if html.len() > 400_000 || css.len() > 200_000 {
+    let (html, css) = crate::docx::store(html, css)?;
+    if html.len() > 1_500_000 {
         return Err("The template is too large to save.".into());
     }
     let base: i64 = conn.query_row("SELECT MAX(version) FROM template_versions WHERE template_id = ?1", params![id], |r| r.get(0)).map_err(|e| e.to_string())?;
@@ -117,7 +119,8 @@ pub fn publish(conn: &mut Connection, actor: i64, id: i64, summary: &str) -> Res
     let (html, css): (String, String) = tx
         .query_row("SELECT html_source, css_source FROM template_drafts WHERE template_id = ?1", params![id], |r| Ok((r.get(0)?, r.get(1)?)))
         .map_err(|_| "There is no draft to publish. Save your changes first.".to_string())?;
-    let problems: Vec<Diagnostic> = eng::validate(&html, &css).into_iter().filter(|d| d.severity == "error").collect();
+    let (print_html, print_css) = crate::docx::prepare(&html, &css)?;
+    let problems: Vec<Diagnostic> = eng::validate(&print_html, &print_css).into_iter().filter(|d| d.severity == "error").collect();
     if let Some(first) = problems.first() {
         return Err(format!("Fix {} error{} before publishing. First: line {} ({}): {}", problems.len(), if problems.len() == 1 { "" } else { "s" }, first.line, first.source.to_uppercase(), first.message));
     }
@@ -172,12 +175,13 @@ pub fn create_blank(conn: &mut Connection, actor: i64, name: &str, family: &str,
     if !["consultancy", "billing", "administration"].contains(&family) || !["letter", "agreement"].contains(&kind) {
         return Err("Invalid template family or type.".into());
     }
+    let (html, css) = crate::docx::store(SKELETON_HTML, SKELETON_CSS)?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
     tx.execute("INSERT INTO templates (kind, name, family, layout, format) VALUES (?1,?2,?3,'letter','html')", params![kind, name.trim(), family]).map_err(|_| "A template with this name already exists.".to_string())?;
     let id = tx.last_insert_rowid();
     tx.execute(
         "INSERT INTO template_versions (template_id, version, body, html_source, css_source, change_summary, published_by) VALUES (?1,1,'',?2,?3,'First version',?4)",
-        params![id, SKELETON_HTML, SKELETON_CSS, actor],
+        params![id, html, css, actor],
     )
     .map_err(|e| e.to_string())?;
     db::audit(&tx, Some(actor), "template_created", name.trim());
@@ -204,22 +208,35 @@ fn company_value(conn: &Connection) -> Result<Value, String> {
 
 /// Renders HTML, CSS and data to PDF with the template's own paper and margins.
 pub fn render_pdf(html: &str, css: &str, data: &Value) -> Result<(pdf::Rendered, eng::PageSetup, Vec<Diagnostic>), String> {
+    let (html, css) = crate::docx::prepare(html, css)?;
     let mut notes = Vec::new();
-    let (setup, css) = eng::split_page_rule(css, &mut notes);
-    let fragment = eng::render_fragment(html, data)?;
+    let (setup, css) = eng::split_page_rule(&css, &mut notes);
+    let fragment = eng::render_fragment(&html, data)?;
     let rendered = pdf::render_html_with_page(&eng::full_document(&fragment, &css), &pdf::bundled_fonts(), &setup)?;
     Ok((rendered, setup, notes))
 }
 
 pub fn preview(conn: &Connection, html: &str, css: &str, profile: &str) -> Result<StudioPreview, String> {
-    let mut diagnostics = eng::validate(html, css);
+    let (html, css) = match crate::docx::prepare(html, css) {
+        Ok(ready) => ready,
+        Err(message) => {
+            return Ok(StudioPreview {
+                pdf_base64: String::new(),
+                pages: 0,
+                landscape: false,
+                diagnostics: vec![Diagnostic { severity: "error", source: "html", line: 1, col: 1, message }],
+                missing_required: Vec::new(),
+            })
+        }
+    };
+    let mut diagnostics = eng::validate(&html, &css);
     if eng::has_errors(&diagnostics) {
         return Ok(StudioPreview { pdf_base64: String::new(), pages: 0, landscape: false, diagnostics, missing_required: Vec::new() });
     }
     let company = if profile == "company" { Some(company_value(conn)?) } else { None };
     let data = eng::sample_data(profile, company.as_ref());
-    let (rendered, setup, _) = render_pdf(html, css, &data)?;
-    let missing_required = eng::missing_required(html, &data);
+    let (rendered, setup, _) = render_pdf(&html, &css, &data)?;
+    let missing_required = eng::missing_required(&html, &data);
     for m in &missing_required {
         diagnostics.push(Diagnostic { severity: "warning", source: "html", line: 1, col: 1, message: format!("The required field {m} has no value in this sample data.") });
     }
@@ -316,10 +333,12 @@ mod tests {
         assert!(save_draft(&c, 1, orig, "<p>x</p>", "").unwrap_err().contains("Make a copy"));
         let copy = crate::documents::duplicate_template(&mut c, 1, orig, "Our proposal").unwrap();
         let s = open(&c, copy).unwrap();
-        assert!(!s.built_in && !s.has_draft && s.published_version == 1 && s.html.contains("fee_items") && s.css.contains("@page"));
+        assert!(!s.built_in && !s.has_draft && s.published_version == 1 && s.css == "docx");
+        assert!(crate::docx::source_html(&s.html).unwrap().contains("fee_items"));
         // draft, then publish
         assert!(publish(&mut c, 1, copy, "x").unwrap_err().contains("no draft"));
-        save_draft(&c, 1, copy, &format!("{}<p>Extra {{{{ client.name }}}}</p>", s.html), &s.css).unwrap();
+        let letter = crate::docx::source_html(&s.html).unwrap();
+        save_draft(&c, 1, copy, &format!("{letter}<p>Extra {{{{ client.name }}}}</p>"), "@page { size: A4; margin: 18mm 16mm 20mm 16mm; }").unwrap();
         assert!(open(&c, copy).unwrap().has_draft);
         assert_eq!(publish(&mut c, 1, copy, "Added a client line").unwrap(), 2);
         let after = open(&c, copy).unwrap();
@@ -345,7 +364,7 @@ mod tests {
         assert_eq!(publish(&mut c, 1, id, "v2").unwrap(), 2);
         restore(&c, 1, id, 1).unwrap();
         let s = open(&c, id).unwrap();
-        assert!(s.has_draft && s.html.contains("document.title"), "restoring v1 puts it in the draft");
+        assert!(s.has_draft && crate::docx::source_html(&s.html).unwrap().contains("document.title"), "restoring v1 puts it in the draft");
         assert_eq!(s.published_version, 2, "nothing published changed");
         assert!(restore(&c, 1, id, 99).is_err());
         discard_draft(&c, 1, id).unwrap();

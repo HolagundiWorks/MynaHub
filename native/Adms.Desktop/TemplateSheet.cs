@@ -37,6 +37,7 @@ internal sealed class TemplateSheet : UserControl
     private bool _design = true;
     private double _pageW = Mm(210);
     private double _pageH = Mm(297);
+    private string _paperName = "A4";
 
     public event Action? Changed;
     public event Action? SelectionChanged;
@@ -135,7 +136,8 @@ internal sealed class TemplateSheet : UserControl
 
     public void SetPaper(string paper)
     {
-        (_pageW, _pageH) = paper switch
+        _paperName = string.IsNullOrWhiteSpace(paper) ? "A4" : paper;
+        (_pageW, _pageH) = _paperName switch
         {
             "A4 landscape" => (Mm(297), Mm(210)),
             "A3" => (Mm(297), Mm(420)),
@@ -147,6 +149,21 @@ internal sealed class TemplateSheet : UserControl
         _ruler.Width = _pageW;
         DrawRuler();
         FitLast();
+    }
+
+    public string LoadDocument(string payload, string css)
+    {
+        if (DocxFile.TryOpen(payload, css, out var html, out var style))
+        {
+            var paper = WordPaper.DetectPaper(style);
+            SetPaper(paper);
+            Load(html);
+            return paper;
+        }
+        var detected = WordPaper.DetectPaper(css);
+        SetPaper(detected);
+        Load(payload);
+        return detected;
     }
 
     public void Load(string html)

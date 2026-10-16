@@ -1,6 +1,6 @@
-/** Product identity. Company files and the engine stay named ADMS. */
-export const PRODUCT = "ADMS";
-export const PRODUCT_FULL = "Architects Documents Management System";
+/** Product identity. Company files stay .adms. */
+export const PRODUCT = "AOS";
+export const PRODUCT_FULL = "Architecture Office Suite";
 export const DEVELOPER = "Human Centric Works";
 
 export function ProductCredit() {

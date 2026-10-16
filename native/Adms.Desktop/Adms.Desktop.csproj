@@ -14,9 +14,9 @@
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <Company>Human Centric Works</Company>
-    <Product>ADMS</Product>
-    <AssemblyTitle>ADMS</AssemblyTitle>
-    <Description>Architects Documents Management System</Description>
+    <Product>AOS</Product>
+    <AssemblyTitle>AOS</AssemblyTitle>
+    <Description>Architecture Office Suite</Description>
     <Copyright>Copyright © 2026 Human Centric Works</Copyright>
     <Version>0.1.0</Version>
     <AssemblyVersion>0.1.0.0</AssemblyVersion>
