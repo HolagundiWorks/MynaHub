@@ -3,6 +3,7 @@ use crate::commands::{HostState, require, INTERNAL};
 use crate::db;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Map, Value};
 
 #[derive(Serialize, Deserialize)]
 pub struct Client {
@@ -14,8 +15,45 @@ pub struct Client {
     pub address: String,
     pub pan: String,
     pub gstin: String,
+    /// Billing address, when it differs from the correspondence address.
+    #[serde(default)]
+    pub billing_address: String,
+    /// EMAIL, WHATSAPP, PHONE, PORTAL, or blank.
+    #[serde(default)]
+    pub communication_preference: String,
+    /// individual, company, or architect_firm.
+    #[serde(default = "default_kind")]
+    pub kind: String,
+    #[serde(default)]
+    pub city: String,
+    #[serde(default)]
+    pub state: String,
+    /// Name printed on the tax invoice when it differs from the working name.
+    #[serde(default)]
+    pub legal_name: String,
+    /// Tax deduction account number of a client who deducts TDS.
+    #[serde(default)]
+    pub tan: String,
+    /// regular, composition, unregistered, sez, or blank.
+    #[serde(default)]
+    pub gst_registration: String,
+    #[serde(default)]
+    pub representatives: Vec<Representative>,
     #[serde(default)]
     pub archived: bool,
+}
+
+fn default_kind() -> String {
+    "individual".into()
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct Representative {
+    pub name: String,
+    #[serde(default)]
+    pub designation: String,
+    #[serde(default)]
+    pub phone: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -29,6 +67,12 @@ pub struct Project {
     /// Council of Architecture service, from the Conditions of Engagement and Scale of Charges.
     #[serde(default = "default_consultancy")]
     pub consultancy_type: String,
+    /// Storeys the standard drawing stages are split across. Landscape, urban, site and signage keep one set.
+    #[serde(default = "default_floors")]
+    pub floors: i64,
+    /// The first stage that has not been marked, or Complete. Derived, not stored.
+    #[serde(default)]
+    pub phase: String,
     #[serde(default)]
     pub archived: bool,
     #[serde(default)]
@@ -37,6 +81,10 @@ pub struct Project {
 
 fn default_consultancy() -> String {
     "comprehensive".into()
+}
+
+fn default_floors() -> i64 {
+    1
 }
 
 /// Services named in the Council of Architecture Conditions of Engagement and Scale of Charges.
@@ -50,6 +98,12 @@ const CONSULTANCY: &[(&str, &str)] = &[
     ("retrofitting", "Retrofitting of buildings"),
     ("signage", "Graphic design and signage"),
 ];
+
+pub fn consultancy_label(key: &str) -> String {
+    CONSULTANCY.iter().find(|(id, _)| *id == key).map(|(_, name)| (*name).to_string()).unwrap_or_else(|| {
+        if key.is_empty() { "Comprehensive architectural services".to_string() } else { key.to_string() }
+    })
+}
 
 fn consultancy(value: &str) -> Result<String, String> {
     let key = value.trim();
@@ -84,14 +138,16 @@ fn map_unique(e: rusqlite::Error, what: &str) -> String {
 pub fn list_clients(conn: &Connection, include_archived: bool) -> Result<Vec<Client>, String> {
     let mut stmt = conn
         .prepare(
-            "SELECT id, name, contact_person, email, phone, address, pan, gstin, archived FROM clients
+            "SELECT id, name, contact_person, email, phone, address, pan, gstin, billing_address, communication_preference, archived,
+                    kind, city, state, legal_name, tan, gst_registration FROM clients
              WHERE archived = 0 OR ?1 ORDER BY name",
         )
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map(params![include_archived], |r| {
+            let id: i64 = r.get(0)?;
             Ok(Client {
-                id: Some(r.get(0)?),
+                id: Some(id),
                 name: r.get(1)?,
                 contact_person: r.get(2)?,
                 email: r.get(3)?,
@@ -99,38 +155,145 @@ pub fn list_clients(conn: &Connection, include_archived: bool) -> Result<Vec<Cli
                 address: r.get(5)?,
                 pan: r.get(6)?,
                 gstin: r.get(7)?,
-                archived: r.get::<_, i64>(8)? != 0,
+                billing_address: r.get(8)?,
+                communication_preference: r.get(9)?,
+                kind: r.get(11)?,
+                city: r.get(12)?,
+                state: r.get(13)?,
+                legal_name: r.get(14)?,
+                tan: r.get(15)?,
+                gst_registration: r.get(16)?,
+                representatives: Vec::new(),
+                archived: r.get::<_, i64>(10)? != 0,
             })
         })
+        .map_err(|e| e.to_string())?;
+    let mut clients = rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?;
+    for client in &mut clients {
+        if let Some(id) = client.id {
+            client.representatives = list_reps(conn, id)?;
+        }
+    }
+    Ok(clients)
+}
+
+fn list_reps(conn: &Connection, client_id: i64) -> Result<Vec<Representative>, String> {
+    let mut stmt = conn
+        .prepare("SELECT name, designation, phone FROM client_representatives WHERE client_id = ?1 ORDER BY position, id")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![client_id], |r| Ok(Representative { name: r.get(0)?, designation: r.get(1)?, phone: r.get(2)? }))
         .map_err(|e| e.to_string())?;
     rows.collect::<Result<_, _>>().map_err(|e| e.to_string())
 }
 
+fn preference(value: &str) -> Result<String, String> {
+    let key = value.trim().to_ascii_uppercase();
+    if key.is_empty() || matches!(key.as_str(), "EMAIL" | "WHATSAPP" | "PHONE" | "PORTAL") {
+        Ok(key)
+    } else {
+        Err("Choose email, WhatsApp, phone, or the client portal.".into())
+    }
+}
+
+fn save_reps(conn: &Connection, client_id: i64, reps: &[Representative]) -> Result<(), String> {
+    conn.execute("DELETE FROM client_representatives WHERE client_id = ?1", params![client_id]).map_err(|e| e.to_string())?;
+    let mut position = 0;
+    for rep in reps {
+        let name = rep.name.trim();
+        if name.is_empty() {
+            continue;
+        }
+        if name.chars().count() > 200 || rep.designation.chars().count() > 120 || rep.phone.chars().count() > 40 {
+            return Err("An authorised representative's name, designation or phone is too long.".into());
+        }
+        if position >= 10 {
+            return Err("A client can have at most ten authorised representatives.".into());
+        }
+        conn.execute(
+            "INSERT INTO client_representatives (client_id, name, designation, phone, position) VALUES (?1,?2,?3,?4,?5)",
+            params![client_id, name, rep.designation.trim(), rep.phone.trim(), position],
+        )
+        .map_err(|e| e.to_string())?;
+        position += 1;
+    }
+    Ok(())
+}
+
+fn client_kind(value: &str) -> Result<String, String> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "" | "individual" => Ok("individual".into()),
+        "company" => Ok("company".into()),
+        "architect_firm" | "architect firm" => Ok("architect_firm".into()),
+        _ => Err("The client kind is individual, company, or architect firm.".into()),
+    }
+}
+
+fn gst_registration(value: &str) -> Result<String, String> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "" => Ok(String::new()),
+        "regular" => Ok("regular".into()),
+        "composition" => Ok("composition".into()),
+        "unregistered" => Ok("unregistered".into()),
+        "sez" => Ok("sez".into()),
+        _ => Err("GST registration is regular, composition, unregistered, or SEZ.".into()),
+    }
+}
+
+fn tan(value: &str) -> Result<String, String> {
+    let text = value.trim().to_ascii_uppercase();
+    if text.is_empty() {
+        return Ok(text);
+    }
+    let bytes = text.as_bytes();
+    let ok = bytes.len() == 10
+        && bytes[..4].iter().all(|c| c.is_ascii_alphabetic())
+        && bytes[4..9].iter().all(|c| c.is_ascii_digit())
+        && bytes[9].is_ascii_alphabetic();
+    if !ok {
+        return Err("TAN is four letters, five digits, and a letter.".into());
+    }
+    Ok(text)
+}
+
 pub fn save_client(conn: &Connection, c: &Client) -> Result<i64, String> {
     let name = nonempty(&c.name, "Client name")?;
-    match c.id {
+    let preference = preference(&c.communication_preference)?;
+    let kind = client_kind(&c.kind)?;
+    let registration = gst_registration(&c.gst_registration)?;
+    let tan = tan(&c.tan)?;
+    if c.billing_address.chars().count() > 1000 {
+        return Err("The billing address is too long.".into());
+    }
+    if c.legal_name.chars().count() > 200 || c.city.chars().count() > 80 || c.state.chars().count() > 80 {
+        return Err("The legal name, city or state is too long.".into());
+    }
+    let id = match c.id {
         Some(id) => {
             let n = conn
                 .execute(
                     "UPDATE clients SET name=?1, contact_person=?2, email=?3, phone=?4, address=?5, pan=?6, gstin=?7,
-                     updated_at=datetime('now') WHERE id=?8",
-                    params![name, c.contact_person.trim(), c.email.trim(), c.phone.trim(), c.address.trim(), c.pan.trim(), c.gstin.trim(), id],
+                     billing_address=?8, communication_preference=?9, kind=?10, city=?11, state=?12, legal_name=?13, tan=?14,
+                     gst_registration=?15, updated_at=datetime('now') WHERE id=?16",
+                    params![name, c.contact_person.trim(), c.email.trim(), c.phone.trim(), c.address.trim(), c.pan.trim(), c.gstin.trim(), c.billing_address.trim(), preference, kind, c.city.trim(), c.state.trim(), c.legal_name.trim(), tan, registration, id],
                 )
                 .map_err(|e| map_unique(e, "A client with this name"))?;
             if n == 0 {
                 return Err("Client not found.".into());
             }
-            Ok(id)
+            id
         }
         None => {
             conn.execute(
-                "INSERT INTO clients (name, contact_person, email, phone, address, pan, gstin) VALUES (?1,?2,?3,?4,?5,?6,?7)",
-                params![name, c.contact_person.trim(), c.email.trim(), c.phone.trim(), c.address.trim(), c.pan.trim(), c.gstin.trim()],
+                "INSERT INTO clients (name, contact_person, email, phone, address, pan, gstin, billing_address, communication_preference, kind, city, state, legal_name, tan, gst_registration) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)",
+                params![name, c.contact_person.trim(), c.email.trim(), c.phone.trim(), c.address.trim(), c.pan.trim(), c.gstin.trim(), c.billing_address.trim(), preference, kind, c.city.trim(), c.state.trim(), c.legal_name.trim(), tan, registration],
             )
             .map_err(|e| map_unique(e, "A client with this name"))?;
-            Ok(conn.last_insert_rowid())
+            conn.last_insert_rowid()
         }
-    }
+    };
+    save_reps(conn, id, &c.representatives)?;
+    Ok(id)
 }
 
 pub fn set_client_archived(conn: &Connection, id: i64, archived: bool) -> Result<(), String> {
@@ -146,7 +309,9 @@ pub fn set_client_archived(conn: &Connection, id: i64, archived: bool) -> Result
 pub fn list_projects(conn: &Connection, client_id: Option<i64>, include_archived: bool) -> Result<Vec<Project>, String> {
     let mut stmt = conn
         .prepare(
-            "SELECT p.id, p.client_id, p.code, p.name, p.site_address, p.status, p.consultancy_type, p.archived, c.name
+            "SELECT p.id, p.client_id, p.code, p.name, p.site_address, p.status, p.consultancy_type, p.floors, p.archived, c.name,
+                    COALESCE((SELECT s.name FROM project_stages s WHERE s.project_id = p.id AND s.marked_on = '' ORDER BY s.position LIMIT 1),
+                             CASE WHEN EXISTS (SELECT 1 FROM project_stages s WHERE s.project_id = p.id) THEN 'Complete' ELSE '' END)
              FROM projects p JOIN clients c ON c.id = p.client_id
              WHERE (p.archived = 0 OR ?1) AND (?2 IS NULL OR p.client_id = ?2)
              ORDER BY c.name, p.name",
@@ -162,8 +327,10 @@ pub fn list_projects(conn: &Connection, client_id: Option<i64>, include_archived
                 site_address: r.get(4)?,
                 status: r.get(5)?,
                 consultancy_type: r.get(6)?,
-                archived: r.get::<_, i64>(7)? != 0,
-                client_name: r.get(8)?,
+                floors: r.get(7)?,
+                archived: r.get::<_, i64>(8)? != 0,
+                client_name: r.get(9)?,
+                phase: r.get(10)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -176,6 +343,7 @@ pub fn save_project(conn: &Connection, p: &Project) -> Result<i64, String> {
         return Err("Invalid project status.".into());
     }
     let consultancy_type = consultancy(&p.consultancy_type)?;
+    let floors = if (1..=40).contains(&p.floors) { p.floors } else { return Err("Enter the number of floors from 1 to 40.".into()) };
     let client_archived: Option<i64> = conn
         .query_row("SELECT archived FROM clients WHERE id=?1", params![p.client_id], |r| r.get(0))
         .ok();
@@ -188,8 +356,8 @@ pub fn save_project(conn: &Connection, p: &Project) -> Result<i64, String> {
         Some(id) => {
             let n = conn
                 .execute(
-                    "UPDATE projects SET client_id=?1, code=?2, name=?3, site_address=?4, status=?5, consultancy_type=?6, updated_at=datetime('now') WHERE id=?7",
-                    params![p.client_id, p.code.trim(), name, p.site_address.trim(), p.status, consultancy_type, id],
+                    "UPDATE projects SET client_id=?1, code=?2, name=?3, site_address=?4, status=?5, consultancy_type=?6, floors=?7, updated_at=datetime('now') WHERE id=?8",
+                    params![p.client_id, p.code.trim(), name, p.site_address.trim(), p.status, consultancy_type, floors, id],
                 )
                 .map_err(|e| map_unique(e, "This client already has a project with this name; it"))?;
             if n == 0 {
@@ -199,8 +367,8 @@ pub fn save_project(conn: &Connection, p: &Project) -> Result<i64, String> {
         }
         None => {
             conn.execute(
-                "INSERT INTO projects (client_id, code, name, site_address, status, consultancy_type) VALUES (?1,?2,?3,?4,?5,?6)",
-                params![p.client_id, p.code.trim(), name, p.site_address.trim(), p.status, consultancy_type],
+                "INSERT INTO projects (client_id, code, name, site_address, status, consultancy_type, floors) VALUES (?1,?2,?3,?4,?5,?6,?7)",
+                params![p.client_id, p.code.trim(), name, p.site_address.trim(), p.status, consultancy_type, floors],
             )
             .map_err(|e| map_unique(e, "This client already has a project with this name; it"))?;
             Ok(conn.last_insert_rowid())
@@ -268,6 +436,98 @@ pub fn project_set_archived(state: HostState<'_>, id: i64, archived: bool) -> Re
     Ok(())
 }
 
+const BRIEF_FIELDS: &[&str] = &[
+    "client_name", "current_address", "site_address", "mobile", "email", "occupation", "plot_size", "terrain", "vegetation", "orientation_notes",
+    "intended_use", "built_up_area", "phased", "tentative_start", "budget_note", "finance_note", "household", "staff_requirements", "orientation",
+    "door_direction", "views", "basement", "vastu", "style", "loved_places", "activities", "indoor_prefs", "outdoor_prefs", "space_schedule",
+    "construction", "flooring", "walls", "cabinetry", "seating", "beds", "room_details", "assumptions", "approval_note", "approved_at",
+];
+
+fn blank_brief() -> Value {
+    let mut body = Map::new();
+    for key in BRIEF_FIELDS {
+        body.insert((*key).to_string(), Value::String(String::new()));
+    }
+    Value::Object(body)
+}
+
+fn clean_brief(input: &Value) -> Result<Value, String> {
+    let Some(obj) = input.as_object() else {
+        return Err("The project brief was not a form.".into());
+    };
+    let mut body = blank_brief();
+    let stored = body.as_object_mut().unwrap();
+    for (key, value) in obj {
+        if !BRIEF_FIELDS.contains(&key.as_str()) {
+            return Err(format!("The project brief has no field {key}."));
+        }
+        let text = value.as_str().unwrap_or("").trim();
+        let limit = if key == "assumptions" { 10_000 } else { 4_000 };
+        if text.chars().count() > limit {
+            return Err(format!("{key} is too long."));
+        }
+        if key == "approved_at" && !text.is_empty() && (text.len() != 10 || text.as_bytes().get(4) != Some(&b'-')) {
+            return Err("Enter the approval date as YYYY-MM-DD.".into());
+        }
+        stored.insert(key.clone(), Value::String(text.to_string()));
+    }
+    Ok(body)
+}
+
+pub fn get_brief(conn: &Connection, project_id: i64) -> Result<Value, String> {
+    let exists: i64 = conn.query_row("SELECT COUNT(*) FROM projects WHERE id = ?1", params![project_id], |r| r.get(0)).map_err(|e| e.to_string())?;
+    if exists == 0 {
+        return Err("Project not found.".into());
+    }
+    let stored: Option<String> = conn.query_row("SELECT body FROM project_briefs WHERE project_id = ?1", params![project_id], |r| r.get(0)).ok();
+    let mut body = blank_brief();
+    if let Some(text) = stored {
+        if let Ok(value) = serde_json::from_str::<Value>(&text) {
+            if let Some(obj) = value.as_object() {
+                let fields = body.as_object_mut().unwrap();
+                for key in BRIEF_FIELDS {
+                    if let Some(item) = obj.get(*key).and_then(|v| v.as_str()) {
+                        fields.insert((*key).to_string(), Value::String(item.to_string()));
+                    }
+                }
+            }
+        }
+    }
+    Ok(json!({ "project_id": project_id, "brief": body }))
+}
+
+pub fn save_brief(conn: &Connection, project_id: i64, brief: &Value) -> Result<(), String> {
+    let exists: i64 = conn.query_row("SELECT COUNT(*) FROM projects WHERE id = ?1", params![project_id], |r| r.get(0)).map_err(|e| e.to_string())?;
+    if exists == 0 {
+        return Err("Project not found.".into());
+    }
+    let body = clean_brief(brief)?;
+    let text = serde_json::to_string(&body).map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO project_briefs (project_id, body) VALUES (?1, ?2)
+         ON CONFLICT(project_id) DO UPDATE SET body = excluded.body, updated_at = datetime('now')",
+        params![project_id, text],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn project_brief_get(state: HostState<'_>, project_id: i64) -> Result<Value, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    get_brief(&conn, project_id)
+}
+
+#[tauri::command]
+pub fn project_brief_save(state: HostState<'_>, project_id: i64, brief: Value) -> Result<(), String> {
+    let uid = require(&state, Permission::Edit)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    save_brief(&conn, project_id, &brief)?;
+    db::audit(&conn, Some(uid), "project_brief_saved", &format!("project {project_id}"));
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -280,11 +540,15 @@ mod tests {
     }
 
     fn client(name: &str) -> Client {
-        Client { id: None, name: name.into(), contact_person: "".into(), email: "".into(), phone: "".into(), address: "".into(), pan: "".into(), gstin: "".into(), archived: false }
+        Client {
+            id: None, name: name.into(), contact_person: "".into(), email: "".into(), phone: "".into(), address: "".into(), pan: "".into(), gstin: "".into(),
+            billing_address: "".into(), communication_preference: "".into(), kind: "individual".into(), city: "".into(), state: "".into(),
+            legal_name: "".into(), tan: "".into(), gst_registration: "".into(), representatives: Vec::new(), archived: false,
+        }
     }
 
     fn project(client_id: i64, name: &str) -> Project {
-        Project { id: None, client_id, code: "".into(), name: name.into(), site_address: "".into(), status: "active".into(), consultancy_type: "comprehensive".into(), archived: false, client_name: "".into() }
+        Project { id: None, client_id, code: "".into(), name: name.into(), site_address: "".into(), status: "active".into(), consultancy_type: "comprehensive".into(), floors: 1, phase: String::new(), archived: false, client_name: "".into() }
     }
 
     #[test]
@@ -334,5 +598,42 @@ mod tests {
         let saved_id = save_project(&c, &p).unwrap();
         let saved = list_projects(&c, None, false).unwrap();
         assert_eq!(saved.iter().find(|row| row.id == Some(saved_id)).unwrap().consultancy_type, "interior");
+    }
+
+    #[test]
+    fn onboarding_and_the_project_brief_round_trip() {
+        let c = conn();
+        let mut person = client("Acme");
+        person.billing_address = "12 Billing Road".into();
+        person.communication_preference = "whatsapp".into();
+        person.gstin = "29ABCDE1234F1Z5".into();
+        person.pan = "ABCDE1234F".into();
+        person.representatives = vec![Representative { name: "A. Client".into(), designation: "Director".into(), phone: "99999".into() }];
+        let id = save_client(&c, &person).unwrap();
+        let saved = list_clients(&c, false).unwrap();
+        assert_eq!(saved[0].communication_preference, "WHATSAPP");
+        assert_eq!(saved[0].billing_address, "12 Billing Road");
+        assert_eq!(saved[0].representatives[0].name, "A. Client");
+        assert_eq!(saved[0].kind, "individual");
+        person.id = Some(id);
+        person.tan = "not-a-tan".into();
+        assert!(save_client(&c, &person).unwrap_err().contains("TAN"));
+        person.tan = "blrg12345c".into();
+        person.kind = "company".into();
+        person.legal_name = "Acme Structures Private Limited".into();
+        person.city = "Bengaluru".into();
+        person.state = "Karnataka".into();
+        person.gst_registration = "regular".into();
+        save_client(&c, &person).unwrap();
+        let again = list_clients(&c, false).unwrap();
+        assert_eq!(again[0].tan, "BLRG12345C");
+        assert_eq!(again[0].kind, "company");
+        assert_eq!(again[0].legal_name, "Acme Structures Private Limited");
+        let project_id = save_project(&c, &project(id, "Villa")).unwrap();
+        save_brief(&c, project_id, &json!({ "vastu": "Yes, consultant engaged", "space_schedule": "Kitchen | 12 sq m | Ground" })).unwrap();
+        let brief = get_brief(&c, project_id).unwrap();
+        assert_eq!(brief["brief"]["vastu"], "Yes, consultant engaged");
+        assert_eq!(brief["brief"]["style"], "");
+        assert!(save_brief(&c, project_id, &json!({ "not_a_field": "x" })).is_err());
     }
 }

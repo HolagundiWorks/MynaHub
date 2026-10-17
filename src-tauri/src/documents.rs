@@ -175,6 +175,14 @@ pub struct DocSnapshot {
     pub rendered_html: String,
     #[serde(default)]
     pub page_setup: Option<crate::template_engine::PageSetup>,
+    /// Square mark and wide lockup used while rendering. Kept off the stored snapshot; the issued PDF already contains them.
+    #[serde(skip)]
+    pub logo_square_b64: String,
+    #[serde(skip)]
+    pub logo_wide_b64: String,
+    /// Firm accent at issue, `#RRGGBB` or blank. Older snapshots have none and print in black.
+    #[serde(default)]
+    pub accent_hex: String,
 }
 
 fn kind_ok(k: &str) -> bool {
@@ -260,7 +268,21 @@ pub fn save_draft(conn: &mut Connection, actor: i64, i: &DocInput) -> Result<i64
     if i.kind == "agreement" && i.project_id.is_none() {
         return Err("Choose the project this agreement is for.".into());
     }
-    let ms = if i.kind == "agreement" { parse_milestones(fee, &i.milestones)? } else { Vec::new() };
+    let staged;
+    let ms = if i.kind == "agreement" {
+        if i.milestones.is_empty() {
+            if let Some(pid) = i.project_id {
+                staged = crate::stages::milestone_percents(conn, pid)?.into_iter().map(|(name, percent)| MilestoneInput { name, percent }).collect::<Vec<_>>();
+                parse_milestones(fee, &staged)?
+            } else {
+                Vec::new()
+            }
+        } else {
+            parse_milestones(fee, &i.milestones)?
+        }
+    } else {
+        Vec::new()
+    };
     let tx = conn.transaction().map_err(|e| e.to_string())?;
     if let Some(pid) = i.project_id {
         let ok: i64 = tx.query_row("SELECT COUNT(*) FROM projects WHERE id = ?1 AND archived = 0", params![pid], |r| r.get(0)).map_err(|e| e.to_string())?;
@@ -376,9 +398,13 @@ fn studio_data(conn: &Connection, c: &Ctx, fee_paise: i64, ms: &[(String, i64, i
 
 /// Renders a snapshot to PDF: through the HTML studio path when it carries resolved HTML, otherwise the wording-template layout.
 pub fn render_snapshot(s: &DocSnapshot) -> Result<pdf::Rendered, String> {
+    let images = pdf::logo_images(&s.logo_square_b64, &s.logo_wide_b64);
+    let sheet = s.layout != "record" && matches!(s.kind.as_str(), "letter_out" | "letter" | "agreement");
+    let bars = sheet && s.letterhead != "minimal";
     match (&s.page_setup, s.rendered_html.is_empty()) {
-        (Some(setup), false) => pdf::render_html_with_page(&s.rendered_html, &pdf::bundled_fonts(), setup),
-        _ => pdf::render_html(&doc_html(s), &pdf::bundled_fonts()),
+        (Some(setup), false) => pdf::render_html_with_page_images_and_bars(&s.rendered_html, &pdf::bundled_fonts(), setup, &images, bars),
+        _ if bars => pdf::render_letter_sheet(&doc_html(s), &pdf::bundled_fonts(), &images),
+        _ => pdf::render_html_with_qr_and_images(&doc_html(s), &pdf::bundled_fonts(), &images, None),
     }
 }
 
@@ -396,8 +422,10 @@ fn build_snapshot(conn: &Connection, i: &DocInput, number: &str) -> Result<DocSn
     if !ctx.company_coa.is_empty() { ids.push(format!("COA Reg. No.: {}", ctx.company_coa)); }
     let (layout, template_name) = template_layout(conn, i.template_version_id);
     let letterhead: String = conn.query_row("SELECT letterhead_style FROM company_profile WHERE id = 1", [], |r| r.get(0)).unwrap_or_else(|_| "classic".to_string());
+    let accent_hex: String = conn.query_row("SELECT accent_hex FROM company_profile WHERE id = 1", [], |r| r.get(0)).unwrap_or_default();
     let title = if layout == "record" { if ctx.subject.is_empty() { template_name } else { ctx.subject.clone() } } else { String::new() };
-    let (rendered_html, page_setup) = match &studio {
+    let logos = crate::commands::company_logos_b64(conn);
+    let (mut rendered_html, page_setup) = match &studio {
         Some((html, css)) => {
             let (html, css) = crate::docx::prepare(html, css)?;
             let mut data = studio_data(conn, &ctx, fee, &ms);
@@ -409,8 +437,14 @@ fn build_snapshot(conn: &Connection, i: &DocInput, number: &str) -> Result<DocSn
         }
         None => (String::new(), None),
     };
+    let marks = pdf::letterhead_marks(&logos.square, &logos.wide);
+    if !marks.is_empty() {
+        if let Some(at) = rendered_html.find("<body>") {
+            rendered_html.insert_str(at + "<body>".len(), &marks);
+        }
+    }
     Ok(DocSnapshot {
-        title, layout, letterhead, rendered_html, page_setup,
+        title, layout, letterhead, accent_hex, rendered_html, page_setup, logo_square_b64: logos.square, logo_wide_b64: logos.wide,
         number: number.to_string(), kind: i.kind.clone(), doc_date: i.doc_date.clone(), subject: ctx.subject.clone(), reference: ctx.reference.clone(),
         party_name: ctx.party_name.clone(), party_address: ctx.party_address.clone(), text,
         company_name: ctx.company_name.clone(), company_address: ctx.company_address.clone(), company_contact: contact, company_ids: ids.join("  |  "),
@@ -425,6 +459,12 @@ pub fn pct(bp: i64) -> String {
 }
 
 pub fn doc_html(s: &DocSnapshot) -> String {
+    if s.layout != "record" && matches!(s.kind.as_str(), "letter_out" | "letter") {
+        return letter_sheet(s);
+    }
+    if s.kind == "agreement" {
+        return agreement_sheet(s);
+    }
     let record = s.layout == "record";
     let title = if record {
         format!("<h2>{}</h2>", esc(&s.title))
@@ -474,13 +514,216 @@ pub fn doc_html(s: &DocSnapshot) -> String {
     )
 }
 
+fn display_date(iso: &str) -> String {
+    const MONTHS: [&str; 12] = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    let mut parts = iso.split('-');
+    let (Some(year), Some(month), Some(day)) = (parts.next(), parts.next(), parts.next()) else {
+        return iso.to_string();
+    };
+    let Ok(month) = month.parse::<usize>() else {
+        return iso.to_string();
+    };
+    if !(1..=12).contains(&month) {
+        return iso.to_string();
+    }
+    let day = day.trim_start_matches('0');
+    let day = if day.is_empty() { "0" } else { day };
+    format!("{day} {} {year}", MONTHS[month - 1])
+}
+
+/// The rectangle logo is the letterhead. The square mark is used only when the firm has not stored a rectangle.
+fn letter_mark(s: &DocSnapshot) -> String {
+    if !s.logo_wide_b64.is_empty() {
+        return "<img src=\"company-logo-wide\" style=\"width: 52mm; height: 14mm;\" />".to_string();
+    }
+    if !s.logo_square_b64.is_empty() {
+        return "<img src=\"company-logo-square\" style=\"width: 16mm; height: 16mm;\" />".to_string();
+    }
+    String::new()
+}
+
+fn letter_sign(s: &DocSnapshot) -> String {
+    let firm = crate::typography::token_style("firm");
+    if s.architect.trim().is_empty() {
+        format!("<br/><br/><span style=\"{firm}\">{}</span>", esc(&s.company_name))
+    } else {
+        format!("<br/><br/><span style=\"{firm}\">{}</span><br/><span class=\"meta\">{}</span>", esc(&s.architect), esc(&s.company_name))
+    }
+}
+
+/// Outward letter. Classic puts the addressee and the date beside the mark, with a black bar in the right of the header.
+/// Minimal keeps the mark and the date on the left, then the addressee under them.
+fn letter_sheet(s: &DocSnapshot) -> String {
+    let firm = crate::typography::token_style("section");
+    let mark = letter_mark(s);
+    let mark_row = if mark.is_empty() { String::new() } else { format!("{mark}<br/><br/>") };
+    let identity = format!("<span style=\"{firm}\">{}</span>", esc(&s.company_name));
+    let address = if s.company_address.is_empty() { String::new() } else { format!("<br/><span class=\"meta\">{}</span>", esc(&s.company_address)) };
+    let dated = format!("<span class=\"meta\">{}</span><br/><span class=\"id\">{}</span>", esc(&display_date(&s.doc_date)), esc(&s.number));
+    let subject = if s.subject.is_empty() { String::new() } else { format!("<h3>{}</h3>", esc(&s.subject)) };
+    let reference = if s.reference.is_empty() { String::new() } else { format!("<p class=\"meta\">Ref: {}</p>", esc(&s.reference)) };
+    let prose = if s.party_name.trim().is_empty() { s.text.clone() } else { without_leading_addressee(&s.text) };
+    let body = text_to_html(&prose);
+    let sign = letter_sign(s);
+    let accent = crate::sheets::resolve_accent(&s.accent_hex);
+    let classic = s.letterhead != "minimal";
+    let head = if classic {
+        let to = if s.party_name.is_empty() {
+            String::new()
+        } else {
+            let mut lines = vec![esc(&s.party_name)];
+            if !s.party_address.is_empty() {
+                lines.push(esc(&s.party_address));
+            }
+            format!("<span class=\"meta\">To</span><br/>{}", lines.join("<br/>"))
+        };
+        format!(
+            r#"<table style="width: 178mm; border-collapse: collapse;"><tr>
+            <td style="width: 56mm; vertical-align: top;">{identity}{address}</td>
+            <td style="width: 74mm; vertical-align: top;">{to}</td>
+            <td style="width: 48mm; vertical-align: top; text-align: right;">{dated}</td>
+            </tr></table>"#
+        )
+    } else {
+        let to = if s.party_name.is_empty() {
+            String::new()
+        } else {
+            let mut lines = vec![esc(&s.party_name)];
+            if !s.party_address.is_empty() {
+                lines.push(esc(&s.party_address));
+            }
+            format!("<br/><br/><span class=\"meta\">To</span><br/>{}", lines.join("<br/>"))
+        };
+        format!("{identity}{address}<br/><br/>{dated}{to}")
+    };
+    let mut footer = vec![esc(&s.company_name)];
+    if !s.company_address.is_empty() {
+        footer.push(esc(&s.company_address));
+    }
+    if !s.company_contact.is_empty() {
+        footer.push(esc(&s.company_contact));
+    }
+    if !s.company_ids.is_empty() {
+        footer.push(esc(&s.company_ids));
+    }
+    format!(
+        r#"<html><head><style>{css}
+        body {{ margin: {top} 16mm 22mm 16mm; }}
+        h3 {{ color: {accent}; }}
+        </style></head><body>
+        {mark_row}
+        <table style="width: 178mm; border-collapse: collapse;"><tr><td style="border-bottom: 0.6pt solid {accent}; padding-bottom: 8pt;">{head}</td></tr></table>
+        <br/>{subject}{reference}
+        {body}
+        {sign}
+        <table style="width: 178mm; border-collapse: collapse; margin-top: 16pt;"><tr><td class="meta" style="border-top: 0.6pt solid {ink}; padding-top: 6pt;">{footer}</td></tr></table>
+        </body></html>"#,
+        css = crate::typography::css(),
+        top = if classic { "22mm" } else { "16mm" },
+        mark_row = mark_row,
+        accent = accent,
+        ink = crate::sheets::INK,
+        footer = footer.join("<br/>"),
+    )
+}
+
+/// Drops a leading "To," block when the sheet already shows the addressee in the header.
+fn without_leading_addressee(text: &str) -> String {
+    let trimmed = text.trim_start();
+    let rest = trimmed.strip_prefix("To,").or_else(|| trimmed.strip_prefix("To\r\n")).or_else(|| trimmed.strip_prefix("To\n"));
+    let Some(rest) = rest else {
+        return text.to_string();
+    };
+    match rest.find("\n\n") {
+        Some(at) => rest[at + 2..].trim_start().to_string(),
+        None => rest.trim().to_string(),
+    }
+}
+
+fn agreement_sheet(s: &DocSnapshot) -> String {
+    let firm = crate::typography::token_style("section");
+    let mark = letter_mark(s);
+    let mark_row = if mark.is_empty() { String::new() } else { format!("{mark}<br/><br/>") };
+    let identity = format!("<span style=\"{firm}\">{}</span>", esc(&s.company_name));
+    let address = if s.company_address.is_empty() { String::new() } else { format!("<br/><span class=\"meta\">{}</span>", esc(&s.company_address)) };
+    let dated = format!("<span class=\"meta\">{}</span><br/><span class=\"id\">{}</span>", esc(&display_date(&s.doc_date)), esc(&s.number));
+    let classic = s.letterhead != "minimal";
+    let party = if s.party_name.is_empty() {
+        String::new()
+    } else {
+        let mut lines = vec![esc(&s.party_name)];
+        if !s.party_address.is_empty() {
+            lines.push(esc(&s.party_address));
+        }
+        format!("<span class=\"meta\">With</span><br/>{}", lines.join("<br/>"))
+    };
+    let head = if classic {
+        format!(
+            r#"<table style="width: 178mm; border-collapse: collapse;"><tr>
+            <td style="width: 56mm; vertical-align: top;">{identity}{address}</td>
+            <td style="width: 74mm; vertical-align: top;">{party}</td>
+            <td style="width: 48mm; vertical-align: top; text-align: right;">{dated}</td>
+            </tr></table>"#
+        )
+    } else {
+        format!("{identity}{address}<br/><br/>{dated}<br/><br/>{party}")
+    };
+    let title = esc(if s.subject.is_empty() { "Agreement" } else { &s.subject });
+    let rows: Vec<Vec<String>> = s.milestones.iter().enumerate().map(|(i, (name, share, amount))| vec![(i + 1).to_string(), name.clone(), share.clone(), amount.clone()]).collect();
+    let schedule = if rows.is_empty() {
+        String::new()
+    } else {
+        format!("<br/><span class=\"meta\">Fee {}</span><br/><br/>{}", esc(&s.fee_display), crate::sheets::schedule(&[14, 96, 28, 40], &["#", "Stage", "Share", "Amount"], &rows, &[false, false, true, true]))
+    };
+    let signer = if s.architect.is_empty() { String::new() } else { format!("<br/>{}", esc(&s.architect)) };
+    let sign = format!(
+        r#"<br/><table style="width: 178mm; table-layout: fixed; border-collapse: collapse;"><tr>
+        <td style="width: 89mm; vertical-align: top;">For {co}{signer}<br/><br/><br/>Signature and date</td>
+        <td style="width: 89mm; vertical-align: top;">For the client<br/><br/><br/><br/>Signature and date</td>
+        </tr></table>"#,
+        co = esc(&s.company_name),
+        signer = signer,
+    );
+    let mut footer = vec![esc(&s.company_name)];
+    if !s.company_address.is_empty() {
+        footer.push(esc(&s.company_address));
+    }
+    if !s.company_contact.is_empty() {
+        footer.push(esc(&s.company_contact));
+    }
+    if !s.company_ids.is_empty() {
+        footer.push(esc(&s.company_ids));
+    }
+    let accent = crate::sheets::resolve_accent(&s.accent_hex);
+    format!(
+        r#"<html><head><style>{css}
+        body {{ margin: {top} 16mm 22mm 16mm; }}
+        h3 {{ color: {accent}; }}
+        </style></head><body>
+        {mark_row}
+        <table style="width: 178mm; border-collapse: collapse;"><tr><td style="border-bottom: 0.6pt solid {accent}; padding-bottom: 8pt;">{head}</td></tr></table>
+        <br/><h3>{title}</h3>
+        {body}
+        {schedule}
+        {sign}
+        <table style="width: 178mm; border-collapse: collapse; margin-top: 16pt;"><tr><td class="meta" style="border-top: 0.6pt solid {ink}; padding-top: 6pt;">{footer}</td></tr></table>
+        </body></html>"#,
+        css = crate::typography::css(),
+        top = if classic { "22mm" } else { "16mm" },
+        body = text_to_html(&s.text),
+        ink = crate::sheets::INK,
+        footer = footer.join("<br/>"),
+    )
+}
+
 /// Classic: firm name large with address and identifiers beneath. Minimal: a small name line and one line of details.
 fn letterhead_html(s: &DocSnapshot) -> String {
+    let mark = pdf::letterhead_marks(&s.logo_square_b64, &s.logo_wide_b64);
     if s.letterhead == "minimal" {
         let details = [s.company_address.as_str(), s.company_contact.as_str(), s.company_ids.as_str()].iter().filter(|x| !x.is_empty()).cloned().collect::<Vec<_>>().join("  |  ");
-        format!("<h4>{}</h4><p class=\"meta\">{}</p>", esc(&s.company_name.to_uppercase()), esc(&details))
+        format!("{mark}<h4>{}</h4><p class=\"meta\">{}</p>", esc(&s.company_name.to_uppercase()), esc(&details))
     } else {
-        format!("<h1>{}</h1><p class=\"meta\">{}<br/>{}<br/>{}</p>", esc(&s.company_name), esc(&s.company_address), esc(&s.company_contact), esc(&s.company_ids))
+        format!("{mark}<h1>{}</h1><p class=\"meta\">{}<br/>{}<br/>{}</p>", esc(&s.company_name), esc(&s.company_address), esc(&s.company_contact), esc(&s.company_ids))
     }
 }
 
@@ -1035,15 +1278,18 @@ pub fn preview_template(conn: &Connection, body: &str, layout: &str, kind: &str,
     if !sample.company_gstin.is_empty() { ids.push(format!("GSTIN: {}", sample.company_gstin)); }
     if !sample.company_coa.is_empty() { ids.push(format!("COA Reg. No.: {}", sample.company_coa)); }
     let letterhead: String = conn.query_row("SELECT letterhead_style FROM company_profile WHERE id = 1", [], |r| r.get(0)).unwrap_or_else(|_| "classic".to_string());
+    let accent_hex: String = conn.query_row("SELECT accent_hex FROM company_profile WHERE id = 1", [], |r| r.get(0)).unwrap_or_default();
+    let logos = crate::commands::company_logos_b64(conn);
     let snapshot = DocSnapshot {
         number: "PREVIEW".into(), kind: kind.to_string(), doc_date: "2026-04-01".into(), subject: String::new(), reference: "SAMPLE/001".into(),
         party_name: "Sample Client".into(), party_address: "12 Sample Road, Pune".into(), text,
         company_name: sample.company_name.clone(), company_address: sample.company_address.clone(), company_contact: contact, company_ids: ids.join("  |  "),
         architect: sample.company_architect.clone(), fee_display: sample.fee_display.clone(),
         milestones: if kind == "agreement" { vec![("On appointment".into(), "40%".into(), fmt_inr(20_000_000)), ("On approval of design".into(), "60%".into(), fmt_inr(30_000_000))] } else { Vec::new() },
-        title: if layout == "record" { name.to_string() } else { String::new() }, layout: layout.to_string(), letterhead, rendered_html: String::new(), page_setup: None,
+        title: if layout == "record" { name.to_string() } else { String::new() }, layout: layout.to_string(), letterhead, accent_hex, rendered_html: String::new(), page_setup: None,
+        logo_square_b64: logos.square, logo_wide_b64: logos.wide,
     };
-    let rendered = pdf::render_html(&doc_html(&snapshot), &pdf::bundled_fonts())?;
+    let rendered = render_snapshot(&snapshot)?;
     Ok(Preview { pdf_base64: base64::engine::general_purpose::STANDARD.encode(rendered.bytes), warnings })
 }
 
@@ -1311,6 +1557,9 @@ mod tests {
         let d = get(&c, id).unwrap();
         assert_eq!(d.milestone_rows.len(), 3);
         assert_eq!(issue(&mut c, 1, id).unwrap(), "AGR/2026-27/0001");
+        let snap: DocSnapshot = serde_json::from_str(&c.query_row("SELECT snapshot_json FROM documents WHERE id = ?1", params![id], |r| r.get::<_, String>(0)).unwrap()).unwrap();
+        let sheet = doc_html(&snap);
+        assert!(sheet.contains("12 October 2026") && sheet.contains("background-color: #1A1A1A") && !sheet.contains("class=\"items\""), "{sheet}");
         if let Ok(p) = std::env::var("AO_PREVIEW_DIR") {
             std::fs::write(std::path::Path::new(&p).join("agreement.pdf"), pdf_bytes(&c, id).unwrap()).unwrap();
         }
@@ -1420,6 +1669,32 @@ Approved the plan."); save_draft(&mut c, 1, &i).unwrap() };
         assert_eq!(snap.letterhead, "minimal");
         assert!(doc_html(&snap).contains("<h4>STUDIO X</h4>"));
         assert!(c.execute("UPDATE company_profile SET letterhead_style = 'fancy'", []).is_err(), "only the supported styles are accepted");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_letter_puts_the_addressee_beside_the_mark() {
+        let (mut c, dir) = setup();
+        let mut i = input(&c, "standard-letter", "Dear Sir,\n\nPlease find the drawings.");
+        i.template_version_id = None;
+        i.subject = "Drawings".into();
+        i.party_name = "Acme Developers".into();
+        i.party_address = "Pune".into();
+        i.doc_date = "2026-10-12".into();
+        let id = save_draft(&mut c, 1, &i).unwrap();
+        issue(&mut c, 1, id).unwrap();
+        let snap: DocSnapshot = serde_json::from_str(&c.query_row("SELECT snapshot_json FROM documents WHERE id = ?1", params![id], |r| r.get::<_, String>(0)).unwrap()).unwrap();
+        let html = doc_html(&snap);
+        assert!(html.contains("Acme Developers") && html.contains("12 October 2026") && html.contains(">To</span>"));
+        assert!(html.contains("A. Architect") && !html.contains("Authorised signatory"));
+        let bytes = pdf_bytes(&c, id).unwrap();
+        assert!(bytes.starts_with(b"%PDF"));
+        if let Ok(dir) = std::env::var("AO_PREVIEW_DIR") {
+            std::fs::write(std::path::Path::new(&dir).join("letter_sheet.pdf"), &bytes).unwrap();
+        }
+        c.execute("UPDATE company_profile SET letterhead_style = 'minimal'", []).unwrap();
+        let quiet = doc_html(&DocSnapshot { letterhead: "minimal".into(), ..snap });
+        assert!(!quiet.contains("letter-bar") && quiet.contains("To"));
         let _ = std::fs::remove_dir_all(dir);
     }
 

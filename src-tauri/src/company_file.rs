@@ -1,5 +1,6 @@
 //! The ADMS company file: one `.adms` SQLite database holds a whole company (data, documents, audit history).
-//! The extension is a convention, not protection: the file is NOT encrypted. Opening trusts content, never the name.
+//! The extension is a convention. Opening trusts content, never the name.
+//! The file stays plain SQLite until the owner protects it. A protected file starts with `AOSENC1`.
 use crate::commands::{HostState, create_owner, AppState, INTERNAL};
 use crate::db;
 use rusqlite::{params, Connection, OpenFlags};
@@ -31,10 +32,22 @@ pub struct FileCheck {
     pub uuid: String,
     pub schema_version: usize,
     pub needs_upgrade: bool,
+    /// True when the file is encrypted at rest and needs a password or recovery code to open.
+    pub protected: bool,
+}
+
+pub struct Seal {
+    pub envelope: crate::vault::Envelope,
+    pub working: PathBuf,
+    pub sealed_path: PathBuf,
+    /// Held open so a second window cannot protect or open the same file. Drop releases the lock.
+    #[allow(dead_code)]
+    lock: Option<std::fs::File>,
 }
 
 pub struct ActiveCompany {
     pub summary: CompanySummary,
+    pub seal: Option<Seal>,
 }
 
 fn path_str(p: &Path) -> String {
@@ -47,8 +60,13 @@ fn fail(msg: &str) -> String {
 
 /// Reads and checks a file without modifying it. Every failure names the actual problem.
 pub fn validate(path: &Path) -> Result<FileCheck, String> {
+    finish_interrupted(path);
     if !path.is_file() {
         return Err(fail("That file was not found."));
+    }
+    if crate::vault::is_protected(path) {
+        let name = path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+        return Ok(FileCheck { name, path: path_str(path), uuid: String::new(), schema_version: 0, needs_upgrade: false, protected: true });
     }
     let mut head = [0u8; 16];
     {
@@ -78,7 +96,84 @@ pub fn validate(path: &Path) -> Result<FileCheck, String> {
     if format != FORMAT {
         return Err(fail("This company file uses a format this version does not understand."));
     }
-    Ok(FileCheck { name, path: path_str(path), uuid, schema_version: version, needs_upgrade: version < db::latest_version() })
+    Ok(FileCheck { name, path: path_str(path), uuid, schema_version: version, needs_upgrade: version < db::latest_version(), protected: false })
+}
+
+fn sidecar(path: &Path, suffix: &str) -> PathBuf {
+    PathBuf::from(format!("{}.{suffix}", path.display()))
+}
+
+/// Completes or undoes a protect/close that stopped between the old file and the new bytes.
+fn finish_interrupted(path: &Path) {
+    let writing = sidecar(path, "writing");
+    let held = sidecar(path, "held");
+    if !path.exists() && writing.is_file() {
+        let _ = std::fs::rename(&writing, path);
+    }
+    if path.is_file() && crate::vault::is_protected(path) && held.exists() {
+        let _ = std::fs::remove_file(&held);
+    } else if !path.exists() && held.is_file() {
+        let _ = std::fs::rename(&held, path);
+    }
+}
+
+fn write_synced(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    use std::io::Write;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let mut file = std::fs::File::create(path).map_err(|e| e.to_string())?;
+    file.write_all(bytes).map_err(|e| e.to_string())?;
+    file.sync_all().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn swap_in(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let writing = sidecar(path, "writing");
+    let held = sidecar(path, "held");
+    write_synced(&writing, bytes)?;
+    if held.exists() {
+        let _ = std::fs::remove_file(&held);
+    }
+    std::fs::rename(path, &held).map_err(|e| format!("The company file could not be saved: {e}"))?;
+    if let Err(e) = std::fs::rename(&writing, path) {
+        let _ = std::fs::rename(&held, path);
+        return Err(format!("The company file could not be saved: {e}"));
+    }
+    if crate::vault::is_protected(path) {
+        let _ = std::fs::remove_file(&held);
+    }
+    for suffix in ["-wal", "-shm", "-journal"] {
+        let _ = std::fs::remove_file(PathBuf::from(format!("{}{suffix}", path.display())));
+    }
+    Ok(())
+}
+
+fn take_lock(path: &Path) -> Result<std::fs::File, String> {
+    let lock_path = sidecar(path, "aoslock");
+    let file = std::fs::OpenOptions::new().read(true).write(true).create(true).open(&lock_path).map_err(|e| e.to_string())?;
+    fs4::FileExt::try_lock_exclusive(&file).map_err(|_| fail("This company is already open in another window or program."))?;
+    Ok(file)
+}
+
+/// Removes decrypted working copies left behind when the program stopped. An open company keeps its file locked, so that copy stays.
+pub fn sweep_working(app_dir: &Path) {
+    let dir = app_dir.join("adms-working");
+    let Ok(entries) = std::fs::read_dir(&dir) else { return };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_file() {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
+fn working_path(app_dir: &Path, sealed: &Path) -> PathBuf {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    path_str(sealed).hash(&mut hasher);
+    app_dir.join("adms-working").join(format!("{:016x}.adms", hasher.finish()))
 }
 
 fn map_open_error(e: rusqlite::Error) -> String {
@@ -330,8 +425,10 @@ pub fn placeholder() -> Connection {
     Connection::open_in_memory().expect("in-memory database")
 }
 
-fn install(state: &AppState, conn: Connection, summary: CompanySummary) -> Result<(), String> {
-    *state.session.lock().map_err(|_| INTERNAL)? = None;
+fn install(state: &AppState, conn: Connection, summary: CompanySummary, seal: Option<Seal>, sign_out: bool) -> Result<(), String> {
+    if sign_out {
+        *state.session.lock().map_err(|_| INTERNAL)? = None;
+    }
     let idle: u64 = conn
         .query_row("SELECT value FROM settings WHERE key = 'idle_secs'", [], |r| r.get::<_, String>(0))
         .ok()
@@ -339,16 +436,38 @@ fn install(state: &AppState, conn: Connection, summary: CompanySummary) -> Resul
         .unwrap_or(crate::auth::DEFAULT_IDLE.as_secs());
     state.idle_secs.store(idle, std::sync::atomic::Ordering::Relaxed);
     *state.db.lock().map_err(|_| INTERNAL)? = conn;
-    *state.company.lock().map_err(|_| INTERNAL)? = Some(ActiveCompany { summary });
+    *state.company.lock().map_err(|_| INTERNAL)? = Some(ActiveCompany { summary, seal });
     Ok(())
 }
 
 pub fn close(state: &AppState) -> Result<(), String> {
+    let sealed = {
+        let company = state.company.lock().map_err(|_| INTERNAL)?;
+        company.as_ref().and_then(|c| c.seal.as_ref().map(|s| (s.envelope.clone(), s.working.clone(), s.sealed_path.clone())))
+    };
+    {
+        let mut db = state.db.lock().map_err(|_| INTERNAL)?;
+        let _ = db.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()));
+        // Replacing the connection drops the old one, which releases the file lock.
+        *db = placeholder();
+    }
+    if let Some((envelope, working, sealed_path)) = sealed {
+        let persisted = (|| -> Result<(), String> {
+            let plain = std::fs::read(&working).map_err(|e| e.to_string())?;
+            let bytes = crate::vault::pack(&plain, &envelope)?;
+            swap_in(&sealed_path, &bytes)
+        })();
+        if let Err(e) = persisted {
+            if let Ok(conn) = open_exclusive(&working) {
+                *state.db.lock().map_err(|_| INTERNAL)? = conn;
+            }
+            return Err(e);
+        }
+        for suffix in ["", "-wal", "-shm", "-journal"] {
+            let _ = std::fs::remove_file(PathBuf::from(format!("{}{suffix}", working.display())));
+        }
+    }
     *state.session.lock().map_err(|_| INTERNAL)? = None;
-    let mut db = state.db.lock().map_err(|_| INTERNAL)?;
-    let _ = db.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()));
-    // Replacing the connection drops the old one, which releases the file lock.
-    *db = placeholder();
     *state.company.lock().map_err(|_| INTERNAL)? = None;
     Ok(())
 }
@@ -398,12 +517,55 @@ pub fn company_recent_remove(state: HostState<'_>, uuid: String) -> Result<(), S
 }
 
 /// Opens a company into the application session. Refuses a second company until the first is closed.
-pub fn open_company(state: &AppState, path: &str) -> Result<CompanySummary, String> {
+pub fn open_company(state: &AppState, path: &str, secret: &str, unlock: &str) -> Result<CompanySummary, String> {
     ensure_closed(state)?;
-    let (conn, summary) = open_file(Path::new(path))?;
-    install(state, conn, summary.clone())?;
+    let file = Path::new(path);
+    let (conn, summary, seal) = if crate::vault::is_protected(file) {
+        open_protected(state, file, secret, unlock)?
+    } else {
+        let (conn, summary) = open_file(file)?;
+        (conn, summary, None)
+    };
+    install(state, conn, summary.clone(), seal, true)?;
     remember(&state.app_dir, &summary);
     Ok(summary)
+}
+
+fn open_protected(state: &AppState, path: &Path, secret: &str, unlock: &str) -> Result<(Connection, CompanySummary, Option<Seal>), String> {
+    finish_interrupted(path);
+    if secret.trim().is_empty() {
+        return Err(fail("This company file is protected. Enter the password or the recovery code."));
+    }
+    let bytes = std::fs::read(path).map_err(|_| fail("That file could not be read."))?;
+    let (plain, envelope) = crate::vault::open_with(&bytes, secret, unlock)?;
+    let lock = take_lock(path)?;
+    let working = working_path(&state.app_dir, path);
+    write_synced(&working, &plain)?;
+    let version = {
+        let conn = Connection::open_with_flags(&working, OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(|_| fail("This protected company file is damaged."))?;
+        let app_id: i64 = conn.pragma_query_value(None, "application_id", |r| r.get(0)).map_err(|_| fail("This is not an ADMS company file."))?;
+        if app_id != APP_ID {
+            return Err(fail("This is not an ADMS company file."));
+        }
+        let version: usize = conn.pragma_query_value(None, "user_version", |r| r.get(0)).map_err(|_| fail("This protected company file is damaged."))?;
+        if version > db::latest_version() {
+            return Err(fail("This company file was made by a newer version of ADMS. Update the app to open it."));
+        }
+        version
+    };
+    if version < db::latest_version() {
+        let copy = PathBuf::from(format!("{}.before-upgrade-v{version}.bak", path.display()));
+        if !copy.exists() {
+            std::fs::copy(path, &copy).map_err(|e| format!("Could not take a safety copy before upgrading: {e}"))?;
+        }
+    }
+    let mut conn = open_exclusive(&working)?;
+    db::migrate(&mut conn)?;
+    conn.execute("UPDATE company_file SET last_opened_at = datetime('now') WHERE id = 1", []).map_err(|e| e.to_string())?;
+    let name: String = conn.query_row("SELECT display_name FROM company_file WHERE id = 1", [], |r| r.get(0)).map_err(|e| e.to_string())?;
+    let uuid: String = conn.query_row("SELECT company_uuid FROM company_file WHERE id = 1", [], |r| r.get(0)).map_err(|e| e.to_string())?;
+    let summary = CompanySummary { name, path: path_str(path), uuid };
+    Ok((conn, summary, Some(Seal { envelope, working, sealed_path: path.to_path_buf(), lock: Some(lock) })))
 }
 
 /// Creates a company file and its first owner, then opens it. Returns the one-time recovery code.
@@ -411,14 +573,14 @@ pub fn create_company(state: &AppState, path: &str, name: &str, username: &str, 
     ensure_closed(state)?;
     let (file, recovery) = create_file(Path::new(path), &NewCompany { name, username, password, confirm })?;
     let (conn, summary) = open_file(&file)?;
-    install(state, conn, summary.clone())?;
+    install(state, conn, summary.clone(), None, true)?;
     remember(&state.app_dir, &summary);
     Ok((summary, recovery))
 }
 
 #[tauri::command]
-pub fn company_open(state: HostState<'_>, path: String) -> Result<CompanySummary, String> {
-    open_company(&state, &path)
+pub fn company_open(state: HostState<'_>, path: String, secret: String, unlock: String) -> Result<CompanySummary, String> {
+    open_company(&state, &path, &secret, &unlock)
 }
 
 /// Creates a company file and its first owner, then opens it. Returns the one-time recovery code.
@@ -444,7 +606,7 @@ pub fn company_convert_legacy(state: HostState<'_>, path: String) -> Result<Comp
     let (db, files) = legacy_paths(&state.app_dir).ok_or_else(|| fail("No earlier data was found."))?;
     let file = convert_legacy(&db, &files, Path::new(&path))?;
     let (conn, summary) = open_file(&file)?;
-    install(&state, conn, summary.clone())?;
+    install(&state, conn, summary.clone(), None, true)?;
     remember(&state.app_dir, &summary);
     Ok(summary)
 }
@@ -452,6 +614,175 @@ pub fn company_convert_legacy(state: HostState<'_>, path: String) -> Result<Comp
 #[tauri::command]
 pub fn company_close(state: HostState<'_>) -> Result<(), String> {
     close(&state)
+}
+
+#[derive(Serialize)]
+pub struct Protection {
+    pub protected: bool,
+}
+
+fn confirm_owner(state: &AppState, password: &str) -> Result<(), String> {
+    let username = {
+        let session = state.session.lock().map_err(|_| INTERNAL)?;
+        session.as_ref().ok_or("Not signed in.")?.username.clone()
+    };
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    crate::commands::check_credentials(&conn, &username, password).map(|_| ()).map_err(|_| "Your password was not accepted.".to_string())
+}
+
+/// Encrypts the open company file. Returns a new recovery code, shown once. The password that confirmed this action opens the file.
+#[tauri::command]
+pub fn company_protect(state: HostState<'_>, password: String) -> Result<String, String> {
+    let uid = crate::commands::require(&state, crate::auth::Permission::ManageSettings)?;
+    confirm_owner(&state, &password)?;
+    protect_open(&state, uid, &password)
+}
+
+#[tauri::command]
+pub fn company_protection(state: HostState<'_>) -> Result<Protection, String> {
+    crate::commands::require(&state, crate::auth::Permission::View)?;
+    let protected = state.company.lock().map_err(|_| INTERNAL)?.as_ref().map(|c| c.seal.is_some()).unwrap_or(false);
+    Ok(Protection { protected })
+}
+
+/// Issues a new recovery code for the signed-in owner. On a protected file it also wraps the file key.
+#[tauri::command]
+pub fn company_rotate_recovery(state: HostState<'_>, password: String) -> Result<String, String> {
+    let uid = crate::commands::require(&state, crate::auth::Permission::ManageSettings)?;
+    confirm_owner(&state, &password)?;
+    rotate_recovery(&state, uid, &password)
+}
+
+fn protect_open(state: &AppState, uid: i64, password: &str) -> Result<String, String> {
+    let summary = {
+        let company = state.company.lock().map_err(|_| INTERNAL)?;
+        let current = company.as_ref().ok_or_else(|| fail("No company is open."))?;
+        if current.seal.is_some() {
+            return Err(fail("This company file is already protected."));
+        }
+        current.summary.clone()
+    };
+    let sealed_path = PathBuf::from(&summary.path);
+    let recovery = crate::auth::generate_recovery_code();
+    let recovery_hash = crate::auth::hash_password(&recovery)?;
+    let snapshot = state.app_dir.join("adms-working").join("protecting.adms");
+    if snapshot.exists() {
+        let _ = std::fs::remove_file(&snapshot);
+    }
+    if let Some(parent) = snapshot.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let old_hash: Option<String> = {
+        let conn = state.db.lock().map_err(|_| INTERNAL)?;
+        let old: Option<String> = conn.query_row("SELECT recovery_hash FROM users WHERE id = ?1", params![uid], |r| r.get(0)).ok();
+        conn.execute("UPDATE users SET recovery_hash = ?1 WHERE id = ?2", params![recovery_hash, uid]).map_err(|e| e.to_string())?;
+        let _ = conn.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()));
+        if let Err(e) = conn.execute("VACUUM INTO ?1", params![path_str(&snapshot)]) {
+            if let Some(old) = &old {
+                let _ = conn.execute("UPDATE users SET recovery_hash = ?1 WHERE id = ?2", params![old, uid]);
+            }
+            return Err(format!("The company file could not be protected: {e}"));
+        }
+        old
+    };
+    let revert = |old: &Option<String>| {
+        if let Some(old) = old {
+            if let Ok(conn) = state.db.lock() {
+                let _ = conn.execute("UPDATE users SET recovery_hash = ?1 WHERE id = ?2", params![old, uid]);
+            }
+        }
+        let _ = std::fs::remove_file(&snapshot);
+    };
+    let plain = match std::fs::read(&snapshot) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            revert(&old_hash);
+            return Err(e.to_string());
+        }
+    };
+    let (sealed, envelope) = match crate::vault::seal(&plain, password, &recovery) {
+        Ok(value) => value,
+        Err(e) => {
+            revert(&old_hash);
+            return Err(e);
+        }
+    };
+    if crate::vault::open_with(&sealed, password, "password").is_err() {
+        revert(&old_hash);
+        return Err(fail("The protected file could not be read back, so the company file was left unchanged."));
+    }
+    {
+        *state.db.lock().map_err(|_| INTERNAL)? = placeholder();
+    }
+    if let Err(e) = swap_in(&sealed_path, &sealed) {
+        if let Ok(conn) = open_exclusive(&sealed_path) {
+            *state.db.lock().map_err(|_| INTERNAL)? = conn;
+        }
+        revert(&old_hash);
+        return Err(e);
+    }
+    let lock = match take_lock(&sealed_path) {
+        Ok(lock) => lock,
+        Err(e) => {
+            *state.company.lock().map_err(|_| INTERNAL)? = None;
+            return Err(e);
+        }
+    };
+    let working = working_path(&state.app_dir, &sealed_path);
+    if let Err(e) = write_synced(&working, &plain) {
+        *state.company.lock().map_err(|_| INTERNAL)? = None;
+        let _ = std::fs::remove_file(&snapshot);
+        return Err(e);
+    }
+    let _ = std::fs::remove_file(&snapshot);
+    let conn = match open_exclusive(&working) {
+        Ok(conn) => conn,
+        Err(e) => {
+            *state.company.lock().map_err(|_| INTERNAL)? = None;
+            return Err(e);
+        }
+    };
+    install(state, conn, summary, Some(Seal { envelope, working, sealed_path, lock: Some(lock) }), false)?;
+    if let Ok(conn) = state.db.lock() {
+        db::audit(&conn, Some(uid), "company_protected", "");
+    }
+    Ok(recovery)
+}
+
+fn rotate_recovery(state: &AppState, uid: i64, _password: &str) -> Result<String, String> {
+    let recovery = crate::auth::generate_recovery_code();
+    let recovery_hash = crate::auth::hash_password(&recovery)?;
+    {
+        let mut company = state.company.lock().map_err(|_| INTERNAL)?;
+        if let Some(seal) = company.as_mut().and_then(|c| c.seal.as_mut()) {
+            crate::vault::rewrap_recovery(&mut seal.envelope, &recovery)?;
+        }
+    }
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    conn.execute("UPDATE users SET recovery_hash = ?1 WHERE id = ?2", params![recovery_hash, uid]).map_err(|e| e.to_string())?;
+    db::audit(&conn, Some(uid), "recovery_rotated", "");
+    Ok(recovery)
+}
+
+pub fn rewrap_open_password(state: &AppState, password: &str) -> Result<(), String> {
+    let mut company = state.company.lock().map_err(|_| INTERNAL)?;
+    if let Some(seal) = company.as_mut().and_then(|c| c.seal.as_mut()) {
+        crate::vault::rewrap_password(&mut seal.envelope, password)?;
+    }
+    Ok(())
+}
+
+pub fn rewrap_open_secrets(state: &AppState, password: &str, recovery: &str) -> Result<(), String> {
+    let mut company = state.company.lock().map_err(|_| INTERNAL)?;
+    if let Some(seal) = company.as_mut().and_then(|c| c.seal.as_mut()) {
+        crate::vault::rewrap_password(&mut seal.envelope, password)?;
+        crate::vault::rewrap_recovery(&mut seal.envelope, recovery)?;
+    }
+    Ok(())
+}
+
+pub fn protection_envelope(state: &AppState) -> Option<crate::vault::Envelope> {
+    state.company.lock().ok()?.as_ref()?.seal.as_ref().map(|seal| seal.envelope.clone())
 }
 
 #[cfg(test)]
@@ -607,7 +938,7 @@ mod tests {
         let (path, _) = create_file(&d.join("Iso"), &setup("Iso Co")).unwrap();
         let (conn, summary) = open_file(&path).unwrap();
         let state = AppState::new(placeholder(), d.clone());
-        install(&state, conn, summary).unwrap();
+        install(&state, conn, summary, None, true).unwrap();
         state.db.lock().unwrap().execute("INSERT INTO clients (name) VALUES ('Secret Client')", []).unwrap();
         close(&state).unwrap();
         assert!(active_summary(&state).is_none());
@@ -656,6 +987,40 @@ mod tests {
         let list = load_recent(&d);
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].path, "D:/moved/a.adms");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn a_protected_file_opens_with_the_password_or_the_recovery_code() {
+        let d = temp_dir("protect");
+        let (path, _) = create_file(&d.join("Studio"), &setup("Studio One")).unwrap();
+        let state = AppState::new(placeholder(), d.clone());
+        open_company(&state, path.to_str().unwrap(), "", "").unwrap();
+        let owner_id: i64 = state.db.lock().unwrap().query_row("SELECT id FROM users WHERE username = 'owner'", [], |r| r.get(0)).unwrap();
+        *state.session.lock().unwrap() = Some(crate::auth::Session {
+            user_id: owner_id,
+            username: "owner".into(),
+            role: crate::auth::Role::Owner,
+            locked: false,
+            last_activity: std::time::Instant::now(),
+        });
+        let code = company_protect(crate::commands::HostState::new(&state), "correct horse battery".into()).unwrap();
+        assert!(crate::vault::is_protected(&path));
+        assert!(!std::fs::read(&path).unwrap().starts_with(b"SQLite format 3"));
+        close(&state).unwrap();
+        match open_company(&state, path.to_str().unwrap(), "", "") {
+            Err(error) => assert!(error.contains("protected"), "{error}"),
+            Ok(_) => panic!("a protected file opened without a secret"),
+        }
+        let summary = open_company(&state, path.to_str().unwrap(), "correct horse battery", "password").unwrap();
+        assert_eq!(summary.name, "Studio One");
+        close(&state).unwrap();
+        let summary = open_company(&state, path.to_str().unwrap(), &code, "recovery").unwrap();
+        assert_eq!(summary.name, "Studio One");
+        close(&state).unwrap();
+        let (plain, _) = create_file(&d.join("Plain"), &setup("Plain")).unwrap();
+        assert_eq!(open_company(&state, plain.to_str().unwrap(), "", "").unwrap().name, "Plain");
+        close(&state).unwrap();
         let _ = std::fs::remove_dir_all(&d);
     }
 }

@@ -3,7 +3,8 @@
 //! reviewed by the practice (and its counsel where appropriate) before use.
 //!
 //! Text in [[double square brackets]] is a prompt the author must replace; a document with prompts left in it cannot
-//! be issued. Built-ins are never overwritten: a firm customises a copy, and new built-ins are only ever added.
+//! be issued. A firm customises a copy. The built-in original in an existing company is published again when this
+//! library changes. Issued documents keep the version they were issued from.
 use rusqlite::{params, Connection};
 
 pub struct Builtin {
@@ -102,7 +103,7 @@ The Client shall provide information, decisions, approvals and site access in go
 The Architect coordinates with the consultants named here: [[consultants and who appoints and pays them]].
 
 # 7. Professional fee
-The fee is {{agreement.fee}}, on the basis of [[fee basis]], payable according to the milestone schedule below. Applicable taxes are charged in addition.
+The fee is {{agreement.fee}}, on the basis of [[fee basis]], payable at the project stages. Those stages follow the consultancy and the number of floors, and each stage is a payment. Applicable taxes are charged in addition.
 
 # 8. Reimbursable expenses
 [[State which expenses are reimbursable and the approval process.]]
@@ -460,51 +461,190 @@ Response needed by: [[date]]
     },
     Builtin {
         key: "onboarding-sheet", name: "Client onboarding / project information sheet", family: "administration", kind: "letter", layout: "record",
-        description: "Collects the basic project and contact information at the start.",
-        body: "Client: {{client.name}}
-{{client.address}}
-Project: {{project.name}} ({{project.code}}), {{project.site}}
+        description: "Pre-design questionnaire: client, site, occupants, preferences, spaces, materials and room notes.",
+        body: "PRE-DESIGN QUESTIONNAIRE
+Client: {{client.name}}
+Correspondence: {{client.address}}
+Project: {{project.name}} ({{project.code}})
+Site: {{project.site}}
+Date: {{document.date}}
 
-# Contacts
-[[names, roles, phone and email]]
+Complete this before the briefing meeting. Incomplete sections delay concept design.
 
-# Project details
-Consultancy category: [[Architectural / Landscaping / Part consultancy / Miscellaneous]]
-Project type: [[Residential / Commercial / Healthcare / Hospitality / Education / Other]]
-Plot and built-up area: [[area]]
+# 1. Basic information
+Current address: [[current address]]
+Site address: [[site address, if different]]
+Mobile: [[mobile]]    Phone: [[phone]]    Email: [[email]]
+Occupation: [[occupation]]
+Plot size or dimensions: [[acres or dimensions]]
+Terrain: [[sloped / flat / mountainous]]
+Vegetation: [[open field / wooded]]
+Natural features, soil, other characteristics: [[notes]]
+Orientation measurements (W N-S, E N-S, N E-W, S E-W, NE-SW, SE-NW): [[measurements]]
 
-# Information received
-[[list documents received, such as title deeds, survey and sanctions]]",
+# 2. Project information
+Intended use: [[residential, commercial, new build or renovation]]
+Built-up area intended: [[area]]
+Construction in phases: [[yes / no]]
+Tentative construction start: [[date]]
+Budget excluding legal fees: [[amount]]
+Finance: [[source]]
+
+# 3. Occupants and staff
+Household (name, relation, age, occupation): [[table]]
+Staff (maid, butler, driver, gardener, other, and counts): [[staff]]
+
+# 4. Design preferences
+Orientation: [[N-S / E-W]]
+Main door: [[north / south / east / west]]
+Secondary door: [[direction]]
+Views: [[direction]]
+Basement: [[yes / no, and purpose]]
+Vastu: [[yes / no]]    Consultant: [[name, or none]]
+
+# 5. Style, places and activities
+Style: [[the architectural character the client wants]]
+Places loved, and why: [[references]]
+Important activities: [[functions and events]]
+Indoor preference: [[large open spaces / separate rooms]]
+Outdoor living: [[yes / no, and whether indoor and outdoor should flow together]]
+Outdoor spaces: [[garden, informal spaces, swimming pool, and any others]]
+
+# 6. Space requirements
+For each space, record area, floor and a short description.
+Kitchen, store, utility, dining, pooja, general bath, powder room, living, lobby, bedrooms, gym, study, family living, home theatre, meditation, parking, maid room, and any space not listed.
+[[space schedule]]
+
+# 7. Material preferences
+Construction: [[notes]]
+Flooring: [[notes]]
+Wall finish: [[notes]]
+Cabinetry: [[notes]]
+Seating: [[notes]]
+Beds: [[notes]]
+
+# 8. Room notes
+One note per room: name, ambience, lighting, type of space, public connectivity, outdoor connectivity, ceiling, flooring, furniture, and any further instruction.
+Kitchen also records type (parallel, U, L, island or single counter), open or closed, and the appliances required.
+[[room notes]]
+
+# 9. Billing identity
+Billing address: [[billing address]]
+GSTIN: [[GSTIN]]    PAN: [[PAN]]
+Preferred contact: [[email / WhatsApp / phone / client portal]]
+Authorised representative: [[name, designation, phone]]",
     },
     Builtin {
         key: "project-brief", name: "Project brief confirmation", family: "administration", kind: "letter", layout: "letter",
-        description: "Confirms the client's brief in writing before design starts.",
+        description: "The project design brief compiled from the questionnaire, for the client to confirm before concept design.",
         body: "Dear Sir / Madam,
 
 Sub: Confirmation of project brief, {{project.name}}
 {{document.reference}}
+Site: {{project.site}}
 
-We record below our understanding of your brief for {{project.name}} at {{project.site}}.
+We record below our understanding of your brief for {{project.name}}. Please confirm it, or tell us what to change, before concept design begins.
 
-# Brief
-[[requirements, accommodation, budget range and constraints]]
+# 1. Project summary
+Use and typology: [[use]]
+Built-up area: [[area, or TBD with a decision date]]
+Phasing: [[phases]]
+Budget excluding legal fees: [[amount]]
+Start target: [[date]]
 
-# Programme
-[[key dates and decisions]]
+# 2. Client and occupants
+{{client.name}}
+{{client.address}}
+Household: [[name, relation, age, occupation]]
+Staff: [[requirements]]
 
-Please confirm that this reflects your brief, or tell us what to change.
+# 3. Site context
+Plot dimensions: [[dimensions]]
+Terrain and vegetation: [[notes]]
+Constraints: [[survey, soil, access, services]]
+Orientation and views: [[notes]]
+
+# 4. Design drivers
+Style: [[character]]
+Places loved: [[references]]
+Activities: [[functions]]
+Indoor and outdoor: [[preference]]
+Vastu: [[yes, no, or consultant engaged]]
+Doors and basement: [[notes]]
+
+# 5. Accommodation schedule
+[[room, area, floor, description]]
+
+# 6. Room character
+[[one paragraph each for entrance, living, kitchen, dining and every bedroom]]
+Kitchen type and open or closed: [[decision]]
+
+# 7. Materials
+Construction, flooring, walls, cabinetry, seating and beds: [[palette, or to develop in concept]]
+
+# 8. Assumptions and exclusions
+[[survey pending, authority constraints, items deferred to concept]]
+
+# 9. Approval
+Approved by: [[client name]]
+Date: [[date]]
 
 Yours sincerely,",
     },
+    Builtin {
+        key: "brief-guidelines", name: "Onboarding and brief guidelines", family: "administration", kind: "letter", layout: "record",
+        description: "How the office takes a client from enquiry to a confirmed project design brief.",
+        body: "CLIENT ONBOARDING AND PROJECT BRIEF
+Project: {{project.name}} ({{project.code}})
+Client: {{client.name}}
+Site: {{project.site}}
+
+Onboarding ends when the client brief is confirmed and the project can move to concept design. It is not statutory approval, tendering, or construction administration.
+
+# When to use
+Enquiry: create the client and log the first communication.
+Fee discussion: draft the fee proposal.
+Appointment: site visit, letter of appointment, and the advance if one applies.
+Brief: send the pre-design questionnaire and compile the design brief.
+Design start: only after the client has approved the brief.
+
+Send the questionnaire after the client accepts the proposal in principle, and before concept design starts.
+
+# Steps
+1. Create the client: name, correspondence address, mobile, email, billing address, GSTIN, PAN, and how they prefer to be contacted. Add an authorised representative when someone else may instruct the office.
+2. Open the project: type, site, and the built-up area if the client has stated it. Record the site visit and the scope summary.
+3. Issue the pre-design questionnaire. A printed copy suits a first residential briefing. An edited copy can come back by email for the office to transcribe. A meeting can walk through the sections, with room notes in a second sitting.
+4. Visit the site and check the questionnaire against the plot: terrain, vegetation, orientation, dimensions, soil, access, and services. Record any difference before the brief is compiled.
+5. Hold the briefing with the principal or the senior lead. Confirm the budget excluding legal fees, the phasing, and the tentative start. Agree which rooms need a room note.
+6. Compile the project design brief from the questionnaire and obtain the client's approval before concept design.
+
+# Ready for concept design
+Budget and built-up area are stated, or marked to be decided on a named date.
+Every bedroom and wet area is in the space list, or marked not required.
+Kitchen type, and open or closed, is decided.
+Vastu is yes, no, or a consultant is named.
+Entrance, living, kitchen and the principal bedroom each have a room note.
+The principal has reviewed the brief and the client has approved it.
+
+# Roles
+The owner or partner appoints the practice, accepts the fee, and signs off the brief.
+The senior architect reviews the questionnaire, holds the briefing, and writes the brief.
+An associate transcribes the answers and the site notes.
+Admin keeps the client record and sends the questionnaire.
+
+# Records
+Questionnaires hold personal and financial information. Keep them with the project team. Do not share one client's budget or preferences with another client or with a contractor.",
+    },
 ];
 
-/// Adds any built-in that is missing, matched by key. An existing row is never changed, so a firm's own templates,
-/// its copies and every issued document are untouched. Returns how many were added.
+/// Adds any built-in that is missing, and publishes the current wording over an older built-in original.
+/// A firm's own copy is left alone. Returns how many were added.
 pub fn seed(conn: &Connection) -> Result<usize, String> {
     let mut added = 0;
     for b in LIBRARY {
         let exists: i64 = conn.query_row("SELECT COUNT(*) FROM templates WHERE template_key = ?1", params![b.key], |r| r.get(0)).map_err(|e| e.to_string())?;
         if exists > 0 {
+            refresh_wording(conn, b)?;
             continue;
         }
         // If the firm already has its own template with this name, keep theirs and label the built-in.
@@ -520,6 +660,33 @@ pub fn seed(conn: &Connection) -> Result<usize, String> {
         added += 1;
     }
     Ok(added)
+}
+
+fn refresh_wording(conn: &Connection, b: &Builtin) -> Result<(), String> {
+    let found = conn.query_row(
+        "SELECT t.id, v.version, v.body FROM templates t
+         JOIN template_versions v ON v.template_id = t.id AND v.version = (SELECT MAX(version) FROM template_versions WHERE template_id = t.id)
+         WHERE t.template_key = ?1 AND t.built_in = 1",
+        params![b.key],
+        |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?, r.get::<_, String>(2)?)),
+    );
+    let Ok((id, version, body)) = found else { return Ok(()) };
+    conn.execute("UPDATE templates SET description = ?1 WHERE id = ?2 AND description != ?1", params![b.description, id]).map_err(|e| e.to_string())?;
+    if body == b.body {
+        return Ok(());
+    }
+    conn.execute(
+        "INSERT INTO template_versions (template_id, version, body, change_summary) VALUES (?1, ?2, ?3, 'Updated built-in wording')",
+        params![id, version + 1, b.body],
+    )
+    .map_err(|e| e.to_string())?;
+    let published = conn.last_insert_rowid();
+    conn.execute(
+        "UPDATE documents SET template_version_id = ?1 WHERE status = 'draft' AND template_version_id IN (SELECT id FROM template_versions WHERE template_id = ?2 AND id != ?1)",
+        params![published, id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[cfg(test)]

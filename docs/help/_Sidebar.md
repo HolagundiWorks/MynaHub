@@ -8,6 +8,8 @@
 
 [Letters and templates](Letters-and-templates)
 
+[Project records](Project-records)
+
 [Invoices and accounts](Invoices-and-accounts)
 
 [Bank statements](Bank-statements)

@@ -4,7 +4,7 @@ import {
   ActionableNotification, Button, ContainedList, ContainedListItem, Form, InlineNotification, Modal, PasswordInput, Stack, TextInput, Tile,
 } from "@carbon/react";
 import { api, errorText, type FileCheck, type RecentCompany } from "../../api";
-import { PRODUCT, PRODUCT_FULL, ProductCredit } from "../../brand";
+import { PRODUCT, ProductCredit } from "../../brand";
 import { Add, Folder, FolderOpen } from "@carbon/icons-react";
 
 // New files use .adms; files saved by earlier builds (.aorms) are the same format and still open.
@@ -158,7 +158,7 @@ export default function StartScreen({ onOpened }: { onOpened: () => void }) {
         <Stack gap={5}>
           <div>
             <h1>{PRODUCT}</h1>
-            <p className="ao-muted">{PRODUCT_FULL}. Create a company file or open an existing one.</p>
+            <p className="ao-muted">Create a company file or open an existing one.</p>
             <ProductCredit />
           </div>
           <div className="ao-actions">

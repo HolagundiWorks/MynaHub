@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Printing;
 using Windows.Graphics;
 using Windows.Graphics.Printing;
@@ -44,12 +45,17 @@ public sealed partial class MainWindow : Window
     private PrintDocument? _printDocument;
     private IPrintDocumentSource? _printSource;
     private IReadOnlyList<UIElement> _printPages = [];
-    private string _printJob = "AOS";
+    private string _printJob = "Architecture Office Suit";
 
     public MainWindow()
     {
         InitializeComponent();
-        Title = "AOS";
+        WelcomeLogo.Source = BrandArt.Wordmark();
+        LoginLogo.Source = BrandArt.Mark();
+        SetupLogo.Source = BrandArt.Mark();
+        RecoverLogo.Source = BrandArt.Mark();
+        UnlockLogo.Source = BrandArt.Mark();
+        Title = BrandArt.Name;
         var icon = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
         if (File.Exists(icon))
             AppWindow.SetIcon(icon);
@@ -105,6 +111,31 @@ public sealed partial class MainWindow : Window
     internal void ShowProblem(string message) => ShowError(message);
 
     private PdfViewer? _pdf;
+    private Grid? _show;
+    private AppWindowPresenterKind _showWas;
+
+    internal void BeginShow(UIElement stage)
+    {
+        EndShow();
+        _showWas = AppWindow.Presenter.Kind;
+        AppWindow.SetPresenter(AppWindowPresenterKind.FullScreen);
+        _show = new Grid { Background = new SolidColorBrush(Microsoft.UI.Colors.Black) };
+        _show.Children.Add(stage);
+        Grid.SetRowSpan(_show, 4);
+        Root.Children.Add(_show);
+        if (stage is Control control)
+            control.Focus(FocusState.Programmatic);
+    }
+
+    internal void EndShow()
+    {
+        if (_show == null)
+            return;
+        Root.Children.Remove(_show);
+        _show = null;
+        var restore = _showWas == AppWindowPresenterKind.FullScreen ? AppWindowPresenterKind.Overlapped : _showWas;
+        AppWindow.SetPresenter(restore);
+    }
 
     internal async Task ShowPdf(byte[] pdf, string name)
     {
@@ -192,7 +223,7 @@ public sealed partial class MainWindow : Window
         {
             args.Cancel = true;
             _closeAfterBusy = true;
-            ShowError("AOS will close after the current operation finishes. Nothing is written until you confirm a save.");
+            ShowError("Architecture Office Suit will close after the current operation finishes. Nothing is written until you confirm a save.");
             return;
         }
         if (!_allowClose && _signedIn && _workspace != null)
@@ -316,12 +347,60 @@ public sealed partial class MainWindow : Window
             if (await dialog.ShowAsync() != ContentDialogResult.Primary)
                 return;
         }
-        await RunEngineAsync("Opening company…", () =>
+        var secret = "";
+        var unlock = "password";
+        var protectedFile = check.ValueKind == JsonValueKind.Object
+            && check.TryGetProperty("protected", out var protectedFlag)
+            && protectedFlag.ValueKind == JsonValueKind.True;
+        if (protectedFile)
         {
-            _session.OpenCompany(path);
+            var box = new PasswordBox { Header = "Password or recovery code" };
+            var recovery = new CheckBox { Content = "This is the recovery code", MinHeight = 32 };
+            var stack = new StackPanel
+            {
+                Spacing = 12,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = "This company file is protected. Your password opens it. The recovery code opens it when the password is forgotten, and you then set a new password.",
+                        TextWrapping = TextWrapping.Wrap,
+                    },
+                    box,
+                    recovery,
+                },
+            };
+            var dialog = new ContentDialog
+            {
+                Title = "Open protected company",
+                Content = stack,
+                PrimaryButtonText = "Open",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = Content.XamlRoot,
+                RequestedTheme = Root.ActualTheme,
+            };
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+                return;
+            secret = box.Password;
+            unlock = recovery.IsChecked == true ? "recovery" : "password";
+            if (secret.Length == 0)
+            {
+                ShowError(unlock == "recovery" ? "Enter the recovery code." : "Enter the password that opens this company file.");
+                return;
+            }
+        }
+        var opened = await RunEngineAsync("Opening company…", () =>
+        {
+            _session.Call("company_open", new { path, secret, unlock });
             var status = _session.Call("auth_status");
             DispatcherQueue.TryEnqueue(() => ApplyStatus(status));
         });
+        if (opened && unlock == "recovery" && _companyOpen)
+        {
+            ShowRecover(this, new RoutedEventArgs());
+            StatusText.Text = "Set a new password. It opens this company file, and a new recovery code is shown once.";
+        }
     }
 
     private async void RemoveRecent(object sender, RoutedEventArgs e)
@@ -351,7 +430,7 @@ public sealed partial class MainWindow : Window
             _companyPath = "";
             _companyUuid = "";
             _role = "";
-            Title = "AOS";
+            Title = "Architecture Office Suit";
             ClearSecrets();
             ClearWorkspace();
             ShowWelcome();
@@ -524,14 +603,15 @@ public sealed partial class MainWindow : Window
         if (_busy || _session == null || !_companyOpen)
             return;
         var password = PasswordBox.Password;
-        if (password.Length == 0)
+        var username = UsernameBox.Text.Trim();
+        if (username.Length == 0 || password.Length == 0)
         {
-            ShowError("Enter the admin password.");
+            ShowError("Enter your username and password.");
             return;
         }
         await RunEngineAsync("Signing in…", () =>
         {
-            _session.Login("admin", password);
+            _session.Login(username, password);
             var status = _session.Call("auth_status");
             DispatcherQueue.TryEnqueue(() =>
             {
@@ -570,7 +650,9 @@ public sealed partial class MainWindow : Window
         if (_busy || !_companyOpen)
             return;
         ShowOnly(RecoverPanel);
-        RecoverCode.Focus(FocusState.Programmatic);
+        if (string.IsNullOrWhiteSpace(RecoverUser.Text))
+            RecoverUser.Text = UsernameBox.Text;
+        RecoverUser.Focus(FocusState.Programmatic);
     }
 
     private void BackToSignIn(object sender, RoutedEventArgs e) => ShowLogin(_companyName);
@@ -580,11 +662,12 @@ public sealed partial class MainWindow : Window
         if (_busy || _session == null || !_companyOpen)
             return;
         var code = RecoverCode.Text.Trim();
+        var username = RecoverUser.Text.Trim();
         var password = RecoverPassword.Password;
         var confirm = RecoverConfirm.Password;
-        if (code.Length == 0 || password.Length == 0)
+        if (username.Length == 0 || code.Length == 0 || password.Length == 0)
         {
-            ShowError("Enter the recovery code and a new password.");
+            ShowError("Enter the username, the recovery code, and a new password.");
             return;
         }
         string? fresh = null;
@@ -592,7 +675,7 @@ public sealed partial class MainWindow : Window
         {
             var args = new Dictionary<string, string>
             {
-                ["username"] = "admin",
+                ["username"] = username,
                 ["code"] = code,
                 ["new"] = password,
                 ["confirm"] = confirm,
@@ -686,13 +769,13 @@ public sealed partial class MainWindow : Window
         }
         var dialog = new ContentDialog
         {
-            Title = "About AOS",
+            Title = "About Architecture Office Suit",
             Content = new StackPanel
             {
                 Spacing = 8,
                 Children =
                 {
-                    new TextBlock { Text = "Architecture Office Suite", TextWrapping = TextWrapping.WrapWholeWords },
+                    new Image { Source = BrandArt.Wordmark(), MaxWidth = 360, HorizontalAlignment = HorizontalAlignment.Left, Stretch = Stretch.Uniform },
                     new TextBlock { Text = "Developed by Human Centric Works" },
                     new TextBlock { Text = $"Version 0.1.0 · Engine ABI {version}", Opacity = 0.7 },
                     new TextBlock { Text = "Ctrl+N new record, Ctrl+S save draft, Ctrl+P print, Ctrl+F search, Ctrl+K go to a page.", TextWrapping = TextWrapping.WrapWholeWords },
@@ -941,7 +1024,7 @@ public sealed partial class MainWindow : Window
         _companyName = Text(company, "name");
         _companyPath = Text(company, "path");
         _companyUuid = Text(company, "uuid");
-        Title = string.IsNullOrWhiteSpace(_companyName) ? "AOS" : $"{_companyName} — AOS";
+        Title = string.IsNullOrWhiteSpace(_companyName) ? "Architecture Office Suit" : $"{_companyName} — Architecture Office Suit";
         var setup = status.TryGetProperty("setup_required", out var setupFlag) && setupFlag.ValueKind == JsonValueKind.True;
         if (setup)
         {
@@ -1002,7 +1085,7 @@ public sealed partial class MainWindow : Window
         LoginHeading.Text = string.IsNullOrWhiteSpace(name) ? "Sign in" : name;
         ShowOnly(LoginPanel);
         Notice.IsOpen = false;
-        PasswordBox.Focus(FocusState.Programmatic);
+        UsernameBox.Focus(FocusState.Programmatic);
     }
 
     private void ShowSetup()
@@ -1135,7 +1218,7 @@ public sealed partial class MainWindow : Window
         var invalid = Path.GetInvalidFileNameChars();
         var cleaned = new string(company.Select(ch => invalid.Contains(ch) ? '-' : ch).ToArray()).Trim();
         if (cleaned.Length == 0)
-            cleaned = "AOS";
+            cleaned = "Architecture Office Suit";
         return cleaned + " preview";
     }
 

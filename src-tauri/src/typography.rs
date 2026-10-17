@@ -34,6 +34,11 @@ fn style(name: &str) -> String {
     format!("font-family: '{family}', 'IBM Plex Sans Devanagari', DejaVu; font-size: {size}pt; font-weight: 400;")
 }
 
+/// The font and size for one named token, for a document that adds its own rules around the shared sheet.
+pub fn token_style(name: &str) -> String {
+    style(name)
+}
+
 /// The shared stylesheet for every generated document.
 pub fn css() -> String {
     format!(

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 
 namespace Adms.Desktop;
 
@@ -750,6 +751,7 @@ internal static class Ledgers
         {
             ("name", "Name"), ("address", "Address"), ("email", "Email"), ("phone", "Phone"), ("pan", "PAN"), ("gstin", "GSTIN"),
             ("coa_registration", "COA registration"), ("bank_details", "Bank details"), ("upi_id", "UPI id"), ("architect_name", "Architect"),
+            ("accent_hex", "Document accent"),
         })
         {
             var box = Flow.Input(label);
@@ -766,10 +768,47 @@ internal static class Ledgers
         page.Children.Add(fields["address"]);
         page.Children.Add(Flow.Pair(fields["pan"], fields["gstin"]));
         page.Children.Add(Flow.Pair(fields["coa_registration"], fields["upi_id"]));
+        page.Children.Add(fields["accent_hex"]);
+        fields["accent_hex"].PlaceholderText = "#3E5240";
+        page.Children.Add(Flow.Secondary("One colour for rules and labels on new documents, as six hex digits. Leave it blank for black ink. Issued documents stay as they were."));
         page.Children.Add(fields["bank_details"]);
         var scheme = Book.Choices("GST scheme", ("Not registered", "none"), ("Composition", "composition"), ("Regular", "regular"));
         var letterhead = Book.Choices("Letterhead", ("Classic", "classic"), ("Minimal", "minimal"));
         page.Children.Add(Flow.Pair(scheme, letterhead));
+        page.Children.Add(Flow.Secondary("The square logo is the mark in the side panel and on documents. The rectangle logo is the wide letterhead on letters, invoices, and receipts."));
+        var squareImage = new Image { Width = 72, Height = 72, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left };
+        var wideImage = new Image { Width = 200, Height = 56, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left };
+        var squareClear = new Button { Content = "Remove", MinWidth = 88, Visibility = Visibility.Collapsed };
+        var wideClear = new Button { Content = "Remove", MinWidth = 88, Visibility = Visibility.Collapsed };
+        page.Children.Add(LogoSlot(shell, "square", "Square logo", squareImage, squareClear));
+        page.Children.Add(LogoSlot(shell, "wide", "Rectangle logo", wideImage, wideClear));
+        void LoadLogos()
+        {
+            _ = shell.Run("Loading logos…", () =>
+            {
+                var stored = shell.Call("company_logo");
+                shell.Window.DispatcherQueue.TryEnqueue(() =>
+                {
+                    _ = ShowLogo(squareImage, squareClear, MarkPresent(stored, "square"), MarkBytes(stored, "square"), shell.CanManage);
+                    _ = ShowLogo(wideImage, wideClear, MarkPresent(stored, "wide"), MarkBytes(stored, "wide"), shell.CanManage);
+                });
+            });
+        }
+        squareClear.Click += (_, _) => ClearLogo("square");
+        wideClear.Click += (_, _) => ClearLogo("wide");
+        void ClearLogo(string shape)
+        {
+            if (!shell.CanManage)
+                return;
+            _ = shell.Run("Removing logo…", () => shell.Call("company_logo_clear", new { shape })).ContinueWith(task =>
+                shell.Window.DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (!task.Result)
+                        return;
+                    LoadLogos();
+                    shell.RefreshPaneLogo?.Invoke();
+                }));
+        }
         var save = new Button { Content = "Save profile", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
         save.Visibility = shell.CanManage ? Visibility.Visible : Visibility.Collapsed;
         void SaveProfile()
@@ -799,7 +838,80 @@ internal static class Ledgers
                 form.Arm();
             });
         });
+        LoadLogos();
         return form;
+    }
+
+    private static UIElement LogoSlot(AppShell shell, string shape, string title, Image preview, Button clear)
+    {
+        var choose = new Button { Content = "Choose", MinWidth = 88 };
+        choose.Visibility = shell.CanManage ? Visibility.Visible : Visibility.Collapsed;
+        choose.Click += async (_, _) =>
+        {
+            if (!shell.CanManage)
+                return;
+            string? path;
+            try { path = await FileDialogs.PickFile(shell.Window.Handle, ".png", ".jpg", ".jpeg"); }
+            catch (Exception ex) { shell.Problem(ex.Message); return; }
+            if (path == null)
+                return;
+            byte[] bytes;
+            try { bytes = File.ReadAllBytes(path); }
+            catch (Exception ex) { shell.Problem(ex.Message); return; }
+            if (bytes.Length > 1_500_000)
+            {
+                shell.Problem("The logo must be smaller than 1.5 MB.");
+                return;
+            }
+            var data = Convert.ToBase64String(bytes);
+            _ = shell.Run("Saving logo…", () => shell.Call("company_logo_set", new { shape, data_base64 = data })).ContinueWith(task =>
+                shell.Window.DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (!task.Result)
+                        return;
+                    shell.RefreshPaneLogo?.Invoke();
+                    _ = ShowStored(preview, clear, data, shell.CanManage);
+                }));
+        };
+        var label = new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center, MinWidth = 120 };
+        return new StackPanel
+        {
+            Spacing = 8,
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children = { label, preview, choose, clear },
+        };
+    }
+
+    private static bool MarkPresent(JsonElement stored, string shape) =>
+        stored.ValueKind == JsonValueKind.Object && stored.TryGetProperty(shape, out var mark) && Kit.Str(mark, "present") is "true" or "True";
+
+    private static string MarkBytes(JsonElement stored, string shape) =>
+        stored.ValueKind == JsonValueKind.Object && stored.TryGetProperty(shape, out var mark) ? Kit.Str(mark, "data_base64") : "";
+
+    private static async Task ShowStored(Image logo, Button clear, string data, bool canClear)
+    {
+        try
+        {
+            logo.Source = await BrandArt.Decode(data);
+            clear.Visibility = canClear ? Visibility.Visible : Visibility.Collapsed;
+        }
+        catch
+        {
+            logo.Source = null;
+            clear.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private static async Task ShowLogo(Image logo, Button clear, bool present, string data, bool canClear)
+    {
+        if (!present || data.Length == 0)
+        {
+            logo.Source = null;
+            clear.Visibility = Visibility.Collapsed;
+            return;
+        }
+        await ShowStored(logo, clear, data, canClear);
     }
 
     public static UIElement Settings(AppShell shell)
@@ -823,18 +935,150 @@ internal static class Ledgers
         page.Children.Add(output);
         if (shell.CanManage)
         {
-            var admin = new PasswordBox { Header = "Admin password" };
+            var yours = new PasswordBox { Header = "Your password" };
+            page.Children.Add(Flow.Section("People"));
+            page.Children.Add(Flow.Secondary("An accounts person signs in with their own username. Your password confirms the new account."));
+            var person = Flow.Input("Username");
+            var personPassword = new PasswordBox { Header = "Password (12 or more characters)" };
+            var confirm = new PasswordBox { Header = "Confirm password" };
+            var role = new ComboBox { Header = "Role", HorizontalAlignment = HorizontalAlignment.Stretch };
+            foreach (var (label, key) in new[] { ("Accounts", "accounts"), ("Principal", "principal"), ("Document editor", "document_editor"), ("Auditor", "auditor") })
+                role.Items.Add(new ComboBoxItem { Content = label, Tag = key });
+            role.SelectedIndex = 0;
+            page.Children.Add(Flow.Pair(person, role));
+            page.Children.Add(Flow.Pair(personPassword, confirm));
+            var create = new Button { Content = "Create account", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+            create.Click += (_, _) =>
+            {
+                if (personPassword.Password != confirm.Password)
+                {
+                    shell.Problem("The new passwords do not match.");
+                    return;
+                }
+                var chosen = (role.SelectedItem as ComboBoxItem)?.Tag as string ?? "accounts";
+                var user = new { username = person.Text.Trim(), password = personPassword.Password, role = chosen, admin_password = yours.Password };
+                _ = shell.Run("Creating account…", () => shell.Call("user_create", user)).ContinueWith(task =>
+                    shell.Window.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        if (!task.IsCompletedSuccessfully || !task.Result)
+                            return;
+                        person.Text = "";
+                        personPassword.Password = "";
+                        confirm.Password = "";
+                        shell.Run("Loading people…", () => Pages.Show(shell, output, "People", shell.Call("user_list"), ["Username", "Role", "Disabled"], ["username", "role", "disabled"], [false, false, false]));
+                    }));
+            };
+            var people = new Button { Content = "Show people", MinHeight = 32 };
+            people.Click += (_, _) => shell.Run("Loading people…", () => Pages.Show(shell, output, "People", shell.Call("user_list"), ["Username", "Role", "Disabled"], ["username", "role", "disabled"], [false, false, false]));
+            page.Children.Add(Flow.Bar(create, people));
+            page.Children.Add(Flow.Section("Company file"));
+            var protection = new TextBlock { TextWrapping = TextWrapping.Wrap };
+            page.Children.Add(protection);
+            var protect = new Button { Content = "Protect this company file", MinHeight = 32 };
+            var rotate = new Button { Content = "New recovery code", MinHeight = 32 };
+            protect.Click += async (_, _) =>
+            {
+                if (yours.Password.Length == 0)
+                {
+                    shell.Problem("Enter your password.");
+                    return;
+                }
+                var ask = new ContentDialog
+                {
+                    Title = "Protect this company file?",
+                    Content = new TextBlock
+                    {
+                        Text = "The file on disk is encrypted. Your password opens it. A new recovery code is shown once and replaces the current one. That code also opens the file. Write it down before you close this window.",
+                        TextWrapping = TextWrapping.Wrap,
+                    },
+                    PrimaryButtonText = "Protect",
+                    CloseButtonText = "Cancel",
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = shell.Window.Content.XamlRoot,
+                };
+                if (await ask.ShowAsync() != ContentDialogResult.Primary)
+                    return;
+                var adminPassword = yours.Password;
+                string? code = null;
+                var saved = await shell.Run("Protecting the company file…", () =>
+                {
+                    code = shell.Call("company_protect", new { password = adminPassword }).GetString();
+                });
+                if (!saved || string.IsNullOrWhiteSpace(code))
+                    return;
+                yours.Password = "";
+                protect.Visibility = Visibility.Collapsed;
+                rotate.Visibility = Visibility.Visible;
+                protection.Text = "This company file is protected. Your password and the recovery code open it. A backup of a protected file is protected with the same secret.";
+                var shown = new ContentDialog
+                {
+                    Title = "Save your recovery code",
+                    Content = new TextBlock
+                    {
+                        Text = code + "\n\nThis code is shown once. It opens the company file and resets the owner password.",
+                        TextWrapping = TextWrapping.Wrap,
+                        IsTextSelectionEnabled = true,
+                    },
+                    CloseButtonText = "I have saved it",
+                    XamlRoot = shell.Window.Content.XamlRoot,
+                };
+                await shown.ShowAsync();
+            };
+            rotate.Click += async (_, _) =>
+            {
+                if (yours.Password.Length == 0)
+                {
+                    shell.Problem("Enter your password.");
+                    return;
+                }
+                var adminPassword = yours.Password;
+                string? code = null;
+                var saved = await shell.Run("Writing a new recovery code…", () =>
+                {
+                    code = shell.Call("company_rotate_recovery", new { password = adminPassword }).GetString();
+                });
+                if (!saved || string.IsNullOrWhiteSpace(code))
+                    return;
+                yours.Password = "";
+                var shown = new ContentDialog
+                {
+                    Title = "Save your recovery code",
+                    Content = new TextBlock
+                    {
+                        Text = code + "\n\nThis code is shown once. The previous recovery code no longer opens the file.",
+                        TextWrapping = TextWrapping.Wrap,
+                        IsTextSelectionEnabled = true,
+                    },
+                    CloseButtonText = "I have saved it",
+                    XamlRoot = shell.Window.Content.XamlRoot,
+                };
+                await shown.ShowAsync();
+            };
+            page.Children.Add(Flow.Bar(protect, rotate));
+            shell.Run("Loading file protection…", () =>
+            {
+                var status = shell.Call("company_protection");
+                var on = Kit.Str(status, "protected") is "true" or "True";
+                shell.Window.DispatcherQueue.TryEnqueue(() =>
+                {
+                    protection.Text = on
+                        ? "This company file is protected. Your password and the recovery code open it. A backup of a protected file is protected with the same secret."
+                        : "This company file can be protected. Until then it is a normal company file, and any existing file still opens the way it does today.";
+                    protect.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
+                    rotate.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+                });
+            });
             page.Children.Add(Flow.Section("Backup"));
-            page.Children.Add(Flow.Secondary("A backup of this company file needs the admin password."));
-            page.Children.Add(admin);
+            page.Children.Add(Flow.Secondary("A backup of this company file needs your password."));
+            page.Children.Add(yours);
             var backup = new Button { Content = "Create backup", MinHeight = 32 };
             backup.Click += (_, _) =>
             {
-                var adminPassword = admin.Password;
+                var adminPassword = yours.Password;
                 shell.Run("Creating backup…", () => Pages.Show(shell, output, "Backup", shell.Call("backup_create", new { password = adminPassword }), ["File", "SHA-256", "Bytes", "Folder"], ["filename", "sha256", "bytes", "folder"], [false, false, true, false]));
             };
             page.Children.Add(backup);
-            form.Watch(admin);
+            form.Watch([person, role, yours]);
             form.Arm();
         }
         var audit = new Button { Content = "Show audit", MinHeight = 32 };

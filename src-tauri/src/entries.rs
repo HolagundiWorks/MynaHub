@@ -596,7 +596,7 @@ pub fn manual_journal(conn: &mut Connection, actor: i64, date: &str, narration: 
         if d > 0 && c > 0 {
             return Err(format!("Line {} has both a debit and a credit.", i + 1));
         }
-        out.push(Line { account_id: l.account_id, debit: d, credit: c, memo: l.memo.trim().to_string() });
+        out.push(Line { account_id: l.account_id, debit: d, credit: c, memo: l.memo.trim().to_string(), client_id: None, project_id: None });
     }
     let tx = conn.transaction().map_err(|e| e.to_string())?;
     let j = post(&tx, Some(actor), date, narration.trim(), "manual", None, out)?;

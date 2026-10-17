@@ -40,6 +40,8 @@ internal sealed class AppShell
     public Task<bool> Run(string status, Action work) => Window.RunWork(status, work);
 
     public void Problem(string message) => Window.ShowProblem(message);
+
+    public Action? RefreshPaneLogo { get; set; }
 }
 
 internal sealed class WorkspaceView : UserControl
@@ -59,6 +61,14 @@ internal sealed class WorkspaceView : UserControl
         ExpandedModeThresholdWidth = 0,
     };
     private readonly Grid _host = new();
+    private readonly Image _paneLogo = new()
+    {
+        Source = BrandArt.Mark(),
+        Width = 48,
+        Height = 48,
+        Stretch = Stretch.Uniform,
+        HorizontalAlignment = HorizontalAlignment.Left,
+    };
     private readonly List<(string Id, string Label)> _destinations = [];
 
     public IReadOnlyList<(string Id, string Label)> Destinations => _destinations;
@@ -85,10 +95,11 @@ internal sealed class WorkspaceView : UserControl
             Margin = new Thickness(4, 8, 12, 8),
             Children =
             {
-                new TextBlock { Text = "AOS", FontSize = 17, FontWeight = FontWeights.SemiBold, Foreground = Flow.Ink("TextPrimaryBrush") },
-                new TextBlock { Text = "Architecture Office Suite", FontSize = 11, TextWrapping = TextWrapping.Wrap, Foreground = Flow.Ink("TextSecondaryBrush") },
+                _paneLogo,
             },
         };
+        _shell.RefreshPaneLogo = LoadPaneLogo;
+        LoadPaneLogo();
         _host.Background = Flow.Ink("SurfaceBackgroundBrush");
         var sheet = new Border
         {
@@ -106,6 +117,50 @@ internal sealed class WorkspaceView : UserControl
         _shell.Navigate = Show;
         BuildMenu();
         Show("dashboard");
+    }
+
+    private void LoadPaneLogo()
+    {
+        _ = _shell.Run("Loading the firm mark…", () =>
+        {
+            var stored = _shell.Call("company_logo");
+            var square = MarkData(stored, "square");
+            var wide = MarkData(stored, "wide");
+            var useWide = square.Length == 0 && wide.Length > 0;
+            var data = useWide ? wide : square;
+            _shell.Window.DispatcherQueue.TryEnqueue(() => _ = ApplyPaneLogo(data, useWide));
+        });
+    }
+
+    private async Task ApplyPaneLogo(string data, bool wide)
+    {
+        if (data.Length == 0)
+        {
+            _paneLogo.Source = BrandArt.Mark();
+            _paneLogo.Width = 48;
+            _paneLogo.Height = 48;
+            return;
+        }
+        try
+        {
+            var source = await BrandArt.Decode(data);
+            _paneLogo.Source = source ?? BrandArt.Mark();
+            _paneLogo.Width = source != null && wide ? 180 : 48;
+            _paneLogo.Height = 48;
+        }
+        catch
+        {
+            _paneLogo.Source = BrandArt.Mark();
+            _paneLogo.Width = 48;
+            _paneLogo.Height = 48;
+        }
+    }
+
+    private static string MarkData(JsonElement stored, string shape)
+    {
+        if (stored.ValueKind != JsonValueKind.Object || !stored.TryGetProperty(shape, out var mark))
+            return "";
+        return Kit.Str(mark, "present") is "true" or "True" ? Kit.Str(mark, "data_base64") : "";
     }
 
     private string _shown = "";
@@ -133,10 +188,13 @@ internal sealed class WorkspaceView : UserControl
         AddGroup("01", "Practice",
             ("dashboard", "01", "Pulse", "\uE9D2"),
             ("clients", "02", "Clients", "\uE716"),
-            ("projects", "03", "Projects", "\uE8F1"));
+            ("projects", "03", "Projects", "\uE8F1"),
+            ("time", "04", "Time", "\uE823"));
         AddGroup("02", "Documents",
             ("documents", "01", "Letters", "\uE8A5"),
-            ("templates", "02", "Templates", "\uE943"));
+            ("transmittals", "02", "Transmittals", "\uE724"),
+            ("templates", "03", "Templates", "\uE943"),
+            ("boards", "04", "Reports, Presentations", "\uE786"));
         if (_shell.Role != "DocumentEditor")
         {
             AddGroup("03", "Accounts",
@@ -194,8 +252,10 @@ internal sealed class WorkspaceView : UserControl
     {
         "dashboard" => new DashboardPage(_shell),
         "documents" => new LettersPage(_shell),
+        "transmittals" => TransmittalLog.Page(_shell),
         "clients" => new ClientsPage(_shell),
         "projects" => new ProjectsPage(_shell),
+        "time" => TimeSheet.Page(_shell),
         "invoices" => new InvoicesPage(_shell),
         "bank" => new BankWorkspace(_shell),
         "acc-reports" => Pages.Reports(_shell),
@@ -206,6 +266,7 @@ internal sealed class WorkspaceView : UserControl
         "acc-assets" => Ledgers.Assets(_shell),
         "acc-tax" => Ledgers.Tax(_shell),
         "acc-setup" => Ledgers.Accounts(_shell),
+        "boards" => new BoardsPage(_shell),
         "templates" => new TemplateListPage(_shell),
         "template-editor" => new StudioEditor(_shell),
         "company" => Ledgers.Company(_shell),
@@ -614,7 +675,7 @@ internal static class Pages
         {
             ("name", "Name"), ("address", "Address"), ("email", "Email"), ("phone", "Phone"), ("pan", "PAN"), ("gstin", "GSTIN"),
             ("coa_registration", "COA registration"), ("bank_details", "Bank details"), ("gst_scheme", "GST scheme"),
-            ("upi_id", "UPI id"), ("architect_name", "Architect"), ("letterhead_style", "Letterhead"),
+            ("upi_id", "UPI id"), ("architect_name", "Architect"), ("letterhead_style", "Letterhead"), ("accent_hex", "Document accent"),
         })
             fields[key] = Kit.Field(page.Form, label);
         page.Reload = () => shell.Run("Loading profile…", () =>

@@ -2,6 +2,7 @@ mod accounting;
 mod admin;
 mod auth;
 mod bank;
+mod boards;
 mod billing;
 mod bridge;
 mod builtin_html;
@@ -14,16 +15,23 @@ mod docx;
 mod documents;
 mod entries;
 mod ffi;
+mod grammar;
 mod ledger;
 mod pdf;
+mod practice;
 #[cfg(test)]
 mod qa_tests;
 mod receipts;
 mod registers;
 mod store;
+mod sheets;
+mod stages;
 mod studio;
 mod template_engine;
+mod timebook;
+mod transmittals;
 mod typography;
+mod vault;
 
 use commands::AppState;
 use tauri::Manager;
@@ -62,6 +70,12 @@ pub fn run() {
             clients::project_list,
             clients::project_save,
             clients::project_set_archived,
+            clients::project_brief_get,
+            clients::project_brief_save,
+            stages::project_stages,
+            stages::project_stages_apply,
+            stages::project_stage_mark,
+            stages::project_stage_unmark,
             billing::invoice_calculate,
             billing::invoice_list,
             billing::invoice_get,
@@ -122,6 +136,10 @@ pub fn run() {
             accounting::report_ar_check,
             accounting::report_tax_estimate,
             accounting::report_tax_slabs,
+            practice::client_statement_report,
+            practice::party_ledger_report,
+            practice::project_fee_position,
+            practice::project_report,
             registers::bank_txn_page,
             registers::journal_page,
             registers::invoice_page,
@@ -151,6 +169,9 @@ pub fn run() {
             receipts::receipt_list,
             receipts::receipt_suggest_tds,
             receipts::receipt_record,
+            receipts::invoice_writeoff,
+            receipts::invoice_writeoff_reverse,
+            receipts::invoice_writeoff_list,
             receipts::receipt_reverse,
             receipts::receipt_pdf,
             bank::bank_csv_preview,

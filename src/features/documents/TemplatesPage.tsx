@@ -137,7 +137,7 @@ export default function TemplatesPage({ role }: { role: string }) {
         <DraftGuard value={{ creating, body }} />
         <Stack gap={4}>
           <h3>New template</h3>
-          <Select size="sm" id="nt-format" labelText="Format" value={creating.format} helperText="Word templates are written on the page in the AOS window and saved as a .docx file." onChange={(e) => setCreating({ ...creating, format: e.target.value as "wording" | "html" })}>
+          <Select size="sm" id="nt-format" labelText="Format" value={creating.format} helperText="Word templates are written on the page in the Architecture Office Suit window and saved as a .docx file." onChange={(e) => setCreating({ ...creating, format: e.target.value as "wording" | "html" })}>
             <SelectItem value="wording" text="Wording with the design canvas" /><SelectItem value="html" text="HTML and CSS (Template Studio)" />
           </Select>
           <Select size="sm" id="nt-kind" labelText="Type" value={creating.kind} onChange={(e) => setCreating({ ...creating, kind: e.target.value })}>

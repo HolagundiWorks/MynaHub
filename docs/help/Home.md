@@ -7,9 +7,10 @@ AOS — Architecture Office Suite is the office app for one architectural practi
 1. [Getting started](Getting-started) — create or open a company, sign in, and keep the recovery code.
 2. [Clients and projects](Clients-and-projects) — the practice register.
 3. [Letters and templates](Letters-and-templates) — outward letters, agreements, and Word templates.
-4. [Invoices and accounts](Invoices-and-accounts) — billing and the books.
-5. [Bank statements](Bank-statements) — map a CSV or Excel statement and import it.
-6. [Firm and backup](Firm-and-backup) — letterhead, activity, and a copy of the company file.
+4. [Project records](Project-records) — stages, time, transmittals, reports and presentations.
+5. [Invoices and accounts](Invoices-and-accounts) — billing and the books.
+6. [Bank statements](Bank-statements) — map a CSV or Excel statement and import it.
+7. [Firm and backup](Firm-and-backup) — letterhead, activity, and a copy of the company file.
 
 ## Shortcuts
 

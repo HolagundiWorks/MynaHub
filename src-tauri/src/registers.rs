@@ -161,9 +161,9 @@ pub struct InvoiceRegisterRow {
 const EFFECTIVE: &str = "CASE
     WHEN i.status <> 'issued' THEN i.status
     WHEN i.kind = 'proforma' THEN CASE WHEN EXISTS (SELECT 1 FROM invoices t WHERE t.source_proforma_id = i.id AND t.status <> 'cancelled') THEN 'completed' ELSE 'issued' END
-    WHEN i.total_paise - b.received_paise - b.tds_paise - b.credited_paise <= 0 THEN 'paid'
+    WHEN i.total_paise - b.received_paise - b.tds_paise - b.credited_paise - b.written_off_paise <= 0 THEN 'paid'
     WHEN i.due_date <> '' AND i.due_date < ?1 THEN 'overdue'
-    WHEN b.received_paise + b.tds_paise + b.credited_paise > 0 THEN 'partial'
+    WHEN b.received_paise + b.tds_paise + b.credited_paise + b.written_off_paise > 0 THEN 'partial'
     ELSE 'issued' END";
 
 const INVOICE_FROM: &str = "FROM invoices i JOIN invoice_balances b ON b.invoice_id = i.id JOIN projects p ON p.id = i.project_id JOIN clients c ON c.id = p.client_id";
@@ -174,7 +174,7 @@ pub fn page_invoices(conn: &Connection, q: &PageQuery, today: &str) -> Result<Pa
         "WHERE (?2 = '' OR i.kind = ?2) AND (?3 = '' OR ({EFFECTIVE}) = ?3)
            AND (?4 = '' OR instr(lower(COALESCE(i.number,'draft') || ' ' || c.name || ' ' || p.name), ?4) > 0 OR i.total_paise = ?5)"
     );
-    let balance = "(i.total_paise - b.received_paise - b.tds_paise - b.credited_paise)";
+    let balance = "(i.total_paise - b.received_paise - b.tds_paise - b.credited_paise - b.written_off_paise)";
     let key = match q.sort.as_str() {
         "number" => "COALESCE(i.number, '~draft')".to_string(),
         "type" => "i.kind".to_string(),
@@ -192,15 +192,15 @@ pub fn page_invoices(conn: &Connection, q: &PageQuery, today: &str) -> Result<Pa
     let sql = format!(
         "SELECT i.id, i.number, i.kind, i.status, c.name, p.name, i.issue_date, i.total_paise, b.received_paise, b.tds_paise, b.credited_paise,
                 (SELECT COALESCE(t.number, 'Draft') FROM invoices t WHERE t.source_proforma_id = i.id AND t.status <> 'cancelled'),
-                (SELECT s.number FROM invoices s WHERE s.id = i.source_proforma_id), i.due_date, {EFFECTIVE}
+                (SELECT s.number FROM invoices s WHERE s.id = i.source_proforma_id), i.due_date, {EFFECTIVE}, b.written_off_paise
          {INVOICE_FROM} {where_sql} ORDER BY {key} {dir}, i.id DESC LIMIT ?6 OFFSET ?7"
     );
     let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map(params![today, kind, status, needle, amount, q.limit(), q.offset()], |r| {
             let total: i64 = r.get(7)?;
-            let (paid, tds, credited): (i64, i64, i64) = (r.get(8)?, r.get(9)?, r.get(10)?);
-            let bal = total - paid - tds - credited;
+            let (paid, tds, credited, written): (i64, i64, i64, i64) = (r.get(8)?, r.get(9)?, r.get(10)?, r.get(15)?);
+            let bal = total - paid - tds - credited - written;
             Ok(InvoiceRegisterRow {
                 row: InvoiceRow {
                     id: r.get(0)?, number: r.get(1)?, kind: r.get(2)?, status: r.get(3)?, client_name: r.get(4)?, project_name: r.get(5)?, issue_date: r.get(6)?,

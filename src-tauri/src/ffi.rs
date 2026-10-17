@@ -132,7 +132,7 @@ fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, CallErr
             let check = company_file::validate(Path::new(field(args, "path"))).map_err(CallError::Domain)?;
             to_json(&check)
         }
-        "company.open" => to_json(&company_file::open_company(state, field(args, "path")).map_err(CallError::Domain)?),
+        "company.open" => to_json(&company_file::open_company(state, field(args, "path"), field(args, "secret"), field(args, "unlock")).map_err(CallError::Domain)?),
         "company.create" => {
             let (summary, recovery) = company_file::create_company(
                 state,

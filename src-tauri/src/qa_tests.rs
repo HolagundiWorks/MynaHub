@@ -44,12 +44,17 @@ fn count(c: &Connection, table: &str) -> i64 {
 /// Every command that Tauri exposes must check the session. The only exceptions are the sign-in flow itself.
 #[test]
 fn every_tauri_command_checks_the_session_and_permission() {
-    let files: [(&str, &str); 13] = [
+    let files: [(&str, &str); 18] = [
         ("studio.rs", include_str!("studio.rs")),
         ("company_file.rs", include_str!("company_file.rs")),
         ("commands.rs", include_str!("commands.rs")), ("admin.rs", include_str!("admin.rs")), ("bank.rs", include_str!("bank.rs")), ("billing.rs", include_str!("billing.rs")),
         ("receipts.rs", include_str!("receipts.rs")), ("documents.rs", include_str!("documents.rs")), ("accounting.rs", include_str!("accounting.rs")),
         ("registers.rs", include_str!("registers.rs")), ("clients.rs", include_str!("clients.rs")), ("entries.rs", include_str!("entries.rs")), ("ledger.rs", include_str!("ledger.rs")),
+        ("practice.rs", include_str!("practice.rs")),
+        ("timebook.rs", include_str!("timebook.rs")),
+        ("transmittals.rs", include_str!("transmittals.rs")),
+        ("boards.rs", include_str!("boards.rs")),
+        ("stages.rs", include_str!("stages.rs")),
     ];
     let open = ["company_active", "company_validate", "company_recent_list", "company_recent_remove", "company_open", "company_create", "company_close", "company_legacy_info", "company_convert_legacy", "auth_status", "auth_setup", "auth_login", "auth_unlock", "auth_lock", "auth_logout", "auth_recover"];
     let mut checked = 0;
@@ -165,9 +170,11 @@ fn hostile_text_is_stored_and_rendered_safely() {
     let html = crate::billing::invoice_html(&crate::billing::Snapshot {
         number: "INV/1".into(), kind: "tax_invoice".into(), issue_date: "2026-10-01".into(), due_date: "".into(), gst_mode: "none".into(), scheme: "none".into(), notes: nasty.join("\n"),
         company_name: nasty[1].into(), company_address: nasty[7].into(), company_pan: "".into(), company_gstin: "".into(), company_coa: "".into(), bank_details: "".into(),
-        client_name: nasty[6].into(), client_address: nasty[0].into(), client_gstin: "".into(), project_name: nasty[7].into(),
+        company_email: "".into(), company_phone: "".into(), architect_name: "".into(),
+        client_name: nasty[6].into(), client_address: nasty[0].into(), client_gstin: "".into(), client_email: "".into(), client_phone: "".into(),
+        client_pan: "".into(), client_tan: "".into(), client_state: "".into(), project_name: nasty[7].into(),
         totals: billing::calculate(&InvoiceInput { id: None, project_id: 1, kind: "tax_invoice".into(), issue_date: "2026-10-01".into(), due_date: "".into(), gst_mode: "none".into(), gst_rate: "".into(), notes: "".into(), lines: vec![LineInput { description: nasty[6].into(), qty: "1".into(), rate: "10".into() }] }, "none").unwrap(),
-        against: String::new(), upi_uri: String::new(),
+        against: String::new(), upi_uri: String::new(), logo_square_b64: String::new(), logo_wide_b64: String::new(), accent_hex: String::new(),
     });
     assert!(!html.contains("<script>"), "user text must be escaped");
     let r = std::panic::catch_unwind(|| crate::pdf::render_html(&html, &crate::pdf::bundled_fonts())).expect("PDF layout panicked on awkward text");
@@ -332,7 +339,7 @@ fn random_operation_sequences_keep_the_ledger_balanced_and_reconciled() {
         let ar = ledger::ar_check(&c, "2027-03-31").unwrap();
         assert!(ar.agrees, "seed {seed}: receivable {} vs invoices {}", ar.ledger_display, ar.invoices_display);
         // no invoice may ever be over-collected
-        let over: i64 = c.query_row("SELECT COUNT(*) FROM invoice_balances WHERE total_paise - received_paise - tds_paise - credited_paise < 0", [], |r| r.get(0)).unwrap();
+        let over: i64 = c.query_row("SELECT COUNT(*) FROM invoice_balances WHERE total_paise - received_paise - tds_paise - credited_paise - written_off_paise < 0", [], |r| r.get(0)).unwrap();
         assert_eq!(over, 0, "seed {seed}: an invoice has a negative balance");
         let _ = std::fs::remove_dir_all(dir);
     }

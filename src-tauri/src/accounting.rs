@@ -127,6 +127,13 @@ pub fn report_tax_summary(state: HostState<'_>, from: String, to: String) -> Res
 }
 
 #[tauri::command]
+pub fn report_gst_pack(state: HostState<'_>, from: String, to: String) -> Result<ledger::GstPack, String> {
+    require(&state, Permission::Finance)?;
+    let c = conn!(state);
+    ledger::gst_pack(&c, &from, &to)
+}
+
+#[tauri::command]
 pub fn report_ar_check(state: HostState<'_>, as_of: String) -> Result<ledger::ArCheck, String> {
     require(&state, Permission::Finance)?;
     let c = conn!(state);

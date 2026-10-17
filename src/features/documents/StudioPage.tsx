@@ -42,7 +42,7 @@ function FieldsPanel({ fields, canInsert, onInsert }: { fields: FieldDef[]; canI
       <Search id="studio-field-search" size="sm" labelText="Search fields" placeholder="Search fields" value={q} onChange={(e: { target: { value: string } }) => setQ(e.target.value)} />
       <p className="ao-muted">
         Placeholders look like {"{{ company.name }}"}. Add a helper after a bar: {"{{ document.date | date }}"}. Repeat a list with {"{{#each fee_items}} … {{/each}}"} and show
-        something only when it has a value with {"{{#if company.gstin}} … {{/if}}"}. Values are escaped automatically. Totals and amounts come from AOS; templates never calculate.
+        something only when it has a value with {"{{#if company.gstin}} … {{/if}}"}. Values are escaped automatically. Totals and amounts come from Architecture Office Suit; templates never calculate.
       </p>
       {!canInsert && <InlineNotification kind="info" lowContrast hideCloseButton title="This template is read-only." subtitle="Make a copy to insert fields." />}
       {groups.map((g) => (
@@ -220,7 +220,7 @@ export default function StudioPage({ templateId, role, onBack, onOpenOther }: { 
         )}
       </div>
       <p className="ao-muted">
-        Practice template, not an official Council of Architecture form. It is stored as a Word document (.docx). Edit the page in the AOS window. Preview here uses the same PDF as an issued document.
+        Practice template, not an official Council of Architecture form. It is stored as a Word document (.docx). Edit the page in the Architecture Office Suit window. Preview here uses the same PDF as an issued document.
       </p>
       {error && <InlineNotification kind="error" title={error} hideCloseButton lowContrast />}
       {ok && <InlineNotification kind="success" title={ok} hideCloseButton lowContrast />}
@@ -237,7 +237,7 @@ export default function StudioPage({ templateId, role, onBack, onOpenOther }: { 
       <div hidden={mode !== "code"}>
         <Stack gap={3}>
           {css === "docx" ? (
-            <InlineNotification kind="info" lowContrast hideCloseButton title="This template is a Word document." subtitle="Open it in the AOS window to edit the page. HTML and CSS are no longer the template." />
+            <InlineNotification kind="info" lowContrast hideCloseButton title="This template is a Word document." subtitle="Open it in the Architecture Office Suit window to edit the page. HTML and CSS are no longer the template." />
           ) : (
           <ContentSwitcher size="sm" selectedIndex={section === "html" ? 0 : 1} onChange={({ index }: { index?: number }) => setSection(index === 1 ? "css" : "html")}>
             <Switch name="html" text="HTML" />

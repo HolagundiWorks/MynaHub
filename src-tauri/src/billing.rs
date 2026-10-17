@@ -301,7 +301,7 @@ pub fn list(conn: &Connection) -> Result<Vec<InvoiceRow>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT i.id, i.number, i.kind, i.status, c.name, p.name, i.issue_date, i.total_paise,
-                    b.received_paise, b.tds_paise, b.credited_paise,
+                    b.received_paise, b.tds_paise, b.credited_paise, b.written_off_paise,
                     (SELECT COALESCE(t.number, 'Draft') FROM invoices t WHERE t.source_proforma_id = i.id AND t.status <> 'cancelled'),
                     (SELECT s.number FROM invoices s WHERE s.id = i.source_proforma_id), i.due_date
              FROM invoices i JOIN invoice_balances b ON b.invoice_id = i.id JOIN projects p ON p.id = i.project_id JOIN clients c ON c.id = p.client_id
@@ -311,14 +311,14 @@ pub fn list(conn: &Connection) -> Result<Vec<InvoiceRow>, String> {
     let rows = stmt
         .query_map([], |r| {
             let total: i64 = r.get(7)?;
-            let (paid, tds, credited): (i64, i64, i64) = (r.get(8)?, r.get(9)?, r.get(10)?);
-            let balance = total - paid - tds - credited;
+            let (paid, tds, credited, written): (i64, i64, i64, i64) = (r.get(8)?, r.get(9)?, r.get(10)?, r.get(11)?);
+            let balance = total - paid - tds - credited - written;
             Ok(InvoiceRow {
                 id: r.get(0)?, number: r.get(1)?, kind: r.get(2)?, status: r.get(3)?, client_name: r.get(4)?, project_name: r.get(5)?,
                 issue_date: r.get(6)?, total_paise: total, total_display: fmt_inr(total),
                 paid_display: fmt_inr(paid), tds_display: fmt_inr(tds), balance_paise: balance, balance_display: fmt_inr(balance),
-                credited_display: fmt_inr(credited), paid_paise: paid, tds_paise: tds, credited_paise: credited, due_date: r.get(13)?,
-                converted_to: r.get(11)?, from_proforma: r.get(12)?,
+                credited_display: fmt_inr(credited), paid_paise: paid, tds_paise: tds, credited_paise: credited, due_date: r.get(14)?,
+                converted_to: r.get(12)?, from_proforma: r.get(13)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -407,9 +407,25 @@ pub struct Snapshot {
     pub company_gstin: String,
     pub company_coa: String,
     pub bank_details: String,
+    #[serde(default)]
+    pub company_email: String,
+    #[serde(default)]
+    pub company_phone: String,
+    #[serde(default)]
+    pub architect_name: String,
     pub client_name: String,
     pub client_address: String,
     pub client_gstin: String,
+    #[serde(default)]
+    pub client_email: String,
+    #[serde(default)]
+    pub client_phone: String,
+    #[serde(default)]
+    pub client_pan: String,
+    #[serde(default)]
+    pub client_tan: String,
+    #[serde(default)]
+    pub client_state: String,
     pub project_name: String,
     pub totals: Totals,
     /// Credit notes: the number of the invoice being credited.
@@ -418,6 +434,14 @@ pub struct Snapshot {
     /// UPI payment link encoded in the QR printed on the document (empty = no QR).
     #[serde(default)]
     pub upi_uri: String,
+    /// Square mark and wide lockup used while rendering. Kept off the stored snapshot; the issued PDF already contains them.
+    #[serde(skip)]
+    pub logo_square_b64: String,
+    #[serde(skip)]
+    pub logo_wide_b64: String,
+    /// Firm accent at issue, `#RRGGBB` or blank. Older snapshots have none and print in black.
+    #[serde(default)]
+    pub accent_hex: String,
 }
 
 fn primary_account_text(conn: &Connection) -> Result<Option<String>, String> {
@@ -449,20 +473,53 @@ fn primary_account_text(conn: &Connection) -> Result<Option<String>, String> {
 fn build_snapshot(conn: &Connection, input: &InvoiceInput, number: &str) -> Result<Snapshot, String> {
     let scheme = company_scheme(conn)?;
     let totals = calculate(input, &scheme)?;
-    let (company_name, company_address, company_pan, company_gstin, company_coa, bank_details) = conn
-        .query_row("SELECT name, address, pan, gstin, coa_registration, bank_details FROM company_profile WHERE id = 1", [], |r| {
-            Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?, r.get::<_, String>(3)?, r.get::<_, String>(4)?, r.get::<_, String>(5)?))
-        })
+    let (company_name, company_address, company_email, company_phone, company_pan, company_gstin, company_coa, bank_details, architect_name, accent_hex) = conn
+        .query_row(
+            "SELECT name, address, email, phone, pan, gstin, coa_registration, bank_details, architect_name, accent_hex FROM company_profile WHERE id = 1",
+            [],
+            |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, String>(2)?,
+                    r.get::<_, String>(3)?,
+                    r.get::<_, String>(4)?,
+                    r.get::<_, String>(5)?,
+                    r.get::<_, String>(6)?,
+                    r.get::<_, String>(7)?,
+                    r.get::<_, String>(8)?,
+                    r.get::<_, String>(9)?,
+                ))
+            },
+        )
         .map_err(|e| e.to_string())?;
     // The primary active bank account, when one exists, supplies the payment details printed on the document.
     let bank_details = primary_account_text(conn)?.unwrap_or(bank_details);
-    let (project_name, client_name, client_address, client_gstin) = conn
+    let (project_name, client_name, client_address, client_gstin, client_email, client_phone, client_pan, client_tan, client_city, client_state) = conn
         .query_row(
-            "SELECT p.name, c.name, c.address, c.gstin FROM projects p JOIN clients c ON c.id = p.client_id WHERE p.id = ?1",
+            "SELECT p.name, CASE WHEN TRIM(c.legal_name) = '' THEN c.name ELSE c.legal_name END,
+                    CASE WHEN TRIM(c.billing_address) = '' THEN c.address ELSE c.billing_address END,
+                    c.gstin, c.email, c.phone, c.pan, c.tan, c.city, c.state
+             FROM projects p JOIN clients c ON c.id = p.client_id WHERE p.id = ?1",
             params![input.project_id],
-            |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?, r.get::<_, String>(3)?)),
+            |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, String>(2)?,
+                    r.get::<_, String>(3)?,
+                    r.get::<_, String>(4)?,
+                    r.get::<_, String>(5)?,
+                    r.get::<_, String>(6)?,
+                    r.get::<_, String>(7)?,
+                    r.get::<_, String>(8)?,
+                    r.get::<_, String>(9)?,
+                ))
+            },
         )
         .map_err(|_| "Project not found.".to_string())?;
+    let client_address = join_place(&client_address, &client_city, &client_state);
+    let logos = crate::commands::company_logos_b64(conn);
     let upi_id: String = conn.query_row("SELECT upi_id FROM company_profile WHERE id = 1", [], |r| r.get(0)).map_err(|e| e.to_string())?;
     let upi_uri = if upi_id.trim().is_empty() {
         String::new()
@@ -483,9 +540,29 @@ fn build_snapshot(conn: &Connection, input: &InvoiceInput, number: &str) -> Resu
         scheme,
         notes: input.notes.clone(),
         company_name, company_address, company_pan, company_gstin, company_coa, bank_details,
-        client_name, client_address, client_gstin, project_name,
+        company_email, company_phone, architect_name,
+        client_name, client_address, client_gstin, client_email, client_phone, client_pan, client_tan, client_state, project_name,
         totals,
+        logo_square_b64: logos.square,
+        logo_wide_b64: logos.wide,
+        accent_hex,
     })
+}
+
+fn join_place(address: &str, city: &str, state: &str) -> String {
+    let mut text = address.trim().to_string();
+    for part in [city.trim(), state.trim()] {
+        if part.is_empty() || text.to_lowercase().contains(&part.to_lowercase()) {
+            continue;
+        }
+        if text.is_empty() {
+            text = part.to_string();
+        } else {
+            text.push_str(", ");
+            text.push_str(part);
+        }
+    }
+    text
 }
 
 fn pct_encode(s: &str) -> String {
@@ -504,11 +581,82 @@ pub(crate) fn esc(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;").replace('\n', "<br/>")
 }
 
+fn display_date(iso: &str) -> String {
+    const MONTHS: [&str; 12] = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    let mut parts = iso.split('-');
+    let (Some(year), Some(month), Some(day)) = (parts.next(), parts.next(), parts.next()) else {
+        return iso.to_string();
+    };
+    if parts.next().is_some() {
+        return iso.to_string();
+    }
+    let Ok(month) = month.parse::<usize>() else {
+        return iso.to_string();
+    };
+    if !(1..=12).contains(&month) {
+        return iso.to_string();
+    }
+    let day = day.trim_start_matches('0');
+    let day = if day.is_empty() { "0" } else { day };
+    format!("{day} {} {year}", MONTHS[month - 1])
+}
+
+fn gst_state(gstin: &str) -> Option<&'static str> {
+    let code = gstin.trim().get(..2)?;
+    Some(match code {
+        "01" => "Jammu and Kashmir",
+        "02" => "Himachal Pradesh",
+        "03" => "Punjab",
+        "04" => "Chandigarh",
+        "05" => "Uttarakhand",
+        "06" => "Haryana",
+        "07" => "Delhi",
+        "08" => "Rajasthan",
+        "09" => "Uttar Pradesh",
+        "10" => "Bihar",
+        "11" => "Sikkim",
+        "12" => "Arunachal Pradesh",
+        "13" => "Nagaland",
+        "14" => "Manipur",
+        "15" => "Mizoram",
+        "16" => "Tripura",
+        "17" => "Meghalaya",
+        "18" => "Assam",
+        "19" => "West Bengal",
+        "20" => "Jharkhand",
+        "21" => "Odisha",
+        "22" => "Chhattisgarh",
+        "23" => "Madhya Pradesh",
+        "24" => "Gujarat",
+        "26" => "Dadra and Nagar Haveli and Daman and Diu",
+        "27" => "Maharashtra",
+        "29" => "Karnataka",
+        "30" => "Goa",
+        "31" => "Lakshadweep",
+        "32" => "Kerala",
+        "33" => "Tamil Nadu",
+        "34" => "Puducherry",
+        "35" => "Andaman and Nicobar Islands",
+        "36" => "Telangana",
+        "37" => "Andhra Pradesh",
+        "38" => "Ladakh",
+        _ => return None,
+    })
+}
+
+fn rail_block(label: &str, body: &str) -> String {
+    if body.is_empty() {
+        String::new()
+    } else {
+        format!("<span class=\"kicker\">{label}</span><br/>{body}<br/><br/>")
+    }
+}
+
 pub fn invoice_html(s: &Snapshot) -> String {
     let title = if s.kind == "credit_note" {
         "CREDIT NOTE"
     } else if s.kind == "proforma" {
-        "PRO FORMA INVOICE"
+        "PRO FORMA"
     } else {
         match s.scheme.as_str() {
             "regular" => "TAX INVOICE",
@@ -516,21 +664,11 @@ pub fn invoice_html(s: &Snapshot) -> String {
             _ => "INVOICE",
         }
     };
-    let proforma_note = if s.kind == "proforma" {
-        "<p>This is a pro forma invoice. It is a request for payment and not a tax invoice.</p>"
-    } else {
-        ""
-    };
-    let declaration = if s.scheme == "composition" {
-        "<p>Composition taxable person, not eligible to collect tax on supplies.</p>"
-    } else {
-        ""
-    };
     let mut rows = String::new();
-    for (i, l) in s.totals.lines.iter().enumerate() {
+    for l in &s.totals.lines {
         rows.push_str(&format!(
-            "<tr><td>{}</td><td>{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td><td class=\"num\">{}</td></tr>",
-            i + 1, esc(&l.description), esc(&milli_to_plain(l.qty_milli)), fmt_inr(l.rate_paise), fmt_inr(l.amount_paise)
+            "<tr><td style=\"background-color: #ffffff; padding: 4px 3px;\">{}</td><td class=\"num\" style=\"background-color: #ffffff; padding: 4px 3px;\">{}</td><td class=\"num\" style=\"background-color: #ffffff; padding: 4px 3px;\">{}</td><td class=\"num\" style=\"background-color: #ffffff; padding: 4px 3px;\">{}</td></tr>",
+            esc(&l.description), fmt_inr(l.rate_paise), esc(&milli_to_plain(l.qty_milli)), fmt_inr(l.amount_paise)
         ));
     }
     let t = &s.totals;
@@ -538,46 +676,186 @@ pub fn invoice_html(s: &Snapshot) -> String {
     let mut tax_rows = String::new();
     match s.gst_mode.as_str() {
         "intra" => {
-            tax_rows.push_str(&format!("<tr><td>CGST @ {}%</td><td class=\"num\">{}</td></tr>", half(t.gst_rate_bp), fmt_inr(t.cgst_paise)));
-            tax_rows.push_str(&format!("<tr><td>SGST @ {}%</td><td class=\"num\">{}</td></tr>", half(t.gst_rate_bp), fmt_inr(t.sgst_paise)));
+            tax_rows.push_str(&format!("<tr><td>CGST {}%</td><td class=\"num\">{}</td></tr>", half(t.gst_rate_bp), fmt_inr(t.cgst_paise)));
+            tax_rows.push_str(&format!("<tr><td>SGST {}%</td><td class=\"num\">{}</td></tr>", half(t.gst_rate_bp), fmt_inr(t.sgst_paise)));
         }
-        "inter" => tax_rows.push_str(&format!("<tr><td>IGST @ {}%</td><td class=\"num\">{}</td></tr>", milli_to_plain(t.gst_rate_bp * 10), fmt_inr(t.igst_paise))),
+        "inter" => tax_rows.push_str(&format!("<tr><td>IGST {}%</td><td class=\"num\">{}</td></tr>", milli_to_plain(t.gst_rate_bp * 10), fmt_inr(t.igst_paise))),
         _ => {}
     }
-    let gstin = if s.company_gstin.is_empty() { String::new() } else { format!("GSTIN: {} &nbsp; ", esc(&s.company_gstin)) };
-    let client_gstin = if s.client_gstin.is_empty() { String::new() } else { format!("<br/>GSTIN: {}", esc(&s.client_gstin)) };
-    let due = if s.due_date.is_empty() { String::new() } else { format!("<br/>Due date: {}", esc(&s.due_date)) };
     let is_credit = s.kind == "credit_note";
-    let bank = if s.bank_details.is_empty() || is_credit { String::new() } else { format!("<h3>Bank details</h3><p>{}</p>", esc(&s.bank_details)) };
-    let qr = if s.upi_uri.is_empty() || is_credit { "" } else { "<p>Scan the QR code at the top right to pay by UPI.</p>" };
-    let against = if is_credit { format!("<br/>Against invoice no.: {}", esc(&s.against)) } else { String::new() };
-    let notes_title = if is_credit { "Reason" } else { "Notes" };
-    let notes = if s.notes.is_empty() { String::new() } else { format!("<h3>{notes_title}</h3><p>{}</p>", esc(&s.notes)) };
+    let mut client_lines = vec![esc(&s.client_name)];
+    if !s.client_address.is_empty() {
+        client_lines.push(esc(&s.client_address));
+    }
+    if !s.client_gstin.is_empty() {
+        client_lines.push(format!("GSTIN {}", esc(&s.client_gstin)));
+    }
+    if !s.client_pan.is_empty() {
+        client_lines.push(format!("PAN {}", esc(&s.client_pan)));
+    }
+    if !s.client_tan.is_empty() {
+        client_lines.push(format!("TAN {}", esc(&s.client_tan)));
+    }
+    if !s.client_phone.is_empty() {
+        client_lines.push(esc(&s.client_phone));
+    }
+    if !s.client_email.is_empty() {
+        client_lines.push(esc(&s.client_email));
+    }
+    if !s.project_name.is_empty() {
+        client_lines.push(format!("Project: {}", esc(&s.project_name)));
+    }
+    let mut firm_meta = Vec::new();
+    if !s.company_gstin.is_empty() {
+        firm_meta.push(format!("GSTIN {}", esc(&s.company_gstin)));
+    }
+    if !s.company_pan.is_empty() {
+        firm_meta.push(format!("PAN {}", esc(&s.company_pan)));
+    }
+    if !s.company_coa.is_empty() {
+        firm_meta.push(format!("COA {}", esc(&s.company_coa)));
+    }
+    let firm_meta = if firm_meta.is_empty() { String::new() } else { format!("<span class=\"meta\">{}</span><br/><br/>", firm_meta.join("<br/>")) };
+    let mark = if !s.logo_square_b64.is_empty() {
+        "<img src=\"company-logo-square\" style=\"width: 18mm; height: 18mm;\" /><br/><br/>".to_string()
+    } else if !s.logo_wide_b64.is_empty() {
+        "<img src=\"company-logo-wide\" style=\"width: 48mm; height: 12mm;\" /><br/><br/>".to_string()
+    } else {
+        String::new()
+    };
+    let payment = if is_credit || (s.bank_details.is_empty() && s.upi_uri.is_empty()) {
+        String::new()
+    } else {
+        let mut body = esc(&s.bank_details);
+        if !s.upi_uri.is_empty() {
+            if !body.is_empty() {
+                body.push_str("<br/>");
+            }
+            body.push_str("Scan to pay by UPI<br/><table style=\"border-collapse: collapse;\"><tr><td style=\"padding: 4pt 0 0 0;\"><img src=\"upi-qr\" style=\"width: 28mm; height: 28mm;\" /></td></tr></table>");
+        }
+        rail_block("PAYMENT", &body)
+    };
+    let mut terms = Vec::new();
+    if s.kind == "proforma" {
+        terms.push("This is a pro forma invoice. It is a request for payment and not a tax invoice.".to_string());
+    }
+    if s.scheme == "composition" {
+        terms.push("Composition taxable person, not eligible to collect tax on supplies.".to_string());
+    }
+    if !s.notes.is_empty() {
+        terms.push(esc(&s.notes));
+    }
+    let terms_label = if is_credit { "REASON" } else { "TERMS" };
+    let terms = rail_block(terms_label, &terms.join("<br/>"));
+    let thanks = if is_credit { "CREDIT APPLIED" } else { "THANK YOU<br/>FOR YOUR BUSINESS" };
+    let against = if is_credit && !s.against.is_empty() { format!("<br/>Against {}", esc(&s.against)) } else { String::new() };
+    let due = if s.due_date.is_empty() { String::new() } else { format!("<br/>Due: {}", esc(&display_date(&s.due_date))) };
+    let supply_name = if s.scheme == "regular" && s.gst_mode == "inter" {
+        gst_state(&s.client_gstin).map(|state| state.to_string()).or_else(|| {
+            let state = s.client_state.trim();
+            if state.is_empty() { None } else { Some(state.to_string()) }
+        })
+    } else if s.scheme == "regular" || s.scheme == "composition" {
+        gst_state(&s.company_gstin).map(|state| state.to_string())
+    } else {
+        None
+    };
+    let supply = supply_name.map(|state| format!("<br/>Place of supply: {state}")).unwrap_or_default();
+    let sac = if s.scheme == "regular" || s.scheme == "composition" { "<br/><span class=\"meta\">SAC 9983</span>".to_string() } else { String::new() };
+    let sign = if s.architect_name.trim().is_empty() {
+        String::new()
+    } else {
+        format!("<span class=\"sign\">{}</span>", esc(&s.architect_name))
+    };
+    let mut foot = vec![esc(&s.company_name)];
+    if !s.company_address.is_empty() {
+        foot.push(esc(&s.company_address));
+    }
+    let mut contact = Vec::new();
+    if !s.company_phone.is_empty() {
+        contact.push(esc(&s.company_phone));
+    }
+    if !s.company_email.is_empty() {
+        contact.push(esc(&s.company_email));
+    }
+    if !contact.is_empty() {
+        foot.push(contact.join(" · "));
+    }
     format!(
-        r#"<html><head><style>{css}</style></head><body>
-        <div style="width: 65%">
-        <h1>{company}</h1>
-        <p class="meta">{address}<br/>{gstin}PAN: {pan}<br/>COA Reg. No.: {coa}</p>
-        </div>
-        <h2>{title}</h2>
-        <p>No.: <span class="id">{number}</span><br/>Date: {date}{due}{against}</p>
-        <h3>Bill to</h3>
-        <p>{client}<br/>{client_address}{client_gstin}<br/>Project: {project}</p>
-        <table class="items"><tr><th>#</th><th>Description</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr>{rows}</table>
-        <table class="items"><tr><td>Subtotal</td><td class="num">{subtotal}</td></tr>{tax_rows}<tr><th>Total</th><th class="num">{total}</th></tr></table>
-        {proforma_note}{declaration}{bank}{qr}{notes}
+        r#"<html><head><style>{css}
+        body {{ margin: 0; padding: 0; }}
+        table.sheet {{ width: 210mm; table-layout: fixed; border-collapse: collapse; }}
+        td.rail {{ width: 30%; vertical-align: top; background-color: #ffffff; padding: 12pt 8pt 14pt 8pt; }}
+        td.main {{ width: 70%; vertical-align: top; background-color: #ffffff; padding: 14pt 10pt 14pt 8pt; }}
+        .kicker {{ {kicker} color: {accent}; }}
+        .firm {{ {firm} }}
+        .inv {{ {title_face} font-size: 26pt; text-align: right; }}
+        .due {{ {due_face} font-size: 18pt; }}
+        table.stack {{ width: 141mm; border-collapse: collapse; }}
+        .lines {{ width: 141mm; border-collapse: separate; border-spacing: 0 1px; background-color: #1a1a1a; {table} }}
+        .lines th, .lines td {{ padding: 4px 3px; background-color: #ffffff; }}
+        .lines th {{ {head} }}
+        .sums {{ width: 70mm; border-collapse: collapse; {table} }}
+        .sums td {{ padding: 2pt 1pt; }}
+        .boxed {{ border-collapse: separate; border-spacing: 0 1.25px; background-color: #1a1a1a; {table} }}
+        .boxed td {{ background-color: #ffffff; padding: 4px 3px; {head} }}
+        .sign {{ {firm} font-size: 14pt; }}
+        .thanks {{ {firm} font-size: 13pt; }}
+        .foot {{ {meta} border-top: 1px solid #1a1a1a; padding-top: 6pt; }}
+        .right {{ text-align: right; }}
+        </style></head><body>
+        <table class="sheet"><tr>
+        <td class="rail">{mark}<span class="firm">{company}</span><br/>{firm_meta}{invoice_to}{payment}{terms}</td>
+        <td class="main" rowspan="2"><table class="stack"><tr><td class="inv">{title}<br/><span class="meta">Invoice no. <span class="id">{number}</span>{against}</span></td></tr><tr><td style="padding-top: 8pt;">Date: {date}{due}{supply}{sac}</td></tr><tr><td style="padding-top: 8pt;"><span class="kicker">Total due</span><br/><span class="due">{total}</span></td></tr><tr><td style="padding-top: 10pt;"><table class="lines"><tr><th style="width: 75mm; background-color: #ffffff; padding: 4px 3px;">DESCRIPTION</th><th class="num" style="width: 26mm; background-color: #ffffff; padding: 4px 3px;">PRICE</th><th class="num" style="width: 16mm; background-color: #ffffff; padding: 4px 3px;">QTY</th><th class="num" style="width: 24mm; background-color: #ffffff; padding: 4px 3px;">TOTAL</th></tr>{rows}</table></td></tr><tr><td style="padding-top: 8pt;"><table style="width: 141mm; border-collapse: collapse;"><tr><td style="width: 56mm; vertical-align: bottom;">{sign}</td><td style="width: 85mm;"><table class="sums"><tr><td>Subtotal</td><td class="num">{subtotal}</td></tr>{tax_rows}</table><table class="boxed" style="width: 70mm;"><tr><td>TOTAL</td><td class="num">{total}</td></tr></table></td></tr></table></td></tr><tr><td class="foot" style="padding-top: 10pt;">{foot}</td></tr></table></td>
+        </tr><tr><td class="rail" style="vertical-align: bottom;"><span class="thanks">{thanks}</span></td></tr></table>
         </body></html>"#,
         css = crate::typography::css(),
-        company = esc(&s.company_name), address = esc(&s.company_address), gstin = gstin, pan = esc(&s.company_pan), coa = esc(&s.company_coa),
-        title = title, number = esc(&s.number), date = esc(&s.issue_date), due = due, against = against, qr = qr, client = esc(&s.client_name),
-        client_address = esc(&s.client_address), client_gstin = client_gstin, project = esc(&s.project_name),
-        rows = rows, subtotal = fmt_inr(t.subtotal_paise), tax_rows = tax_rows, total = fmt_inr(t.total_paise), proforma_note = proforma_note, declaration = declaration, bank = bank, notes = notes,
+        accent = crate::sheets::resolve_accent(&s.accent_hex),
+        kicker = crate::typography::token_style("meta"),
+        firm = crate::typography::token_style("firm"),
+        title_face = crate::typography::token_style("title"),
+        due_face = crate::typography::token_style("firm"),
+        table = crate::typography::token_style("table"),
+        head = crate::typography::token_style("table-head"),
+        meta = crate::typography::token_style("meta"),
+        mark = mark,
+        company = esc(&s.company_name),
+        firm_meta = firm_meta,
+        invoice_to = rail_block("INVOICE TO", &client_lines.join("<br/>")),
+        payment = payment,
+        terms = terms,
+        thanks = thanks,
+        title = title,
+        number = esc(&s.number),
+        against = against,
+        date = esc(&display_date(&s.issue_date)),
+        due = due,
+        supply = supply,
+        sac = sac,
+        total = fmt_inr(t.total_paise),
+        rows = rows,
+        sign = sign,
+        subtotal = fmt_inr(t.subtotal_paise),
+        tax_rows = tax_rows,
+        foot = foot.join("<br/>"),
     )
 }
 
 fn render(s: &Snapshot) -> Result<pdf::Rendered, String> {
     let qr = if s.upi_uri.is_empty() || s.kind == "credit_note" { None } else { Some(s.upi_uri.as_str()) };
-    pdf::render_html_with_qr(&invoice_html(s), &pdf::bundled_fonts(), qr)
+    let mut images = pdf::logo_images(&s.logo_square_b64, &s.logo_wide_b64);
+    let overlay = match qr {
+        Some(data) => match pdf::qr_png(data) {
+            Ok(png) => {
+                images.insert("upi-qr".to_string(), printpdf::Base64OrRaw::Raw(png));
+                None
+            }
+            Err(_) => Some(data),
+        },
+        None => None,
+    };
+    // 30% of A4. A hairline is painted on this edge; the fixed table meets it.
+    pdf::render_invoice_sheet(&invoice_html(s), &pdf::bundled_fonts(), &images, overlay, 63.0 * 72.0 / 25.4)
 }
 
 // ---------- issue ----------
@@ -645,8 +923,8 @@ pub fn cancel(conn: &mut Connection, actor: i64, id: i64, reason: &str) -> Resul
         return Err("Only issued documents can be cancelled (a draft can simply be edited).".into());
     }
     let b = crate::receipts::balance(&tx, id)?;
-    if b.received_paise + b.tds_paise > 0 || b.credited_paise > 0 {
-        return Err("This invoice has payments or credit notes against it. Reverse the payments first, or issue a credit note instead.".into());
+    if b.received_paise + b.tds_paise > 0 || b.credited_paise > 0 || b.written_off_paise > 0 {
+        return Err("This invoice has payments, credit notes or a write-off against it. Reverse those first, or issue a credit note instead.".into());
     }
     let converted: i64 = tx
         .query_row("SELECT COUNT(*) FROM invoices WHERE source_proforma_id = ?1 AND status <> 'cancelled'", params![id], |r| r.get(0))
@@ -695,6 +973,9 @@ pub fn issue_credit_note(conn: &mut Connection, actor: i64, invoice_id: i64, iss
         return Err("Credit notes can only be raised against issued invoices.".into());
     }
     let mut snap: Snapshot = serde_json::from_str(&snap_json.ok_or("The invoice has no stored snapshot.")?).map_err(|e| e.to_string())?;
+    let logos = crate::commands::company_logos_b64(&tx);
+    snap.logo_square_b64 = logos.square;
+    snap.logo_wide_b64 = logos.wide;
     let input = InvoiceInput {
         id: None, project_id: 0, kind: "tax_invoice".into(), issue_date: issue_date.into(), due_date: String::new(),
         gst_mode: snap.gst_mode.clone(), gst_rate: String::new(), notes: String::new(), lines,
@@ -1063,6 +1344,25 @@ mod tests {
         let html = invoice_html(&build_snapshot(&c, &i, "N").unwrap());
         assert!(html.contains("&lt;b&gt;x&lt;/b&gt; &amp; y"));
         assert!(!html.contains("<script>"));
+        assert!(html.contains("INVOICE TO") && html.contains("Total due") && html.contains("DESCRIPTION"));
+    }
+
+    #[test]
+    fn a_regular_invoice_names_the_sac_and_the_place_of_supply() {
+        let c = db_with_project();
+        c.execute("UPDATE clients SET gstin = '29ABCDE1234F1Z5' WHERE id = 1", []).unwrap();
+        let fee = input("inter", "", vec![line("Fee", "1", "1000")]);
+        let inter = invoice_html(&build_snapshot(&c, &fee, "INV/1").unwrap());
+        assert!(inter.contains("SAC 9983") && inter.contains("Place of supply: Karnataka") && inter.contains("IGST"));
+        let intra = invoice_html(&build_snapshot(&c, &input("intra", "", vec![line("Fee", "1", "1000")]), "INV/2").unwrap());
+        assert!(intra.contains("Place of supply: Maharashtra") && intra.contains("CGST") && intra.contains("SGST"));
+        let mut proforma = input("intra", "", vec![line("Advance", "1", "1000")]);
+        proforma.kind = "proforma".into();
+        let request = invoice_html(&build_snapshot(&c, &proforma, "PI/1").unwrap());
+        assert!(request.contains("PRO FORMA") && request.contains("not a tax invoice") && request.contains("SAC 9983"));
+        c.execute("UPDATE company_profile SET gst_scheme = 'none', gstin = ''", []).unwrap();
+        let plain = invoice_html(&build_snapshot(&c, &fee, "INV/3").unwrap());
+        assert!(!plain.contains("SAC 9983") && !plain.contains("Place of supply"));
     }
     #[test]
     fn cancel_blocks_when_money_is_involved_and_freezes_the_row() {

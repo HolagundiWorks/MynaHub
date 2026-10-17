@@ -1,6 +1,6 @@
 //! Built-in Word templates. Like the wording library these are practice templates, not official
-//! Council of Architecture forms. They are added to each company file once (matched by key), never overwritten, and are
-//! duplicated into a company-owned copy before they are customised.
+//! Council of Architecture forms. A company file receives each one by key. When this library changes, the built-in
+//! original in an existing company is published again. A firm's own copy, and every document already issued, stay as they are.
 use rusqlite::{params, Connection};
 
 pub struct HtmlTemplate {
@@ -14,21 +14,22 @@ pub struct HtmlTemplate {
 }
 
 /// Shared print styles. Fonts come from the bundled IBM Plex families; sizes follow the ADMS print scale.
-const BASE: &str = "@page { size: A4; margin: 18mm 16mm 20mm 16mm; }
-.firm-name { font-family: 'IBM Plex Sans SemiBold'; font-size: 16pt; font-weight: 400; }
-.registration, .meta { font-size: 8.5pt; color: #393939; }
-.rule { border-top: 1pt solid #161616; margin-top: 6pt; margin-bottom: 10pt; }
-.doc-ref { font-family: 'IBM Plex Mono'; font-size: 9pt; }
-h1 { font-family: 'IBM Plex Sans SemiBold'; font-size: 22pt; font-weight: 400; margin-top: 10pt; margin-bottom: 4pt; }
-h2 { font-family: 'IBM Plex Sans SemiBold'; font-size: 12pt; font-weight: 400; margin-top: 10pt; margin-bottom: 2pt; }
+const BASE: &str = "@page { size: A4; margin: 16mm 16mm 22mm 16mm; }
+.firm-name { font-family: 'IBM Plex Sans SemiBold'; font-size: 16pt; font-weight: 400; color: #1a1a1a; }
+.registration, .meta { font-size: 8.5pt; color: #5c5c5c; }
+.rule { border-top: 0.6pt solid #1a1a1a; margin-top: 6pt; margin-bottom: 10pt; }
+.doc-ref { font-family: 'IBM Plex Mono'; font-size: 9pt; color: #1a1a1a; }
+h1 { font-family: 'IBM Plex Sans SemiBold'; font-size: 22pt; font-weight: 400; margin-top: 10pt; margin-bottom: 4pt; color: #1a1a1a; }
+h2 { font-family: 'IBM Plex Sans SemiBold'; font-size: 12pt; font-weight: 400; margin-top: 10pt; margin-bottom: 2pt; color: #1a1a1a; }
 .keep { break-inside: avoid; }
 .amount { text-align: right; }
-table.schedule { width: 100%; border-collapse: collapse; margin-top: 6pt; }
-table.schedule th, table.schedule td { border-bottom: 1pt solid #8d8d8d; padding: 4pt; font-size: 9pt; }
-table.schedule th { font-family: 'IBM Plex Sans Medium'; font-weight: 400; text-align: left; background-color: #e0e0e0; }
+table.schedule { width: 178mm; border-collapse: separate; border-spacing: 0 1px; background-color: #1a1a1a; margin-top: 6pt; }
+table.schedule th, table.schedule td { background-color: #ffffff; padding: 4pt; font-size: 9pt; color: #1a1a1a; }
+table.schedule th { font-family: 'IBM Plex Sans Medium'; font-weight: 400; text-align: left; }
 table.schedule th.amount, table.schedule td.amount { text-align: right; }
-table.sign { width: 100%; margin-top: 28pt; break-inside: avoid; }
-table.sign td { width: 50%; vertical-align: top; padding-top: 30pt; font-size: 9pt; }";
+table.sign { width: 178mm; margin-top: 28pt; break-inside: avoid; }
+table.sign td { width: 50%; vertical-align: top; padding-top: 30pt; font-size: 9pt; }
+footer { margin-top: 18pt; border-top: 0.6pt solid #1a1a1a; padding-top: 6pt; }";
 
 /// A practice proposal for one service in the Council of Architecture Conditions of Engagement.
 /// These are not official Council forms.
@@ -52,7 +53,8 @@ macro_rules! service_letter {
                 "<p>{{ project.name }}<br/>{{ project.site_address }}</p>",
                 "<p>Client: {{ client.name }}</p>",
                 "<h2>Services</h2><main>{{ document.body }}</main>",
-                "<table class=\"sign\"><tr><td>Yours sincerely,<br/>For {{ signatory.firm }}<br/>{{ signatory.name }}</td><td></td></tr></table>"
+                "<table class=\"sign\"><tr><td>Yours sincerely,<br/>For {{ signatory.firm }}<br/>{{ signatory.name }}</td><td></td></tr></table>",
+                "<footer><p class=\"meta\">{{ company.name }}{{#if company.phone}} · {{ company.phone }}{{/if}}{{#if company.email}} · {{ company.email }}{{/if}}</p></footer>"
             ),
             css: BASE,
         }
@@ -62,43 +64,48 @@ macro_rules! service_letter {
 pub const LIBRARY: &[HtmlTemplate] = &[
     HtmlTemplate {
         key: "html-letterhead-classic", name: "Letterhead (classic)", family: "administration", kind: "letter",
-        description: "A letter on a classic letterhead: firm name, address and registration above a rule.",
-        html: "<header class=\"document-header\">
-  <div class=\"firm-name\">{{ company.name }}</div>
-  <div class=\"meta\">{{ company.address }}</div>
-  <div class=\"meta\">{{ company.phone }} {{#if company.email}}| {{ company.email }}{{/if}}</div>
-  <div class=\"registration\">{{#if company.coa_registration_number}}COA Reg. No.: {{ company.coa_registration_number }}{{/if}} {{#if company.gstin}} | GSTIN: {{ company.gstin }}{{/if}}</div>
-  <div class=\"rule\"></div>
-</header>
-<p><span class=\"doc-ref\">{{ document.number }}</span> &nbsp; {{ document.date | date }}</p>
-{{#if addressee.name}}<p>To,<br/>{{ addressee.name }}<br/>{{ addressee.address }}</p>{{/if}}
-{{#if document.subject}}<h2>Sub: {{ document.subject }}</h2>{{/if}}
+        description: "A letter with the mark on the left, the addressee beside it, and the date on the right.",
+        html: "<table class=\"head\"><tr>
+  <td class=\"brand\"><div class=\"firm-name\">{{ company.name }}</div><div class=\"meta\">{{ company.address }}</div></td>
+  <td class=\"who\">{{#if addressee.name}}<div class=\"meta\">To</div>{{ addressee.name }}<br/>{{ addressee.address }}{{/if}}</td>
+  <td class=\"when\"><div class=\"bar\"></div>{{ document.date | date }}<br/><span class=\"doc-ref\">{{ document.number }}</span></td>
+</tr></table>
+{{#if document.subject}}<h2>{{ document.subject }}</h2>{{/if}}
 {{#if document.reference}}<p class=\"meta\">Ref: {{ document.reference }}</p>{{/if}}
 <main>{{ document.body }}</main>
-<table class=\"sign\"><tr>
-  <td>Yours sincerely,<br/>For {{ signatory.firm }}<br/>{{ signatory.name }}</td>
-  <td></td>
-</tr></table>",
-        css: BASE,
+<p class=\"sign-name\">{{#if signatory.name}}{{ signatory.name }}{{else}}{{ signatory.firm }}{{/if}}</p>
+{{#if signatory.name}}<p class=\"meta\">{{ signatory.firm }}</p>{{/if}}
+<footer><p class=\"meta\">{{ company.name }}{{#if company.address}} · {{ company.address }}{{/if}}{{#if company.phone}} · {{ company.phone }}{{/if}}{{#if company.email}} · {{ company.email }}{{/if}}</p></footer>",
+        css: "@page { size: A4; margin: 16mm 16mm 22mm 16mm; }
+footer { margin-top: 18pt; border-top: 0.6pt solid #1a1a1a; padding-top: 6pt; }
+.firm-name { font-family: 'IBM Plex Sans SemiBold'; font-size: 12pt; font-weight: 400; }
+.meta { font-family: 'IBM Plex Sans'; font-size: 8.5pt; color: #5c5c5c; }
+.doc-ref { font-family: 'IBM Plex Mono'; font-size: 9pt; }
+h2 { font-family: 'IBM Plex Sans SemiBold'; font-size: 12pt; font-weight: 400; margin-top: 12pt; margin-bottom: 2pt; }
+table.head { width: 178mm; border-collapse: collapse; }
+td.brand { width: 56mm; vertical-align: top; }
+td.who { width: 74mm; vertical-align: top; }
+td.when { width: 48mm; vertical-align: top; text-align: right; }
+.bar { width: 28mm; height: 3.5mm; background-color: #1a1a1a; margin-left: 20mm; margin-bottom: 8pt; }
+.sign-name { font-family: 'IBM Plex Sans SemiBold'; font-size: 16pt; font-weight: 400; margin-top: 28pt; }",
     },
     HtmlTemplate {
         key: "html-letterhead-minimal", name: "Letterhead (minimal)", family: "administration", kind: "letter",
-        description: "A letter on a minimal letterhead: a small name line and one line of details.",
-        html: "<header class=\"document-header\">
-  <div class=\"minimal-name\">{{ company.name | upper }}</div>
-  <div class=\"meta\">{{ company.address }} {{#if company.phone}}| {{ company.phone }}{{/if}} {{#if company.email}}| {{ company.email }}{{/if}}</div>
-</header>
-<p><span class=\"doc-ref\">{{ document.number }}</span> &nbsp; {{ document.date | date }}</p>
-{{#if addressee.name}}<p>To,<br/>{{ addressee.name }}<br/>{{ addressee.address }}</p>{{/if}}
-{{#if document.subject}}<h2>Sub: {{ document.subject }}</h2>{{/if}}
+        description: "A letter with the mark and the date on the left, and the addressee under them.",
+        html: "<div class=\"firm-name\">{{ company.name }}</div>
+<div class=\"meta\">{{ company.address }}</div>
+<p>{{ document.date | date }}<br/><span class=\"doc-ref\">{{ document.number }}</span></p>
+{{#if addressee.name}}<p><span class=\"meta\">To</span><br/>{{ addressee.name }}<br/>{{ addressee.address }}</p>{{/if}}
+{{#if document.subject}}<h2>{{ document.subject }}</h2>{{/if}}
 <main>{{ document.body }}</main>
-<table class=\"sign\"><tr>
-  <td>Yours sincerely,<br/>For {{ signatory.firm }}<br/>{{ signatory.name }}</td>
-  <td></td>
-</tr></table>",
+<p class=\"sign-name\">{{#if signatory.name}}{{ signatory.name }}{{else}}{{ signatory.firm }}{{/if}}</p>
+{{#if signatory.name}}<p class=\"meta\">{{ signatory.firm }}</p>{{/if}}
+<footer><p class=\"meta\">{{ company.name }}{{#if company.address}} · {{ company.address }}{{/if}}{{#if company.phone}} · {{ company.phone }}{{/if}}{{#if company.email}} · {{ company.email }}{{/if}}</p></footer>",
         css: "@page { size: A4; margin: 22mm 20mm 22mm 20mm; }
-.minimal-name { font-family: 'IBM Plex Sans Medium'; font-size: 10.5pt; font-weight: 400; }
-.meta { font-size: 8.5pt; color: #393939; }
+.firm-name { font-family: 'IBM Plex Sans SemiBold'; font-size: 12pt; font-weight: 400; }
+.sign-name { font-family: 'IBM Plex Sans SemiBold'; font-size: 16pt; font-weight: 400; margin-top: 28pt; }
+.meta { font-size: 8.5pt; color: #5c5c5c; }
+footer { margin-top: 18pt; border-top: 0.6pt solid #1a1a1a; padding-top: 6pt; }
 .doc-ref { font-family: 'IBM Plex Mono'; font-size: 9pt; }
 h2 { font-family: 'IBM Plex Sans SemiBold'; font-size: 12pt; font-weight: 400; margin-top: 10pt; margin-bottom: 2pt; }
 table.sign { width: 100%; margin-top: 28pt; break-inside: avoid; }
@@ -228,7 +235,8 @@ table.sign td { width: 50%; vertical-align: top; font-size: 9pt; }",
 ];
 
 
-/// Adds any built-in Word template that is missing, matched by key. An older HTML original is published again as a Word document.
+/// Adds any built-in Word template that is missing, and publishes the current sheet over an older built-in original.
+/// An older HTML original is published again as a Word document. A copy the firm made is left alone.
 pub fn seed(conn: &Connection) -> Result<usize, String> {
     let mut added = 0;
     for t in LIBRARY {
@@ -237,7 +245,7 @@ pub fn seed(conn: &Connection) -> Result<usize, String> {
             continue;
         }
         let taken: i64 = conn.query_row("SELECT COUNT(*) FROM templates WHERE name = ?1", params![t.name], |r| r.get(0)).map_err(|e| e.to_string())?;
-        let name = if taken > 0 { format!("{} (AOS built-in)", t.name) } else { t.name.to_string() };
+        let name = if taken > 0 { format!("{} (Architecture Office Suit built-in)", t.name) } else { t.name.to_string() };
         let (html, css) = crate::docx::store(t.html, t.css)?;
         conn.execute(
             "INSERT INTO templates (kind, name, template_key, family, layout, description, built_in, format) VALUES (?1,?2,?3,?4,'letter',?5,1,'html')",
@@ -252,8 +260,48 @@ pub fn seed(conn: &Connection) -> Result<usize, String> {
         .map_err(|e| e.to_string())?;
         added += 1;
     }
+    refresh_shipped(conn)?;
     publish_word_versions(conn)?;
     Ok(added)
+}
+
+/// Publishes the current library sheet as the next version of each built-in whose latest text differs.
+/// Drafts that still point at the built-in move to that version. Issued documents keep the version they were issued from.
+fn refresh_shipped(conn: &Connection) -> Result<(), String> {
+    conn.execute(
+        "DELETE FROM template_drafts WHERE template_id IN (SELECT id FROM templates WHERE built_in = 1 AND template_key IS NOT NULL)",
+        [],
+    )
+    .map_err(|e| e.to_string())?;
+    for t in LIBRARY {
+        let found = conn.query_row(
+            "SELECT t.id, v.version, COALESCE(v.html_source,''), COALESCE(v.css_source,'')
+             FROM templates t
+             JOIN template_versions v ON v.template_id = t.id AND v.version = (SELECT MAX(version) FROM template_versions WHERE template_id = t.id)
+             WHERE t.template_key = ?1 AND t.built_in = 1",
+            params![t.key],
+            |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?, r.get::<_, String>(2)?, r.get::<_, String>(3)?)),
+        );
+        let Ok((id, version, html, css)) = found else { continue };
+        conn.execute("UPDATE templates SET description = ?1 WHERE id = ?2 AND description != ?1", params![t.description, id]).map_err(|e| e.to_string())?;
+        let (current_html, current_css) = crate::docx::prepare(&html, &css).unwrap_or((html, css));
+        if current_html == t.html && current_css == t.css {
+            continue;
+        }
+        let (document, marker) = crate::docx::store(t.html, t.css)?;
+        conn.execute(
+            "INSERT INTO template_versions (template_id, version, body, html_source, css_source, change_summary) VALUES (?1, ?2, '', ?3, ?4, 'Updated built-in sheet')",
+            params![id, version + 1, document, marker],
+        )
+        .map_err(|e| e.to_string())?;
+        let published = conn.last_insert_rowid();
+        conn.execute(
+            "UPDATE documents SET template_version_id = ?1 WHERE status = 'draft' AND template_version_id IN (SELECT id FROM template_versions WHERE template_id = ?2 AND id != ?1)",
+            params![published, id],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 /// Company files that already stored an HTML template get a new published version that is a Word document.
@@ -327,6 +375,61 @@ mod tests {
         };
         assert_eq!(pages("short"), 1);
         assert!(pages("long") >= 3, "the long profile should run over several pages, got {}", pages("long"));
+    }
+
+    #[test]
+    fn an_existing_company_receives_the_current_built_in_and_keeps_its_own_copy() {
+        let mut c = Connection::open_in_memory().unwrap();
+        c.pragma_update(None, "foreign_keys", "ON").unwrap();
+        crate::db::migrate(&mut c).unwrap();
+        let classic = LIBRARY.iter().find(|t| t.key == "html-letterhead-classic").unwrap();
+        let (id, version): (i64, i64) = c
+            .query_row(
+                "SELECT t.id, MAX(v.version) FROM templates t JOIN template_versions v ON v.template_id = t.id WHERE t.template_key = 'html-letterhead-classic'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        let (old, marker) = crate::docx::store("<p>Old letterhead</p>", "@page { size: A4; margin: 18mm; }").unwrap();
+        c.execute(
+            "INSERT INTO template_versions (template_id, version, body, html_source, css_source, change_summary) VALUES (?1, ?2, '', ?3, ?4, 'Older sheet')",
+            params![id, version + 1, old, marker],
+        )
+        .unwrap();
+        let old_version: i64 = c.query_row("SELECT id FROM template_versions WHERE template_id = ?1 AND version = ?2", params![id, version + 1], |r| r.get(0)).unwrap();
+        c.execute("INSERT INTO template_drafts (template_id, html_source, css_source, based_on_version) VALUES (?1, ?2, 'docx', ?3)", params![id, old, version]).unwrap();
+        c.execute("INSERT INTO documents (kind, doc_date, template_version_id, status) VALUES ('letter_out', '2026-10-01', ?1, 'draft')", params![old_version]).unwrap();
+        c.execute("INSERT INTO documents (kind, doc_date, template_version_id, status, number) VALUES ('letter_out', '2026-10-01', ?1, 'issued', 'OUT/1')", params![old_version]).unwrap();
+        c.execute("INSERT INTO templates (kind, name, family, layout, built_in, format) VALUES ('letter', 'Our letterhead', 'administration', 'letter', 0, 'html')", []).unwrap();
+        let copy = c.last_insert_rowid();
+        c.execute(
+            "INSERT INTO template_versions (template_id, version, body, html_source, css_source) VALUES (?1, 1, '', ?2, ?3)",
+            params![copy, old, marker],
+        )
+        .unwrap();
+        assert_eq!(seed(&c).unwrap(), 0);
+        let (latest, html, css): (i64, String, String) = c
+            .query_row(
+                "SELECT v.version, v.html_source, v.css_source FROM template_versions v WHERE v.template_id = ?1 ORDER BY v.version DESC LIMIT 1",
+                params![id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap();
+        assert!(latest > version + 1);
+        let (html, css) = crate::docx::prepare(&html, &css).unwrap();
+        assert_eq!(html, classic.html);
+        assert_eq!(css, classic.css);
+        let draft: i64 = c.query_row("SELECT template_version_id FROM documents WHERE status = 'draft'", [], |r| r.get(0)).unwrap();
+        let issued: i64 = c.query_row("SELECT template_version_id FROM documents WHERE status = 'issued'", [], |r| r.get(0)).unwrap();
+        assert_ne!(draft, old_version);
+        assert_eq!(issued, old_version);
+        let copy_html: String = c.query_row("SELECT html_source FROM template_versions WHERE template_id = ?1", params![copy], |r| r.get(0)).unwrap();
+        assert_eq!(copy_html, old);
+        assert_eq!(seed(&c).unwrap(), 0);
+        let again: i64 = c.query_row("SELECT MAX(version) FROM template_versions WHERE template_id = ?1", params![id], |r| r.get(0)).unwrap();
+        assert_eq!(again, latest);
+        let drafts: i64 = c.query_row("SELECT COUNT(*) FROM template_drafts WHERE template_id = ?1", params![id], |r| r.get(0)).unwrap();
+        assert_eq!(drafts, 0);
     }
 
     #[test]

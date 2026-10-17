@@ -6,7 +6,7 @@ using Windows.UI.ViewManagement;
 
 namespace Adms.Desktop;
 
-/// <summary>AOS is a light application. Windows high contrast still supplies its own colours.</summary>
+/// <summary>Architecture Office Suit is a light application. Windows high contrast still supplies its own colours.</summary>
 internal static class AppTheme
 {
     public static bool InHighContrast => new AccessibilitySettings().HighContrast;

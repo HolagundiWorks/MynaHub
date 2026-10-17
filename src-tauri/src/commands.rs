@@ -1,3 +1,4 @@
+use base64::Engine;
 use crate::auth::{self, Permission, Role, Session, SessionInfo};
 use crate::db;
 use rusqlite::{params, Connection};
@@ -23,6 +24,7 @@ impl AppState {
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(auth::DEFAULT_IDLE.as_secs());
+        crate::company_file::sweep_working(&app_dir);
         AppState { db: Mutex::new(conn), session: Mutex::new(None), company: Mutex::new(None), app_dir, idle_secs: std::sync::atomic::AtomicU64::new(idle) }
     }
 
@@ -301,6 +303,9 @@ pub struct CompanyProfile {
     /// `classic` or `minimal`: how the firm's details are set at the top of issued documents.
     #[serde(default)]
     pub letterhead_style: String,
+    /// `#RRGGBB`, or blank for near-black ink on new documents.
+    #[serde(default)]
+    pub accent_hex: String,
 }
 
 pub fn read_profile(state: &AppState) -> Result<CompanyProfile, String> {
@@ -311,7 +316,7 @@ pub fn read_profile(state: &AppState) -> Result<CompanyProfile, String> {
 
 fn read_profile_row(conn: &Connection) -> Result<CompanyProfile, String> {
     conn.query_row(
-        "SELECT name, address, email, phone, pan, gstin, coa_registration, bank_details, gst_scheme, upi_id, architect_name, letterhead_style FROM company_profile WHERE id = 1",
+        "SELECT name, address, email, phone, pan, gstin, coa_registration, bank_details, gst_scheme, upi_id, architect_name, letterhead_style, accent_hex FROM company_profile WHERE id = 1",
         [],
         |r| {
             Ok(CompanyProfile {
@@ -327,6 +332,7 @@ fn read_profile_row(conn: &Connection) -> Result<CompanyProfile, String> {
                 upi_id: r.get(9)?,
                 architect_name: r.get(10)?,
                 letterhead_style: r.get(11)?,
+                accent_hex: r.get(12)?,
             })
         },
     )
@@ -342,13 +348,133 @@ pub fn company_get_profile(state: HostState<'_>) -> Result<CompanyProfile, Strin
 #[tauri::command]
 pub fn company_save_profile(state: HostState<'_>, profile: CompanyProfile) -> Result<(), String> {
     let uid = require(&state, Permission::ManageSettings)?;
+    let accent = crate::sheets::normalize_accent(&profile.accent_hex)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     conn.execute(
-        "UPDATE company_profile SET name=?1, address=?2, email=?3, phone=?4, pan=?5, gstin=?6, coa_registration=?7, bank_details=?8, gst_scheme=?9, upi_id=?10, architect_name=?11, letterhead_style=?12, updated_at=datetime('now') WHERE id=1",
-        params![profile.name, profile.address, profile.email, profile.phone, profile.pan, profile.gstin, profile.coa_registration, profile.bank_details, profile.gst_scheme, profile.upi_id.trim(), profile.architect_name.trim(), if profile.letterhead_style == "minimal" { "minimal" } else { "classic" }],
+        "UPDATE company_profile SET name=?1, address=?2, email=?3, phone=?4, pan=?5, gstin=?6, coa_registration=?7, bank_details=?8, gst_scheme=?9, upi_id=?10, architect_name=?11, letterhead_style=?12, accent_hex=?13, updated_at=datetime('now') WHERE id=1",
+        params![profile.name, profile.address, profile.email, profile.phone, profile.pan, profile.gstin, profile.coa_registration, profile.bank_details, profile.gst_scheme, profile.upi_id.trim(), profile.architect_name.trim(), if profile.letterhead_style == "minimal" { "minimal" } else { "classic" }, accent],
     )
     .map_err(|e| e.to_string())?;
     db::audit(&conn, Some(uid), "company_profile_saved", "");
+    Ok(())
+}
+
+/// Square mark and wide lockup stored on the firm. Empty strings mean that shape has not been stored.
+#[derive(Clone)]
+pub(crate) struct StoredLogos {
+    pub square: String,
+    pub wide: String,
+}
+
+pub(crate) fn company_logos_b64(conn: &Connection) -> StoredLogos {
+    StoredLogos { square: logo_b64(conn, "logo_key"), wide: logo_b64(conn, "logo_wide_key") }
+}
+
+fn logo_b64(conn: &Connection, column: &str) -> String {
+    let sql = match column {
+        "logo_key" => "SELECT logo_key FROM company_profile WHERE id = 1",
+        "logo_wide_key" => "SELECT logo_wide_key FROM company_profile WHERE id = 1",
+        _ => return String::new(),
+    };
+    let key: String = conn.query_row(sql, [], |r| r.get(0)).unwrap_or_default();
+    if key.is_empty() {
+        return String::new();
+    }
+    match crate::store::get(conn, &key) {
+        Ok(bytes) => base64::engine::general_purpose::STANDARD.encode(bytes),
+        Err(_) => String::new(),
+    }
+}
+
+#[derive(Serialize)]
+pub struct CompanyMark {
+    pub present: bool,
+    pub mime: String,
+    pub data_base64: String,
+}
+
+#[derive(Serialize)]
+pub struct CompanyLogos {
+    pub square: CompanyMark,
+    pub wide: CompanyMark,
+}
+
+fn logo_mime(data: &[u8]) -> Result<&'static str, String> {
+    if data.len() > 1_500_000 {
+        return Err("The logo must be smaller than 1.5 MB.".into());
+    }
+    if data.starts_with(b"\x89PNG\r\n\x1a\n") {
+        return Ok("image/png");
+    }
+    if data.len() >= 3 && data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF {
+        return Ok("image/jpeg");
+    }
+    Err("Choose a PNG or JPEG logo.".into())
+}
+
+fn mark_of(data: &str) -> CompanyMark {
+    if data.is_empty() {
+        return CompanyMark { present: false, mime: String::new(), data_base64: String::new() };
+    }
+    let mime = base64::engine::general_purpose::STANDARD
+        .decode(data)
+        .ok()
+        .and_then(|bytes| logo_mime(&bytes).ok())
+        .unwrap_or("image/png")
+        .to_string();
+    CompanyMark { present: true, mime, data_base64: data.to_string() }
+}
+
+fn logo_shape(shape: &str) -> Result<&'static str, String> {
+    match shape {
+        "square" => Ok("square"),
+        "wide" => Ok("wide"),
+        _ => Err("Choose a square logo or a rectangle logo.".into()),
+    }
+}
+
+#[tauri::command]
+pub fn company_logo(state: HostState<'_>) -> Result<CompanyLogos, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    let logos = company_logos_b64(&conn);
+    Ok(CompanyLogos { square: mark_of(&logos.square), wide: mark_of(&logos.wide) })
+}
+
+#[tauri::command]
+pub fn company_logo_set(state: HostState<'_>, shape: String, data_base64: String) -> Result<(), String> {
+    let uid = require(&state, Permission::ManageSettings)?;
+    let shape = logo_shape(&shape)?;
+    let bytes = base64::engine::general_purpose::STANDARD.decode(data_base64.trim()).map_err(|_| "The logo could not be read.".to_string())?;
+    let _mime = logo_mime(&bytes)?;
+    let key = format!(
+        "logo-{shape}-{}",
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0)
+    );
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    crate::store::put(&conn, &key, &bytes)?;
+    let updated = if shape == "square" {
+        conn.execute("UPDATE company_profile SET logo_key=?1, updated_at=datetime('now') WHERE id=1", params![key])
+    } else {
+        conn.execute("UPDATE company_profile SET logo_wide_key=?1, updated_at=datetime('now') WHERE id=1", params![key])
+    };
+    updated.map_err(|e| e.to_string())?;
+    db::audit(&conn, Some(uid), "company_logo_saved", shape);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn company_logo_clear(state: HostState<'_>, shape: String) -> Result<(), String> {
+    let uid = require(&state, Permission::ManageSettings)?;
+    let shape = logo_shape(&shape)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    let updated = if shape == "square" {
+        conn.execute("UPDATE company_profile SET logo_key='', updated_at=datetime('now') WHERE id=1", [])
+    } else {
+        conn.execute("UPDATE company_profile SET logo_wide_key='', updated_at=datetime('now') WHERE id=1", [])
+    };
+    updated.map_err(|e| e.to_string())?;
+    db::audit(&conn, Some(uid), "company_logo_cleared", shape);
     Ok(())
 }
 
@@ -412,5 +538,25 @@ mod tests {
         // Even the right password is refused while throttled.
         let err = check_credentials(&conn, "o", "correct horse battery").unwrap_err();
         assert!(err.contains("Too many attempts"));
+    }
+
+    #[test]
+    fn company_logo_is_stored_inside_the_file_and_replaced_as_a_new_copy() {
+        let s = state();
+        sign_in(&s, Role::Owner);
+        let png = b"\x89PNG\r\n\x1a\nrest-of-file";
+        let encoded = base64::engine::general_purpose::STANDARD.encode(png);
+        company_logo_set(HostState::new(&s), "square".into(), encoded.clone()).unwrap();
+        company_logo_set(HostState::new(&s), "wide".into(), encoded.clone()).unwrap();
+        let logo = company_logo(HostState::new(&s)).unwrap();
+        assert!(logo.square.present && logo.wide.present);
+        assert_eq!(logo.square.mime, "image/png");
+        assert_eq!(logo.wide.data_base64, encoded);
+        assert!(company_logo_set(HostState::new(&s), "square".into(), base64::engine::general_purpose::STANDARD.encode(b"not an image")).is_err());
+        assert!(company_logo_set(HostState::new(&s), "round".into(), encoded.clone()).is_err());
+        company_logo_clear(HostState::new(&s), "square".into()).unwrap();
+        let left = company_logo(HostState::new(&s)).unwrap();
+        assert!(!left.square.present);
+        assert!(left.wide.present);
     }
 }

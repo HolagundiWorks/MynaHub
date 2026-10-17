@@ -35,6 +35,17 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     private readonly TextBox _receiptAmount = Flow.Input("Receipt amount");
     private readonly TextBox _receiptDate = Flow.Input("Received");
     private readonly ComboBox _receiptMode = new() { Header = "Mode" };
+    private readonly TextBox _receiptTds = Flow.Input("TDS deducted");
+    private readonly ComboBox _receiptSection = new() { Header = "TDS section" };
+    private readonly TextBox _receiptReference = Flow.Input("Reference");
+    private readonly TextBlock _receiptBalance = Flow.Secondary("");
+    private readonly StackPanel _receiptRows = new() { Spacing = 8 };
+    private readonly Button _recordReceipt = new() { Content = "Record receipt", MinHeight = 32 };
+    private readonly TextBox _writeoffAmount = Flow.Input("Amount to write off");
+    private readonly TextBox _writeoffDate = Flow.Input("Write-off date");
+    private readonly TextBox _writeoffReason = Flow.Input("Reason");
+    private readonly Button _writeoff = new() { Content = "Write off", MinHeight = 32 };
+    private readonly StackPanel _writeoffs = new() { Spacing = 8 };
     private readonly StackPanel _receipt = new() { Spacing = 8 };
     private readonly InfoBar _error = new() { IsOpen = false, IsClosable = false, Severity = InfoBarSeverity.Error };
     private readonly List<(TextBox Description, TextBox Qty, TextBox Rate)> _lineBoxes = [];
@@ -65,6 +76,9 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         foreach (var (label, tag) in new[] { ("Bank", "bank"), ("UPI", "upi"), ("Cheque", "cheque"), ("Cash", "cash") })
             _receiptMode.Items.Add(Item(label, tag));
         _receiptMode.SelectedIndex = 0;
+        foreach (var (label, tag) in new[] { ("No TDS", ""), ("194J Professional fees", "194J"), ("194C Contract", "194C"), ("194-I Rent", "194-I"), ("194H Commission", "194H") })
+            _receiptSection.Items.Add(Item(label, tag));
+        _receiptSection.SelectedIndex = 0;
         foreach (var box in new[] { _issue, _due, _notes, _receiptAmount, _receiptDate })
             box.TextChanged += (_, _) => { if (!_filling) _dirty = true; };
         _project.SelectionChanged += (_, _) => { if (!_filling) _dirty = true; };
@@ -131,19 +145,40 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         var addLine = new Button { Content = "Add line", MinHeight = 32 };
         AutomationProperties.SetName(addLine, "Add invoice line");
         addLine.Click += (_, _) => AddLine("", "1", "0");
-        var record = new Button { Content = "Record receipt", MinHeight = 32 };
-        record.Click += (_, _) => RecordReceipt();
-        _receipt.Children.Add(Flow.Section("Receipt"));
-        _receipt.Children.Add(Flow.Secondary("Record money received against this issued invoice. The company file posts the receipt."));
+        _recordReceipt.Click += (_, _) => RecordReceipt();
+        var suggestTen = new Button { Content = "TDS at 10%", MinHeight = 32 };
+        var suggestTwo = new Button { Content = "TDS at 2%", MinHeight = 32 };
+        AutomationProperties.SetName(suggestTen, "Suggest TDS at 10 percent of the fee");
+        AutomationProperties.SetName(suggestTwo, "Suggest TDS at 2 percent of the fee");
+        suggestTen.Click += (_, _) => SuggestTds("10");
+        suggestTwo.Click += (_, _) => SuggestTds("2");
+        _receipt.Children.Add(Flow.Section("Receipt and TDS"));
+        _receipt.Children.Add(Flow.Secondary("Record what the client paid, and the TDS they deducted from the fee. The receipt prints on its own. A pro forma is converted to a tax invoice before it is paid."));
+        _receipt.Children.Add(_receiptBalance);
         _receipt.Children.Add(Flow.Pair(_receiptDate, _receiptAmount));
-        _receipt.Children.Add(_receiptMode);
-        _receipt.Children.Add(record);
+        _receipt.Children.Add(Flow.Pair(_receiptTds, _receiptSection));
+        _receipt.Children.Add(Flow.Bar(suggestTen, suggestTwo));
+        _receipt.Children.Add(Flow.Pair(_receiptMode, _receiptReference));
+        _receipt.Children.Add(_recordReceipt);
+        _receipt.Children.Add(_receiptRows);
+        _writeoffDate.Text = Kit.Today();
+        AutomationProperties.SetName(_writeoff, "Write off the outstanding balance");
+        _writeoff.Click += (_, _) => WriteOff();
+        if (!_shell.CanPost)
+            _writeoff.Visibility = Visibility.Collapsed;
+        _receipt.Children.Add(Flow.Section("Not collected"));
+        _receipt.Children.Add(Flow.Secondary("A write-off removes the balance from the client's ledger. It is not money received, and it does not change the bank. Use it when the bill, or part of it, will not be paid."));
+        _receipt.Children.Add(Flow.Pair(_writeoffDate, _writeoffAmount));
+        _receipt.Children.Add(_writeoffReason);
+        _receipt.Children.Add(_writeoff);
+        _receipt.Children.Add(_writeoffs);
         var actions = Flow.Bar(cancel, _save, _preview, _issueButton, _convert, _cancelInvoice);
         _editor.Children.Add(_title);
         _editor.Children.Add(_state);
         _editor.Children.Add(Flow.Section("Invoice"));
         _editor.Children.Add(_project);
         _editor.Children.Add(Flow.Pair(_kind, _gst));
+        _editor.Children.Add(Flow.Secondary("A regular registration charges 18 percent GST. Within the state that is CGST and SGST. Another state is IGST. Architectural fees print under SAC 9983. A pro forma uses the same figures and is not a tax invoice."));
         _editor.Children.Add(Flow.Pair(_issue, _due));
         _editor.Children.Add(_cancelReason);
         _editor.Children.Add(Flow.Section("Lines"));
@@ -245,18 +280,26 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             AddLine("", "1", "0");
         var number = Kit.Str(detail, "number");
         var draft = _docStatus == "draft";
+        var kind = Kit.Str(input, "kind");
         _title.Text = number.Length == 0 ? "Draft invoice" : number;
         _state.Text = draft
             ? "Draft. Issue gives this invoice a number. After that, the content cannot be edited."
-            : $"{StatusLabel(_docStatus)}. Issued invoices stay as they were issued. Record a receipt for money received.";
+            : kind == "proforma"
+                ? "Pro forma. This asks for payment and is not a tax invoice. Convert it when the client accepts."
+                : $"{StatusLabel(_docStatus)}. Issued invoices stay as they were issued. Record the receipt, including TDS the client deducted.";
         _receiptDate.Text = Kit.Today();
         _receiptAmount.Text = "";
+        _receiptTds.Text = "";
+        _receiptReference.Text = "";
+        _receiptSection.SelectedIndex = 0;
         ApplyLock(draft && _shell.CanEdit);
         _error.IsOpen = false;
         _filling = false;
         _dirty = false;
         Host.Children[0].Visibility = Visibility.Collapsed;
         Host.Children[1].Visibility = Visibility.Visible;
+        if (!draft && kind == "tax_invoice")
+            LoadMoney();
     }
 
     private void ApplyLock(bool editable)
@@ -274,8 +317,9 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         _issueButton.Visibility = editable && _shell.CanIssue ? Visibility.Visible : Visibility.Collapsed;
         _preview.Visibility = _id == null ? Visibility.Collapsed : Visibility.Visible;
         var issued = !editable && _docStatus == "issued";
-        _receipt.Visibility = issued && _shell.CanIssue ? Visibility.Visible : Visibility.Collapsed;
         var kind = ((ComboBoxItem?)_kind.SelectedItem)?.Tag as string ?? "";
+        _receipt.Visibility = issued && kind == "tax_invoice" ? Visibility.Visible : Visibility.Collapsed;
+        _recordReceipt.Visibility = _shell.CanIssue ? Visibility.Visible : Visibility.Collapsed;
         _convert.Visibility = issued && kind == "proforma" && _shell.CanEdit ? Visibility.Visible : Visibility.Collapsed;
         _cancelInvoice.Visibility = issued && _shell.CanIssue ? Visibility.Visible : Visibility.Collapsed;
         _cancelReason.Visibility = _cancelInvoice.Visibility;
@@ -470,26 +514,178 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             }));
     }
 
+    private void LoadMoney()
+    {
+        if (_id is not long id)
+            return;
+        _ = _shell.Run("Loading receipts…", () =>
+        {
+            var list = _shell.Call("receipt_list", new { invoice_id = id });
+            var balance = _shell.Call("receipt_balance", new { invoice_id = id });
+            var writeoffs = _shell.Call("invoice_writeoff_list", new { invoice_id = id });
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                PaintReceipts(list, balance);
+                PaintWriteoffs(writeoffs);
+            });
+        });
+    }
+
+    private void PaintReceipts(JsonElement list, JsonElement balance)
+    {
+        var written = Kit.Str(balance, "written_off_display");
+        _receiptBalance.Text = written.Length == 0 || written == "₹0.00"
+            ? $"Outstanding {Kit.Str(balance, "balance_display")}. Received {Kit.Str(balance, "received_display")}. TDS {Kit.Str(balance, "tds_display")}."
+            : $"Outstanding {Kit.Str(balance, "balance_display")}. Received {Kit.Str(balance, "received_display")}. TDS {Kit.Str(balance, "tds_display")}. Written off {written}.";
+        _receiptRows.Children.Clear();
+        if (list.ValueKind != JsonValueKind.Array)
+            return;
+        foreach (var row in list.EnumerateArray())
+        {
+            var id = Kit.Id(row);
+            if (id is not long receiptId)
+                continue;
+            var tds = Kit.Str(row, "tds_display");
+            var section = Kit.Str(row, "tds_section");
+            var label = $"{Kit.Str(row, "number")} · {Kit.Str(row, "received_date")} · {Kit.Str(row, "amount_display")}";
+            if (section.Length > 0)
+                label += $" · TDS {tds} ({section})";
+            if (row.TryGetProperty("reversed", out var reversed) && reversed.ValueKind == JsonValueKind.True)
+                label += " · Reversed";
+            var preview = new Button { Content = "Receipt PDF", MinHeight = 32 };
+            var number = Kit.Str(row, "number");
+            preview.Click += (_, _) =>
+            {
+                _ = _shell.Run("Preparing receipt…", () =>
+                {
+                    var encoded = _shell.Call("receipt_pdf", new { receipt_id = receiptId }).GetString() ?? "";
+                    _shell.Window.DispatcherQueue.TryEnqueue(async () => await Kit.PreviewPdf(_shell, encoded, number.Length == 0 ? "receipt" : number));
+                });
+            };
+            var line = new Grid { ColumnSpacing = 12 };
+            line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            line.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap });
+            Grid.SetColumn(preview, 1);
+            line.Children.Add(preview);
+            _receiptRows.Children.Add(line);
+        }
+    }
+
+    private void PaintWriteoffs(JsonElement list)
+    {
+        _writeoffs.Children.Clear();
+        if (list.ValueKind != JsonValueKind.Array)
+            return;
+        foreach (var row in list.EnumerateArray())
+        {
+            if (Kit.Id(row) is not long writeoffId)
+                continue;
+            var reversed = row.TryGetProperty("reversed", out var flag) && flag.ValueKind == JsonValueKind.True;
+            var label = $"Write-off · {Kit.Str(row, "date")} · {Kit.Str(row, "amount_display")} · {Kit.Str(row, "reason")}";
+            if (reversed)
+                label += " · Reversed";
+            var line = new Grid { ColumnSpacing = 12 };
+            line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            line.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap });
+            if (!reversed && _shell.CanPost)
+            {
+                var reverse = new Button { Content = "Reverse", MinHeight = 32 };
+                reverse.Click += (_, _) => ReverseWriteoff(writeoffId);
+                Grid.SetColumn(reverse, 1);
+                line.Children.Add(reverse);
+            }
+            _writeoffs.Children.Add(line);
+        }
+    }
+
+    private void WriteOff()
+    {
+        if (_id is not long id || _docStatus != "issued" || !_shell.CanPost)
+            return;
+        var amount = _writeoffAmount.Text.Trim();
+        var date = _writeoffDate.Text.Trim();
+        var reason = _writeoffReason.Text.Trim();
+        if (amount.Length == 0 || reason.Length == 0 || date.Length == 0)
+        {
+            Fail("Enter the date, the amount, and the reason for the write-off.");
+            return;
+        }
+        var input = new { invoice_id = id, writeoff_date = date, amount, reason };
+        _ = _shell.Run("Writing off…", () => _shell.Call("invoice_writeoff", new { input }))
+            .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (!task.Result)
+                    return;
+                _writeoffAmount.Text = "";
+                _writeoffReason.Text = "";
+                LoadMoney();
+                Reload();
+            }));
+    }
+
+    private void ReverseWriteoff(long writeoffId)
+    {
+        var reason = _writeoffReason.Text.Trim();
+        if (reason.Length == 0)
+        {
+            Fail("Enter the reason for reversing the write-off.");
+            return;
+        }
+        _ = _shell.Run("Reversing write-off…", () => _shell.Call("invoice_writeoff_reverse", new { writeoff_id = writeoffId, reason }))
+            .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (!task.Result)
+                    return;
+                _writeoffReason.Text = "";
+                LoadMoney();
+                Reload();
+            }));
+    }
+
+    private void SuggestTds(string rate)
+    {
+        if (_id is not long id)
+            return;
+        _ = _shell.Run("Suggesting TDS…", () =>
+        {
+            var value = _shell.Call("receipt_suggest_tds", new { invoice_id = id, rate }).GetString() ?? "";
+            _shell.Window.DispatcherQueue.TryEnqueue(() => _receiptTds.Text = value);
+        });
+    }
+
     private void RecordReceipt()
     {
-        if (_id is not long id || _docStatus != "issued")
+        if (_id is not long id || _docStatus != "issued" || !_shell.CanIssue)
             return;
         var amount = _receiptAmount.Text.Trim();
         var date = _receiptDate.Text.Trim();
+        var tds = _receiptTds.Text.Trim();
+        var section = ((ComboBoxItem?)_receiptSection.SelectedItem)?.Tag as string ?? "";
         var mode = ((ComboBoxItem?)_receiptMode.SelectedItem)?.Tag as string ?? "bank";
-        if (amount.Length == 0)
+        var reference = _receiptReference.Text.Trim();
+        if (amount.Length == 0 && tds.Length == 0)
         {
-            Fail("Enter the amount received.");
+            Fail("Enter the amount received or the TDS deducted.");
             return;
         }
-        var receipt = new { invoice_id = id, received_date = date, amount, tds = "0", tds_section = "", mode, reference = "", notes = "", bank_account_id = (long?)null };
+        if (tds.Length > 0 && tds != "0" && tds != "0.00" && section.Length == 0)
+        {
+            Fail("Choose the TDS section.");
+            return;
+        }
+        var receipt = new { invoice_id = id, received_date = date, amount, tds, tds_section = section, mode, reference, notes = "", bank_account_id = (long?)null };
         _ = _shell.Run("Recording receipt…", () => _shell.Call("receipt_record", new { input = receipt }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result)
                     return;
-                _dirty = false;
-                ShowList();
+                _receiptAmount.Text = "";
+                _receiptTds.Text = "";
+                _receiptReference.Text = "";
+                _receiptSection.SelectedIndex = 0;
+                LoadMoney();
                 Reload();
             }));
     }

@@ -43,12 +43,12 @@ internal static class Flow
     {
         var mark = new TextBlock
         {
-            Text = $"AOS-{sheet}  ·  {section}",
+            Text = $"Architecture Office Suit-{sheet}  ·  {section}",
             Style = Look("CaptionStyle"),
         };
         var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 2) };
         panel.Children.Add(mark);
-        AutomationProperties.SetName(panel, $"AOS {sheet}, {section}, {page}");
+        AutomationProperties.SetName(panel, $"Architecture Office Suit {sheet}, {section}, {page}");
         return panel;
     }
 
@@ -713,10 +713,18 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
     private readonly TextBox _name = Flow.Input("Project name");
     private readonly ComboBox _state = new() { Header = "Status" };
     private readonly ComboBox _consultancy = new() { Header = "Consultancy type" };
+    private readonly TextBox _floors = Flow.Input("Floors");
+    private readonly TextBlock _phase = Flow.Secondary("");
+    private readonly StackPanel _stageList = new() { Spacing = 8 };
+    private readonly Button _assignStages = new() { Content = "Assign standard stages" };
+    private readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true, Severity = InfoBarSeverity.Informational };
     private readonly TextBox _site = Flow.Input("Site address", true);
     private readonly TextBlock _title = Flow.Heading("Projects");
     private readonly Button _save = new();
     private Button _archive = new() { Content = "Archive", Visibility = Visibility.Collapsed };
+    private readonly Button _report = new() { Content = "Project report", Visibility = Visibility.Collapsed };
+    private readonly StackPanel _brief = new() { Spacing = 8 };
+    private readonly Dictionary<string, TextBox> _briefFields = new();
     private readonly InfoBar _error = new() { IsOpen = false, IsClosable = false, Severity = InfoBarSeverity.Error };
     private long? _id;
     private bool _dirty;
@@ -810,17 +818,32 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
         archive.Click += async (_, _) => await ArchiveProject();
         archive.Visibility = Visibility.Collapsed;
         _archive = archive;
-        var actions = Flow.Bar(cancel, archive, _save);
+        AutomationProperties.SetName(_report, "Project report");
+        AutomationProperties.SetHelpText(_report, "Prepares a project report from the records stored on this project.");
+        _report.Click += (_, _) => Print();
+        var actions = Flow.Bar(cancel, _report, archive, _save);
         _editor.Children.Add(_title);
         _editor.Children.Add(Flow.Secondary("A client can have many projects. Each project keeps its own agreements, letters and invoices."));
         _editor.Children.Add(Flow.Section("Project details"));
         _editor.Children.Add(Flow.Pair(_name, _code));
         _editor.Children.Add(Flow.Pair(_client, _state));
         _editor.Children.Add(Flow.Section("Consultancy"));
-        _editor.Children.Add(Flow.Secondary("The service follows the Council of Architecture Conditions of Engagement."));
-        _editor.Children.Add(_consultancy);
+        _editor.Children.Add(Flow.Secondary("The service follows the Council of Architecture Conditions of Engagement. The number of floors splits the working-drawing stages on a building."));
+        _floors.Text = "1";
+        _floors.TextChanged += (_, _) => { if (!_filling) _dirty = true; };
+        _editor.Children.Add(Flow.Pair(_consultancy, _floors));
+        _editor.Children.Add(Flow.Section("Stages"));
+        _editor.Children.Add(Flow.Secondary("Save the consultancy and the floors, then assign the standard stages. Marking a stage records the phase and reminds you of the payment. It does not raise an invoice."));
+        _editor.Children.Add(_phase);
+        AutomationProperties.SetName(_assignStages, "Assign standard stages");
+        _assignStages.Click += (_, _) => AssignStages();
+        _editor.Children.Add(_assignStages);
+        _editor.Children.Add(_stageList);
+        _editor.Children.Add(_notice);
         _editor.Children.Add(Flow.Section("Site"));
         _editor.Children.Add(_site);
+        BuildBrief();
+        _editor.Children.Add(_brief);
         _editor.Children.Add(_error);
         _editor.Children.Add(actions);
 
@@ -885,9 +908,17 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
         _client.IsEnabled = true;
         _state.SelectedIndex = 0;
         _consultancy.SelectedIndex = 0;
+        _floors.Text = "1";
+        _phase.Text = "";
+        _stageList.Children.Clear();
+        _assignStages.Visibility = Visibility.Collapsed;
+        _notice.IsOpen = false;
         _title.Text = "New project";
         _save.Content = "Create";
         _archive.Visibility = Visibility.Collapsed;
+        _report.Visibility = Visibility.Collapsed;
+        _brief.Visibility = Visibility.Collapsed;
+        ClearBrief();
         _error.IsOpen = false;
         _filling = false;
         _dirty = false;
@@ -907,14 +938,105 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
         _client.IsEnabled = false;
         Select(_state, Kit.Str(row, "status"));
         Select(_consultancy, string.IsNullOrEmpty(Kit.Str(row, "consultancy_type")) ? "comprehensive" : Kit.Str(row, "consultancy_type"));
+        var floors = Kit.Str(row, "floors");
+        _floors.Text = floors.Length == 0 || floors == "0" ? "1" : floors;
+        _assignStages.Visibility = _shell.CanEdit ? Visibility.Visible : Visibility.Collapsed;
+        _notice.IsOpen = false;
         _title.Text = _name.Text.Length == 0 ? "Project" : _name.Text;
         _save.Content = "Save changes";
         _archive.Visibility = _shell.CanEdit ? Visibility.Visible : Visibility.Collapsed;
+        _report.Visibility = Visibility.Visible;
+        _brief.Visibility = Visibility.Visible;
         _error.IsOpen = false;
         _filling = false;
         _dirty = false;
         ListPane.Visibility = Visibility.Collapsed;
         EditorPane.Visibility = Visibility.Visible;
+        if (_id is long id)
+        {
+            LoadBrief(id);
+            LoadStages(id);
+        }
+    }
+
+    private TextBox BriefBox(string key, string header, bool multiline = false)
+    {
+        var box = Flow.Input(header, multiline);
+        box.TextChanged += (_, _) => { if (!_filling) _dirty = true; };
+        _briefFields[key] = box;
+        return box;
+    }
+
+    private void BuildBrief()
+    {
+        _brief.Children.Add(Flow.Section("Project brief"));
+        _brief.Children.Add(Flow.Secondary("This is the pre-design questionnaire. Concept design waits until the budget and built-up area are stated, the kitchen is decided, Vastu is yes, no, or a named consultant, the main rooms have notes, and the client has approved the brief."));
+        _brief.Children.Add(Flow.Section("Client and site"));
+        _brief.Children.Add(Flow.Pair(BriefBox("client_name", "Client name"), BriefBox("mobile", "Mobile")));
+        _brief.Children.Add(Flow.Pair(BriefBox("email", "Email"), BriefBox("occupation", "Occupation")));
+        _brief.Children.Add(BriefBox("current_address", "Current address", true));
+        _brief.Children.Add(BriefBox("site_address", "Site address, if different", true));
+        _brief.Children.Add(BriefBox("plot_size", "Plot size or dimensions"));
+        _brief.Children.Add(Flow.Pair(BriefBox("terrain", "Terrain"), BriefBox("vegetation", "Vegetation")));
+        _brief.Children.Add(BriefBox("orientation_notes", "Orientation, soil and natural features", true));
+        _brief.Children.Add(Flow.Section("Project"));
+        _brief.Children.Add(BriefBox("intended_use", "Intended use", true));
+        _brief.Children.Add(Flow.Pair(BriefBox("built_up_area", "Built-up area"), BriefBox("phased", "Phased construction")));
+        _brief.Children.Add(Flow.Pair(BriefBox("tentative_start", "Tentative start"), BriefBox("budget_note", "Budget excluding legal fees")));
+        _brief.Children.Add(BriefBox("finance_note", "Finance"));
+        _brief.Children.Add(Flow.Section("Occupants"));
+        _brief.Children.Add(BriefBox("household", "Household: name, relation, age, occupation", true));
+        _brief.Children.Add(BriefBox("staff_requirements", "Staff requirements", true));
+        _brief.Children.Add(Flow.Section("Design drivers"));
+        _brief.Children.Add(Flow.Pair(BriefBox("orientation", "Orientation"), BriefBox("door_direction", "Main and secondary doors")));
+        _brief.Children.Add(Flow.Pair(BriefBox("views", "Views"), BriefBox("basement", "Basement")));
+        _brief.Children.Add(BriefBox("vastu", "Vastu"));
+        _brief.Children.Add(BriefBox("style", "Sense of style", true));
+        _brief.Children.Add(BriefBox("loved_places", "Places loved", true));
+        _brief.Children.Add(BriefBox("activities", "Important activities", true));
+        _brief.Children.Add(BriefBox("indoor_prefs", "Indoor preferences", true));
+        _brief.Children.Add(BriefBox("outdoor_prefs", "Outdoor preferences", true));
+        _brief.Children.Add(Flow.Section("Spaces, materials and rooms"));
+        _brief.Children.Add(BriefBox("space_schedule", "Space, area, floor, description", true));
+        _brief.Children.Add(Flow.Pair(BriefBox("construction", "Construction"), BriefBox("flooring", "Flooring")));
+        _brief.Children.Add(Flow.Pair(BriefBox("walls", "Wall finish"), BriefBox("cabinetry", "Cabinetry")));
+        _brief.Children.Add(Flow.Pair(BriefBox("seating", "Seating"), BriefBox("beds", "Beds")));
+        _brief.Children.Add(BriefBox("room_details", "Room notes, including the kitchen type", true));
+        _brief.Children.Add(Flow.Section("Assumptions and approval"));
+        _brief.Children.Add(BriefBox("assumptions", "Assumptions and exclusions", true));
+        _brief.Children.Add(BriefBox("approval_note", "Client approval", true));
+        _brief.Children.Add(BriefBox("approved_at", "Approved on (YYYY-MM-DD)"));
+    }
+
+    private void ClearBrief()
+    {
+        foreach (var box in _briefFields.Values)
+            box.Text = "";
+    }
+
+    private Dictionary<string, string> BriefPayload()
+    {
+        var brief = new Dictionary<string, string>();
+        foreach (var (key, box) in _briefFields)
+            brief[key] = box.Text.Trim();
+        return brief;
+    }
+
+    private void LoadBrief(long id)
+    {
+        _ = _shell.Run("Loading the project brief…", () =>
+        {
+            var payload = _shell.Call("project_brief_get", new { project_id = id });
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (_id != id || !payload.TryGetProperty("brief", out var brief))
+                    return;
+                _filling = true;
+                foreach (var (key, box) in _briefFields)
+                    box.Text = Kit.Str(brief, key);
+                _filling = false;
+            });
+        });
     }
 
     private void PaintList()
@@ -929,6 +1051,9 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
             if (status.Length > 0 && Kit.Str(row, "status") != status)
                 continue;
             var service = Consultancy.Label(Kit.Str(row, "consultancy_type"));
+            var phase = Kit.Str(row, "phase");
+            if (phase.Length > 0)
+                service = $"{service} · {phase}";
             var blob = $"{Kit.Str(row, "code")} {Kit.Str(row, "name")} {Kit.Str(row, "client_name")} {Kit.Str(row, "site_address")} {service}".ToLowerInvariant();
             if (needle.Length > 0 && !blob.Contains(needle))
                 continue;
@@ -965,6 +1090,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
         if (clientId == 0) { Fail("Select a client."); return; }
         if (_name.Text.Trim().Length == 0) { Fail("Project name is required."); return; }
         if (_code.Text.Trim().Length == 0) { Fail("Project code is required."); return; }
+        if (Floors() == 0) { Fail("Enter the number of floors from 1 to 40."); return; }
         var project = new
         {
             id = _id,
@@ -973,13 +1099,21 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
             name = _name.Text.Trim(),
             site_address = _site.Text.Trim(),
             consultancy_type = ((ComboBoxItem?)_consultancy.SelectedItem)?.Tag as string ?? "comprehensive",
+            floors = Floors(),
             status = ((ComboBoxItem?)_state.SelectedItem)?.Tag as string ?? "active",
             archived = false,
             client_name = "",
         };
         _saving = true;
         _save.IsEnabled = false;
-        _ = _shell.Run(_id == null ? "Creating project…" : "Saving project…", () => _shell.Call("project_save", new { project }))
+        var briefId = _id;
+        var brief = BriefPayload();
+        _ = _shell.Run(_id == null ? "Creating project…" : "Saving project…", () =>
+        {
+            _shell.Call("project_save", new { project });
+            if (briefId is long id)
+                _shell.Call("project_brief_save", new { project_id = id, brief });
+        })
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 _saving = false;
@@ -1026,15 +1160,147 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
             }));
     }
 
+    private int Floors()
+    {
+        return int.TryParse(_floors.Text.Trim(), out var floors) && floors is >= 1 and <= 40 ? floors : 0;
+    }
+
+    private void LoadStages(long id)
+    {
+        _ = _shell.Run("Loading stages…", () =>
+        {
+            var plan = _shell.Call("project_stages", new { project_id = id });
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (_id != id)
+                    return;
+                PaintStages(plan);
+            });
+        });
+    }
+
+    private void PaintStages(JsonElement plan)
+    {
+        var phase = Kit.Str(plan, "phase");
+        _phase.Text = phase.Length == 0 ? "No stages yet." : phase == "Complete" ? "Phase: complete." : $"Phase: {phase}";
+        _stageList.Children.Clear();
+        if (!plan.TryGetProperty("stages", out var stages) || stages.ValueKind != JsonValueKind.Array)
+            return;
+        foreach (var stage in stages.EnumerateArray())
+        {
+            var name = Kit.Str(stage, "name");
+            var marked = Kit.Str(stage, "marked_on");
+            var line = $"{name} · {Kit.Str(stage, "share")}% · {(marked.Length == 0 ? "Open" : marked)} · {Kit.Str(stage, "payment")}";
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            row.Children.Add(new TextBlock { Text = line, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center });
+            if (_shell.CanEdit && stage.TryGetProperty("id", out var stageId) && stageId.TryGetInt64(out var id))
+            {
+                if (marked.Length == 0)
+                {
+                    var mark = new Button { Content = "Mark", MinHeight = 32 };
+                    mark.Click += (_, _) => MarkStage(id);
+                    row.Children.Add(mark);
+                }
+                else
+                {
+                    var clear = new Button { Content = "Clear", MinHeight = 32 };
+                    clear.Click += (_, _) => UnmarkStage(id);
+                    row.Children.Add(clear);
+                }
+            }
+            _stageList.Children.Add(row);
+        }
+    }
+
+    private void AssignStages()
+    {
+        if (_id is not long id || !_shell.CanEdit)
+            return;
+        var floors = Floors();
+        if (floors == 0) { Fail("Enter the number of floors from 1 to 40."); return; }
+        var consultancy = ((ComboBoxItem?)_consultancy.SelectedItem)?.Tag as string ?? "comprehensive";
+        _ = _shell.Run("Assigning stages…", () =>
+        {
+            var plan = _shell.Call("project_stages_apply", new { project_id = id, consultancy, floors });
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (_id != id)
+                    return;
+                PaintStages(plan);
+                Notice(Kit.Str(plan, "note"));
+                _dirty = false;
+            });
+        });
+    }
+
+    private void MarkStage(long stageId)
+    {
+        if (_id is not long id)
+            return;
+        _ = _shell.Run("Marking stage…", () =>
+        {
+            var plan = _shell.Call("project_stage_mark", new { stage_id = stageId, marked_on = Kit.Today() });
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (_id != id)
+                    return;
+                PaintStages(plan);
+                Notice(Kit.Str(plan, "note"));
+            });
+        });
+    }
+
+    private void UnmarkStage(long stageId)
+    {
+        if (_id is not long id)
+            return;
+        _ = _shell.Run("Clearing stage…", () =>
+        {
+            var plan = _shell.Call("project_stage_unmark", new { stage_id = stageId });
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (_id != id)
+                    return;
+                PaintStages(plan);
+                _notice.IsOpen = false;
+            });
+        });
+    }
+
+    private void Notice(string message)
+    {
+        if (message.Length == 0)
+        {
+            _notice.IsOpen = false;
+            return;
+        }
+        _notice.Message = message;
+        _notice.IsOpen = true;
+    }
+
     private void Fail(string message)
     {
+        _error.Severity = InfoBarSeverity.Error;
         _error.Message = message;
         _error.IsOpen = true;
     }
 
     public async void NewItem() => await BeginNew();
     public void Save() => SaveProject();
-    public void Print() { }
+    public void Print()
+    {
+        if (_id is not long id)
+        {
+            _shell.Problem("Open a project to prepare its report.");
+            return;
+        }
+        var name = string.IsNullOrWhiteSpace(_code.Text) ? _name.Text : _code.Text;
+        _ = _shell.Run("Preparing the project report…", () =>
+        {
+            var encoded = _shell.Call("project_report", new { project_id = id }).GetString() ?? "";
+            _shell.Window.DispatcherQueue.TryEnqueue(async () => await Kit.PreviewPdf(_shell, encoded, string.IsNullOrWhiteSpace(name) ? "project-report" : name));
+        });
+    }
     public void FocusSearch() => _search.Focus(FocusState.Programmatic);
     public async Task<bool> CanLeave() => await Flow.Discard(this, _dirty);
 
@@ -1066,9 +1332,20 @@ internal sealed class ClientsPage : UserControl, IPageCommands
     private readonly TextBox _contact = Flow.Input("Contact person");
     private readonly TextBox _email = Flow.Input("Email");
     private readonly TextBox _phone = Flow.Input("Phone");
-    private readonly TextBox _address = Flow.Input("Address", true);
+    private readonly TextBox _address = Flow.Input("Correspondence address", true);
+    private readonly TextBox _billing = Flow.Input("Billing address", true);
+    private readonly ComboBox _preference = new() { Header = "Communication preference" };
+    private readonly ComboBox _kind = new() { Header = "Kind" };
+    private readonly ComboBox _gstRegistration = new() { Header = "GST registration" };
+    private readonly TextBox _legal = Flow.Input("Legal name");
+    private readonly TextBox _city = Flow.Input("City");
+    private readonly TextBox _state = Flow.Input("State");
     private readonly TextBox _pan = Flow.Input("PAN");
+    private readonly TextBox _tan = Flow.Input("TAN");
     private readonly TextBox _gstin = Flow.Input("GSTIN");
+    private readonly TextBox[] _repName = [Flow.Input("Name"), Flow.Input("Name"), Flow.Input("Name")];
+    private readonly TextBox[] _repRole = [Flow.Input("Designation"), Flow.Input("Designation"), Flow.Input("Designation")];
+    private readonly TextBox[] _repPhone = [Flow.Input("Phone"), Flow.Input("Phone"), Flow.Input("Phone")];
     private readonly TextBlock _title = Flow.Heading("New client");
     private readonly Button _save = new();
     private readonly Button _archive = new() { Content = "Archive", Visibility = Visibility.Collapsed };
@@ -1091,7 +1368,19 @@ internal sealed class ClientsPage : UserControl, IPageCommands
         _empty.Visibility = Visibility.Collapsed;
         _search.TextChanged += (_, _) => Paint();
         _list.SelectionChanged += (_, _) => { if (_list.SelectedItem is ListViewItem item && item.Tag is JsonElement row) Open(row); };
-        foreach (var box in new[] { _name, _contact, _email, _phone, _address, _pan, _gstin })
+        foreach (var (label, tag) in new[] { ("Select", ""), ("Email", "EMAIL"), ("WhatsApp", "WHATSAPP"), ("Phone", "PHONE"), ("Client portal", "PORTAL") })
+            _preference.Items.Add(new ComboBoxItem { Content = label, Tag = tag });
+        _preference.SelectedIndex = 0;
+        foreach (var (label, tag) in new[] { ("Individual", "individual"), ("Company", "company"), ("Architect firm", "architect_firm") })
+            _kind.Items.Add(new ComboBoxItem { Content = label, Tag = tag });
+        _kind.SelectedIndex = 0;
+        foreach (var (label, tag) in new[] { ("Not recorded", ""), ("Regular", "regular"), ("Composition", "composition"), ("Unregistered", "unregistered"), ("SEZ", "sez") })
+            _gstRegistration.Items.Add(new ComboBoxItem { Content = label, Tag = tag });
+        _gstRegistration.SelectedIndex = 0;
+        _preference.SelectionChanged += (_, _) => { if (!_filling) _dirty = true; };
+        _kind.SelectionChanged += (_, _) => { if (!_filling) _dirty = true; };
+        _gstRegistration.SelectionChanged += (_, _) => { if (!_filling) _dirty = true; };
+        foreach (var box in new[] { _name, _contact, _email, _phone, _address, _billing, _legal, _city, _state, _pan, _tan, _gstin }.Concat(_repName).Concat(_repRole).Concat(_repPhone))
             box.TextChanged += (_, _) => { if (!_filling) _dirty = true; };
         var create = Flow.Command("New client", () => _ = BeginNew(), primary: true);
         AutomationProperties.SetName(create, "New client");
@@ -1141,9 +1430,21 @@ internal sealed class ClientsPage : UserControl, IPageCommands
         form.Children.Add(Flow.Section("Client"));
         form.Children.Add(Flow.Pair(_name, _contact));
         form.Children.Add(Flow.Pair(_phone, _email));
-        form.Children.Add(Flow.Section("Billing identity"));
+        form.Children.Add(Flow.Section("Onboarding"));
+        form.Children.Add(Flow.Secondary("Correspondence is where letters go. The legal name, GSTIN, PAN, TAN and state are what a tax invoice and a TDS certificate need. Send the pre-design questionnaire after the proposal is accepted, and before concept design."));
+        form.Children.Add(Flow.Pair(_kind, _legal));
         form.Children.Add(_address);
-        form.Children.Add(Flow.Pair(_pan, _gstin));
+        form.Children.Add(_billing);
+        form.Children.Add(Flow.Pair(_city, _state));
+        form.Children.Add(Flow.Pair(_pan, _tan));
+        form.Children.Add(Flow.Pair(_gstin, _gstRegistration));
+        form.Children.Add(_preference);
+        form.Children.Add(Flow.Section("Authorised representatives"));
+        for (var i = 0; i < 3; i++)
+        {
+            form.Children.Add(Flow.Pair(_repName[i], _repRole[i]));
+            form.Children.Add(_repPhone[i]);
+        }
         form.Children.Add(_error);
         form.Children.Add(actions);
         var host = new Grid { Margin = (Thickness)Application.Current.Resources["PageMargin"] };
@@ -1168,7 +1469,10 @@ internal sealed class ClientsPage : UserControl, IPageCommands
         _filling = true;
         _id = null;
         _archived = false;
-        foreach (var box in new[] { _name, _contact, _email, _phone, _address, _pan, _gstin }) box.Text = "";
+        foreach (var box in new[] { _name, _contact, _email, _phone, _address, _billing, _legal, _city, _state, _pan, _tan, _gstin }.Concat(_repName).Concat(_repRole).Concat(_repPhone)) box.Text = "";
+        _preference.SelectedIndex = 0;
+        _kind.SelectedIndex = 0;
+        _gstRegistration.SelectedIndex = 0;
         _title.Text = "New client";
         _save.Content = "Create";
         _archive.Visibility = Visibility.Collapsed;
@@ -1190,8 +1494,35 @@ internal sealed class ClientsPage : UserControl, IPageCommands
         _email.Text = Kit.Str(row, "email");
         _phone.Text = Kit.Str(row, "phone");
         _address.Text = Kit.Str(row, "address");
+        _billing.Text = Kit.Str(row, "billing_address");
+        _legal.Text = Kit.Str(row, "legal_name");
+        _city.Text = Kit.Str(row, "city");
+        _state.Text = Kit.Str(row, "state");
         _pan.Text = Kit.Str(row, "pan");
+        _tan.Text = Kit.Str(row, "tan");
         _gstin.Text = Kit.Str(row, "gstin");
+        SelectTag(_kind, Kit.Str(row, "kind").Length == 0 ? "individual" : Kit.Str(row, "kind"));
+        SelectTag(_gstRegistration, Kit.Str(row, "gst_registration"));
+        SelectPreference(Kit.Str(row, "communication_preference"));
+        for (var i = 0; i < 3; i++)
+        {
+            _repName[i].Text = "";
+            _repRole[i].Text = "";
+            _repPhone[i].Text = "";
+        }
+        if (row.TryGetProperty("representatives", out var reps) && reps.ValueKind == JsonValueKind.Array)
+        {
+            var i = 0;
+            foreach (var rep in reps.EnumerateArray())
+            {
+                if (i >= 3)
+                    break;
+                _repName[i].Text = Kit.Str(rep, "name");
+                _repRole[i].Text = Kit.Str(rep, "designation");
+                _repPhone[i].Text = Kit.Str(rep, "phone");
+                i++;
+            }
+        }
         _title.Text = _name.Text;
         _save.Content = "Save changes";
         _archive.Visibility = _shell.CanEdit ? Visibility.Visible : Visibility.Collapsed;
@@ -1252,7 +1583,34 @@ internal sealed class ClientsPage : UserControl, IPageCommands
     {
         if (_saving) return;
         if (_name.Text.Trim().Length == 0) { _error.Message = "Name is required."; _error.IsOpen = true; return; }
-        var client = new { id = _id, name = _name.Text.Trim(), contact_person = _contact.Text.Trim(), email = _email.Text.Trim(), phone = _phone.Text.Trim(), address = _address.Text.Trim(), pan = _pan.Text.Trim(), gstin = _gstin.Text.Trim(), archived = _archived };
+        var representatives = new List<object>();
+        for (var i = 0; i < 3; i++)
+        {
+            if (_repName[i].Text.Trim().Length == 0)
+                continue;
+            representatives.Add(new { name = _repName[i].Text.Trim(), designation = _repRole[i].Text.Trim(), phone = _repPhone[i].Text.Trim() });
+        }
+        var client = new
+        {
+            id = _id,
+            name = _name.Text.Trim(),
+            contact_person = _contact.Text.Trim(),
+            email = _email.Text.Trim(),
+            phone = _phone.Text.Trim(),
+            address = _address.Text.Trim(),
+            billing_address = _billing.Text.Trim(),
+            communication_preference = ((ComboBoxItem?)_preference.SelectedItem)?.Tag as string ?? "",
+            representatives,
+            pan = _pan.Text.Trim(),
+            tan = _tan.Text.Trim(),
+            gstin = _gstin.Text.Trim(),
+            kind = ((ComboBoxItem?)_kind.SelectedItem)?.Tag as string ?? "individual",
+            city = _city.Text.Trim(),
+            state = _state.Text.Trim(),
+            legal_name = _legal.Text.Trim(),
+            gst_registration = ((ComboBoxItem?)_gstRegistration.SelectedItem)?.Tag as string ?? "",
+            archived = _archived,
+        };
         _saving = true;
         _save.IsEnabled = false;
         _ = _shell.Run(_id == null ? "Creating client…" : "Saving client…", () => _shell.Call("client_save", new { client }))
@@ -1286,6 +1644,21 @@ internal sealed class ClientsPage : UserControl, IPageCommands
             }));
     }
 
+    private void SelectPreference(string tag) => SelectTag(_preference, tag);
+
+    private static void SelectTag(ComboBox box, string tag)
+    {
+        foreach (ComboBoxItem item in box.Items)
+        {
+            if (item.Tag as string == tag)
+            {
+                box.SelectedItem = item;
+                return;
+            }
+        }
+        box.SelectedIndex = 0;
+    }
+
     public async void NewItem() => await BeginNew();
     public void Save() => SaveClient();
     public void Print() { }
@@ -1315,7 +1688,12 @@ internal sealed class LettersPage : UserControl, IPageCommands
     private readonly TextBlock _state = Flow.Secondary("Draft. Save draft keeps it editable. Issue gives it a number and freezes the content.");
     private readonly Button _save = new() { Content = "Save draft" };
     private readonly Button _preview = new() { Content = "Preview" };
+    private readonly Button _check = new() { Content = "Check language" };
     private readonly Button _issue = new() { Content = "Issue" };
+    private readonly StackPanel _language = new() { Spacing = 8 };
+    private readonly DispatcherTimer _languageTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
+    private ulong _revision;
+    private int _languageRequest;
     private readonly Button _revise = new() { Content = "Revise", Visibility = Visibility.Collapsed };
     private readonly Button _attach = new() { Content = "Attach signed copy", Visibility = Visibility.Collapsed };
     private readonly Button _sign = new() { Content = "Mark signed", Visibility = Visibility.Collapsed };
@@ -1344,6 +1722,23 @@ internal sealed class LettersPage : UserControl, IPageCommands
         _list.SelectionChanged += (_, _) => { if (_list.SelectedItem is ListViewItem item && item.Tag is JsonElement row) Open(row); };
         foreach (var box in new[] { _date, _reference, _party, _address, _subject, _body })
             box.TextChanged += (_, _) => { if (!_filling) _dirty = true; };
+        _body.TextChanged += (_, _) =>
+        {
+            _revision++;
+            _language.Children.Clear();
+            if (_filling || !_body.IsEnabled)
+                return;
+            _languageTimer.Stop();
+            _languageTimer.Start();
+        };
+        _languageTimer.Tick += (_, _) =>
+        {
+            _languageTimer.Stop();
+            CheckLanguage();
+        };
+        AutomationProperties.SetName(_check, "Check the letter language");
+        AutomationProperties.SetHelpText(_check, "Suggests changes to the letter. Accepting one updates the draft. An issued document is left as it was.");
+        _check.Click += (_, _) => CheckLanguage();
         var letter = Flow.Command("New letter", () => _ = BeginNew("letter_out"), primary: true);
         var agreement = Flow.Command("New agreement", () => _ = BeginNew("agreement"));
         AutomationProperties.SetName(letter, "New letter");
@@ -1396,7 +1791,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
         _cancelReason.Visibility = Visibility.Collapsed;
         var cancel = new Button { Content = "Back" };
         cancel.Click += async (_, _) => { if (await CanLeave()) ShowList(); };
-        var actions = Flow.Bar(cancel, _save, _preview, _issue, _revise, _attach, _sign, _cancelDoc);
+        var actions = Flow.Bar(cancel, _save, _check, _preview, _issue, _revise, _attach, _sign, _cancelDoc);
         var form = new StackPanel { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
         form.Children.Add(_title);
         form.Children.Add(_state);
@@ -1409,6 +1804,8 @@ internal sealed class LettersPage : UserControl, IPageCommands
         form.Children.Add(Flow.Section("Content"));
         form.Children.Add(_subject);
         form.Children.Add(_body);
+        form.Children.Add(Flow.Secondary("Language check reads this draft. A suggestion changes the letter only when you accept it. Issued documents and the accounts are left as they are."));
+        form.Children.Add(_language);
         form.Children.Add(_cancelReason);
         form.Children.Add(_error);
         form.Children.Add(actions);
@@ -1443,6 +1840,8 @@ internal sealed class LettersPage : UserControl, IPageCommands
         SetEditable(true);
         ShowIssuedActions(false, false);
         _error.IsOpen = false;
+        _language.Children.Clear();
+        _languageTimer.Stop();
         _filling = false;
         _dirty = false;
         Host.Children[0].Visibility = Visibility.Collapsed;
@@ -1489,6 +1888,105 @@ internal sealed class LettersPage : UserControl, IPageCommands
         _dirty = false;
         Host.Children[0].Visibility = Visibility.Collapsed;
         Host.Children[1].Visibility = Visibility.Visible;
+        if (_body.IsEnabled && _body.Text.Length > 0)
+            CheckLanguage();
+    }
+
+    private void CheckLanguage()
+    {
+        if (!_body.IsEnabled)
+            return;
+        var text = _body.Text;
+        var revision = _revision;
+        var request = ++_languageRequest;
+        if (text.Trim().Length == 0)
+        {
+            _language.Children.Clear();
+            return;
+        }
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                var result = _shell.Call("grammar_check", new { api_version = 1, document_revision = revision, dialect = "Indian", text, protected_ranges = Array.Empty<object>() });
+                _shell.Window.DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (request != _languageRequest || revision != _revision || text != _body.Text)
+                        return;
+                    ShowLanguage(result, text, revision);
+                });
+            }
+            catch (AdmsException ex)
+            {
+                _shell.Window.DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (request != _languageRequest || revision != _revision)
+                        return;
+                    _language.Children.Clear();
+                    _language.Children.Add(Flow.Secondary(ex.Message));
+                });
+            }
+        });
+    }
+
+    private void ShowLanguage(JsonElement result, string text, ulong revision)
+    {
+        _language.Children.Clear();
+        if (!result.TryGetProperty("issues", out var issues) || issues.ValueKind != JsonValueKind.Array || issues.GetArrayLength() == 0)
+        {
+            _language.Children.Add(Flow.Secondary("No changes suggested."));
+            return;
+        }
+        foreach (var issue in issues.EnumerateArray())
+        {
+            var start = issue.TryGetProperty("start_utf16", out var startValue) && startValue.TryGetInt32(out var startIndex) ? startIndex : -1;
+            var length = issue.TryGetProperty("length_utf16", out var lengthValue) && lengthValue.TryGetInt32(out var lengthIndex) ? lengthIndex : -1;
+            var original = Kit.Str(issue, "original");
+            var message = Kit.Str(issue, "message");
+            var row = new StackPanel { Spacing = 4 };
+            var title = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap };
+            row.Children.Add(title);
+            if (original.Length > 0)
+                row.Children.Add(Flow.Secondary(original));
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            if (issue.TryGetProperty("suggestions", out var suggestions) && suggestions.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var suggestion in suggestions.EnumerateArray())
+                {
+                    var replacement = suggestion.GetString() ?? "";
+                    var label = replacement.Length == 0 ? "Remove" : replacement.Length > 48 ? replacement[..48] + "…" : replacement;
+                    var accept = new Button { Content = label, MinHeight = 32 };
+                    var capturedStart = start;
+                    var capturedLength = length;
+                    var capturedOriginal = original;
+                    var capturedReplacement = replacement;
+                    accept.Click += (_, _) => AcceptSuggestion(revision, text, capturedStart, capturedLength, capturedOriginal, capturedReplacement);
+                    actions.Children.Add(accept);
+                }
+            }
+            var ignore = new Button { Content = "Ignore", MinHeight = 32 };
+            ignore.Click += (_, _) => row.Visibility = Visibility.Collapsed;
+            actions.Children.Add(ignore);
+            row.Children.Add(actions);
+            row.Tapped += (_, _) =>
+            {
+                if (capturedRange(start, length, text))
+                    _body.Select(start, length);
+            };
+            _language.Children.Add(row);
+        }
+    }
+
+    private static bool capturedRange(int start, int length, string text) => start >= 0 && length >= 0 && start + length <= text.Length;
+
+    private void AcceptSuggestion(ulong revision, string checkedText, int start, int length, string original, string replacement)
+    {
+        if (revision != _revision || _body.Text != checkedText || !capturedRange(start, length, _body.Text))
+            return;
+        if (_body.Text.Substring(start, length) != original)
+            return;
+        _body.Text = _body.Text.Remove(start, length).Insert(start, replacement);
+        _body.Select(start, replacement.Length);
     }
 
     private void SetEditable(bool editable)
@@ -1496,6 +1994,12 @@ internal sealed class LettersPage : UserControl, IPageCommands
         foreach (var box in new Control[] { _kind, _date, _reference, _project, _party, _address, _subject, _body })
             box.IsEnabled = editable;
         _save.Visibility = editable ? Visibility.Visible : Visibility.Collapsed;
+        _check.Visibility = editable ? Visibility.Visible : Visibility.Collapsed;
+        if (!editable)
+        {
+            _languageTimer.Stop();
+            _language.Children.Clear();
+        }
     }
 
     private void ShowIssuedActions(bool issued, bool signable)
@@ -2085,14 +2589,233 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
         {
             _summary.Text = $"{Kit.Str(summary, "unmatched")} unmatched · {Kit.Str(summary, "partial")} partly matched · {Kit.Str(summary, "matched")} matched · {Kit.Str(summary, "rejected_rows")} rejected rows";
             _transactions.Items.Clear();
-            var widths = new GridLength[] { new(120), new(2, GridUnitType.Star), new(140), new(120) };
-            var money = new[] { false, false, true, false };
-            _transactions.Items.Add(Flow.Header(["Date", "Particulars", "Amount", "Status"], widths, money));
+            var widths = new GridLength[] { new(120), new(2, GridUnitType.Star), new(140), new(120), new(130) };
+            var money = new[] { false, false, true, false, false };
+            _transactions.Items.Add(Flow.Header(["Date", "Particulars", "Amount", "Status", "Match"], widths, money));
             if (txns.ValueKind != JsonValueKind.Array) return;
             foreach (var row in txns.EnumerateArray())
-                _transactions.Items.Add(Flow.Columns([Kit.Str(row, "txn_date"), Kit.Str(row, "narration"), Kit.Str(row, "amount_display"), Kit.Str(row, "status")], widths, money));
+            {
+                var credit = PaiseValue(row, "credit_paise");
+                var amount = credit > 0 ? Kit.Str(row, "credit_display") : Kit.Str(row, "debit_display");
+                var line = Flow.Columns([Kit.Str(row, "txn_date"), Kit.Str(row, "narration"), amount, Kit.Str(row, "status"), ""], widths, money);
+                var status = Kit.Str(row, "status");
+                if (_shell.CanPost && Kit.Id(row) is long txnId && credit > 0 && status is "unmatched" or "partial")
+                {
+                    var unallocated = PaiseValue(row, "unallocated_paise");
+                    if (unallocated <= 0)
+                        unallocated = credit;
+                    var narration = Kit.Str(row, "narration");
+                    var button = new Button { Content = "Review match", MinWidth = 108 };
+                    button.Click += (_, _) => ReviewMatch(txnId, credit, unallocated, narration);
+                    if (line.Children.Count > 0 && line.Children[line.Children.Count - 1] is Border cell)
+                        cell.Child = button;
+                }
+                _transactions.Items.Add(line);
+            }
         });
     });
+
+    private void ReviewMatch(long txnId, long credit, long unallocated, string narration)
+    {
+        _ = _shell.Run("Looking for invoices…", () =>
+        {
+            var suggestions = _shell.Call("bank_txn_suggest", new { txn_id = txnId });
+            _shell.Window.DispatcherQueue.TryEnqueue(() => _ = ConfirmMatch(txnId, credit, unallocated, narration, suggestions));
+        });
+    }
+
+    private async Task ConfirmMatch(long txnId, long credit, long unallocated, string narration, JsonElement suggestions)
+    {
+        if (suggestions.ValueKind != JsonValueKind.Array || suggestions.GetArrayLength() == 0)
+        {
+            _shell.Problem("There is no open tax invoice to match. A bill that will not be collected is written off on the invoice.");
+            return;
+        }
+        var rows = new List<MatchRow>();
+        var list = new StackPanel { Spacing = 10 };
+        foreach (var row in suggestions.EnumerateArray())
+        {
+            if (!row.TryGetProperty("invoice_id", out var invoice) || !invoice.TryGetInt64(out var invoiceId))
+                continue;
+            var outstanding = row.TryGetProperty("balance_paise", out var balanceValue) && balanceValue.TryGetInt64(out var owed) ? owed : 0;
+            if (outstanding <= 0)
+                continue;
+            var match = new MatchRow(invoiceId, outstanding, Kit.Str(row, "tds_amount"), Kit.Str(row, "tds_section"));
+            var title = $"{Kit.Str(row, "number")} · {Kit.Str(row, "client_name")} · outstanding {Kit.Str(row, "balance_display")}";
+            match.Check.Content = title;
+            match.Amount.PlaceholderText = "Amount from this credit";
+            match.Amount.IsEnabled = false;
+            match.Tds.PlaceholderText = "TDS, if deducted";
+            match.Tds.IsEnabled = false;
+            var captured = match;
+            match.Check.Checked += (_, _) =>
+            {
+                captured.Amount.IsEnabled = true;
+                captured.Tds.IsEnabled = true;
+                captured.Section.IsEnabled = true;
+                if (captured.Amount.Text.Trim().Length == 0)
+                    captured.Amount.Text = Rupees(Math.Min(captured.Outstanding, Room(rows, captured, unallocated)));
+                if (rows.Count(item => item.Check.IsChecked == true) == 1 && unallocated == credit && captured.SuggestedTds.Length > 0 && captured.Amount.Text == Rupees(unallocated))
+                {
+                    captured.Tds.Text = captured.SuggestedTds;
+                    SelectTds(captured.Section, captured.SuggestedSection);
+                }
+            };
+            match.Check.Unchecked += (_, _) =>
+            {
+                captured.Amount.Text = "";
+                captured.Amount.IsEnabled = false;
+                captured.Tds.Text = "";
+                captured.Tds.IsEnabled = false;
+                captured.Section.SelectedIndex = 0;
+                captured.Section.IsEnabled = false;
+            };
+            var fields = new Grid { ColumnSpacing = 8 };
+            fields.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            fields.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
+            fields.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+            fields.Children.Add(match.Amount);
+            Grid.SetColumn(match.Tds, 1);
+            fields.Children.Add(match.Tds);
+            Grid.SetColumn(match.Section, 2);
+            fields.Children.Add(match.Section);
+            list.Children.Add(new StackPanel { Spacing = 4, Children = { match.Check, fields } });
+            rows.Add(match);
+            if (rows.Count == 24)
+                break;
+        }
+        if (rows.Count == 0)
+        {
+            _shell.Problem("There is no open tax invoice to match. A bill that will not be collected is written off on the invoice.");
+            return;
+        }
+        var note = new TextBlock
+        {
+            Text = $"Unmatched on this credit: {Rupees(unallocated)} of {Rupees(credit)}. Tick one bill and enter a smaller amount when the bill is paid in instalments. Tick two or more bills when this one credit pays them together. Anything you leave unmatched stays open for the next credit. A bill that will not be collected is written off on the invoice, not here. “{narration}”",
+            TextWrapping = TextWrapping.WrapWholeWords,
+        };
+        var body = new ScrollViewer
+        {
+            MaxHeight = 420,
+            Content = new StackPanel { Spacing = 12, Children = { note, list } },
+        };
+        if (_transactions.XamlRoot == null)
+            return;
+        var dialog = new ContentDialog
+        {
+            Title = "Match this credit to bills",
+            Content = body,
+            PrimaryButtonText = "Record allocation",
+            CloseButtonText = "Leave unmatched",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = _transactions.XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            return;
+        var allocations = new List<object>();
+        foreach (var match in rows)
+        {
+            if (match.Check.IsChecked != true)
+                continue;
+            var amount = match.Amount.Text.Trim();
+            if (amount.Length == 0)
+            {
+                _shell.Problem("Enter the amount of this credit that pays each selected bill.");
+                return;
+            }
+            var tds = match.Tds.Text.Trim();
+            var section = ((ComboBoxItem?)match.Section.SelectedItem)?.Tag as string ?? "";
+            if (tds.Length > 0 && tds != "0" && tds != "0.00" && section.Length == 0)
+            {
+                _shell.Problem("Choose the TDS section for the bill that has TDS.");
+                return;
+            }
+            allocations.Add(new { invoice_id = match.InvoiceId, amount, tds, tds_section = section });
+        }
+        if (allocations.Count == 0)
+        {
+            _shell.Problem("Select at least one bill.");
+            return;
+        }
+        _ = _shell.Run("Recording the receipt…", () => _shell.Call("bank_reconcile", new { txn_id = txnId, allocations }))
+            .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (task.Result)
+                    LoadSummary();
+            }));
+    }
+
+    private static long Room(List<MatchRow> rows, MatchRow current, long unallocated)
+    {
+        long used = 0;
+        foreach (var row in rows)
+        {
+            if (row == current || row.Check.IsChecked != true)
+                continue;
+            used += PaiseText(row.Amount.Text);
+        }
+        var room = unallocated - used;
+        return room < 0 ? 0 : room;
+    }
+
+    private static long PaiseText(string text)
+    {
+        var parts = text.Trim().Replace(",", "").Split('.');
+        if (!long.TryParse(parts[0], out var rupees))
+            return 0;
+        var paise = 0L;
+        if (parts.Length > 1 && parts[1].Length > 0)
+        {
+            var fraction = parts[1].Length >= 2 ? parts[1][..2] : parts[1].PadRight(2, '0');
+            long.TryParse(fraction, out paise);
+        }
+        return rupees * 100 + paise;
+    }
+
+    private static string Rupees(long paise) => $"{paise / 100}.{paise % 100:00}";
+
+    private static void SelectTds(ComboBox box, string section)
+    {
+        foreach (ComboBoxItem item in box.Items)
+        {
+            if (item.Tag as string == section)
+            {
+                box.SelectedItem = item;
+                return;
+            }
+        }
+    }
+
+    private sealed class MatchRow
+    {
+        public MatchRow(long invoiceId, long outstanding, string suggestedTds, string suggestedSection)
+        {
+            InvoiceId = invoiceId;
+            Outstanding = outstanding;
+            SuggestedTds = suggestedTds;
+            SuggestedSection = suggestedSection;
+            foreach (var (label, tag) in new[] { ("No TDS", ""), ("194J", "194J"), ("194C", "194C"), ("194C individual", "194C-1"), ("194C firm", "194C-2"), ("194M", "194M"), ("194-I", "194-I"), ("194H", "194H") })
+                Section.Items.Add(new ComboBoxItem { Content = label, Tag = tag });
+            Section.SelectedIndex = 0;
+            Section.IsEnabled = false;
+        }
+
+        public long InvoiceId { get; }
+        public long Outstanding { get; }
+        public string SuggestedTds { get; }
+        public string SuggestedSection { get; }
+        public CheckBox Check { get; } = new() { HorizontalAlignment = HorizontalAlignment.Stretch };
+        public TextBox Amount { get; } = new();
+        public TextBox Tds { get; } = new();
+        public ComboBox Section { get; } = new();
+    }
+
+    private static long PaiseValue(JsonElement row, string key)
+    {
+        if (!row.TryGetProperty(key, out var value) || !value.TryGetInt64(out var paise))
+            return 0;
+        return paise;
+    }
 
     private static string Paise(JsonElement row, string key)
     {

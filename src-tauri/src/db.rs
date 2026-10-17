@@ -18,6 +18,14 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0014_template_library.sql"),
     include_str!("../migrations/0015_template_studio.sql"),
     include_str!("../migrations/0016_consultancy_type.sql"),
+    include_str!("../migrations/0017_logo_and_time.sql"),
+    include_str!("../migrations/0018_logo_shapes.sql"),
+    include_str!("../migrations/0019_transmittals.sql"),
+    include_str!("../migrations/0020_document_accent.sql"),
+    include_str!("../migrations/0021_onboarding_brief.sql"),
+    include_str!("../migrations/0022_boards.sql"),
+    include_str!("../migrations/0023_party_ledger.sql"),
+    include_str!("../migrations/0024_project_stages.sql"),
 ];
 
 pub fn open(path: &Path) -> Result<Connection, String> {
@@ -111,7 +119,7 @@ mod tests {
         assert!(led.is_some());
         let n: i64 = conn.query_row("SELECT COUNT(*) FROM invoices", [], |r| r.get(0)).unwrap();
         assert_eq!(n, 1);
-        let bal: i64 = conn.query_row("SELECT total_paise - received_paise - tds_paise - credited_paise FROM invoice_balances", [], |r| r.get(0)).unwrap();
+        let bal: i64 = conn.query_row("SELECT total_paise - received_paise - tds_paise - credited_paise - written_off_paise FROM invoice_balances", [], |r| r.get(0)).unwrap();
         assert_eq!(bal, 1000);
     }
 }

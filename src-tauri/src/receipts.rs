@@ -41,8 +41,10 @@ pub struct Balance {
     pub received_paise: i64,
     pub tds_paise: i64,
     pub credited_paise: i64,
+    pub written_off_paise: i64,
     pub balance_paise: i64,
     pub credited_display: String,
+    pub written_off_display: String,
     pub total_display: String,
     pub received_display: String,
     pub tds_display: String,
@@ -54,18 +56,18 @@ fn optional_money(s: &str) -> Result<i64, String> {
 }
 
 pub fn balance(conn: &Connection, invoice_id: i64) -> Result<Balance, String> {
-    let (total, received, tds, credited): (i64, i64, i64, i64) = conn
+    let (total, received, tds, credited, written): (i64, i64, i64, i64, i64) = conn
         .query_row(
-            "SELECT total_paise, received_paise, tds_paise, credited_paise FROM invoice_balances WHERE invoice_id = ?1",
+            "SELECT total_paise, received_paise, tds_paise, credited_paise, written_off_paise FROM invoice_balances WHERE invoice_id = ?1",
             params![invoice_id],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
         )
         .map_err(|_| "Invoice not found.".to_string())?;
-    let bal = total - received - tds - credited;
+    let bal = total - received - tds - credited - written;
     Ok(Balance {
-        total_paise: total, received_paise: received, tds_paise: tds, credited_paise: credited, balance_paise: bal,
+        total_paise: total, received_paise: received, tds_paise: tds, credited_paise: credited, written_off_paise: written, balance_paise: bal,
         total_display: fmt_inr(total), received_display: fmt_inr(received), tds_display: fmt_inr(tds), credited_display: fmt_inr(credited),
-        balance_display: fmt_inr(bal),
+        written_off_display: fmt_inr(written), balance_display: fmt_inr(bal),
     })
 }
 
@@ -192,11 +194,14 @@ fn receipt_html(conn: &Connection, receipt_id: i64) -> Result<String, String> {
     let (name, address, pan, gstin): (String, String, String, String) = conn
         .query_row("SELECT name, address, pan, gstin FROM company_profile WHERE id = 1", [], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))
         .map_err(|e| e.to_string())?;
+    let logos = crate::commands::company_logos_b64(conn);
+    let mark = crate::pdf::letterhead_marks(&logos.square, &logos.wide);
     let tds_row = if tds > 0 { format!("<tr><td>TDS deducted by payer ({})</td><td class=\"num\">{}</td></tr>", esc(&section), fmt_inr(tds)) } else { String::new() };
     let ref_line = if reference.is_empty() { String::new() } else { format!("<br/>Reference / UTR: {}", esc(&reference)) };
     let gst_line = if gstin.is_empty() { String::new() } else { format!("GSTIN: {} &nbsp; ", esc(&gstin)) };
     Ok(format!(
         r#"<html><head><style>{css}</style></head><body>
+        {mark}
         <h1>{name}</h1>
         <p class="meta">{address}<br/>{gst_line}PAN: {pan}</p>
         <h2>PAYMENT RECEIPT</h2>
@@ -205,8 +210,8 @@ fn receipt_html(conn: &Connection, receipt_id: i64) -> Result<String, String> {
         <table class="items"><tr><td>Amount received</td><td class="num">{amount}</td></tr>{tds_row}<tr><th>Total settled against the invoice</th><th class="num">{total}</th></tr></table>
         <p>This is a receipt for the payment above and not a tax invoice.</p>
         </body></html>"#,
-        css = crate::typography::css(),
-        name = esc(&name), address = esc(&address), gst_line = gst_line, pan = esc(&pan), number = esc(&number), date = esc(&date),
+        css = crate::sheets::base_css(&conn.query_row("SELECT accent_hex FROM company_profile WHERE id = 1", [], |r| r.get::<_, String>(0)).unwrap_or_default()),
+        mark = mark, name = esc(&name), address = esc(&address), gst_line = gst_line, pan = esc(&pan), number = esc(&number), date = esc(&date),
         client = esc(&client), inv_no = esc(&inv_no), mode = esc(&mode), ref_line = ref_line, amount = fmt_inr(amount), tds_row = tds_row, total = fmt_inr(amount + tds),
     ))
 }
@@ -225,13 +230,131 @@ pub fn receipt_pdf_bytes(conn: &Connection, receipt_id: i64) -> Result<Vec<u8>, 
         return Ok(bytes);
     }
     let number: String = conn.query_row("SELECT number FROM receipts WHERE id = ?1", params![receipt_id], |r| r.get(0)).map_err(|_| "Receipt not found.".to_string())?;
-    let rendered = crate::pdf::render_html(&receipt_html(conn, receipt_id)?, &crate::pdf::bundled_fonts())?;
+    let logos = crate::commands::company_logos_b64(conn);
+    let images = crate::pdf::logo_images(&logos.square, &logos.wide);
+    let rendered = crate::pdf::render_html_with_qr_and_images(&receipt_html(conn, receipt_id)?, &crate::pdf::bundled_fonts(), &images, None)?;
     let key = format!("receipt-pdfs/{}.pdf", number.replace('/', "_"));
     let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
     crate::store::put(&tx, &key, &rendered.bytes)?;
     tx.execute("INSERT INTO receipt_pdfs (receipt_id, pdf_key, pdf_sha256) VALUES (?1,?2,?3)", params![receipt_id, key, sha256_hex(&rendered.bytes)]).map_err(|e| e.to_string())?;
     tx.commit().map_err(|e| e.to_string())?;
     Ok(rendered.bytes)
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct WriteOffInput {
+    pub invoice_id: i64,
+    pub writeoff_date: String,
+    pub amount: String,
+    pub reason: String,
+}
+
+#[derive(Serialize)]
+pub struct WriteOffRow {
+    pub id: i64,
+    pub date: String,
+    pub amount_display: String,
+    pub reason: String,
+    pub reversed: bool,
+}
+
+/// Removes an uncollected balance from the client's ledger. The bank is not involved.
+pub fn write_off(conn: &mut Connection, user_id: i64, input: &WriteOffInput) -> Result<i64, String> {
+    let amount = parse_decimal(&input.amount, 2)?;
+    if amount <= 0 {
+        return Err("Enter the amount to write off.".into());
+    }
+    let reason = input.reason.trim();
+    if reason.is_empty() {
+        return Err("Give a reason for the write-off.".into());
+    }
+    if reason.chars().count() > 500 {
+        return Err("The reason is too long.".into());
+    }
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let (status, kind): (String, String) = tx
+        .query_row("SELECT status, kind FROM invoices WHERE id = ?1", params![input.invoice_id], |r| Ok((r.get(0)?, r.get(1)?)))
+        .map_err(|_| "Invoice not found.".to_string())?;
+    if status != "issued" || kind != "tax_invoice" {
+        return Err("Only an issued tax invoice can be written off.".into());
+    }
+    let open = balance(&tx, input.invoice_id)?.balance_paise;
+    if amount > open {
+        return Err("The write-off is more than the outstanding balance.".into());
+    }
+    tx.execute(
+        "INSERT INTO invoice_writeoffs (invoice_id, writeoff_date, amount_paise, reason, created_by) VALUES (?1,?2,?3,?4,?5)",
+        params![input.invoice_id, input.writeoff_date.trim(), amount, reason, user_id],
+    )
+    .map_err(|e| e.to_string())?;
+    let id = tx.last_insert_rowid();
+    crate::ledger::post_writeoff(&tx, Some(user_id), id)?;
+    db::audit(&tx, Some(user_id), "invoice_writeoff", &format!("invoice {} {}", input.invoice_id, fmt_inr(amount)));
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+pub fn reverse_writeoff(conn: &mut Connection, actor: i64, writeoff_id: i64, reason: &str) -> Result<(), String> {
+    let reason = reason.trim();
+    if reason.is_empty() {
+        return Err("Give a reason for reversing the write-off.".into());
+    }
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let exists: i64 = tx.query_row("SELECT COUNT(*) FROM invoice_writeoffs WHERE id = ?1", params![writeoff_id], |r| r.get(0)).map_err(|e| e.to_string())?;
+    if exists == 0 {
+        return Err("Write-off not found.".into());
+    }
+    let already: i64 = tx.query_row("SELECT COUNT(*) FROM writeoff_reversals WHERE writeoff_id = ?1", params![writeoff_id], |r| r.get(0)).map_err(|e| e.to_string())?;
+    if already > 0 {
+        return Err("This write-off has already been reversed.".into());
+    }
+    tx.execute(
+        "INSERT INTO writeoff_reversals (writeoff_id, reason, reversed_by) VALUES (?1,?2,?3)",
+        params![writeoff_id, reason, actor],
+    )
+    .map_err(|e| e.to_string())?;
+    crate::ledger::reverse_source(&tx, Some(actor), "writeoff", writeoff_id, reason)?;
+    db::audit(&tx, Some(actor), "invoice_writeoff_reversed", &format!("write-off {writeoff_id}"));
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn list_writeoffs(conn: &Connection, invoice_id: i64) -> Result<Vec<WriteOffRow>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT w.id, w.writeoff_date, w.amount_paise, w.reason, CASE WHEN r.writeoff_id IS NULL THEN 0 ELSE 1 END
+             FROM invoice_writeoffs w LEFT JOIN writeoff_reversals r ON r.writeoff_id = w.id
+             WHERE w.invoice_id = ?1 ORDER BY w.writeoff_date, w.id",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![invoice_id], |r| {
+            let amount: i64 = r.get(2)?;
+            Ok(WriteOffRow { id: r.get(0)?, date: r.get(1)?, amount_display: fmt_inr(amount), reason: r.get(3)?, reversed: r.get::<_, i64>(4)? != 0 })
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<_, _>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn invoice_writeoff(state: HostState<'_>, input: WriteOffInput) -> Result<i64, String> {
+    let uid = require(&state, Permission::Post)?;
+    let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
+    write_off(&mut conn, uid, &input)
+}
+
+#[tauri::command]
+pub fn invoice_writeoff_reverse(state: HostState<'_>, writeoff_id: i64, reason: String) -> Result<(), String> {
+    let uid = require(&state, Permission::Post)?;
+    let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
+    reverse_writeoff(&mut conn, uid, writeoff_id, &reason)
+}
+
+#[tauri::command]
+pub fn invoice_writeoff_list(state: HostState<'_>, invoice_id: i64) -> Result<Vec<WriteOffRow>, String> {
+    require(&state, Permission::Finance)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    list_writeoffs(&conn, invoice_id)
 }
 
 #[tauri::command]

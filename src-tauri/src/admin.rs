@@ -30,8 +30,20 @@ pub fn auth_change_password(state: HostState<'_>, current: String, new: String, 
     }
     auth::validate_new_password(&new)?;
     reauth(&state, &current)?;
+    crate::company_file::rewrap_open_password(&state, &new)?;
+    let hash = match auth::hash_password(&new) {
+        Ok(hash) => hash,
+        Err(error) => {
+            let _ = crate::company_file::rewrap_open_password(&state, &current);
+            return Err(error);
+        }
+    };
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
-    conn.execute("UPDATE users SET password_hash = ?1 WHERE id = ?2", params![auth::hash_password(&new)?, uid]).map_err(|e| e.to_string())?;
+    if let Err(e) = conn.execute("UPDATE users SET password_hash = ?1 WHERE id = ?2", params![hash, uid]) {
+        drop(conn);
+        let _ = crate::company_file::rewrap_open_password(&state, &current);
+        return Err(e.to_string());
+    }
     db::audit(&conn, Some(uid), "password_changed", "");
     Ok(())
 }
@@ -76,8 +88,12 @@ pub fn auth_recover(state: HostState<'_>, username: String, code: String, new: S
     if new != confirm {
         return Err("The new passwords do not match.".into());
     }
-    let conn = state.db.lock().map_err(|_| INTERNAL)?;
-    recover(&conn, &username, &code, &new)
+    let fresh = {
+        let conn = state.db.lock().map_err(|_| INTERNAL)?;
+        recover(&conn, &username, &code, &new)?
+    };
+    crate::company_file::rewrap_open_secrets(&state, &new, &fresh)?;
+    Ok(fresh)
 }
 
 // ---------- security settings ----------
@@ -221,7 +237,7 @@ pub struct BackupInfo {
 
 /// Consistent snapshot of the whole company (records, issued documents, attachments, audit history) via VACUUM INTO,
 /// verified by opening it and running an integrity check. A backup is itself a complete company file.
-pub fn backup(conn: &Connection, dir: &std::path::Path, actor: i64) -> Result<BackupInfo, String> {
+fn write_backup(conn: &Connection, dir: &std::path::Path, actor: i64, envelope: Option<&crate::vault::Envelope>) -> Result<BackupInfo, String> {
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     let stamp: String = conn.query_row("SELECT strftime('%Y%m%d-%H%M%S','now')", [], |r| r.get(0)).map_err(|e| e.to_string())?;
     let mut path = dir.join(format!("backup-{stamp}.adms"));
@@ -231,13 +247,29 @@ pub fn backup(conn: &Connection, dir: &std::path::Path, actor: i64) -> Result<Ba
         n += 1;
     }
     conn.execute("VACUUM INTO ?1", params![path.to_string_lossy()]).map_err(|e| format!("Backup failed: {e}"))?;
-    let check = Connection::open_with_flags(&path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(|e| e.to_string())?;
+    let readable = if let Some(envelope) = envelope {
+        let plain = std::fs::read(&path).map_err(|e| e.to_string())?;
+        let sealed = crate::vault::pack(&plain, envelope)?;
+        std::fs::write(&path, &sealed).map_err(|e| e.to_string())?;
+        let temp = path.with_extension("adms.check");
+        std::fs::write(&temp, &plain).map_err(|e| e.to_string())?;
+        temp
+    } else {
+        path.clone()
+    };
+    let check = Connection::open_with_flags(&readable, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(|e| e.to_string())?;
     let result: String = check.query_row("PRAGMA integrity_check", [], |r| r.get(0)).map_err(|e| e.to_string())?;
     if result != "ok" {
         let _ = std::fs::remove_file(&path);
+        if readable != path {
+            let _ = std::fs::remove_file(&readable);
+        }
         return Err("The backup failed its integrity check and was discarded.".into());
     }
     drop(check);
+    if readable != path {
+        let _ = std::fs::remove_file(&readable);
+    }
     let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
     let info = BackupInfo {
         filename: path.file_name().unwrap().to_string_lossy().to_string(),
@@ -272,7 +304,7 @@ pub fn list_backups(dir: &std::path::Path) -> Result<Vec<BackupFile>, String> {
 /// Replaces the live data with a backup. A fresh backup of the current data is taken first, the chosen file is
 /// integrity-checked and must not come from a newer version of the app, and the schema is brought up to date afterwards.
 /// Everything is restored together, including issued documents and attachments, because they live in the same file.
-pub fn restore(conn: &mut Connection, dir: &std::path::Path, actor: i64, filename: &str) -> Result<String, String> {
+fn restore_sealed(conn: &mut Connection, dir: &std::path::Path, actor: i64, filename: &str, envelope: Option<&crate::vault::Envelope>) -> Result<String, String> {
     if filename.contains(['/', '\\']) || !filename.starts_with("backup-") || !(filename.ends_with(".adms") || filename.ends_with(".aorms")) {
         return Err("Choose a backup from the list.".into());
     }
@@ -280,7 +312,27 @@ pub fn restore(conn: &mut Connection, dir: &std::path::Path, actor: i64, filenam
     if !path.is_file() {
         return Err("That backup file was not found.".into());
     }
-    let src = Connection::open_with_flags(&path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(|e| e.to_string())?;
+    struct ClearOnDrop(Option<std::path::PathBuf>);
+    impl Drop for ClearOnDrop {
+        fn drop(&mut self) {
+            if let Some(path) = self.0.take() {
+                let _ = std::fs::remove_file(path);
+            }
+        }
+    }
+    let mut clear = ClearOnDrop(None);
+    let opened = if crate::vault::is_protected(&path) {
+        let envelope = envelope.ok_or_else(|| "This backup belongs to a protected company file. Open that company, then restore the backup.".to_string())?;
+        let sealed = std::fs::read(&path).map_err(|e| e.to_string())?;
+        let plain = crate::vault::decrypt_with_key(&sealed, &envelope.file_key)?;
+        let temp = dir.join(format!(".{filename}.opening"));
+        std::fs::write(&temp, plain).map_err(|e| e.to_string())?;
+        clear.0 = Some(temp.clone());
+        temp
+    } else {
+        path.clone()
+    };
+    let src = Connection::open_with_flags(&opened, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(|_| "The backup file is not a valid database.".to_string())?;
     let check: String = src.query_row("PRAGMA integrity_check", [], |r| r.get(0)).map_err(|_| "The backup file is not a valid database.".to_string())?;
     if check != "ok" {
         return Err("The backup failed its integrity check and was not restored.".into());
@@ -295,7 +347,7 @@ pub fn restore(conn: &mut Connection, dir: &std::path::Path, actor: i64, filenam
             return Err("That backup belongs to a different company and was not restored.".into());
         }
     }
-    let pre = backup(conn, dir, actor)?;
+    let pre = write_backup(conn, dir, actor, envelope)?;
     {
         let copy = rusqlite::backup::Backup::new(&src, conn).map_err(|e| e.to_string())?;
         copy.run_to_completion(100, std::time::Duration::ZERO, None).map_err(|e| format!("Restore failed: {e}"))?;
@@ -316,9 +368,10 @@ pub fn backup_list(state: HostState<'_>) -> Result<Vec<BackupFile>, String> {
 pub fn backup_restore(state: HostState<'_>, filename: String, password: String) -> Result<String, String> {
     let uid = require(&state, Permission::Backup)?;
     reauth(&state, &password)?;
+    let envelope = crate::company_file::protection_envelope(&state);
     let pre = {
         let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
-        restore(&mut conn, &crate::company_file::backup_dir(&state)?, uid, &filename)?
+        restore_sealed(&mut conn, &crate::company_file::backup_dir(&state)?, uid, &filename, envelope.as_ref())?
     };
     *state.session.lock().map_err(|_| INTERNAL)? = None;
     Ok(pre)
@@ -328,8 +381,9 @@ pub fn backup_restore(state: HostState<'_>, filename: String, password: String) 
 pub fn backup_create(state: HostState<'_>, password: String) -> Result<BackupInfo, String> {
     let uid = require(&state, Permission::Backup)?;
     reauth(&state, &password)?;
+    let envelope = crate::company_file::protection_envelope(&state);
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
-    backup(&conn, &crate::company_file::backup_dir(&state)?, uid)
+    write_backup(&conn, &crate::company_file::backup_dir(&state)?, uid, envelope.as_ref())
 }
 
 #[cfg(test)]
@@ -392,11 +446,11 @@ mod tests {
         let mut c = conn();
         c.execute("INSERT INTO clients (name) VALUES ('Before')", []).unwrap();
         let root = std::env::temp_dir().join(format!("ao_rs_{}", std::process::id())).join("backups");
-        let b = backup(&c, &root, 1).unwrap();
+        let b = write_backup(&c, &root, 1, None).unwrap();
         c.execute("INSERT INTO clients (name) VALUES ('After')", []).unwrap();
-        assert!(restore(&mut c, &root, 1, "../evil.sqlite").is_err());
-        assert!(restore(&mut c, &root, 1, "backup-nope.adms").is_err());
-        let pre = restore(&mut c, &root, 1, &b.filename).unwrap();
+        assert!(restore_sealed(&mut c, &root, 1, "../evil.sqlite", None).is_err());
+        assert!(restore_sealed(&mut c, &root, 1, "backup-nope.adms", None).is_err());
+        let pre = restore_sealed(&mut c, &root, 1, &b.filename, None).unwrap();
         let names: Vec<String> = c.prepare("SELECT name FROM clients").unwrap().query_map([], |r| r.get(0)).unwrap().map(|r| r.unwrap()).collect();
         assert_eq!(names, vec!["Before"]);
         // the data as it was just before the restore is kept and contains the later change
@@ -411,7 +465,7 @@ mod tests {
             let n = Connection::open(&newer).unwrap();
             n.pragma_update(None, "user_version", 999).unwrap();
         }
-        assert!(restore(&mut c, &root, 1, "backup-99999999-000000.adms").unwrap_err().contains("newer version"));
+        assert!(restore_sealed(&mut c, &root, 1, "backup-99999999-000000.adms", None).unwrap_err().contains("newer version"));
         let _ = std::fs::remove_dir_all(root.parent().unwrap());
     }
 
@@ -420,7 +474,7 @@ mod tests {
         let c = conn();
         c.execute("INSERT INTO clients (name) VALUES ('Acme')", []).unwrap();
         let root = std::env::temp_dir().join(format!("ao_bk_{}", std::process::id())).join("backups");
-        let info = backup(&c, &root, 1).unwrap();
+        let info = write_backup(&c, &root, 1, None).unwrap();
         let copy = Connection::open(root.join(&info.filename)).unwrap();
         let n: i64 = copy.query_row("SELECT COUNT(*) FROM clients", [], |r| r.get(0)).unwrap();
         assert_eq!(n, 1);

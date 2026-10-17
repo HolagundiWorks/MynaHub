@@ -362,7 +362,7 @@ pub fn suggest(conn: &Connection, txn_id: i64) -> Result<Vec<Suggestion>, String
     let mut stmt = conn
         .prepare(
             "SELECT i.id, i.number, c.name, i.subtotal_paise,
-                    i.total_paise - (SELECT received_paise + tds_paise + credited_paise FROM invoice_balances WHERE invoice_id = i.id)
+                    i.total_paise - (SELECT received_paise + tds_paise + credited_paise + written_off_paise FROM invoice_balances WHERE invoice_id = i.id)
              FROM invoices i JOIN projects p ON p.id = i.project_id JOIN clients c ON c.id = p.client_id
              WHERE i.status = 'issued' AND i.kind = 'tax_invoice'",
         )
@@ -405,9 +405,7 @@ pub fn suggest(conn: &Connection, txn_id: i64) -> Result<Vec<Suggestion>, String
             score += 2;
             reasons.push("Client name appears in the narration".to_string());
         }
-        if score > 0 {
-            out.push(Suggestion { invoice_id: id, number, client_name: client, balance_paise: balance, balance_display: fmt_inr(balance), score, reasons, tds_section, tds_amount });
-        }
+        out.push(Suggestion { invoice_id: id, number, client_name: client, balance_paise: balance, balance_display: fmt_inr(balance), score, reasons, tds_section, tds_amount });
     }
     out.sort_by(|a, b| b.score.cmp(&a.score));
     Ok(out)

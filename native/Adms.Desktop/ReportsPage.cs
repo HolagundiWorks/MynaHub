@@ -11,6 +11,8 @@ internal sealed class ReportsPage : UserControl, IPageCommands
     private readonly AppShell _shell;
     private readonly TextBox _from = new() { Header = "From", Text = Kit.YearStart(), HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = "yyyy-MM-dd" };
     private readonly TextBox _to = new() { Header = "To", Text = Kit.Today(), HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = "yyyy-MM-dd" };
+    private readonly ComboBox _client = new() { Header = "Client", HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = "Choose a client" };
+    private readonly ComboBox _project = new() { Header = "Project", HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = "All projects" };
     private readonly TextBlock _period = Flow.Secondary("");
     private readonly TextBlock _heading = Flow.Section("Trial balance");
     private readonly InfoBar _error = new() { IsOpen = false, IsClosable = true, Severity = InfoBarSeverity.Error };
@@ -34,13 +36,17 @@ internal sealed class ReportsPage : UserControl, IPageCommands
         _commandItems.Add(ReportButton("Profit and loss", () => RunRange("Profit and loss", "report_pnl", ShowProfit)));
         _commandItems.Add(ReportButton("Balance sheet", () => RunAsOf("Balance sheet", "report_balance_sheet", ShowBalance)));
         _commandItems.Add(ReportButton("GST and TDS", () => RunRange("GST and TDS", "report_tax_summary", ShowTax)));
+        _commandItems.Add(ReportButton("GST pack", () => RunRange("GST pack", "report_gst_pack", ShowGstPack)));
+        _commandItems.Add(ReportButton("Client statement", ShowStatement));
+        _commandItems.Add(ReportButton("Client ledger", ShowLedger));
+        _commandItems.Add(ReportButton("Fee position", () => Run("Fee position", "Current position", "project_fee_position", new { }, ShowFees)));
         _commandItems.Add(ReportButton("Export PDF", ExportReport));
         _commandItems.Add(ReportButton("Print", PrintReport));
 
         var page = new StackPanel { Spacing = 16, Margin = (Thickness)Application.Current.Resources["PageMargin"] };
         page.Children.Add(Flow.SheetMark("04", "Accounts", "Financial reports"));
         page.Children.Add(Flow.Heading("Financial reports"));
-        page.Children.Add(Flow.Secondary("Amounts are calculated by the company file for the period you choose."));
+        page.Children.Add(Flow.Secondary("Amounts are calculated by the company file. Each client has a ledger. When a client has more than one project, choose the project to see that project's ledger. The total rolls into Accounts receivable."));
         page.Children.Add(_dates);
         page.Children.Add(_commands);
         page.Children.Add(_error);
@@ -50,10 +56,101 @@ internal sealed class ReportsPage : UserControl, IPageCommands
         Content = Flow.Scroll(page);
         SizeChanged += (_, _) =>
         {
-            Flow.Place(_dates, [_from, _to], 200, true);
+            Flow.Place(_dates, [_from, _to, _client, _project], 200, true);
             Flow.Place(_commands, _commandItems, 160, true);
         };
+        _client.SelectionChanged += (_, _) => LoadProjects();
         RunAsOf("Trial balance", "report_trial_balance", ShowTrial);
+        LoadClients();
+    }
+
+    private void LoadClients()
+    {
+        _ = _shell.Run("Loading clients…", () =>
+        {
+            var rows = _shell.Call("client_list", new { include_archived = false });
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                _client.Items.Clear();
+                if (rows.ValueKind != JsonValueKind.Array)
+                    return;
+                foreach (var row in rows.EnumerateArray())
+                {
+                    if (Kit.Id(row) is not long id)
+                        continue;
+                    _client.Items.Add(new ComboBoxItem { Content = Kit.Str(row, "name"), Tag = id });
+                }
+                if (_client.Items.Count > 0 && _client.SelectedIndex < 0)
+                    _client.SelectedIndex = 0;
+                LoadProjects();
+            });
+        });
+    }
+
+    private void LoadProjects()
+    {
+        if (_client.SelectedItem is not ComboBoxItem item || item.Tag is not long clientId)
+        {
+            _project.Items.Clear();
+            _project.Items.Add(new ComboBoxItem { Content = "All projects", Tag = 0L });
+            _project.SelectedIndex = 0;
+            return;
+        }
+        _ = _shell.Run("Loading projects…", () =>
+        {
+            var rows = _shell.Call("project_list", new { client_id = clientId, include_archived = false });
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                _project.Items.Clear();
+                _project.Items.Add(new ComboBoxItem { Content = "All projects", Tag = 0L });
+                if (rows.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var row in rows.EnumerateArray())
+                    {
+                        if (Kit.Id(row) is not long id)
+                            continue;
+                        _project.Items.Add(new ComboBoxItem { Content = Kit.Str(row, "name"), Tag = id });
+                    }
+                }
+                _project.SelectedIndex = 0;
+            });
+        });
+    }
+
+    private void ShowStatement()
+    {
+        if (_client.SelectedItem is not ComboBoxItem item || item.Tag is not long clientId)
+        {
+            Fail("Choose a client.", "Client statement");
+            return;
+        }
+        var to = _to.Text.Trim();
+        if (to.Length == 0)
+        {
+            Fail("Enter the as-of date.");
+            return;
+        }
+        Run("Client statement", $"As of {to}", "client_statement_report", new { client_id = clientId, as_of = to }, ShowClientStatement);
+    }
+
+    private void ShowLedger()
+    {
+        if (_client.SelectedItem is not ComboBoxItem item || item.Tag is not long clientId)
+        {
+            Fail("Choose a client.", "Client ledger");
+            return;
+        }
+        long? projectId = null;
+        if (_project.SelectedItem is ComboBoxItem project && project.Tag is long id && id != 0)
+            projectId = id;
+        var from = _from.Text.Trim();
+        var to = _to.Text.Trim();
+        if (from.Length == 0 || to.Length == 0)
+        {
+            Fail("Enter the period.");
+            return;
+        }
+        Run("Client ledger", $"{from} to {to}", "party_ledger_report", new { client_id = clientId, project_id = projectId, from, to }, ShowPartyLedger);
     }
 
     private void ExportReport()
@@ -199,6 +296,128 @@ internal sealed class ReportsPage : UserControl, IPageCommands
         _body.Children.Add(total);
     }
 
+    private void ShowClientStatement(JsonElement result)
+    {
+        var client = Kit.Str(result, "client_name");
+        _heading.Text = client.Length == 0 ? "Client statement" : $"Statement · {client}";
+        _body.Children.Add(Flow.Secondary($"Balance due {Kit.Str(result, "balance_display")}"));
+        var invoices = Rows(result, "invoices", row =>
+        [
+            Kit.Str(row, "date"), Kit.Str(row, "number"), Kit.Str(row, "project"), Kit.Str(row, "total_display"),
+            Kit.Str(row, "received_display"), Kit.Str(row, "tds_display"), Kit.Str(row, "written_off_display"), Kit.Str(row, "balance_display"), Kit.Str(row, "bucket"),
+        ]);
+        invoices.Add(["", "", "Total", Kit.Str(result, "total_display"), Kit.Str(result, "received_display"), Kit.Str(result, "tds_display"), "", Kit.Str(result, "balance_display"), ""]);
+        var headers = new[] { "Date", "Number", "Project", "Invoice", "Received", "TDS", "Written off", "Balance", "Age" };
+        _blocks.Add(new ReportBlock { Heading = "Invoices", Headers = headers, Rows = invoices });
+        _body.Children.Add(Flow.Section("Invoices"));
+        _body.Children.Add(Flow.Table("Invoices", headers, invoices, [false, false, false, true, true, true, true, true, false], invoices.Count - 1));
+        var receipts = Rows(result, "receipts", row =>
+            [Kit.Str(row, "date"), Kit.Str(row, "number"), Kit.Str(row, "invoice"), Kit.Str(row, "amount_display"), Kit.Str(row, "tds_display"), Kit.Str(row, "section")]);
+        _blocks.Add(new ReportBlock { Heading = "Receipts", Headers = ["Date", "Receipt", "Invoice", "Amount", "TDS", "Section"], Rows = receipts });
+        _body.Children.Add(Flow.Section("Receipts"));
+        if (receipts.Count == 0)
+            _body.Children.Add(Flow.Secondary("No receipts on these invoices."));
+        else
+            _body.Children.Add(Flow.Table("Receipts", ["Date", "Receipt", "Invoice", "Amount", "TDS", "Section"], receipts, [false, false, false, true, true, false]));
+        var ageing = Rows(result, "ageing", row => [Kit.Str(row, "bucket"), Kit.Str(row, "balance_display")]);
+        _blocks.Add(new ReportBlock { Heading = "Ageing of the open balance", Headers = ["Bucket", "Balance"], Rows = ageing });
+        _body.Children.Add(Flow.Section("Ageing of the open balance"));
+        _body.Children.Add(Flow.Table("Ageing", ["Bucket", "Balance"], ageing, [false, true]));
+    }
+
+    private void ShowPartyLedger(JsonElement result)
+    {
+        var client = Kit.Str(result, "client_name");
+        var project = Kit.Str(result, "project_name");
+        _heading.Text = project.Length == 0 || project == "All projects" ? $"Ledger · {client}" : $"Ledger · {client} · {project}";
+        _body.Children.Add(Flow.Secondary(Kit.Str(result, "note")));
+        _body.Children.Add(Flow.Secondary($"Opening {Kit.Str(result, "opening_display")} · Closing {Kit.Str(result, "closing_display")}"));
+        var rows = Rows(result, "lines", row =>
+        [
+            Kit.Str(row, "date"), Kit.Str(row, "particular"), Kit.Str(row, "project"),
+            Kit.Str(row, "debit_display"), Kit.Str(row, "credit_display"), Kit.Str(row, "balance_display"),
+        ]);
+        rows.Insert(0, ["", "Opening balance", "", "", "", Kit.Str(result, "opening_display")]);
+        rows.Add(["", "Closing balance", "", "", "", Kit.Str(result, "closing_display")]);
+        var headers = new[] { "Date", "Particulars", "Project", "Debit", "Credit", "Balance" };
+        _blocks.Add(new ReportBlock { Heading = _heading.Text, Note = Kit.Str(result, "note"), Headers = headers, Rows = rows });
+        _body.Children.Add(Flow.Table("Ledger", headers, rows, [false, false, false, true, true, true], rows.Count - 1));
+    }
+
+    private void ShowFees(JsonElement result)
+    {
+        var rows = Rows(result, "rows", row =>
+        [
+            Kit.Str(row, "client"), Kit.Str(row, "project"), Consultancy.Label(Kit.Str(row, "consultancy")),
+            Kit.Str(row, "fee_display"), Kit.Str(row, "billed_display"), Kit.Str(row, "received_display"),
+            Kit.Str(row, "outstanding_display"), Kit.Str(row, "next_stage"), Kit.Str(row, "next_amount_display"),
+        ]);
+        rows.Add(["", "Total", "", Kit.Str(result, "fee_display"), Kit.Str(result, "billed_display"), Kit.Str(result, "received_display"), Kit.Str(result, "outstanding_display"), "", ""]);
+        var headers = new[] { "Client", "Project", "Consultancy", "Agreed fee", "Billed", "Received", "Outstanding", "Next stage", "Stage amount" };
+        _blocks.Add(new ReportBlock { Heading = "Fee position", Note = "The agreed fee is the latest issued agreement. Received includes TDS.", Headers = headers, Rows = rows });
+        _body.Children.Add(Flow.Secondary("The agreed fee is the latest issued agreement. Received includes the amount paid and the TDS deducted."));
+        _body.Children.Add(Flow.Table("Fee position", headers, rows, [false, false, false, true, true, true, true, false, true], rows.Count - 1));
+    }
+
+    private static List<string[]> Rows(JsonElement result, string property, Func<JsonElement, string[]> map)
+    {
+        var rows = new List<string[]>();
+        if (result.TryGetProperty(property, out var list) && list.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var row in list.EnumerateArray())
+                rows.Add(map(row));
+        }
+        return rows;
+    }
+
+    private void ShowGstPack(JsonElement result)
+    {
+        ShowTax(result);
+        _body.Children.Add(Lines("TDS deducted by clients", [Line("TDS deducted by clients", result, "tds_deducted")], -1));
+        SupplyTable("Outward supplies", "supplies", result);
+        SupplyTable("Credit notes", "credit_notes", result);
+        var tds = Rows(result, "tds_lines", row =>
+        [
+            Kit.Str(row, "date"), Kit.Str(row, "receipt"), Kit.Str(row, "invoice"), Kit.Str(row, "client"),
+            Kit.Str(row, "section"), Kit.Str(row, "received_display"), Kit.Str(row, "tds_display"),
+        ]);
+        var tdsHeaders = new[] { "Date", "Receipt", "Invoice", "Client", "Section", "Received", "TDS" };
+        _blocks.Add(new ReportBlock
+        {
+            Heading = "TDS lines",
+            Note = tds.Count == 0 ? "No client deducted TDS in this period." : "",
+            Headers = tds.Count == 0 ? [] : tdsHeaders,
+            Rows = tds,
+        });
+        _body.Children.Add(Flow.Section("TDS lines"));
+        if (tds.Count == 0)
+            _body.Children.Add(Flow.Secondary("No client deducted TDS in this period."));
+        else
+            _body.Children.Add(Flow.Table("TDS lines", tdsHeaders, tds, [false, false, false, false, false, true, true]));
+    }
+
+    private void SupplyTable(string title, string property, JsonElement result)
+    {
+        var rows = Rows(result, property, row =>
+        [
+            Kit.Str(row, "date"), Kit.Str(row, "number"), Kit.Str(row, "client"), Kit.Str(row, "gstin"), Kit.Str(row, "place"),
+            Kit.Str(row, "taxable_display"), Kit.Str(row, "cgst_display"), Kit.Str(row, "sgst_display"), Kit.Str(row, "igst_display"), Kit.Str(row, "total_display"),
+        ]);
+        var headers = new[] { "Date", "Number", "Client", "GSTIN", "Place", "Taxable", "CGST", "SGST", "IGST", "Total" };
+        _blocks.Add(new ReportBlock
+        {
+            Heading = title,
+            Note = rows.Count == 0 ? "None in this period." : "",
+            Headers = rows.Count == 0 ? [] : headers,
+            Rows = rows,
+        });
+        _body.Children.Add(Flow.Section(title));
+        if (rows.Count == 0)
+            _body.Children.Add(Flow.Secondary("None in this period."));
+        else
+            _body.Children.Add(Flow.Table(title, headers, rows, [false, false, false, false, false, true, true, true, true, true]));
+    }
+
     private void ShowTax(JsonElement result)
     {
         _body.Children.Add(Flow.Section("GST"));
@@ -269,9 +488,9 @@ internal sealed class ReportsPage : UserControl, IPageCommands
         _ => kind,
     };
 
-    private void Fail(string message)
+    private void Fail(string message, string title = "Check the dates")
     {
-        _error.Title = "Check the dates";
+        _error.Title = title;
         _error.Message = message;
         _error.IsOpen = true;
     }

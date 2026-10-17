@@ -164,14 +164,33 @@ pub struct Line {
     pub debit: i64,
     pub credit: i64,
     pub memo: String,
+    /// The client this receivable line belongs to. Income and tax lines stay untagged.
+    pub client_id: Option<i64>,
+    pub project_id: Option<i64>,
 }
 
 pub fn dr(account_id: i64, amount: i64) -> Line {
-    Line { account_id, debit: amount, credit: 0, memo: String::new() }
+    Line { account_id, debit: amount, credit: 0, memo: String::new(), client_id: None, project_id: None }
 }
 
 pub fn cr(account_id: i64, amount: i64) -> Line {
-    Line { account_id, debit: 0, credit: amount, memo: String::new() }
+    Line { account_id, debit: 0, credit: amount, memo: String::new(), client_id: None, project_id: None }
+}
+
+/// Marks a receivable line with the client and project it belongs to.
+fn belong(mut line: Line, client_id: i64, project_id: i64) -> Line {
+    line.client_id = Some(client_id);
+    line.project_id = Some(project_id);
+    line
+}
+
+fn party_of_invoice(conn: &Connection, invoice_id: i64) -> Result<(i64, i64), String> {
+    conn.query_row(
+        "SELECT p.client_id, i.project_id FROM invoices i JOIN projects p ON p.id = i.project_id WHERE i.id = ?1",
+        params![invoice_id],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )
+    .map_err(|_| "Invoice not found.".to_string())
 }
 
 /// Posts one balanced journal. Zero-amount lines are dropped.
@@ -207,8 +226,11 @@ pub fn post(conn: &Connection, actor: Option<i64>, date: &str, narration: &str, 
         .map_err(|e| format!("Could not post: {e}"))?;
     let jid = conn.last_insert_rowid();
     for l in &lines {
-        conn.execute("INSERT INTO journal_lines (journal_id, account_id, debit_paise, credit_paise, memo) VALUES (?1,?2,?3,?4,?5)", params![jid, l.account_id, l.debit, l.credit, l.memo])
-            .map_err(|e| e.to_string())?;
+        conn.execute(
+            "INSERT INTO journal_lines (journal_id, account_id, debit_paise, credit_paise, memo, client_id, project_id) VALUES (?1,?2,?3,?4,?5,?6,?7)",
+            params![jid, l.account_id, l.debit, l.credit, l.memo, l.client_id, l.project_id],
+        )
+        .map_err(|e| e.to_string())?;
     }
     Ok(jid)
 }
@@ -223,9 +245,9 @@ pub fn reverse_journal(conn: &Connection, actor: Option<i64>, journal_id: i64, r
     if posted(conn, "reversal", journal_id).is_some() {
         return Err("This journal has already been reversed.".into());
     }
-    let mut stmt = conn.prepare("SELECT account_id, debit_paise, credit_paise, memo FROM journal_lines WHERE journal_id = ?1 ORDER BY id").map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT account_id, debit_paise, credit_paise, memo, client_id, project_id FROM journal_lines WHERE journal_id = ?1 ORDER BY id").map_err(|e| e.to_string())?;
     let lines: Vec<Line> = stmt
-        .query_map(params![journal_id], |r| Ok(Line { account_id: r.get(0)?, debit: r.get::<_, i64>(2)?, credit: r.get::<_, i64>(1)?, memo: r.get(3)? }))
+        .query_map(params![journal_id], |r| Ok(Line { account_id: r.get(0)?, debit: r.get::<_, i64>(2)?, credit: r.get::<_, i64>(1)?, memo: r.get(3)?, client_id: r.get(4)?, project_id: r.get(5)? }))
         .map_err(|e| e.to_string())?
         .collect::<Result<_, _>>()
         .map_err(|e| e.to_string())?;
@@ -256,8 +278,9 @@ pub fn post_invoice(conn: &Connection, actor: Option<i64>, invoice_id: i64) -> R
     }
     let snap: Snapshot = serde_json::from_str(&snap.ok_or("The invoice has no snapshot.")?).map_err(|e| e.to_string())?;
     let t = &snap.totals;
+    let (client_id, project_id) = party_of_invoice(conn, invoice_id)?;
     let lines = vec![
-        dr(acct(conn, "1200")?, t.total_paise),
+        belong(dr(acct(conn, "1200")?, t.total_paise), client_id, project_id),
         cr(acct(conn, "4000")?, t.subtotal_paise),
         cr(acct(conn, "2100")?, t.cgst_paise),
         cr(acct(conn, "2110")?, t.sgst_paise),
@@ -272,13 +295,14 @@ pub fn post_credit_note(conn: &Connection, actor: Option<i64>, cn_id: i64) -> Re
     if posted(conn, "credit_note", cn_id).is_some() {
         return Ok(None);
     }
-    let (number, date, snap): (String, String, String) = conn
-        .query_row("SELECT number, issue_date, snapshot_json FROM credit_notes WHERE id = ?1", params![cn_id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+    let (number, date, snap, invoice_id): (String, String, String, i64) = conn
+        .query_row("SELECT number, issue_date, snapshot_json, invoice_id FROM credit_notes WHERE id = ?1", params![cn_id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))
         .map_err(|_| "Credit note not found.".to_string())?;
     let snap: Snapshot = serde_json::from_str(&snap).map_err(|e| e.to_string())?;
     let t = &snap.totals;
+    let (client_id, project_id) = party_of_invoice(conn, invoice_id)?;
     let lines = vec![
-        cr(acct(conn, "1200")?, t.total_paise),
+        belong(cr(acct(conn, "1200")?, t.total_paise), client_id, project_id),
         dr(acct(conn, "4000")?, t.subtotal_paise),
         dr(acct(conn, "2100")?, t.cgst_paise),
         dr(acct(conn, "2110")?, t.sgst_paise),
@@ -293,11 +317,36 @@ pub fn post_receipt(conn: &Connection, actor: Option<i64>, receipt_id: i64) -> R
     if posted(conn, "receipt", receipt_id).is_some() {
         return Ok(None);
     }
-    let (number, date, amount, tds, mode, bank): (String, String, i64, i64, String, Option<i64>) = conn
-        .query_row("SELECT number, received_date, amount_paise, tds_paise, mode, bank_account_id FROM receipts WHERE id = ?1", params![receipt_id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?)))
+    let (number, date, amount, tds, mode, bank, invoice_id): (String, String, i64, i64, String, Option<i64>, i64) = conn
+        .query_row("SELECT number, received_date, amount_paise, tds_paise, mode, bank_account_id, invoice_id FROM receipts WHERE id = ?1", params![receipt_id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?)))
         .map_err(|_| "Receipt not found.".to_string())?;
-    let lines = vec![dr(money_account(conn, &mode, bank)?, amount), dr(acct(conn, "1210")?, tds), cr(acct(conn, "1200")?, amount + tds)];
+    let (client_id, project_id) = party_of_invoice(conn, invoice_id)?;
+    let lines = vec![
+        dr(money_account(conn, &mode, bank)?, amount),
+        dr(acct(conn, "1210")?, tds),
+        belong(cr(acct(conn, "1200")?, amount + tds), client_id, project_id),
+    ];
     post(conn, actor, &date, &format!("Receipt {number}"), "receipt", Some(receipt_id), lines).map(Some)
+}
+
+/// Writes off part or all of an issued invoice: Dr bad debts, Cr the client's receivable.
+pub fn post_writeoff(conn: &Connection, actor: Option<i64>, writeoff_id: i64) -> Result<Option<i64>, String> {
+    if posted(conn, "writeoff", writeoff_id).is_some() {
+        return Ok(None);
+    }
+    let (date, amount, invoice_id, number): (String, i64, i64, String) = conn
+        .query_row(
+            "SELECT w.writeoff_date, w.amount_paise, w.invoice_id, COALESCE(i.number, '') FROM invoice_writeoffs w JOIN invoices i ON i.id = w.invoice_id WHERE w.id = ?1",
+            params![writeoff_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+        )
+        .map_err(|_| "Write-off not found.".to_string())?;
+    let (client_id, project_id) = party_of_invoice(conn, invoice_id)?;
+    let lines = vec![
+        dr(acct(conn, "5960")?, amount),
+        belong(cr(acct(conn, "1200")?, amount), client_id, project_id),
+    ];
+    post(conn, actor, &date, &format!("Write-off of invoice {number}"), "writeoff", Some(writeoff_id), lines).map(Some)
 }
 
 /// Posts anything that was recorded before the ledger existed. Safe to run repeatedly.
@@ -551,6 +600,164 @@ pub fn tax_summary(conn: &Connection, from: &str, to: &str) -> Result<TaxSummary
 }
 
 #[derive(Serialize)]
+pub struct SupplyRow {
+    pub date: String,
+    pub number: String,
+    pub client: String,
+    pub gstin: String,
+    pub place: String,
+    pub taxable_display: String,
+    pub cgst_display: String,
+    pub sgst_display: String,
+    pub igst_display: String,
+    pub total_display: String,
+}
+
+#[derive(Serialize)]
+pub struct TdsRow {
+    pub date: String,
+    pub receipt: String,
+    pub invoice: String,
+    pub client: String,
+    pub section: String,
+    pub tds_display: String,
+    pub received_display: String,
+}
+
+#[derive(Serialize)]
+pub struct GstPack {
+    pub output_cgst: String,
+    pub output_sgst: String,
+    pub output_igst: String,
+    pub input_credit: String,
+    pub net_gst_payable: String,
+    pub composition_tax: String,
+    pub tds_receivable: String,
+    pub tds_payable: String,
+    pub tds_deducted: String,
+    pub supplies: Vec<SupplyRow>,
+    pub credit_notes: Vec<SupplyRow>,
+    pub tds_lines: Vec<TdsRow>,
+}
+
+fn split_tax(mode: &str, tax: i64) -> (i64, i64, i64) {
+    match mode {
+        "intra" => {
+            let half = tax / 2;
+            (half, tax - half, 0)
+        }
+        "inter" => (0, 0, tax),
+        _ => (0, 0, 0),
+    }
+}
+
+fn place_label(mode: &str) -> &'static str {
+    match mode {
+        "intra" => "Intra-state",
+        "inter" => "Inter-state",
+        _ => "No GST",
+    }
+}
+
+fn supply_row(date: String, number: String, client: String, gstin: String, mode: String, taxable: i64, tax: i64, total: i64) -> SupplyRow {
+    let (cgst, sgst, igst) = split_tax(&mode, tax);
+    SupplyRow {
+        date,
+        number,
+        client,
+        gstin,
+        place: place_label(&mode).to_string(),
+        taxable_display: fmt_inr(taxable),
+        cgst_display: fmt_inr(cgst),
+        sgst_display: fmt_inr(sgst),
+        igst_display: fmt_inr(igst),
+        total_display: fmt_inr(total),
+    }
+}
+
+/// Outward supplies, credit notes, and TDS deducted by clients for a period, with the ledger tax totals.
+pub fn gst_pack(conn: &Connection, from: &str, to: &str) -> Result<GstPack, String> {
+    validate_date(from)?;
+    validate_date(to)?;
+    if from > to {
+        return Err("The start date is after the end date.".into());
+    }
+    let summary = tax_summary(conn, from, to)?;
+    let mut supplies = Vec::new();
+    let mut stmt = conn
+        .prepare(
+            "SELECT i.issue_date, i.number, c.name, c.gstin, i.gst_mode, i.subtotal_paise, i.tax_paise, i.total_paise
+             FROM invoices i JOIN projects p ON p.id = i.project_id JOIN clients c ON c.id = p.client_id
+             WHERE i.kind = 'tax_invoice' AND i.status = 'issued' AND i.issue_date BETWEEN ?1 AND ?2
+             ORDER BY i.issue_date, i.number",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![from, to], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?, r.get(7)?)))
+        .map_err(|e| e.to_string())?;
+    for row in rows {
+        let (date, number, client, gstin, mode, taxable, tax, total): (String, String, String, String, String, i64, i64, i64) = row.map_err(|e| e.to_string())?;
+        supplies.push(supply_row(date, number, client, gstin, mode, taxable, tax, total));
+    }
+    let mut credit_notes = Vec::new();
+    let mut notes = conn
+        .prepare(
+            "SELECT n.issue_date, n.number, c.name, c.gstin, n.gst_mode, n.subtotal_paise, n.tax_paise, n.total_paise
+             FROM credit_notes n JOIN invoices i ON i.id = n.invoice_id JOIN projects p ON p.id = i.project_id JOIN clients c ON c.id = p.client_id
+             WHERE n.issue_date BETWEEN ?1 AND ?2
+             ORDER BY n.issue_date, n.number",
+        )
+        .map_err(|e| e.to_string())?;
+    let note_rows = notes
+        .query_map(params![from, to], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?, r.get(7)?)))
+        .map_err(|e| e.to_string())?;
+    for row in note_rows {
+        let (date, number, client, gstin, mode, taxable, tax, total): (String, String, String, String, String, i64, i64, i64) = row.map_err(|e| e.to_string())?;
+        credit_notes.push(supply_row(date, number, client, gstin, mode, taxable, tax, total));
+    }
+    let mut tds_lines = Vec::new();
+    let mut tds_total = 0i64;
+    let mut tds = conn
+        .prepare(
+            "SELECT r.received_date, r.number, i.number, c.name, r.tds_section, r.tds_paise, r.amount_paise
+             FROM effective_receipts r JOIN invoices i ON i.id = r.invoice_id JOIN projects p ON p.id = i.project_id JOIN clients c ON c.id = p.client_id
+             WHERE r.tds_paise > 0 AND r.received_date BETWEEN ?1 AND ?2
+             ORDER BY r.received_date, r.number",
+        )
+        .map_err(|e| e.to_string())?;
+    let tds_rows = tds
+        .query_map(params![from, to], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?)))
+        .map_err(|e| e.to_string())?;
+    for row in tds_rows {
+        let (date, receipt, invoice, client, section, tds_paise, received): (String, String, String, String, String, i64, i64) = row.map_err(|e| e.to_string())?;
+        tds_total += tds_paise;
+        tds_lines.push(TdsRow {
+            date,
+            receipt,
+            invoice,
+            client,
+            section,
+            tds_display: fmt_inr(tds_paise),
+            received_display: fmt_inr(received),
+        });
+    }
+    Ok(GstPack {
+        output_cgst: summary.output_cgst,
+        output_sgst: summary.output_sgst,
+        output_igst: summary.output_igst,
+        input_credit: summary.input_credit,
+        net_gst_payable: summary.net_gst_payable,
+        composition_tax: summary.composition_tax,
+        tds_receivable: summary.tds_receivable,
+        tds_payable: summary.tds_payable,
+        tds_deducted: fmt_inr(tds_total),
+        supplies,
+        credit_notes,
+        tds_lines,
+    })
+}
+
+#[derive(Serialize)]
 pub struct JournalRow {
     pub id: i64,
     pub number: String,
@@ -625,7 +832,7 @@ pub fn ar_check(conn: &Connection, as_of: &str) -> Result<ArCheck, String> {
         .map_err(|e| e.to_string())?;
     let owed: i64 = conn
         .query_row(
-            "SELECT COALESCE(SUM(b.total_paise - b.received_paise - b.tds_paise - b.credited_paise), 0) FROM invoice_balances b JOIN invoices i ON i.id = b.invoice_id WHERE i.kind = 'tax_invoice' AND i.status = 'issued'",
+            "SELECT COALESCE(SUM(b.total_paise - b.received_paise - b.tds_paise - b.credited_paise - b.written_off_paise), 0) FROM invoice_balances b JOIN invoices i ON i.id = b.invoice_id WHERE i.kind = 'tax_invoice' AND i.status = 'issued'",
             [],
             |r| r.get(0),
         )
@@ -859,6 +1066,70 @@ mod tests {
         assert_eq!(e.tax_display, "₹25,000.00");
         assert_eq!(e.cess_display, "₹1,000.00");
         assert!(income_tax_estimate(&c, "2026-04-01", "2027-03-31", "250").is_err());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn gst_pack_lists_the_issued_invoice_and_the_tds_the_client_deducted() {
+        let (c, dir) = setup();
+        c.execute("UPDATE clients SET gstin='27AAAAA0000A1Z5'", []).unwrap();
+        c.execute(
+            "INSERT INTO invoices (project_id, kind, status, number, issue_date, gst_mode, subtotal_paise, tax_paise, total_paise)
+             VALUES (1, 'tax_invoice', 'issued', 'INV-1', '2026-05-01', 'intra', 100000, 18000, 118000)",
+            [],
+        )
+        .unwrap();
+        c.execute(
+            "INSERT INTO receipts (number, invoice_id, received_date, amount_paise, tds_paise, tds_section, mode, created_by)
+             VALUES ('R-1', 1, '2026-05-10', 100000, 10000, '194J', 'bank', 1)",
+            [],
+        )
+        .unwrap();
+        let pack = gst_pack(&c, "2026-04-01", "2026-06-30").unwrap();
+        assert_eq!(pack.supplies.len(), 1);
+        assert_eq!(pack.supplies[0].cgst_display, fmt_inr(9000));
+        assert_eq!(pack.supplies[0].sgst_display, fmt_inr(9000));
+        assert_eq!(pack.tds_lines[0].section, "194J");
+        assert!(gst_pack(&c, "2026-07-01", "2026-04-01").is_err());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_write_off_reduces_the_client_and_leaves_the_other_project_alone() {
+        let (mut c, dir) = setup();
+        c.execute("UPDATE company_profile SET gst_scheme='none'", []).unwrap();
+        c.execute("INSERT INTO projects (client_id, name) VALUES (1,'Office')", []).unwrap();
+        let villa = invoice(&mut c, &dir, "100000", "none");
+        let office = save_draft(&mut c, &InvoiceInput {
+            id: None, project_id: 2, kind: "tax_invoice".into(), issue_date: "2026-10-02".into(), due_date: "".into(), gst_mode: "none".into(), gst_rate: "".into(), notes: "".into(),
+            lines: vec![LineInput { description: "Fee".into(), qty: "1".into(), rate: "50000".into() }],
+        }).unwrap();
+        issue(&mut c, office).unwrap();
+        let tagged: (i64, i64) = c.query_row(
+            "SELECT client_id, project_id FROM journal_lines WHERE project_id = 1 AND debit_paise > 0",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        ).unwrap();
+        assert_eq!(tagged, (1, 1));
+        let input = crate::receipts::WriteOffInput { invoice_id: villa, writeoff_date: "2026-10-15".into(), amount: "1000".into(), reason: "Client will not pay this part.".into() };
+        crate::receipts::write_off(&mut c, 1, &input).unwrap();
+        assert!(crate::receipts::write_off(&mut c, 1, &crate::receipts::WriteOffInput { amount: "100000".into(), ..input }).is_err());
+        assert_eq!(balance_of(&c, "5960"), 100_000);
+        assert_eq!(crate::receipts::balance(&c, villa).unwrap().balance_paise, 9_900_000);
+        assert!(ar_check(&c, "2026-12-31").unwrap().agrees);
+        let book = crate::practice::party_ledger(&c, 1, None, "2026-04-01", "2027-03-31").unwrap();
+        assert_eq!(book.closing_display, fmt_inr(14_900_000));
+        assert!(book.lines.iter().any(|line| line.particular.contains("Write-off")));
+        let office_book = crate::practice::party_ledger(&c, 1, Some(2), "2026-04-01", "2027-03-31").unwrap();
+        assert_eq!(office_book.closing_display, fmt_inr(5_000_000));
+        assert!(office_book.lines.iter().all(|line| !line.particular.contains("Write-off")));
+        let writeoff_id: i64 = c.query_row("SELECT id FROM invoice_writeoffs", [], |r| r.get(0)).unwrap();
+        crate::receipts::reverse_writeoff(&mut c, 1, writeoff_id, "The client paid after all.").unwrap();
+        assert_eq!(balance_of(&c, "5960"), 0);
+        assert_eq!(crate::receipts::balance(&c, villa).unwrap().balance_paise, 10_000_000);
+        assert!(ar_check(&c, "2026-12-31").unwrap().agrees);
+        let restored = crate::practice::party_ledger(&c, 1, None, "2026-04-01", "2027-03-31").unwrap();
+        assert!(restored.lines.iter().all(|line| !line.particular.contains("Write-off")));
         let _ = std::fs::remove_dir_all(dir);
     }
 }

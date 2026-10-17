@@ -1,8 +1,9 @@
 //! Phase 0 proof of concept: offline HTML/CSS -> PDF with printpdf's pure-Rust layout engine.
 //! Not wired into the app yet; exercised by the tests below.
 
+use base64::Engine;
 use printpdf::{
-    Base64OrRaw, BuiltinFont, Color, GeneratePdfOptions, LinePoint, Op, PaintMode, PdfDocument, PdfFontHandle, PdfSaveOptions, Point,
+    Base64OrRaw, BuiltinFont, Color, GeneratePdfOptions, Line, LinePoint, Op, PaintMode, PdfDocument, PdfFontHandle, PdfSaveOptions, Point,
     Polygon, PolygonRing, Pt, Rgb, TextItem, WindingOrder,
 };
 use std::collections::BTreeMap;
@@ -50,6 +51,41 @@ fn rect_op(x: f32, y: f32, w: f32, h: f32) -> Op {
     Op::DrawPolygon {
         polygon: Polygon { rings: vec![PolygonRing { points: vec![pt(x, y), pt(x + w, y), pt(x + w, y + h), pt(x, y + h)] }], mode: PaintMode::Fill, winding_order: WindingOrder::NonZero },
     }
+}
+
+/// A QR code as a grayscale PNG, so a document can place it in the flow instead of over the page.
+pub fn qr_png(data: &str) -> Result<Vec<u8>, String> {
+    use qrcode::{Color as Module, QrCode};
+    let code = QrCode::new(data.as_bytes()).map_err(|_| "The UPI code could not be drawn.".to_string())?;
+    let modules = code.width();
+    let quiet = 2usize;
+    let scale = 4usize;
+    let side = (modules + quiet * 2) * scale;
+    let cells = code.to_colors();
+    let mut pixels = vec![255u8; side * side];
+    for y in 0..modules {
+        for x in 0..modules {
+            if cells[y * modules + x] != Module::Dark {
+                continue;
+            }
+            for dy in 0..scale {
+                for dx in 0..scale {
+                    let px = (x + quiet) * scale + dx;
+                    let py = (y + quiet) * scale + dy;
+                    pixels[py * side + px] = 0;
+                }
+            }
+        }
+    }
+    let mut out = Vec::new();
+    let mut encoder = png::Encoder::new(&mut out, side as u32, side as u32);
+    encoder.set_color(png::ColorType::Grayscale);
+    encoder.set_depth(png::BitDepth::Eight);
+    {
+        let mut writer = encoder.write_header().map_err(|e| e.to_string())?;
+        writer.write_image_data(&pixels).map_err(|e| e.to_string())?;
+    }
+    Ok(out)
 }
 
 /// A QR code drawn as filled rectangles at the top-right of the page (~30 mm square, with a quiet zone).
@@ -119,6 +155,56 @@ fn footer_ops(page: usize, total: usize, page_w: f32, font: &PdfFontHandle) -> V
 
 /// Renders with an explicit paper size and margins (from the template's @page rule).
 pub fn render_html_with_page(html: &str, fonts: &BTreeMap<String, Base64OrRaw>, setup: &crate::template_engine::PageSetup) -> Result<Rendered, String> {
+    render_html_with_page_and_images(html, fonts, setup, &BTreeMap::new())
+}
+
+/// Like `render_html`, plus an optional QR code (the given text) drawn on the first page.
+pub fn render_html_with_qr(html: &str, fonts: &BTreeMap<String, Base64OrRaw>, qr: Option<&str>) -> Result<Rendered, String> {
+    render_html_with_qr_and_images(html, fonts, &BTreeMap::new(), qr)
+}
+
+/// Square mark and wide lockup for `<img src="company-logo-square">` and `<img src="company-logo-wide">`.
+pub fn logo_images(square: &str, wide: &str) -> BTreeMap<String, Base64OrRaw> {
+    let mut images = BTreeMap::new();
+    insert_logo(&mut images, "company-logo-square", square);
+    insert_logo(&mut images, "company-logo-wide", wide);
+    images
+}
+
+fn insert_logo(images: &mut BTreeMap<String, Base64OrRaw>, key: &str, data: &str) {
+    if data.is_empty() {
+        return;
+    }
+    if let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(data) {
+        if !bytes.is_empty() {
+            images.insert(key.to_string(), Base64OrRaw::Raw(bytes));
+        }
+    }
+}
+
+/// The rectangle logo spans the letterhead. The square logo sits as a mark. Each is omitted when the firm has not stored it.
+pub fn letterhead_marks(square: &str, wide: &str) -> String {
+    let mut html = String::new();
+    if !wide.is_empty() {
+        html.push_str("<div style=\"width: 64mm; height: 16mm;\"><img src=\"company-logo-wide\" style=\"width: 64mm; height: 16mm;\" /></div>");
+    }
+    if !square.is_empty() {
+        html.push_str("<div style=\"width: 16mm; height: 16mm;\"><img src=\"company-logo-square\" style=\"width: 16mm; height: 16mm;\" /></div>");
+    }
+    html
+}
+
+pub fn render_html_with_page_and_images(html: &str, fonts: &BTreeMap<String, Base64OrRaw>, setup: &crate::template_engine::PageSetup, images: &BTreeMap<String, Base64OrRaw>) -> Result<Rendered, String> {
+    render_html_with_page_images_and_bars(html, fonts, setup, images, false)
+}
+
+pub fn render_html_with_page_images_and_bars(
+    html: &str,
+    fonts: &BTreeMap<String, Base64OrRaw>,
+    setup: &crate::template_engine::PageSetup,
+    images: &BTreeMap<String, Base64OrRaw>,
+    corner_bars: bool,
+) -> Result<Rendered, String> {
     let options = GeneratePdfOptions {
         page_width: Some(setup.width_mm),
         page_height: Some(setup.height_mm),
@@ -128,19 +214,181 @@ pub fn render_html_with_page(html: &str, fonts: &BTreeMap<String, Base64OrRaw>, 
         margin_left: Some(setup.margin_left),
         ..GeneratePdfOptions::default()
     };
-    render_with_options(html, fonts, None, &options)
+    render_with_options(html, fonts, images, None, &options, None, corner_bars)
 }
 
-/// Like `render_html`, plus an optional QR code (the given text) drawn on the first page.
-pub fn render_html_with_qr(html: &str, fonts: &BTreeMap<String, Base64OrRaw>, qr: Option<&str>) -> Result<Rendered, String> {
-    render_with_options(html, fonts, qr, &GeneratePdfOptions::default())
+pub fn render_html_with_qr_and_images(html: &str, fonts: &BTreeMap<String, Base64OrRaw>, images: &BTreeMap<String, Base64OrRaw>, qr: Option<&str>) -> Result<Rendered, String> {
+    render_with_options(html, fonts, images, qr, &GeneratePdfOptions::default(), None, false)
 }
 
-fn render_with_options(html: &str, fonts: &BTreeMap<String, Base64OrRaw>, qr: Option<&str>, options: &GeneratePdfOptions) -> Result<Rendered, String> {
-    let images = BTreeMap::new();
+/// An invoice sheet. `rail_pt` is the 30% column edge, where a hairline is painted down the page.
+pub fn render_invoice_sheet(html: &str, fonts: &BTreeMap<String, Base64OrRaw>, images: &BTreeMap<String, Base64OrRaw>, qr: Option<&str>, rail_pt: f32) -> Result<Rendered, String> {
+    render_with_options(html, fonts, images, qr, &GeneratePdfOptions::default(), Some(rail_pt), false)
+}
+
+/// A letter sheet: the same renderer, with a short black bar at the top-right and bottom-left of every page.
+pub fn render_letter_sheet(html: &str, fonts: &BTreeMap<String, Base64OrRaw>, images: &BTreeMap<String, Base64OrRaw>) -> Result<Rendered, String> {
+    render_with_options(html, fonts, images, None, &GeneratePdfOptions::default(), None, true)
+}
+
+/// A mark on a 16:9 slide. Coordinates are fractions of the page, origin at the top left.
+pub struct DeckMark {
+    pub kind: String,
+    pub x1: f32,
+    pub y1: f32,
+    pub x2: f32,
+    pub y2: f32,
+    pub label: String,
+}
+
+/// Widescreen slides. `marks[i]` is drawn on page i. The page is 13.333 in by 7.5 in, the 16:9 full-screen slide.
+pub fn render_deck(html: &str, images: &BTreeMap<String, Base64OrRaw>, marks: &[Vec<DeckMark>]) -> Result<Rendered, String> {
+    let options = GeneratePdfOptions {
+        page_width: Some(338.67),
+        page_height: Some(190.5),
+        margin_top: Some(12.0),
+        margin_right: Some(14.0),
+        margin_bottom: Some(12.0),
+        margin_left: Some(14.0),
+        ..GeneratePdfOptions::default()
+    };
     let mut warnings = Vec::new();
-    let mut doc = PdfDocument::from_html(html, &images, fonts, options, &mut warnings)
+    let mut doc = PdfDocument::from_html(html, images, &bundled_fonts(), &options, &mut warnings).map_err(|e| format!("{e:?}"))?;
+    let font = footer_font(&doc);
+    for (i, page) in doc.pages.iter_mut().enumerate() {
+        let (w, h) = (page.media_box.width.0, page.media_box.height.0);
+        if let Some(slide) = marks.get(i) {
+            page.ops.extend(mark_ops(w, h, slide, &font));
+        }
+    }
+    let total = doc.pages.len();
+    for (i, page) in doc.pages.iter_mut().enumerate() {
+        let w = page.media_box.width.0;
+        page.ops.extend(footer_ops(i + 1, total, w, &font));
+    }
+    let pages = total;
+    let mut save_warnings = Vec::new();
+    let bytes = doc.save(&PdfSaveOptions::default(), &mut save_warnings);
+    let warnings = warnings.iter().map(|w| format!("{w:?}")).collect();
+    Ok(Rendered { bytes, pages, warnings })
+}
+
+fn place(page_w: f32, page_h: f32, x: f32, y: f32) -> (f32, f32) {
+    let x = x.clamp(0.0, 1.0) * page_w;
+    let y = page_h - y.clamp(0.0, 1.0) * page_h;
+    (x, y)
+}
+
+fn lp(x: f32, y: f32) -> LinePoint {
+    LinePoint { p: Point { x: Pt(x), y: Pt(y) }, bezier: false }
+}
+
+fn mark_ops(page_w: f32, page_h: f32, marks: &[DeckMark], font: &PdfFontHandle) -> Vec<Op> {
+    let mut ops = vec![
+        Op::SaveGraphicsState,
+        Op::SetOutlineColor { col: rgb(0.102) },
+        Op::SetFillColor { col: rgb(0.102) },
+        Op::SetOutlineThickness { pt: Pt(1.4) },
+    ];
+    for mark in marks {
+        let (x1, y1) = place(page_w, page_h, mark.x1, mark.y1);
+        let (x2, y2) = place(page_w, page_h, mark.x2, mark.y2);
+        ops.push(Op::DrawLine { line: Line { points: vec![lp(x1, y1), lp(x2, y2)], is_closed: false } });
+        match mark.kind.as_str() {
+            "arrow" => ops.push(arrow_head(x1, y1, x2, y2)),
+            "pointer" => {
+                ops.push(dot(x2, y2));
+                if !mark.label.trim().is_empty() {
+                    ops.extend(label_ops(x1, y1, mark.label.trim(), font));
+                }
+            }
+            _ => {}
+        }
+    }
+    ops.push(Op::RestoreGraphicsState);
+    ops
+}
+
+fn arrow_head(x1: f32, y1: f32, x2: f32, y2: f32) -> Op {
+    let (dx, dy) = (x2 - x1, y2 - y1);
+    let len = (dx * dx + dy * dy).sqrt().max(0.01);
+    let (ux, uy) = (dx / len, dy / len);
+    let (px, py) = (-uy, ux);
+    let back = 9.0;
+    let spread = 3.6;
+    Op::DrawPolygon {
+        polygon: Polygon {
+            rings: vec![PolygonRing {
+                points: vec![
+                    lp(x2, y2),
+                    lp(x2 - ux * back + px * spread, y2 - uy * back + py * spread),
+                    lp(x2 - ux * back - px * spread, y2 - uy * back - py * spread),
+                ],
+            }],
+            mode: PaintMode::Fill,
+            winding_order: WindingOrder::NonZero,
+        },
+    }
+}
+
+fn dot(x: f32, y: f32) -> Op {
+    let r = 3.2;
+    let mut points = Vec::new();
+    for step in 0..8 {
+        let angle = step as f32 * std::f32::consts::TAU / 8.0;
+        points.push(lp(x + r * angle.cos(), y + r * angle.sin()));
+    }
+    Op::DrawPolygon {
+        polygon: Polygon { rings: vec![PolygonRing { points }], mode: PaintMode::Fill, winding_order: WindingOrder::NonZero },
+    }
+}
+
+fn label_ops(x: f32, y: f32, label: &str, font: &PdfFontHandle) -> Vec<Op> {
+    let text: String = label.chars().take(40).collect();
+    vec![
+        Op::StartTextSection,
+        Op::SetTextCursor { pos: Point { x: Pt(x + 4.0), y: Pt(y + 4.0) } },
+        Op::SetFont { font: font.clone(), size: Pt(9.0) },
+        Op::SetFillColor { col: rgb(0.102) },
+        Op::ShowText { items: vec![TextItem::Text(text)] },
+        Op::EndTextSection,
+    ]
+}
+
+fn letter_corner_ops(page_w: f32, page_h: f32) -> Vec<Op> {
+    let h = 11.0;
+    vec![
+        Op::SaveGraphicsState,
+        Op::SetFillColor { col: rgb(0.102) },
+        rect_op(page_w - 36.0 - 92.0, page_h - 18.0 - h, 92.0, h),
+        rect_op(0.0, 14.0, 78.0, h),
+        Op::RestoreGraphicsState,
+    ]
+}
+
+fn render_with_options(html: &str, fonts: &BTreeMap<String, Base64OrRaw>, images: &BTreeMap<String, Base64OrRaw>, qr: Option<&str>, options: &GeneratePdfOptions, rail_pt: Option<f32>, corner_bars: bool) -> Result<Rendered, String> {
+    let mut warnings = Vec::new();
+    let mut doc = PdfDocument::from_html(html, images, fonts, options, &mut warnings)
         .map_err(|e| format!("{e:?}"))?;
+    if let Some(width) = rail_pt {
+        for page in &mut doc.pages {
+            let height = page.media_box.height.0;
+            page.ops.extend([
+                Op::SaveGraphicsState,
+                Op::SetFillColor { col: rgb(0.102) },
+                rect_op(width - 0.3, 36.0, 0.75, height - 72.0),
+                Op::RestoreGraphicsState,
+            ]);
+        }
+    }
+    if corner_bars {
+        for page in &mut doc.pages {
+            let (w, h) = (page.media_box.width.0, page.media_box.height.0);
+            let mut bars = letter_corner_ops(w, h);
+            bars.append(&mut page.ops);
+            page.ops = bars;
+        }
+    }
     let font = footer_font(&doc);
     if let (Some(data), Some(page)) = (qr, doc.pages.first_mut()) {
         let (w, h) = (page.media_box.width.0, page.media_box.height.0);
@@ -278,5 +526,28 @@ mod tests {
         std::fs::write(std::env::temp_dir().join("poc_long.pdf"), &r.bytes).unwrap();
         println!("pages: {} warnings: {:?}", r.pages, r.warnings);
         assert!(r.pages > 1);
+    }
+
+    #[test]
+    fn a_stored_logo_is_drawn_on_the_document() {
+        use base64::Engine;
+        let png: &[u8] = &[
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x08, 0x08, 0x06, 0x00, 0x00, 0x00, 0xC4, 0x0F, 0xBE,
+            0x8B, 0x00, 0x00, 0x00, 0x01, 0x73, 0x52, 0x47, 0x42, 0x00, 0xAE, 0xCE, 0x1C, 0xE9, 0x00, 0x00, 0x00, 0x04, 0x67, 0x41, 0x4D, 0x41, 0x00, 0x00, 0xB1, 0x8F, 0x0B, 0xFC, 0x61, 0x05, 0x00, 0x00,
+            0x00, 0x09, 0x70, 0x48, 0x59, 0x73, 0x00, 0x00, 0x0E, 0xC3, 0x00, 0x00, 0x0E, 0xC3, 0x01, 0xC7, 0x6F, 0xA8, 0x64, 0x00, 0x00, 0x00, 0x16, 0x49, 0x44, 0x41, 0x54, 0x28, 0x53, 0x63, 0xF8, 0x2F,
+            0x27, 0xF7, 0x1F, 0x1F, 0x66, 0x40, 0x17, 0x40, 0xC7, 0xC3, 0x43, 0x01, 0x00, 0x7F, 0x4F, 0x8E, 0x81, 0x39, 0x2A, 0x38, 0xBE, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+        ];
+        let data = base64::engine::general_purpose::STANDARD.encode(png);
+        let html = format!("<html><head><style>{}</style></head><body>{}<p>Letter</p></body></html>", crate::typography::css(), letterhead_marks(&data, &data));
+        let images = logo_images(&data, &data);
+        let mut decode_warnings = Vec::new();
+        let decoded = printpdf::RawImage::decode_from_bytes(png, &mut decode_warnings);
+        let rendered = render_html_with_qr_and_images(&html, &bundled_fonts(), &images, None).unwrap();
+        let text = String::from_utf8_lossy(&rendered.bytes);
+        assert!(
+            text.contains("HtmlImg_company_logo_square") && text.contains("HtmlImg_company_logo_wide"),
+            "decode={decoded:?} decode_warnings={decode_warnings:?} render_warnings={:?}",
+            rendered.warnings
+        );
     }
 }

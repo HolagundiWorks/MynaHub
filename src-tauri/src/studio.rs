@@ -20,8 +20,8 @@ const SKELETON_HTML: &str = "<header class=\"document-header\">
 
 const SKELETON_CSS: &str = "@page { size: A4; margin: 18mm 16mm 20mm 16mm; }
 .firm-name { font-family: 'IBM Plex Sans SemiBold'; font-size: 16pt; font-weight: 400; }
-.meta { font-size: 8.5pt; color: #393939; }
-.rule { border-top: 1pt solid #161616; margin-top: 6pt; margin-bottom: 10pt; }
+.meta { font-size: 8.5pt; color: #5c5c5c; }
+.rule { border-top: 0.6pt solid #1a1a1a; margin-top: 6pt; margin-bottom: 10pt; }
 .doc-ref { font-family: 'IBM Plex Mono'; font-size: 9pt; }";
 
 #[derive(Serialize, Debug)]
@@ -208,11 +208,23 @@ fn company_value(conn: &Connection) -> Result<Value, String> {
 
 /// Renders HTML, CSS and data to PDF with the template's own paper and margins.
 pub fn render_pdf(html: &str, css: &str, data: &Value) -> Result<(pdf::Rendered, eng::PageSetup, Vec<Diagnostic>), String> {
+    render_pdf_with_logos(html, css, data, "", "")
+}
+
+pub fn render_pdf_with_logos(html: &str, css: &str, data: &Value, square: &str, wide: &str) -> Result<(pdf::Rendered, eng::PageSetup, Vec<Diagnostic>), String> {
     let (html, css) = crate::docx::prepare(html, css)?;
     let mut notes = Vec::new();
     let (setup, css) = eng::split_page_rule(&css, &mut notes);
     let fragment = eng::render_fragment(&html, data)?;
-    let rendered = pdf::render_html_with_page(&eng::full_document(&fragment, &css), &pdf::bundled_fonts(), &setup)?;
+    let mut document = eng::full_document(&fragment, &css);
+    let marks = pdf::letterhead_marks(square, wide);
+    if !marks.is_empty() {
+        if let Some(at) = document.find("<body>") {
+            document.insert_str(at + "<body>".len(), &marks);
+        }
+    }
+    let images = pdf::logo_images(square, wide);
+    let rendered = pdf::render_html_with_page_and_images(&document, &pdf::bundled_fonts(), &setup, &images)?;
     Ok((rendered, setup, notes))
 }
 
@@ -235,7 +247,8 @@ pub fn preview(conn: &Connection, html: &str, css: &str, profile: &str) -> Resul
     }
     let company = if profile == "company" { Some(company_value(conn)?) } else { None };
     let data = eng::sample_data(profile, company.as_ref());
-    let (rendered, setup, _) = render_pdf(&html, &css, &data)?;
+    let logos = crate::commands::company_logos_b64(conn);
+    let (rendered, setup, _) = render_pdf_with_logos(&html, &css, &data, &logos.square, &logos.wide)?;
     let missing_required = eng::missing_required(&html, &data);
     for m in &missing_required {
         diagnostics.push(Diagnostic { severity: "warning", source: "html", line: 1, col: 1, message: format!("The required field {m} has no value in this sample data.") });
