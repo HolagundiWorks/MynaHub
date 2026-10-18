@@ -40,7 +40,7 @@ A clean automated result does not mean the app passes. Automated checks find mis
 
 | # | App | Criterion | Finding | Severity |
 |---|---|---|---|---|
-| O1 | O-Metra | 1.4.10 Reflow | At a 520 px wide window the page title runs into the Generate button, the tabs are cut off, the entry sheet disappears, and the status strip is clipped. The navigation pane never collapses | High |
+| O1 | O-Metra | 1.4.10 Reflow | At a 520 px wide window the page title runs into the Generate button, the tabs are cut off, the entry sheet disappears, and the status strip is clipped. The navigation pane never collapses | **Fixed** — the pane collapses to a menu button below 900 px and hides below 560 px; headings, toolbars and the entry sheet toolbar wrap; the sketch column gives its space back under 700 px; checked at 520, 760 and 1300 px (was **Fixed** — the clock moved into the navigation pane (shown only when it is fully open); the calculator and notices are rows above the status strip that push content up instead of covering it (was **Fixed** — the Drawing takeoff toolbar now wraps instead of scrolling sideways, so every tool is visible (was High))) |
 | O2 | O-Metra | 2.4.11 Focus not obscured | The floating Pomodoro clock and the calculator panel sit over the bottom right of the page and can cover a control that has focus | High |
 | O3 | O-Studio | 1.4.10 Reflow | The window will not go narrower than about 960 px, so the page cannot reflow to 320 px at 400% zoom. Needs a test at real display scales | Medium |
 | O4 | O-Metra | 1.3.1, 2.4.6 | Pages have no headings of their own (the shared template used by O-Studio sets them; O-Metra pages build their own titles) | Medium |
@@ -60,13 +60,13 @@ Status is **Pass** (measured or seen), **Likely** (the mechanism is in place but
 | 1.3.1 Info and relationships | Pass (headings, named table cells) | Fail inside pages (O4) | Untested |
 | 1.4.3 Contrast (text) | Pass, lowest 5.1:1 | Pass, lowest 5.8:1 | Untested |
 | 1.4.4 Resize text | Untested | Untested (O8) | Untested |
-| 1.4.10 Reflow | Untested (O3) | **Fail** (O1) | Untested |
+| 1.4.10 Reflow | Untested (O3) | Pass after O1 fix | Untested |
 | 1.4.11 Non-text contrast | Pass. Button edges 3:1 or more; field borders 3.6:1 | Pass | Untested |
 | 1.4.12 Text spacing | Untested | Untested | Untested |
-| 2.1.1 Keyboard | Likely. Every control is focusable; no keyboard-only walk done | Likely, but see O7 | Docs: keyboard drafting path exists (arrow keys, command line); Tab traversal listed as open in its own test matrix |
+| 2.1.1 Keyboard | Likely. Every control is focusable; no keyboard-only walk done | Likely; O7 fixed | Docs: keyboard drafting path exists (arrow keys, command line); Tab traversal listed as open in its own test matrix |
 | 2.4.3 Focus order | Untested | Untested | Open in its test matrix |
 | 2.4.7 Focus visible | Pass (visible on the navigation pane) | Pass (same) | Untested |
-| 2.4.11 Focus not obscured | Pass as far as seen | **Fail risk** (O2) | Untested |
+| 2.4.11 Focus not obscured | Pass as far as seen | Pass after O2 fix | Untested |
 | 2.5.8 Target size | Pass | Pass after F2, except O7 | Docs say 32 DIP; untested |
 | 3.3.1 Error identification | Partly (O6) | Untested | Untested |
 | 4.1.2 Name, role, value | Pass | Pass after F1 | Docs: labels present on every egui element; the WinUI shell is described as named |
