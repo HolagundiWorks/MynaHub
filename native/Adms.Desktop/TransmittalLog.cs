@@ -20,7 +20,7 @@ internal sealed class TransmittalLog : UserControl
     private readonly StackPanel _pending = new() { Spacing = 0 };
     private readonly StackPanel _log = new() { Spacing = 0 };
     private readonly List<PendingItem> _items = [];
-    private readonly InfoBar _notice = new LiveNotice { IsOpen = false, IsClosable = true };
+    private readonly InfoBar _notice = Flow.Notice();
 
     private TransmittalLog(AppShell shell)
     {
@@ -88,12 +88,12 @@ internal sealed class TransmittalLog : UserControl
         var title = _title.Text.Trim();
         if (title.Length == 0)
         {
-            _shell.Problem("Enter the drawing title.");
+            Flow.Fault(_title, _notice, "Enter the drawing title.");
             return;
         }
         if (!int.TryParse(_copies.Text.Trim(), out var copies) || copies < 1 || copies > 999)
         {
-            _shell.Problem("Enter the number of copies from 1 to 999.");
+            Flow.Fault(_copies, _notice, "Enter the number of copies from 1 to 999.");
             return;
         }
         _items.Add(new PendingItem(_number.Text.Trim(), title, _revision.Text.Trim(), copies));

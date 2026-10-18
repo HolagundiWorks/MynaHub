@@ -25,7 +25,7 @@ internal sealed class RecordPage : UserControl
     private readonly GridLength[] _widths;
     private readonly Dictionary<string, FrameworkElement> _inputs = new();
     private readonly StackPanel _list = new() { Spacing = 0 };
-    private readonly InfoBar _notice = new LiveNotice { IsOpen = false, IsClosable = true };
+    private readonly InfoBar _notice = Flow.Notice();
     private readonly Button _save = new() { Content = "Save", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
     private readonly TextBlock _mode = new() { TextWrapping = TextWrapping.Wrap };
     private readonly Func<RecordPage, JsonElement, Button?>? _extra;
@@ -253,7 +253,7 @@ internal sealed class RecordPage : UserControl
             {
                 if (box.SelectedItem is not ComboBoxItem item)
                 {
-                    _shell.Problem($"Choose the {field.Label.ToLowerInvariant()}.");
+                    Flow.Fault(box, _notice, $"Choose the {field.Label.ToLowerInvariant()}.");
                     return;
                 }
                 input[field.Key] = field.Kind == RecordKind.YesNo ? item.Tag as string == "true" : item.Tag;
@@ -270,7 +270,7 @@ internal sealed class RecordPage : UserControl
                         input[field.Key] = (long)Math.Round(number * scale, MidpointRounding.AwayFromZero);
                     else
                     {
-                        _shell.Problem($"Enter {field.Label.ToLowerInvariant()} as a number that is not negative.");
+                        Flow.Fault(text, _notice, $"Enter {field.Label.ToLowerInvariant()} as a number that is not negative.");
                         return;
                     }
                 }

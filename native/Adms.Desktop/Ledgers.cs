@@ -140,11 +140,11 @@ internal sealed class Book : UserControl, IPageCommands
         foreach (var control in controls)
         {
             if (control is TextBox box)
-                box.TextChanged += (_, _) => Touch();
+                box.TextChanged += (_, _) => { if (box.FocusState != FocusState.Unfocused) Touch(); };
             else if (control is ComboBox combo)
-                combo.SelectionChanged += (_, _) => Touch();
+                combo.SelectionChanged += (_, _) => { if (combo.FocusState != FocusState.Unfocused) Touch(); };
             else if (control is PasswordBox password)
-                password.PasswordChanged += (_, _) => Touch();
+                password.PasswordChanged += (_, _) => { if (password.FocusState != FocusState.Unfocused) Touch(); };
         }
     }
 
@@ -1157,11 +1157,11 @@ internal static class Ledgers
             foreach (var control in controls)
             {
                 if (control is TextBox box)
-                    box.TextChanged += (_, _) => Touch();
+                    box.TextChanged += (_, _) => { if (box.FocusState != FocusState.Unfocused) Touch(); };
                 else if (control is ComboBox combo)
-                    combo.SelectionChanged += (_, _) => Touch();
+                    combo.SelectionChanged += (_, _) => { if (combo.FocusState != FocusState.Unfocused) Touch(); };
                 else if (control is PasswordBox password)
-                    password.PasswordChanged += (_, _) => Touch();
+                    password.PasswordChanged += (_, _) => { if (password.FocusState != FocusState.Unfocused) Touch(); };
             }
         }
 

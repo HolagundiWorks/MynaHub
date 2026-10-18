@@ -14,7 +14,7 @@ internal sealed class TimeSheet : UserControl
     private readonly TextBox _note = new() { Header = "Note", PlaceholderText = "What the time was for", HorizontalAlignment = HorizontalAlignment.Stretch, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 64 };
     private readonly StackPanel _lines = new() { Spacing = 0 };
     private readonly StackPanel _use = new() { Spacing = 8 };
-    private readonly InfoBar _notice = new LiveNotice { IsOpen = false, IsClosable = true };
+    private readonly InfoBar _notice = Flow.Notice();
 
     private TimeSheet(AppShell shell)
     {
@@ -103,7 +103,7 @@ internal sealed class TimeSheet : UserControl
     {
         if (_project.SelectedItem is not ComboBoxItem item || item.Tag is not long projectId)
         {
-            _shell.Problem("Choose a project.");
+            Flow.Fault(_project, _notice, "Choose a project.");
             return;
         }
         var person = _person.Text;

@@ -42,13 +42,20 @@ A clean automated result does not mean the app passes. Automated checks find mis
 |---|---|---|---|---|
 | O1 | O-CoreOp | 1.4.10 Reflow | At a 520 px wide window the page title ran into the Generate button, the tabs were cut off, the entry sheet disappeared and the status strip was clipped. **Fixed:** the pane is a menu button below 900 px and hidden below 560 px; headings and toolbars wrap; the sketch column gives its space back under 700 px. Checked at 520, 760 and 1300 px | Fixed |
 | O2 | O-CoreOp | 2.4.11 Focus not obscured | The floating clock and calculator covered the bottom right of the page. **Fixed:** the clock is in the navigation pane (shown when it is fully open); the calculator and notices are rows above the status strip | Fixed |
-| O3 | O-Studio | 1.4.10 Reflow | The window would not go narrower than about 960 px. **Fixed:** the minimum is 480 px, the navigation pane becomes a menu button below 900 px and hides below 560 px, and the page starts below the button. Checked at 520 px on the Pulse page. Other pages stack at 960 px but were not each checked at 520 px | Fixed (partly checked) |
+| O3 | O-Studio | 1.4.10 Reflow | The window would not go narrower than about 960 px. **Fixed:** the minimum is 480 px, the navigation pane becomes a menu button below 900 px and hides below 560 px, and the page starts below the button. All 31 pages were opened at 520 px and looked at or measured: none loses content or needs sideways scrolling. Tables in the narrowest columns break words (for example the project name on Projects), and on Chart and financial years the header row is narrower than the rows. These are cosmetic and listed in the roadmap | Fixed |
 | O4 | O-CoreOp | 1.3.1, 2.4.6 | Pages had no headings of their own. **Fixed:** the page title style is a level 2 heading and the section header style a level 3, under the level 1 page line in the shell | Fixed |
 | O5 | Both | 4.1.3 Status messages | Success notices and O-CoreOp's toast had no live setting. **Fixed in code:** every notice in O-Studio is a `LiveNotice` (polite), errors stay assertive, and O-CoreOp's notice host is polite. Not verified with a screen reader | Fixed in code, unverified |
-| O6 | O-Studio | 3.3.1 Error identification | The field at fault was not marked. **Partly fixed:** for the required-field checks (name, subject) `Flow.Fault` outlines the field in the error colour, sets its help text to the message, and moves the keyboard to it. Errors that come back from the engine are still shown as a message only | Partly fixed |
+| O6 | O-Studio | 3.3.1 Error identification | The field at fault was not marked. **Partly fixed:** the required-field and choice checks on the record pages, the transmittal log, the time book, and the name and subject of letters now use `Flow.Fault`: the field is outlined in the error colour, its help text carries the message, and the keyboard moves to it. Errors that come back from the engine are still shown as a message only | Partly fixed |
 | O7 | O-CoreOp | 2.5.8, 2.1.1 | The Scale tool in the Drawing takeoff toolbar showed 4 px because the toolbar scrolled sideways. **Fixed:** the toolbar wraps | Fixed |
 | O8 | O-CoreOp | 1.4.4 Resize text | The shell was drawn at 0.96 scale. **Fixed:** it is 1.0 now, so text and targets follow the system settings. Text size at 200% not tested | Fixed |
 | O9 | O-Studio | 2.5.8 | The title bar's caption buttons are 46 by 23 px. They are supplied by Windows, so this is probably exempt | Informational |
+
+## Found while re-testing (2026-10-19)
+
+| # | App | Finding | State |
+|---|---|---|---|
+| N1 | O-Studio | The first version of the polite notices subclassed `InfoBar`. WinUI does not support that: every page with a notice (Time, Enquiries and others) closed the app when opened. It was in the commit pushed the day before. Notices now come from `Flow.Notice()`, a plain `InfoBar` with the live region set | Fixed |
+| N2 | O-Studio | A new form on Salaries and some other Books pages asked "Discard unsaved changes?" when left, though nothing was typed: the lists that fill the form's drop-downs counted as edits. Only a field the person has focused now counts | Fixed |
 
 ## Criteria, by app
 
@@ -104,6 +111,6 @@ Use a throw-away demo company, never a real one. The script types only into the 
 ## What to do next
 
 1. A Narrator and NVDA pass over the main tasks in O-Studio and O-CoreOp (sign in, create a client, save a record, read a table). This is the part automation cannot do, and it is the only way to confirm O5.
-2. O-Studio: check every page at 520 px (O3), and mark the field at fault for errors that come back from the engine (O6).
+2. O-Studio: mark the field at fault for errors that come back from the engine (O6).
 3. Test at 200% text size and 400% display zoom, and in Windows high contrast.
 4. Install O-Draft and run the same audit (see the hand-off in the OSAS repository).

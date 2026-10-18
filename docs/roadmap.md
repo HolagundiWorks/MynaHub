@@ -23,8 +23,8 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 | 1.1 | Merge `claude/aos-shell` into `main` of the O-CoreOp repository, after the owner reviews it | CoreOp | Checked: the branch holds the whole new shell and is two commits ahead of what was last pushed |
 | 1.2 | Add continuous integration: build, `cargo test`, `dotnet test`, the static QA test | Both | Checked: neither repository has a workflow |
 | 1.3 | Narrator and NVDA pass over sign-in, create a client, save a record, read a table. Confirms audit item O5 | Both | Not tested; automation cannot do this |
-| 1.4 | Check every page at 520 px, not only Pulse (O3) | Studio | Checked: one page |
-| 1.5 | Mark the field at fault for errors that come back from the engine (O6) | Studio | Checked: only the required-field checks do it |
+| 1.4 | ~~Check every page at 520 px (O3)~~ Done 2026-10-19: all 31 pages, no loss of content. Cosmetic follow-ups: narrow table columns break words; the header row of Chart and financial years is narrower than its rows | Studio | Checked |
+| 1.5 | Field-level errors (O6): done for the record pages, transmittals, time book and letters. Still open: errors the engine returns (they need a field name in the reply) and the password pages | Studio | Checked |
 | 1.6 | Test at 200% text size, 400% zoom and Windows high contrast | Both | Not tested |
 | 1.7 | Run the installers end to end on a clean machine (O-Studio NSIS, O-CoreOp Inno) | Both | Checked: both scripts exist and were built; no clean-machine install was done |
 | 1.8 | Choose a licence for O-Studio and for the OSAS repository | Studio | Open decision, see the end of `suite-architecture.md` |

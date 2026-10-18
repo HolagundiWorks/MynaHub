@@ -17,7 +17,7 @@ internal sealed class AttendancePage : UserControl
     private readonly TextBox _month = Desk.Typed("Month", Kit.Today()[..7]);
     private readonly StackPanel _register = new() { Spacing = 4 };
     private readonly StackPanel _summary = new();
-    private readonly InfoBar _notice = new LiveNotice { IsOpen = false, IsClosable = true };
+    private readonly InfoBar _notice = Flow.Notice();
     private readonly List<(long Staff, ComboBox State, TextBox Note, string Was)> _rows = [];
 
     public AttendancePage(AppShell shell)
@@ -148,7 +148,7 @@ internal sealed class TdsReconPage : UserControl
     private readonly TextBox _from = Desk.Typed("From", Kit.YearStart());
     private readonly TextBox _to = Desk.Typed("To", Kit.Today());
     private readonly StackPanel _result = new() { Spacing = 8 };
-    private readonly InfoBar _notice = new LiveNotice { IsOpen = false, IsClosable = true };
+    private readonly InfoBar _notice = Flow.Notice();
 
     public TdsReconPage(AppShell shell)
     {

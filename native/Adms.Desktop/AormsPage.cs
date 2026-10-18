@@ -18,7 +18,7 @@ internal sealed class AormsPage : UserControl
     private readonly TextBox _server = Flow.Input("Server address (leave empty for aorms.in)");
     private readonly StackPanel _buttons = new() { Orientation = Orientation.Horizontal, Spacing = 8 };
     private readonly StackPanel _projects = new() { Spacing = 0 };
-    private readonly InfoBar _notice = new LiveNotice { IsOpen = false, IsClosable = true };
+    private readonly InfoBar _notice = Flow.Notice();
     private string _state = "signed_out";
 
     public AormsPage(AppShell shell)
