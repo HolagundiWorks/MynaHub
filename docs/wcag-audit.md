@@ -40,14 +40,14 @@ A clean automated result does not mean the app passes. Automated checks find mis
 
 | # | App | Criterion | Finding | Severity |
 |---|---|---|---|---|
-| O1 | O-Metra | 1.4.10 Reflow | At a 520 px wide window the page title runs into the Generate button, the tabs are cut off, the entry sheet disappears, and the status strip is clipped. The navigation pane never collapses | **Fixed** — the pane collapses to a menu button below 900 px and hides below 560 px; headings, toolbars and the entry sheet toolbar wrap; the sketch column gives its space back under 700 px; checked at 520, 760 and 1300 px (was **Fixed** — the clock moved into the navigation pane (shown only when it is fully open); the calculator and notices are rows above the status strip that push content up instead of covering it (was **Fixed** — the Drawing takeoff toolbar now wraps instead of scrolling sideways, so every tool is visible (was High))) |
-| O2 | O-Metra | 2.4.11 Focus not obscured | The floating Pomodoro clock and the calculator panel sit over the bottom right of the page and can cover a control that has focus | High |
-| O3 | O-Studio | 1.4.10 Reflow | The window will not go narrower than about 960 px, so the page cannot reflow to 320 px at 400% zoom. Needs a test at real display scales | Medium |
-| O4 | O-Metra | 1.3.1, 2.4.6 | Pages have no headings of their own (the shared template used by O-Studio sets them; O-Metra pages build their own titles) | Medium |
-| O5 | Both | 4.1.3 Status messages | Errors are in an assertive live region in most O-Studio pages. Success notices (for example "Saved") and O-Metra's toast have no live setting, so a screen reader may not announce them. Not verified with a screen reader | Medium |
-| O6 | O-Studio | 3.3.1 Error identification | An error appears as a message at the top; the field at fault is not marked and focus does not move to it | Medium |
-| O7 | O-Metra | 2.5.8, 2.1.1 | In the Drawing takeoff toolbar the Scale tool measures 4 px wide at the default window size: it is squeezed out and cannot be clicked | Medium |
-| O8 | O-Metra | 1.4.4 Resize text | The whole shell is drawn at 0.96 scale, which makes text and targets 4% smaller than the system settings. Text size at 200% not tested | Low |
+| O1 | O-Metra | 1.4.10 Reflow | At a 520 px wide window the page title ran into the Generate button, the tabs were cut off, the entry sheet disappeared and the status strip was clipped. **Fixed:** the pane is a menu button below 900 px and hidden below 560 px; headings and toolbars wrap; the sketch column gives its space back under 700 px. Checked at 520, 760 and 1300 px | Fixed |
+| O2 | O-Metra | 2.4.11 Focus not obscured | The floating clock and calculator covered the bottom right of the page. **Fixed:** the clock is in the navigation pane (shown when it is fully open); the calculator and notices are rows above the status strip | Fixed |
+| O3 | O-Studio | 1.4.10 Reflow | The window would not go narrower than about 960 px. **Fixed:** the minimum is 480 px, the navigation pane becomes a menu button below 900 px and hides below 560 px, and the page starts below the button. Checked at 520 px on the Pulse page. Other pages stack at 960 px but were not each checked at 520 px | Fixed (partly checked) |
+| O4 | O-Metra | 1.3.1, 2.4.6 | Pages had no headings of their own. **Fixed:** the page title style is a level 2 heading and the section header style a level 3, under the level 1 page line in the shell | Fixed |
+| O5 | Both | 4.1.3 Status messages | Success notices and O-Metra's toast had no live setting. **Fixed in code:** every notice in O-Studio is a `LiveNotice` (polite), errors stay assertive, and O-Metra's notice host is polite. Not verified with a screen reader | Fixed in code, unverified |
+| O6 | O-Studio | 3.3.1 Error identification | The field at fault was not marked. **Partly fixed:** for the required-field checks (name, subject) `Flow.Fault` outlines the field in the error colour, sets its help text to the message, and moves the keyboard to it. Errors that come back from the engine are still shown as a message only | Partly fixed |
+| O7 | O-Metra | 2.5.8, 2.1.1 | The Scale tool in the Drawing takeoff toolbar showed 4 px because the toolbar scrolled sideways. **Fixed:** the toolbar wraps | Fixed |
+| O8 | O-Metra | 1.4.4 Resize text | The shell was drawn at 0.96 scale. **Fixed:** it is 1.0 now, so text and targets follow the system settings. Text size at 200% not tested | Fixed |
 | O9 | O-Studio | 2.5.8 | The title bar's caption buttons are 46 by 23 px. They are supplied by Windows, so this is probably exempt | Informational |
 
 ## Criteria, by app
@@ -60,7 +60,7 @@ Status is **Pass** (measured or seen), **Likely** (the mechanism is in place but
 | 1.3.1 Info and relationships | Pass (headings, named table cells) | Fail inside pages (O4) | Untested |
 | 1.4.3 Contrast (text) | Pass, lowest 5.1:1 | Pass, lowest 5.8:1 | Untested |
 | 1.4.4 Resize text | Untested | Untested (O8) | Untested |
-| 1.4.10 Reflow | Untested (O3) | Pass after O1 fix | Untested |
+| 1.4.10 Reflow | Pass after O3 fix (one page checked) | Pass after O1 fix | Untested |
 | 1.4.11 Non-text contrast | Pass. Button edges 3:1 or more; field borders 3.6:1 | Pass | Untested |
 | 1.4.12 Text spacing | Untested | Untested | Untested |
 | 2.1.1 Keyboard | Likely. Every control is focusable; no keyboard-only walk done | Likely; O7 fixed | Docs: keyboard drafting path exists (arrow keys, command line); Tab traversal listed as open in its own test matrix |
@@ -103,8 +103,7 @@ Use a throw-away demo company, never a real one. The script types only into the 
 
 ## What to do next
 
-1. A Narrator and NVDA pass over the main tasks in O-Studio and O-Metra (sign in, create a client, save a record, read a table). This is the part automation cannot do.
-2. O-Metra: make the shell collapse its navigation pane below about 900 px, move the clock and calculator out of the content area (O1, O2), and add headings to each page (O4).
-3. Both: give every success notice a polite live region and mark the field at fault on errors (O5, O6).
-4. Test at 200% text size and 400% display zoom, and in Windows high contrast.
-5. Install O-Draft and run the same audit.
+1. A Narrator and NVDA pass over the main tasks in O-Studio and O-Metra (sign in, create a client, save a record, read a table). This is the part automation cannot do, and it is the only way to confirm O5.
+2. O-Studio: check every page at 520 px (O3), and mark the field at fault for errors that come back from the engine (O6).
+3. Test at 200% text size and 400% display zoom, and in Windows high contrast.
+4. Install O-Draft and run the same audit (see the hand-off in the OSAS repository).

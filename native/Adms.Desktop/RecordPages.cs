@@ -25,7 +25,7 @@ internal sealed class RecordPage : UserControl
     private readonly GridLength[] _widths;
     private readonly Dictionary<string, FrameworkElement> _inputs = new();
     private readonly StackPanel _list = new() { Spacing = 0 };
-    private readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true };
+    private readonly InfoBar _notice = new LiveNotice { IsOpen = false, IsClosable = true };
     private readonly Button _save = new() { Content = "Save", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
     private readonly TextBlock _mode = new() { TextWrapping = TextWrapping.Wrap };
     private readonly Func<RecordPage, JsonElement, Button?>? _extra;

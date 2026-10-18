@@ -64,7 +64,7 @@ public sealed partial class MainWindow : Window
             presenter.IsMaximizable = true;
             presenter.IsMinimizable = true;
             presenter.IsResizable = true;
-            presenter.PreferredMinimumWidth = 960;
+            presenter.PreferredMinimumWidth = 480;
             presenter.PreferredMinimumHeight = 600;
         }
 
@@ -254,7 +254,7 @@ public sealed partial class MainWindow : Window
             Height = _restored.Height,
             Maximized = _maximized,
         };
-        if (placement.Width < 640 || placement.Height < 480)
+        if (placement.Width < 480 || placement.Height < 480)
         {
             placement.Width = Math.Max(placement.Width, 960);
             placement.Height = Math.Max(placement.Height, 600);

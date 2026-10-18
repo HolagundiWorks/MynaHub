@@ -20,7 +20,7 @@ internal sealed class TransmittalLog : UserControl
     private readonly StackPanel _pending = new() { Spacing = 0 };
     private readonly StackPanel _log = new() { Spacing = 0 };
     private readonly List<PendingItem> _items = [];
-    private readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true };
+    private readonly InfoBar _notice = new LiveNotice { IsOpen = false, IsClosable = true };
 
     private TransmittalLog(AppShell shell)
     {

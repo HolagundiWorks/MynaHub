@@ -14,7 +14,7 @@ internal sealed class TimeSheet : UserControl
     private readonly TextBox _note = new() { Header = "Note", PlaceholderText = "What the time was for", HorizontalAlignment = HorizontalAlignment.Stretch, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 64 };
     private readonly StackPanel _lines = new() { Spacing = 0 };
     private readonly StackPanel _use = new() { Spacing = 8 };
-    private readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true };
+    private readonly InfoBar _notice = new LiveNotice { IsOpen = false, IsClosable = true };
 
     private TimeSheet(AppShell shell)
     {

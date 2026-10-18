@@ -12,7 +12,7 @@ The suite is **OSAS, the Open Source Architecture Suit**. The apps were renamed;
 | **O-Metra** | AQC, Accelerated Quantity and Costing | Quantities, estimates, billing | Blue | `HolagundiWorks/AQC` |
 | **O-Draft** | AAD, Accelerated Architecture Drafting | Drafting | Black | `HolagundiWorks/AAD` |
 
-The rest of this document uses the old names, because it was written before the rename and quotes the repositories as they are. The shared design is the `hcw-ui` library, and its brand folder has the marks for all three apps in their colours.
+The rest of this document uses the old names, because it was written before the rename and quotes the repositories as they are. The shared design is the `hcw-ui` library (MIT licensed; the marks in its brand folder have their own notice), and the folder has the marks for all three apps in their colours. O-Studio and O-Metra use the same responsive layout: a pane that collapses below 900 px, and pages that wrap down to 520 px. The accessibility audit is `docs/wcag-audit.md`.
 
 ## 1. The products today (verified)
 
@@ -126,6 +126,6 @@ Licence boundary: AQC is AGPL-3.0, AAD is MIT or Apache-2.0, and AOS has no lice
 
 1. Which system of record for a project: AORMS when linked and AOS otherwise, or one of them always?
 2. Should AOS be able to run with no AORMS at all and still share projects with AAD and AQC? If yes, the bridge file must carry `ProjectRef`, and AOS needs an export.
-3. What licence does AOS carry?
+3. What licence does AOS carry? (Settled for the shared design: `hcw-ui` is MIT, and its marks are reserved. AOS itself is still undecided.)
 4. Is the suite host a separate small app, or part of AOS?
 5. What is a ShilpiDB "detail", precisely?

@@ -53,14 +53,14 @@ internal sealed class WorkspaceView : UserControl
 
     private readonly NavigationView _nav = new()
     {
-        PaneDisplayMode = NavigationViewPaneDisplayMode.Left,
+        PaneDisplayMode = NavigationViewPaneDisplayMode.Auto,
         IsBackButtonVisible = NavigationViewBackButtonVisible.Collapsed,
-        IsPaneToggleButtonVisible = false,
+        IsPaneToggleButtonVisible = true,
         IsPaneOpen = true,
         IsSettingsVisible = false,
         OpenPaneLength = 232,
-        CompactModeThresholdWidth = 0,
-        ExpandedModeThresholdWidth = 0,
+        CompactModeThresholdWidth = 560,
+        ExpandedModeThresholdWidth = 900,
     };
     private readonly Grid _host = new();
     private readonly Image _paneLogo = new()
@@ -87,7 +87,6 @@ internal sealed class WorkspaceView : UserControl
         _shell = shell;
         Hcw.Ui.SuiteNavigation.Apply(_nav, Hcw.Ui.SuiteApp.Studio);
         AutomationProperties.SetName(_paneLogo, "O-Studio");
-        _nav.PaneClosing += (_, args) => args.Cancel = true;
         _nav.ItemInvoked += (_, args) =>
         {
             if (args.InvokedItemContainer is NavigationViewItem item && item.Tag is string id)
@@ -117,6 +116,8 @@ internal sealed class WorkspaceView : UserControl
             Child = _host,
         };
         _nav.Content = sheet;
+        // In the narrow layout the pane's menu button sits over the top left of the page, so the page starts below it.
+        _nav.DisplayModeChanged += (nav, _) => sheet.Margin = new Thickness(0, nav.DisplayMode == NavigationViewDisplayMode.Minimal ? 44 : 0, 0, 0);
         Content = _nav;
         _shell.Navigate = Show;
         BuildMenu();

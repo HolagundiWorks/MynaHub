@@ -12,8 +12,42 @@ using Microsoft.UI.Xaml.Media;
 
 namespace Adms.Desktop;
 
+/// <summary>A closable notice that a screen reader announces without interrupting.</summary>
+internal sealed class LiveNotice : InfoBar
+{
+    public LiveNotice() => AutomationProperties.SetLiveSetting(this, AutomationLiveSetting.Polite);
+}
+
 internal static class Flow
 {
+    /// <summary>
+    /// Reports a problem with one field: shows the message, outlines the field in the error colour, and moves the keyboard to it.
+    /// The outline clears when the person edits the field.
+    /// </summary>
+    public static void Fault(Control field, InfoBar bar, string message)
+    {
+        bar.Severity = InfoBarSeverity.Error;
+        bar.Message = message;
+        bar.IsOpen = true;
+        var original = field.BorderBrush;
+        field.BorderBrush = (Brush)Application.Current.Resources["SystemFillColorCriticalBrush"];
+        field.BorderThickness = new Thickness(2);
+        AutomationProperties.SetHelpText(field, message);
+        if (field is TextBox box)
+        {
+            TextChangedEventHandler? clear = null;
+            clear = (_, _) =>
+            {
+                box.TextChanged -= clear;
+                field.BorderBrush = original;
+                field.BorderThickness = new Thickness(1);
+                AutomationProperties.SetHelpText(field, "");
+            };
+            box.TextChanged += clear;
+        }
+        field.Focus(FocusState.Programmatic);
+    }
+
     public static Style Look(string key) => (Style)Application.Current.Resources[key];
 
     public static Brush Ink(string key)
@@ -722,7 +756,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
     private readonly StackPanel _stageList = new() { Spacing = 8 };
     private readonly StackPanel _path = new() { Spacing = 8 };
     private readonly Button _assignStages = new() { Content = "Assign standard stages" };
-    private readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true, Severity = InfoBarSeverity.Informational };
+    private readonly InfoBar _notice = new LiveNotice { IsOpen = false, IsClosable = true, Severity = InfoBarSeverity.Informational };
     private readonly TextBox _site = Flow.Input("Site address", true);
     private readonly TextBlock _title = Flow.Heading("Projects");
     private readonly Button _save = new();
@@ -1809,7 +1843,7 @@ internal sealed class ClientsPage : UserControl, IPageCommands
     private void SaveClient()
     {
         if (_saving) return;
-        if (_name.Text.Trim().Length == 0) { _error.Message = "Name is required."; _error.IsOpen = true; return; }
+        if (_name.Text.Trim().Length == 0) { Flow.Fault(_name, _error, "Name is required."); return; }
         var representatives = new List<object>();
         for (var i = 0; i < 3; i++)
         {
@@ -2428,7 +2462,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
     private void SaveDraft()
     {
         if (_saving || _status != "draft") return;
-        if (_subject.Text.Trim().Length == 0) { _error.Message = "Subject is required."; _error.IsOpen = true; return; }
+        if (_subject.Text.Trim().Length == 0) { Flow.Fault(_subject, _error, "Subject is required."); return; }
         var input = Input();
         _saving = true;
         _ = _shell.Run("Saving draft…", () =>
@@ -2457,7 +2491,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
         if (_saving || _status != "draft" || !_shell.CanIssue) return;
         if (!await Flow.Confirm(this, "Issue this document?", "Issue gives the document a number. The content can no longer be edited. This is not the same as saving a draft.", "Issue"))
             return;
-        if (_subject.Text.Trim().Length == 0) { _error.Message = "Subject is required."; _error.IsOpen = true; return; }
+        if (_subject.Text.Trim().Length == 0) { Flow.Fault(_subject, _error, "Subject is required."); return; }
         var input = Input();
         _saving = true;
         _issue.IsEnabled = false;
@@ -2507,7 +2541,7 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
     private readonly ComboBox _dateOrder = new() { Header = "Date order", HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly StackPanel _fileColumns = new() { Spacing = 4 };
     private readonly TextBlock _summary = new() { TextWrapping = TextWrapping.WrapWholeWords };
-    private readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true };
+    private readonly InfoBar _notice = new LiveNotice { IsOpen = false, IsClosable = true };
     private readonly TextBox _accountName = Flow.Input("Account name");
     private readonly TextBox _bank = Flow.Input("Bank");
     private readonly TextBox _number = Flow.Input("Account number");
