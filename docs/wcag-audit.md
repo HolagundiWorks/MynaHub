@@ -1,0 +1,110 @@
+# WCAG 2.2 AA audit of the OSAS apps
+
+Audit of **O-Studio**, **O-Metra** and **O-Draft** on 2026-10-18, against WCAG 2.2 level AA. O-Studio and O-Metra were run and measured. O-Draft was not run, because it is not installed on this computer, so its section is a review of its documentation and is marked as such.
+
+## What was checked, and what was not
+
+| Method | O-Studio | O-Metra | O-Draft |
+|---|---|---|---|
+| Colour contrast, calculated from the colour tokens (`tools/a11y/contrast.mjs`) | Yes | Yes | Palette only |
+| UI Automation walk of the running app: every element's role, name, keyboard focusability, size (`tools/a11y/uia-audit.ps1`, `analyse.mjs`) | 26 pages, 1,765 elements | 25 pages, 2,901 elements | Not run |
+| Narrow-window screenshots (reflow) | Yes | Yes | No |
+| Source scan for headings, names and live regions | Yes | Yes | Documentation only |
+| Screen reader (Narrator, NVDA) | **Not done** | **Not done** | Not done |
+| Keyboard Tab order and traps, by hand | **Not done** | **Not done** | Not done |
+| 200% text size, 400% zoom, high contrast mode, voice access | **Not done** | **Not done** | Not done |
+
+A clean automated result does not mean the app passes. Automated checks find missing names and small targets; they cannot judge whether a page makes sense to a screen reader user. The "not done" rows are the next step, and they are marked as such in the tables below.
+
+## Summary
+
+| | O-Studio | O-Metra | O-Draft |
+|---|---|---|---|
+| Interactive controls with no name | 0 of ~1,000 | **150+ found, now 0** | Not checked |
+| Controls the keyboard cannot reach | 0 (system caption buttons excluded) | 0 (same) | Not checked |
+| Text contrast | Pass | Pass | Not checked |
+| Reflow at narrow widths | Window cannot be narrowed below about 960 px | **Fails** | Not checked |
+| Headings | Yes, in the shared page template | **None inside pages** | Not checked |
+
+## Fixed during the audit
+
+| # | App | Criterion | Finding | Fix |
+|---|---|---|---|---|
+| F1 | O-Metra | 4.1.2 Name, role, value | 67 drop-down cells and 44 text cells in the entry sheets, the calculator button, 13 layer toggles, the floor drop-down, the layers button and the letter text box had no name. A screen reader would announce "edit" or "button" | Each cell is named by its column and row ("Breadth b, row 3"), the others by their purpose. Re-run: 0 unnamed controls on 25 pages |
+| F2 | O-Metra | 2.5.8 Target size (24 px) | Layer toggles were 24 px, below the limit once the shell's 0.96 scale is applied. The All and None links were 21 px high | Toggles 28 px, links at least 28 px high |
+| F3 | O-Studio, O-Metra | 1.1.1 Non-text content | The logo in the O-Studio pane had no name. O-Metra's navigation icons repeat the label beside them | The logo is named. The icons are hidden from assistive technology |
+| F4 | O-Metra | 1.3.1, 2.4.6 | No headings at all in the app | The page title line is now a level 1 heading. Headings inside pages are still missing (O4) |
+| F5 | O-Studio | 1.4.3 Contrast | Ink text on the pressed orange button measured 4.11:1 | The orange hover and pressed colours are lighter: 5.6 and 5.1:1 |
+
+## Open findings
+
+| # | App | Criterion | Finding | Severity |
+|---|---|---|---|---|
+| O1 | O-Metra | 1.4.10 Reflow | At a 520 px wide window the page title runs into the Generate button, the tabs are cut off, the entry sheet disappears, and the status strip is clipped. The navigation pane never collapses | High |
+| O2 | O-Metra | 2.4.11 Focus not obscured | The floating Pomodoro clock and the calculator panel sit over the bottom right of the page and can cover a control that has focus | High |
+| O3 | O-Studio | 1.4.10 Reflow | The window will not go narrower than about 960 px, so the page cannot reflow to 320 px at 400% zoom. Needs a test at real display scales | Medium |
+| O4 | O-Metra | 1.3.1, 2.4.6 | Pages have no headings of their own (the shared template used by O-Studio sets them; O-Metra pages build their own titles) | Medium |
+| O5 | Both | 4.1.3 Status messages | Errors are in an assertive live region in most O-Studio pages. Success notices (for example "Saved") and O-Metra's toast have no live setting, so a screen reader may not announce them. Not verified with a screen reader | Medium |
+| O6 | O-Studio | 3.3.1 Error identification | An error appears as a message at the top; the field at fault is not marked and focus does not move to it | Medium |
+| O7 | O-Metra | 2.5.8, 2.1.1 | In the Drawing takeoff toolbar the Scale tool measures 4 px wide at the default window size: it is squeezed out and cannot be clicked | Medium |
+| O8 | O-Metra | 1.4.4 Resize text | The whole shell is drawn at 0.96 scale, which makes text and targets 4% smaller than the system settings. Text size at 200% not tested | Low |
+| O9 | O-Studio | 2.5.8 | The title bar's caption buttons are 46 by 23 px. They are supplied by Windows, so this is probably exempt | Informational |
+
+## Criteria, by app
+
+Status is **Pass** (measured or seen), **Likely** (the mechanism is in place but not tested end to end), **Fail**, or **Untested**.
+
+| Criterion | O-Studio | O-Metra | O-Draft (documentation only) |
+|---|---|---|---|
+| 1.1.1 Non-text content | Pass | Pass after F3 | Untested. Docs: controls are named; the drawing canvas has no text alternative, which is inherent to a CAD canvas |
+| 1.3.1 Info and relationships | Pass (headings, named table cells) | Fail inside pages (O4) | Untested |
+| 1.4.3 Contrast (text) | Pass, lowest 5.1:1 | Pass, lowest 5.8:1 | Untested |
+| 1.4.4 Resize text | Untested | Untested (O8) | Untested |
+| 1.4.10 Reflow | Untested (O3) | **Fail** (O1) | Untested |
+| 1.4.11 Non-text contrast | Pass. Button edges 3:1 or more; field borders 3.6:1 | Pass | Untested |
+| 1.4.12 Text spacing | Untested | Untested | Untested |
+| 2.1.1 Keyboard | Likely. Every control is focusable; no keyboard-only walk done | Likely, but see O7 | Docs: keyboard drafting path exists (arrow keys, command line); Tab traversal listed as open in its own test matrix |
+| 2.4.3 Focus order | Untested | Untested | Open in its test matrix |
+| 2.4.7 Focus visible | Pass (visible on the navigation pane) | Pass (same) | Untested |
+| 2.4.11 Focus not obscured | Pass as far as seen | **Fail risk** (O2) | Untested |
+| 2.5.8 Target size | Pass | Pass after F2, except O7 | Docs say 32 DIP; untested |
+| 3.3.1 Error identification | Partly (O6) | Untested | Untested |
+| 4.1.2 Name, role, value | Pass | Pass after F1 | Docs: labels present on every egui element; the WinUI shell is described as named |
+| 4.1.3 Status messages | Partly (O5) | Partly (O5) | Untested |
+
+## O-Draft
+
+Not run. What its own documentation says: the WinUI shell uses standard controls, names its regions, keeps action targets at 32 DIP or more, and offers a keyboard path for drafting; the egui window exposes labelled elements through AccessKit. Its test matrix lists Tab and arrow-key traversal as **open**. The drawing itself is a GPU canvas with no accessibility tree. That is common for CAD, but it should be stated, and the command line and the object list are the accessible route to the drawing. To audit it, install it and run `tools/a11y/uia-audit.ps1 -Exe <Aad.WinUi.exe> -Pages <menu items>`.
+
+## Colour contrast, calculated
+
+Run `node tools/a11y/contrast.mjs`. All 32 pairs pass. The accents:
+
+| App | Fill | Text on the fill | Accent as text on white |
+|---|---|---|---|
+| O-Studio | orange `#FF6B00` | ink, 6.2:1 | `#A83F00`, 6.2:1 |
+| O-Metra | blue `#1F5FD1` | white, 5.8:1 | `#1A52B8`, 7.1:1 |
+| O-Draft | black `#1B1C20` | white, 17.0:1 | `#17181B`, 17.8:1 |
+
+Amber and orange on white are not used for small text. The orange fill against white measures 2.9:1 as a shape; the button is identified by its label (6.2:1) and its edge (3.3:1), so it passes 1.4.11.
+
+## Re-running the audit
+
+```powershell
+cd tools\a11y
+.\uia-audit.ps1 -Exe "<path to O-Studio>\Adms.Desktop.exe" -Company "<a demo company>.adms" -User owner -Password $env:AUDIT_PASSWORD -Pages Pulse,Clients,"Fee proposals" -Out studio.json
+.\uia-audit.ps1 -Exe "<path to O-Metra>\AQCCore.exe" -Pages Dashboard,Columns -Out metra.json
+node analyse.mjs studio.json
+node analyse.mjs metra.json
+node contrast.mjs
+```
+
+Use a throw-away demo company, never a real one. The script types only into the system file dialog, and only while that dialog has the keyboard.
+
+## What to do next
+
+1. A Narrator and NVDA pass over the main tasks in O-Studio and O-Metra (sign in, create a client, save a record, read a table). This is the part automation cannot do.
+2. O-Metra: make the shell collapse its navigation pane below about 900 px, move the clock and calculator out of the content area (O1, O2), and add headings to each page (O4).
+3. Both: give every success notice a polite live region and mark the field at fault on errors (O5, O6).
+4. Test at 200% text size and 400% display zoom, and in Windows high contrast.
+5. Install O-Draft and run the same audit.

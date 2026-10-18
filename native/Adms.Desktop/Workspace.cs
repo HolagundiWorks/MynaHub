@@ -86,6 +86,7 @@ internal sealed class WorkspaceView : UserControl
     {
         _shell = shell;
         Hcw.Ui.SuiteNavigation.Apply(_nav, Hcw.Ui.SuiteApp.Studio);
+        AutomationProperties.SetName(_paneLogo, "O-Studio");
         _nav.PaneClosing += (_, args) => args.Cancel = true;
         _nav.ItemInvoked += (_, args) =>
         {
