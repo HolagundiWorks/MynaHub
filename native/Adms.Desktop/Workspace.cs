@@ -85,6 +85,7 @@ internal sealed class WorkspaceView : UserControl
     public WorkspaceView(AppShell shell)
     {
         _shell = shell;
+        Hcw.Ui.SuiteNavigation.Apply(_nav);
         _nav.PaneClosing += (_, args) => args.Cancel = true;
         _nav.ItemInvoked += (_, args) =>
         {
@@ -238,16 +239,7 @@ internal sealed class WorkspaceView : UserControl
 
     private void AddGroup(string sheet, string title, params (string Id, string Item, string Label, string Glyph)[] items)
     {
-        _nav.MenuItems.Add(new NavigationViewItemHeader
-        {
-            Content = new TextBlock
-            {
-                Text = title,
-                FontSize = 11,
-                Margin = new Thickness(0, 8, 0, 0),
-                Foreground = Flow.Ink("TextSecondaryBrush"),
-            },
-        });
+        _nav.MenuItems.Add(new NavigationViewItemHeader { Content = title, FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
         foreach (var (id, _, label, glyph) in items)
         {
             _destinations.Add((id, label));
