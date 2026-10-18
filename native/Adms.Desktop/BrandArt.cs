@@ -6,7 +6,7 @@ namespace Adms.Desktop;
 
 internal static class BrandArt
 {
-    public const string Name = "Architecture Office Suit";
+    public const string Name = "O-Studio";
 
     public static ImageSource Mark() => Load("mark.png");
 

@@ -85,7 +85,7 @@ internal sealed class WorkspaceView : UserControl
     public WorkspaceView(AppShell shell)
     {
         _shell = shell;
-        Hcw.Ui.SuiteNavigation.Apply(_nav);
+        Hcw.Ui.SuiteNavigation.Apply(_nav, Hcw.Ui.SuiteApp.Studio);
         _nav.PaneClosing += (_, args) => args.Cancel = true;
         _nav.ItemInvoked += (_, args) =>
         {

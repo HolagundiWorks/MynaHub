@@ -14,9 +14,9 @@
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <Company>Human Centric Works</Company>
-    <Product>Architecture Office Suit</Product>
-    <AssemblyTitle>Architecture Office Suit</AssemblyTitle>
-    <Description>Architecture Office Suit</Description>
+    <Product>O-Studio</Product>
+    <AssemblyTitle>O-Studio</AssemblyTitle>
+    <Description>O-Studio</Description>
     <Copyright>Copyright © 2026 Human Centric Works</Copyright>
     <Version>0.1.0</Version>
     <AssemblyVersion>0.1.0.0</AssemblyVersion>

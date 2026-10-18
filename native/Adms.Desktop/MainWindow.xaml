@@ -3,7 +3,7 @@
     x:Class="Adms.Desktop.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="Architecture Office Suit">
+    Title="O-Studio">
     <Grid x:Name="Root" Language="en-IN" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Key="Escape" Invoked="DismissNotice"/>
@@ -70,7 +70,7 @@
             <ScrollViewer x:Name="WelcomePanel" Padding="32">
                 <Border Style="{StaticResource SetupCardStyle}" MaxWidth="560">
                     <StackPanel Spacing="12">
-                        <Image x:Name="WelcomeLogo" MaxWidth="460" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="Architecture Office Suit"/>
+                        <Image x:Name="WelcomeLogo" MaxWidth="460" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="O-Studio"/>
                         <TextBlock Text="Create a company file or open an existing one." TextWrapping="WrapWholeWords" Style="{ThemeResource BodyStyle}"/>
                         <TextBlock Text="Developed by Human Centric Works" Style="{ThemeResource CaptionStyle}"/>
                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -112,7 +112,7 @@
             <ScrollViewer x:Name="LoginPanel" Visibility="Collapsed" Padding="32">
                 <Border Style="{StaticResource SetupCardStyle}">
                     <StackPanel Spacing="12">
-                        <Image x:Name="LoginLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="Architecture Office Suit"/>
+                        <Image x:Name="LoginLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="O-Studio"/>
                         <TextBlock x:Name="LoginHeading" Style="{ThemeResource PageTitleStyle}" TextWrapping="WrapWholeWords"/>
                         <TextBlock Text="Enter your username and password." Style="{ThemeResource BodyStyle}" TextWrapping="WrapWholeWords"/>
                         <TextBox x:Name="UsernameBox" Header="Username"/>
@@ -129,7 +129,7 @@
             <ScrollViewer x:Name="SetupPanel" Visibility="Collapsed" Padding="32">
                 <Border Style="{StaticResource SetupCardStyle}">
                     <StackPanel Spacing="12">
-                        <Image x:Name="SetupLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="Architecture Office Suit"/>
+                        <Image x:Name="SetupLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="O-Studio"/>
                         <TextBlock x:Name="SetupHeading" Style="{ThemeResource PageTitleStyle}" Text="Set up the admin password" TextWrapping="WrapWholeWords"/>
                         <TextBlock Text="This company is opened with the admin password. The recovery code is shown once." TextWrapping="WrapWholeWords" Style="{ThemeResource BodyStyle}"/>
                         <TextBox x:Name="SetupUser" Header="Username" Visibility="Collapsed"/>
@@ -146,7 +146,7 @@
             <ScrollViewer x:Name="RecoverPanel" Visibility="Collapsed" Padding="32">
                 <Border Style="{StaticResource SetupCardStyle}">
                     <StackPanel Spacing="12">
-                        <Image x:Name="RecoverLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="Architecture Office Suit"/>
+                        <Image x:Name="RecoverLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="O-Studio"/>
                         <TextBlock Style="{ThemeResource PageTitleStyle}" Text="Reset password" TextWrapping="WrapWholeWords"/>
                         <TextBlock Text="Enter the username and the recovery code. The old recovery code stops working. A new one is shown once." TextWrapping="WrapWholeWords" Style="{ThemeResource BodyStyle}"/>
                         <TextBox x:Name="RecoverUser" Header="Username"/>
@@ -164,7 +164,7 @@
             <ScrollViewer x:Name="UnlockPanel" Visibility="Collapsed" Padding="32">
                 <Border Style="{StaticResource SetupCardStyle}">
                     <StackPanel Spacing="12">
-                        <Image x:Name="UnlockLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="Architecture Office Suit"/>
+                        <Image x:Name="UnlockLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="O-Studio"/>
                         <TextBlock x:Name="UnlockHeading" Style="{ThemeResource PageTitleStyle}" Text="Session locked" TextWrapping="WrapWholeWords"/>
                         <PasswordBox x:Name="UnlockPassword" Header="Password" KeyDown="UnlockKeyDown"/>
                         <StackPanel Orientation="Horizontal" Spacing="8">

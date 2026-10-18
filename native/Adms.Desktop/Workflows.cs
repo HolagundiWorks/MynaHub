@@ -44,12 +44,12 @@ internal static class Flow
     {
         var mark = new TextBlock
         {
-            Text = $"Architecture Office Suit-{sheet}  ·  {section}",
+            Text = $"O-Studio {sheet}  ·  {section}",
             Style = Look("CaptionStyle"),
         };
         var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 2) };
         panel.Children.Add(mark);
-        AutomationProperties.SetName(panel, $"Architecture Office Suit {sheet}, {section}, {page}");
+        AutomationProperties.SetName(panel, $"O-Studio {sheet}, {section}, {page}");
         return panel;
     }
 

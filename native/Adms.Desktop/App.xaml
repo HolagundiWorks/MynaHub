@@ -14,7 +14,7 @@
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
                     <ResourceDictionary.MergedDictionaries>
-                        <ResourceDictionary Source="ms-appx:///Hcw.Ui/Themes/SuiteLight.xaml"/>
+                        <ResourceDictionary Source="ms-appx:///Hcw.Ui/Themes/SuiteLight.Orange.xaml"/>
                     </ResourceDictionary.MergedDictionaries>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">

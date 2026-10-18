@@ -2,6 +2,18 @@
 
 Status: written 2026-10-18 from a read of the repositories and the code in this one. Every statement marked **verified** was read in a repository or run. Everything marked **proposed** is a recommendation for the owner to decide, not something that exists.
 
+## Names (from 2026-10-18)
+
+The suite is **OSAS, the Open Source Architecture Suit**. The apps were renamed; the repositories and code identifiers keep their old names for now.
+
+| Name | Was | For | Accent | Repository |
+|---|---|---|---|---|
+| **O-Studio** | AOS, Architecture Office Suit | Office and project management | Orange | `HolagundiWorks/AOS-Architecture-Office-Suite` |
+| **O-Metra** | AQC, Accelerated Quantity and Costing | Quantities, estimates, billing | Blue | `HolagundiWorks/AQC` |
+| **O-Draft** | AAD, Accelerated Architecture Drafting | Drafting | Black | `HolagundiWorks/AAD` |
+
+The rest of this document uses the old names, because it was written before the rename and quotes the repositories as they are. The shared design is the `hcw-ui` library, and its brand folder has the marks for all three apps in their colours.
+
 ## 1. The products today (verified)
 
 | Product | Repository | What it is now | Stack | Licence |

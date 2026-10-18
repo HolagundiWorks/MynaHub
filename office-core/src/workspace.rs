@@ -1,5 +1,5 @@
 //! The running workspace: the open company file, the signed-in session and the checks every command makes first.
-//! An app (AOS, AQC) holds one of these and adds its own commands on top.
+//! An app (O-Studio, O-Metra) holds one of these and adds its own commands on top.
 
 use crate::auth::{self, Permission, Role, Session, SessionInfo};
 use rusqlite::{params, Connection};

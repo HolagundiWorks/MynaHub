@@ -1,4 +1,6 @@
-# AOS — Architecture Office Suite
+# O-Studio
+
+O-Studio is the office app of **OSAS, the Open Source Architecture Suit**. The suite is O-Studio (office and project management, orange), O-Metra (quantities, estimates and billing, blue) and O-Draft (drafting, black). Earlier names: AOS, AQC and AAD. The repository and the code keep the old names in places such as the `aos` portal session name and the `AOSENC1` file marker, because files and servers already use them.
 
 Offline Windows desktop app for an architectural practice. Clients, projects, letters, invoices, and the accounts live in one company file. Developed by Human Centric Works.
 
@@ -6,7 +8,7 @@ Help for daily work is in [docs/help](docs/help/Home.md).
 
 ## Company file
 
-Each practice is one `.adms` file. Copying or backing up that file moves the company with it. AOS checks the file before opening it, locks it while it is open, and keeps a copy before a schema upgrade. An ordinary company file is a SQLite database and is not encrypted. The engine can also protect a file at rest: a protected file starts with `AOSENC1` and holds a random file key wrapped once with the owner's password and once with the recovery code, and backups of a protected file are sealed the same way. Losing both the password and the recovery code means the file cannot be opened.
+Each practice is one `.adms` file. Copying or backing up that file moves the company with it. O-Studio checks the file before opening it, locks it while it is open, and keeps a copy before a schema upgrade. An ordinary company file is a SQLite database and is not encrypted. The engine can also protect a file at rest: a protected file starts with `AOSENC1` and holds a random file key wrapped once with the owner's password and once with the recovery code, and backups of a protected file are sealed the same way. Losing both the password and the recovery code means the file cannot be opened.
 
 Sign-in uses the admin password. The password needs 12 or more characters. A recovery code is shown once when the company is created, and a new code is shown once whenever the password is reset.
 
@@ -21,7 +23,7 @@ Shortcuts: Ctrl+N new record, Ctrl+S save, Ctrl+P print, Ctrl+F search, Ctrl+K g
 
 ## The suite
 
-AOS is one of several apps that share an office's records. The pieces in this repository:
+O-Studio is one of several apps that share an office's records. The pieces in this repository:
 
 | Folder | What it is |
 |---|---|
@@ -30,7 +32,7 @@ AOS is one of several apps that share an office's records. The pieces in this re
 | `aorms-connect/` | The optional shared AORMS sign-in and project pull. Server change needed: [docs/aorms-aos-server.md](docs/aorms-aos-server.md) |
 | `office-agent/` | Governed read-only tools and an MCP server for an AI assistant |
 
-The architecture and integration map for AOS, AAD, AQC, ShilpiDB and AORMS is [docs/suite-architecture.md](docs/suite-architecture.md). Each folder is its own Cargo crate; run `cargo test` inside it.
+The architecture and integration map for O-Studio, O-Draft, O-Metra, ShilpiDB and AORMS is [docs/suite-architecture.md](docs/suite-architecture.md). Each folder is its own Cargo crate; run `cargo test` inside it.
 
 ## Develop
 

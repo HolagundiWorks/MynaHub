@@ -1,4 +1,4 @@
-; Installer for Architecture Office Suit (the WinUI app and its Rust engine).
+; Installer for O-Studio (the WinUI app and its Rust engine).
 ; Build with installer\build.ps1, or:  makensis /DSOURCE=<publish folder> installer\aos.nsi
 ;
 ; Installs for the current user only (no administrator rights), into a fixed folder, so the uninstaller can remove exactly what
@@ -8,8 +8,8 @@ Unicode true
 !include "FileFunc.nsh"
 !insertmacro GetSize
 
-!define APP_NAME "Architecture Office Suit"
-!define APP_ID "AOS"
+!define APP_NAME "O-Studio"
+!define APP_ID "OStudio"
 !define PUBLISHER "Human Centric Works"
 !define EXE "Adms.Desktop.exe"
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_ID}"
@@ -21,7 +21,7 @@ Unicode true
   !error "Pass /DSOURCE=<folder produced by dotnet publish>"
 !endif
 !ifndef OUT
-  !define OUT "AOS-Setup-${VERSION}.exe"
+  !define OUT "O-Studio-Setup-${VERSION}.exe"
 !endif
 
 Name "${APP_NAME}"

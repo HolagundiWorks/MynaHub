@@ -45,7 +45,7 @@ public sealed partial class MainWindow : Window
     private PrintDocument? _printDocument;
     private IPrintDocumentSource? _printSource;
     private IReadOnlyList<UIElement> _printPages = [];
-    private string _printJob = "Architecture Office Suit";
+    private string _printJob = "O-Studio";
 
     public MainWindow()
     {
@@ -223,7 +223,7 @@ public sealed partial class MainWindow : Window
         {
             args.Cancel = true;
             _closeAfterBusy = true;
-            ShowError("Architecture Office Suit will close after the current operation finishes. Nothing is written until you confirm a save.");
+            ShowError("O-Studio will close after the current operation finishes. Nothing is written until you confirm a save.");
             return;
         }
         if (!_allowClose && _signedIn && _workspace != null)
@@ -430,7 +430,7 @@ public sealed partial class MainWindow : Window
             _companyPath = "";
             _companyUuid = "";
             _role = "";
-            Title = "Architecture Office Suit";
+            Title = "O-Studio";
             ClearSecrets();
             ClearWorkspace();
             ShowWelcome();
@@ -769,7 +769,7 @@ public sealed partial class MainWindow : Window
         }
         var dialog = new ContentDialog
         {
-            Title = "About Architecture Office Suit",
+            Title = "About O-Studio",
             Content = new StackPanel
             {
                 Spacing = 8,
@@ -1024,7 +1024,7 @@ public sealed partial class MainWindow : Window
         _companyName = Text(company, "name");
         _companyPath = Text(company, "path");
         _companyUuid = Text(company, "uuid");
-        Title = string.IsNullOrWhiteSpace(_companyName) ? "Architecture Office Suit" : $"{_companyName} — Architecture Office Suit";
+        Title = string.IsNullOrWhiteSpace(_companyName) ? "O-Studio" : $"{_companyName} — O-Studio";
         var setup = status.TryGetProperty("setup_required", out var setupFlag) && setupFlag.ValueKind == JsonValueKind.True;
         if (setup)
         {
@@ -1218,7 +1218,7 @@ public sealed partial class MainWindow : Window
         var invalid = Path.GetInvalidFileNameChars();
         var cleaned = new string(company.Select(ch => invalid.Contains(ch) ? '-' : ch).ToArray()).Trim();
         if (cleaned.Length == 0)
-            cleaned = "Architecture Office Suit";
+            cleaned = "O-Studio";
         return cleaned + " preview";
     }
 

@@ -1,6 +1,6 @@
-# How to use AOS
+# How to use O-Studio
 
-AOS — Architecture Office Suite is the office app for one architectural practice. Everything for that practice is stored in a single company file.
+O-Studio — O-Studio is the office app for one architectural practice. Everything for that practice is stored in a single company file.
 
 ## Start here
 

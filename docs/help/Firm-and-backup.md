@@ -18,4 +18,4 @@ Set the **GST scheme** (not registered, composition, or regular) and the **Lette
 2. Enter the admin password.
 3. Choose **Create backup**.
 
-AOS writes a backup and shows the file name, SHA-256, size, and folder. **Show backups** lists backups already taken. Keep the backup folder as private as the company file. The backup is not a substitute for the recovery code: you still need the admin password or the recovery code to open the practice.
+O-Studio writes a backup and shows the file name, SHA-256, size, and folder. **Show backups** lists backups already taken. Keep the backup folder as private as the company file. The backup is not a substitute for the recovery code: you still need the admin password or the recovery code to open the practice.

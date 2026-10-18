@@ -2,13 +2,13 @@
 
 ## Create a company
 
-1. Open AOS.
+1. Open O-Studio.
 2. Choose **Create a new company**.
-3. Enter the practice name, choose a folder, and name the file. AOS adds `.adms` if you leave the extension off.
+3. Enter the practice name, choose a folder, and name the file. O-Studio adds `.adms` if you leave the extension off.
 4. Set an admin password of 12 or more characters and confirm it.
 5. Choose **Create company**.
 
-AOS then shows a recovery code **once**. Store it somewhere you can find later. It is the way back in if the admin password is forgotten.
+O-Studio then shows a recovery code **once**. Store it somewhere you can find later. It is the way back in if the admin password is forgotten.
 
 ## Open a company
 
@@ -26,4 +26,4 @@ Enter the admin password and choose **Sign in**. There is no separate username o
 
 ## What the file holds
 
-The `.adms` file holds the records, issued PDFs, attachments, and audit history. Copy that file to move or archive the practice. AOS keeps a copy before it upgrades the file. The file is not encrypted, so keep the folder as private as the practice records inside it.
+The `.adms` file holds the records, issued PDFs, attachments, and audit history. Copy that file to move or archive the practice. O-Studio keeps a copy before it upgrades the file. The file is not encrypted, so keep the folder as private as the practice records inside it.

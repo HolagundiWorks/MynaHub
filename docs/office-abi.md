@@ -1,6 +1,6 @@
 # The office C interface (version 1)
 
-`office.dll` lets a native app, such as AQC, share the office company file with AOS. It is built from `office-ffi/` with `cargo build --release` there. `native/Office.Interop` is a small .NET wrapper and `native/Office.Smoke` shows it in use; an app that prefers its own wrapper only needs the contract below.
+`office.dll` lets a native app, such as O-Metra, share the office company file with O-Studio. It is built from `office-ffi/` with `cargo build --release` there. `native/Office.Interop` is a small .NET wrapper and `native/Office.Smoke` shows it in use; an app that prefers its own wrapper only needs the contract below.
 
 This is not ShilpiDB. ShilpiDB is the separate store for drawing data. This interface is for the office's records: clients, projects, staff, leave and the library.
 
@@ -53,4 +53,4 @@ An app keeps its data in the same file on its own **schema track**, applied with
 
 ## Licensing
 
-AQC is AGPL-3.0. Do not copy source between AQC and this repository. The contract in this file is what the two share.
+O-Metra is AGPL-3.0. Do not copy source between O-Metra and this repository. The contract in this file is what the two share.

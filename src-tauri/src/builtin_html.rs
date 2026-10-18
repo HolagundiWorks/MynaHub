@@ -253,7 +253,7 @@ pub fn seed(conn: &Connection) -> Result<usize, String> {
             continue;
         }
         let taken: i64 = conn.query_row("SELECT COUNT(*) FROM templates WHERE name = ?1", params![t.name], |r| r.get(0)).map_err(|e| e.to_string())?;
-        let name = if taken > 0 { format!("{} (Architecture Office Suit built-in)", t.name) } else { t.name.to_string() };
+        let name = if taken > 0 { format!("{} (O-Studio built-in)", t.name) } else { t.name.to_string() };
         let (html, css) = crate::docx::store(t.html, t.css)?;
         conn.execute(
             "INSERT INTO templates (kind, name, template_key, family, layout, description, built_in, format) VALUES (?1,?2,?3,?4,'letter',?5,1,'html')",
