@@ -17,13 +17,13 @@ In this order, for each app: a program you chose with **Find it…** (kept in `%
 |---|---|---|
 | O-Studio | `Adms.Desktop.exe` | `HKCU\Software\Human Centric Works\OStudio` |
 | O-Metra | `AQCCore.exe` | Inno Setup entry `{A8F3C2E1-…}_is1` |
-| O-Draft | `aad.exe` | nothing known yet |
+| O-Draft | `o-draft.exe` (older installs: `aad.exe`) | nothing known yet |
 
 ## Projects
 | Folder | |
 |---|---|
 | `Osas.Core` | Finding the apps and the saved paths. No user interface, so it is tested on its own |
-| `Osas.Core.Tests` | Six tests with a pretend computer: `dotnet test Osas.Core.Tests` |
+| `Osas.Core.Tests` | Seven tests with a pretend computer: `dotnet test Osas.Core.Tests` |
 | `Osas.Launcher` | The WinUI 3 window. Uses the shared design in `hcw-ui` (check it out beside this repository) |
 
 ```powershell
@@ -34,3 +34,6 @@ The window was checked with UI Automation: every button has a name, and an app t
 
 ## Not built yet
 An installer that puts the launcher and the apps in place, a check for newer versions, opening a company file straight from the launcher, and a way to tell when an app is already running.
+
+## Licence
+The launcher is Human Centric Works software. It uses `hcw-ui`, which is MIT licensed; the marks in that repository have a separate notice (`hcw-ui/brand/LICENSE.md`). The licence of this repository has not been chosen.
