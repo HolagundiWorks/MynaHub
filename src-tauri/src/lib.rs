@@ -1,12 +1,14 @@
+use office_core::{auth, store, vault};
 mod accounting;
+mod aorms;
 mod admin;
-mod auth;
 mod bank;
 mod boards;
 mod billing;
 mod bridge;
 mod builtin_html;
 mod builtin_templates;
+mod clientfile;
 mod clients;
 mod commands;
 mod company_file;
@@ -23,15 +25,16 @@ mod practice;
 mod qa_tests;
 mod receipts;
 mod registers;
-mod store;
+mod taxabstract;
 mod sheets;
 mod stages;
 mod studio;
 mod template_engine;
 mod timebook;
 mod transmittals;
+mod fieldwork;
+mod office;
 mod typography;
-mod vault;
 mod workflow;
 
 use commands::AppState;
@@ -44,7 +47,7 @@ pub fn run() {
         .setup(|app| {
             // No company is open at start; the user creates or opens a company file first.
             let root = app.path().app_data_dir()?;
-            app.manage(AppState::new(company_file::placeholder(), root));
+            app.manage(AppState::new(company_file::placeholder(), root, db::migrate));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -74,7 +77,27 @@ pub fn run() {
             clients::project_brief_get,
             clients::project_brief_save,
             stages::project_stages,
+            clientfile::client_activity_get,
             workflow::project_path_get,
+            aorms::aorms_restore,
+            aorms::aorms_sign_in,
+            aorms::aorms_connect,
+            aorms::aorms_sign_out,
+            aorms::aorms_projects,
+            aorms::aorms_pull,
+            fieldwork::site_record_save,
+            fieldwork::site_record_list,
+            fieldwork::permit_save_record,
+            fieldwork::permit_list_records,
+            fieldwork::enquiry_save_record,
+            fieldwork::enquiry_list_records,
+            fieldwork::enquiry_convert_to_client,
+            office::staff_save_record,
+            office::staff_list_records,
+            office::leave_save_record,
+            office::leave_list_records,
+            office::library_save_record,
+            office::library_list_records,
             workflow::project_attention,
             stages::project_stages_apply,
             stages::project_stage_mark,
@@ -136,6 +159,8 @@ pub fn run() {
             accounting::report_pnl,
             accounting::report_balance_sheet,
             accounting::report_tax_summary,
+            taxabstract::report_tax_abstract,
+            taxabstract::report_tax_abstract_csv,
             accounting::report_ar_check,
             accounting::report_tax_estimate,
             accounting::report_tax_slabs,

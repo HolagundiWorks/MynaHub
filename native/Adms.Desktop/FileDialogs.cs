@@ -49,6 +49,19 @@ internal static class FileDialogs
         return await picker.PickSaveFileAsync();
     }
 
+    public static async Task<StorageFile?> PickCsvDestination(nint window, string suggestedName)
+    {
+        var picker = new FileSavePicker
+        {
+            SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+            SuggestedFileName = suggestedName,
+            DefaultFileExtension = ".csv",
+        };
+        picker.FileTypeChoices.Add("CSV (opens in Excel)", new List<string> { ".csv" });
+        InitializeWithWindow.Initialize(picker, window);
+        return await picker.PickSaveFileAsync();
+    }
+
     public static async Task<string?> PickFolder(nint window)
     {
         var picker = new FolderPicker { SuggestedStartLocation = PickerLocationId.DocumentsLibrary };

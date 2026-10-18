@@ -6,12 +6,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RootNamespace>Adms.Interop</RootNamespace>
+    <!-- Which build of the Rust engine to ship beside the app: the debug build while developing, release for an installer
+         (build the engine in release mode, then publish with the property EngineProfile set to release). -->
+    <EngineProfile Condition="'$(EngineProfile)' == ''">debug</EngineProfile>
+    <EngineDll>$(MSBuildThisFileDirectory)..\..\src-tauri\target\$(EngineProfile)\architect_office_desktop_lib.dll</EngineDll>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="$(MSBuildThisFileDirectory)..\..\src-tauri\target\debug\architect_office_desktop_lib.dll"
+    <None Include="$(EngineDll)"
           Link="architect_office_desktop_lib.dll"
           CopyToOutputDirectory="PreserveNewest"
           Visible="false"
-          Condition="Exists('$(MSBuildThisFileDirectory)..\..\src-tauri\target\debug\architect_office_desktop_lib.dll')" />
+          Condition="Exists('$(EngineDll)')" />
   </ItemGroup>
 </Project>

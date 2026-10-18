@@ -1,0 +1,20 @@
+//! Office Core: the shared company file and records used by the architecture office apps (AOS, AQC).
+//!
+//! The crate owns the file format (the migrations), the audit log and the records every app needs: clients, projects and their
+//! briefs, staff, leave and the office library. An app adds its own commands, sessions and permissions on top. Apps never write
+//! each other's tables; they share these records and refer to one another by id.
+
+pub mod auth;
+pub mod check;
+pub mod clients;
+pub mod company;
+pub mod hash;
+pub mod host;
+pub mod office;
+pub mod schema;
+pub mod store;
+pub mod track;
+pub mod vault;
+pub mod workspace;
+
+pub use schema::{audit, latest_version, migrate};

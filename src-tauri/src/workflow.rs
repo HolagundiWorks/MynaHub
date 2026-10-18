@@ -20,7 +20,7 @@ pub struct Step {
 /// What to do now. `page` is where the person goes, `target_id` the record to open or act on.
 #[derive(Serialize, Debug, Clone, PartialEq)]
 pub struct NextAction {
-    /// `assign_stages`, `new_agreement`, `issue_agreement`, `issue_invoice`, `bill_stage`, `record_payment`, `mark_stage`.
+    /// `assign_stages`, `new_agreement`, `issue_agreement`, `issue_invoice`, `bill_stage`, `record_payment`, `reconcile`, `mark_stage`.
     pub kind: &'static str,
     pub label: String,
     pub page: &'static str,
@@ -198,6 +198,36 @@ pub fn project_path(conn: &Connection, project_id: i64) -> Result<ProjectPath, S
         }
     }
 
+    // bank: money that reached the bank but is not yet matched to a line of the statement
+    let (unmatched, unmatched_total): (i64, i64) = conn
+        .query_row(
+            "SELECT COUNT(*), COALESCE(SUM(r.amount_paise), 0) FROM receipts r JOIN invoices i ON i.id = r.invoice_id
+             WHERE i.project_id = ?1 AND r.mode <> 'cash' AND r.amount_paise > 0
+               AND NOT EXISTS (SELECT 1 FROM receipt_reversals v WHERE v.receipt_id = r.id)
+               AND NOT EXISTS (SELECT 1 FROM bank_txn_receipts m WHERE m.receipt_id = r.id)",
+            params![project_id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .map_err(|e| e.to_string())?;
+    let any_bank_receipt: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM receipts r JOIN invoices i ON i.id = r.invoice_id WHERE i.project_id = ?1 AND r.mode <> 'cash' AND r.amount_paise > 0",
+            params![project_id],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    if unmatched > 0 {
+        steps.push(Step { key: "bank", label: "Bank", state: "next", detail: format!("{unmatched} receipt{} ({}) not yet matched to a bank statement line.", if unmatched == 1 { "" } else { "s" }, rupees(unmatched_total)) });
+        // matching the bank outranks only the standing "mark a stage" hint
+        if matches!(next.as_ref().map(|n| n.kind), Some("mark_stage") | None) {
+            next = Some(NextAction { kind: "reconcile", label: "Match the receipts to the bank statement".into(), page: "bank", target_id: Some(project_id) });
+        }
+    } else if any_bank_receipt > 0 {
+        steps.push(Step { key: "bank", label: "Bank", state: "done", detail: "Every bank receipt is matched to a statement line.".into() });
+    } else {
+        steps.push(Step { key: "bank", label: "Bank", state: "waiting", detail: "Appears once a payment that reaches the bank is recorded.".into() });
+    }
+
     let reached = stages.iter().filter(|s| !s.2.is_empty()).count();
     let summary = if stages.is_empty() {
         "No stages yet".to_string()
@@ -242,9 +272,10 @@ pub fn attention(conn: &Connection, limit: usize) -> Result<Vec<Attention>, Stri
         "record_payment" => 0,
         "bill_stage" => 1,
         "issue_invoice" => 2,
-        "issue_agreement" => 3,
-        "new_agreement" => 4,
-        _ => 5,
+        "reconcile" => 3,
+        "issue_agreement" => 4,
+        "new_agreement" => 5,
+        _ => 6,
     };
     out.sort_by_key(|a| (rank(a.action.kind), a.project_id));
     out.truncate(limit);
@@ -333,8 +364,10 @@ mod tests {
             invoice_id: invoice, received_date: "2026-10-12".into(), amount: format!("{}.{:02}", total / 100, total % 100), tds: String::new(), tds_section: String::new(),
             mode: "bank".into(), reference: "UTR1".into(), notes: String::new(), bank_account_id: None,
         }).unwrap();
-        assert_eq!(next_kind(&c), Some("mark_stage"));
         assert_eq!(state_of(&c, "payment"), "done");
+        // the money went through the bank, so matching it to the statement is what is left
+        assert_eq!(next_kind(&c), Some("reconcile"));
+        assert_eq!(state_of(&c, "bank"), "next");
         // the engine never posted or billed anything on its own
         assert_eq!(c.query_row("SELECT COUNT(*) FROM invoices", [], |r| r.get::<_, i64>(0)).unwrap(), 1);
     }
@@ -365,6 +398,55 @@ mod tests {
         // both issued and unpaid, no stage newly reached: collect, oldest first
         let n = project_path(&c, 1).unwrap().next.unwrap();
         assert_eq!((n.kind, n.target_id), ("record_payment", Some(inv)));
+    }
+
+    #[test]
+    fn a_bank_receipt_not_yet_matched_is_the_next_step_until_it_is_matched() {
+        let mut c = setup();
+        stages::apply(&mut c, 1, "comprehensive", 1).unwrap();
+        let input = documents::DocInput {
+            id: None, kind: "agreement".into(), project_id: Some(1), party_name: String::new(), party_address: String::new(), subject: "Agreement".into(),
+            reference: String::new(), doc_date: "2026-10-05".into(), body: "Terms.".into(), template_version_id: None, fee: "100000".into(),
+            milestones: stages::milestone_percents(&c, 1).unwrap().into_iter().map(|(name, percent)| documents::MilestoneInput { name, percent }).collect(),
+        };
+        let doc = documents::save_draft(&mut c, 1, &input).unwrap();
+        documents::issue(&mut c, 1, doc).unwrap();
+        let plan = stages::plan(&c, 1).unwrap();
+        stages::mark(&c, plan.stages[0].id, "2026-10-10").unwrap();
+        let ms = project_path(&c, 1).unwrap().next.unwrap().target_id.unwrap();
+        let inv = documents::bill_milestone(&mut c, 1, ms, "2026-10-11").unwrap();
+        billing::issue(&mut c, inv).unwrap();
+        assert_eq!(state_of(&c, "bank"), "waiting", "no receipt yet");
+        let total: i64 = c.query_row("SELECT total_paise FROM invoices WHERE id = ?1", params![inv], |r| r.get(0)).unwrap();
+        let text = |paise: i64| format!("{}.{:02}", paise / 100, paise % 100);
+        let pay = |c: &mut Connection, paise: i64, mode: &str, reference: &str| {
+            receipts::record(c, 1, &receipts::ReceiptInput {
+                invoice_id: inv, received_date: "2026-10-12".into(), amount: text(paise), tds: String::new(), tds_section: String::new(),
+                mode: mode.into(), reference: reference.into(), notes: String::new(), bank_account_id: None,
+            }).unwrap()
+        };
+        let quarter = total / 4;
+        // a cash receipt never needs the bank
+        pay(&mut c, quarter, "cash", "");
+        assert_eq!(state_of(&c, "bank"), "waiting");
+        // a bank receipt does, but a payment still owed is the more pressing thing
+        pay(&mut c, quarter, "bank", "UTR-1");
+        assert_eq!(next_kind(&c), Some("record_payment"), "half the invoice is still owed");
+        assert_eq!(state_of(&c, "bank"), "next");
+        // once fully paid, matching the bank is what is left
+        pay(&mut c, total - 2 * quarter, "bank", "UTR-2");
+        let n = project_path(&c, 1).unwrap().next.unwrap();
+        assert_eq!(n.kind, "reconcile");
+        assert_eq!(state_of(&c, "bank"), "next");
+        // matching every bank receipt to a statement line clears it
+        c.execute("INSERT INTO bank_batches (filename, file_sha256, row_count) VALUES ('s.csv','x',2)", []).unwrap();
+        for (i, receipt) in c.prepare("SELECT id FROM receipts WHERE mode = 'bank'").unwrap().query_map([], |r| r.get::<_, i64>(0)).unwrap().map(|r| r.unwrap()).collect::<Vec<_>>().into_iter().enumerate() {
+            c.execute("INSERT INTO bank_transactions (batch_id, row_no, txn_date, credit_paise, raw_row, dedupe_key, status) VALUES (1, ?1, '2026-10-12', 100, 'r', ?2, 'matched')", params![i as i64, format!("k{i}")]).unwrap();
+            let txn: i64 = c.last_insert_rowid();
+            c.execute("INSERT INTO bank_txn_receipts (txn_id, receipt_id) VALUES (?1, ?2)", params![txn, receipt]).unwrap();
+        }
+        assert_eq!(state_of(&c, "bank"), "done");
+        assert_eq!(next_kind(&c), Some("mark_stage"));
     }
 
     #[test]

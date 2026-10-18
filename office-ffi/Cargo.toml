@@ -1,0 +1,22 @@
+[package]
+name = "office-ffi"
+version = "0.1.0"
+description = "A C interface to Office Core: the shared company file and records, for native apps such as AQC"
+authors = ["Human Centric Works"]
+edition = "2024"
+
+[lib]
+name = "office"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+office-core = { path = "../office-core" }
+rusqlite = { version = "0.32", features = ["bundled", "backup"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+strip = true

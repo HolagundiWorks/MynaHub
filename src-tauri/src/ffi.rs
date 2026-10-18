@@ -235,7 +235,7 @@ pub unsafe extern "C" fn adms_session_create(app_dir: *const c_char) -> AdmsResu
         if let Err(error) = std::fs::create_dir_all(path) {
             return fail(ADMS_ERR_DOMAIN, &format!("Could not use the application folder: {error}"));
         }
-        let state = Arc::new(AppState::new(company_file::placeholder(), path.to_path_buf()));
+        let state = Arc::new(AppState::new(company_file::placeholder(), path.to_path_buf(), crate::db::migrate));
         let handle = NEXT_HANDLE.fetch_add(1, Ordering::Relaxed);
         host().sessions.insert(handle, state);
         ok(format!("{{\"handle\":{handle}}}").into_bytes())
@@ -370,6 +370,7 @@ mod tests {
         let (_path, _recovery) = company_file::create_file(
             &company,
             &NewCompany { name: "वास्तु कार्यालय", username: "owner", password: "correct horse battery", confirm: "correct horse battery" },
+            crate::db::migrate,
         )
         .unwrap();
         let path = temp.dir.join("Studio.adms");
@@ -418,7 +419,7 @@ mod tests {
         assert!(text.contains("Devanagari"), "devanagari face should be embedded");
 
         assert_eq!(taken(unsafe { adms_session_destroy(handle) }).0, ADMS_OK);
-        let reopened = company_file::open_file(&path);
+        let reopened = company_file::open_file(&path, crate::db::migrate);
         assert!(reopened.is_ok(), "destroying the session must release the company file");
         drop(reopened);
     }

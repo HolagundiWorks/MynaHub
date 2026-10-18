@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>Office.Interop</RootNamespace>
+    <!-- Which build of office.dll to place beside the app: debug while developing, release for an installer. -->
+    <EngineProfile Condition="'$(EngineProfile)' == ''">debug</EngineProfile>
+    <EngineDll>$(MSBuildThisFileDirectory)..\..\office-ffi\target\$(EngineProfile)\office.dll</EngineDll>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="$(EngineDll)"
+          Link="office.dll"
+          CopyToOutputDirectory="PreserveNewest"
+          Visible="false"
+          Condition="Exists('$(EngineDll)')" />
+  </ItemGroup>
+</Project>

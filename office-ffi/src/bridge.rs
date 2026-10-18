@@ -1,0 +1,143 @@
+//! The shared-record operations by name. Every operation checks the signed-in session and its permission first.
+//! Reading needs View; adding or changing needs Edit. The audit entries are the ones the office app writes.
+
+use office_core::auth::Permission;
+use office_core::host::{arg, json, CallError};
+use office_core::workspace::{require, AppState, INTERNAL};
+use office_core::{audit, clients, office, track};
+use serde_json::Value;
+
+pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, CallError> {
+    let permission = match op {
+        "client_list" | "project_list" | "project_brief_get" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" => Permission::View,
+        "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" => Permission::Edit,
+        "" => return Err(CallError::BadRequest("The operation name was missing.".into())),
+        _ => return Err(CallError::BadRequest("That operation is not part of the office interface.".into())),
+    };
+    let user = require(state, permission)?;
+    let mut guard = state.db.lock().map_err(|_| CallError::Domain(INTERNAL.into()))?;
+    if op == "track.apply" {
+        let name: String = arg(args, "name")?;
+        let migrations: Vec<String> = arg(args, "migrations")?;
+        let slices: Vec<&str> = migrations.iter().map(String::as_str).collect();
+        track::migrate_slice(&mut guard, &name, &slices)?;
+        return json(&track::version(&guard, &name)?);
+    }
+    let conn = &*guard;
+    match op {
+        "track.version" => json(&track::version(conn, &arg::<String>(args, "name")?)?),
+        "client_list" => json(&clients::list_clients(conn, arg(args, "include_archived")?)?),
+        "client_save" => {
+            let client: clients::Client = arg(args, "client")?;
+            let id = clients::save_client(conn, &client)?;
+            audit(conn, Some(user), if client.id.is_some() { "client_updated" } else { "client_created" }, &format!("client {id}"));
+            json(&id)
+        }
+        "client_set_archived" => {
+            let (id, archived): (i64, bool) = (arg(args, "id")?, arg(args, "archived")?);
+            clients::set_client_archived(conn, id, archived)?;
+            audit(conn, Some(user), if archived { "client_archived" } else { "client_restored" }, &format!("client {id}"));
+            json(&Value::Null)
+        }
+        "project_list" => json(&clients::list_projects(conn, arg(args, "client_id")?, arg(args, "include_archived")?)?),
+        "project_save" => {
+            let project: clients::Project = arg(args, "project")?;
+            let id = clients::save_project(conn, &project)?;
+            audit(conn, Some(user), if project.id.is_some() { "project_updated" } else { "project_created" }, &format!("project {id}"));
+            json(&id)
+        }
+        "project_set_archived" => {
+            let (id, archived): (i64, bool) = (arg(args, "id")?, arg(args, "archived")?);
+            clients::set_project_archived(conn, id, archived)?;
+            audit(conn, Some(user), if archived { "project_archived" } else { "project_restored" }, &format!("project {id}"));
+            json(&Value::Null)
+        }
+        "project_brief_get" => json(&clients::get_brief(conn, arg(args, "project_id")?)?),
+        "project_brief_save" => {
+            let (id, brief): (i64, Value) = (arg(args, "project_id")?, arg(args, "brief")?);
+            clients::save_brief(conn, id, &brief)?;
+            audit(conn, Some(user), "project_brief_saved", &format!("project {id}"));
+            json(&Value::Null)
+        }
+        "staff_list" => json(&office::staff_list(conn)?),
+        "staff_save" => json(&office::staff_save(conn, user, &arg(args, "input")?)?),
+        "leave_list" => json(&office::leave_list(conn)?),
+        "leave_save" => json(&office::leave_save(conn, user, &arg(args, "input")?)?),
+        "library_list" => {
+            let (kind, search): (Option<String>, Option<String>) = (arg(args, "kind")?, arg(args, "search")?);
+            json(&office::library_list(conn, kind.as_deref(), search.as_deref().unwrap_or(""))?)
+        }
+        "library_save" => json(&office::library_save(conn, user, &arg(args, "input")?)?),
+        _ => Err(CallError::BadRequest("That operation is not part of the office interface.".into())),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use office_core::{company, workspace};
+    use serde_json::json;
+
+    struct Temp(std::path::PathBuf);
+    impl Drop for Temp {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn call(state: &AppState, op: &str, args: Value) -> Result<Value, String> {
+        match dispatch(state, op, &args) {
+            Ok(bytes) => Ok(serde_json::from_slice(&bytes).unwrap()),
+            Err(CallError::Domain(m)) | Err(CallError::BadRequest(m)) => Err(m),
+        }
+    }
+
+    fn open(tag: &str) -> (Temp, AppState) {
+        let dir = std::env::temp_dir().join(format!("office-ffi-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let state = AppState::new(company::placeholder(), dir.clone(), office_core::schema::migrate);
+        company::create_company(&state, &dir.join("Studio").to_string_lossy(), "Studio", "owner", "correct horse battery", "correct horse battery").unwrap();
+        (Temp(dir), state)
+    }
+
+    #[test]
+    fn shared_records_are_shared_between_apps_and_need_a_sign_in() {
+        let (_dir, state) = open("records");
+        assert_eq!(call(&state, "client_list", json!({ "include_archived": false })).unwrap_err(), "Not signed in.");
+        workspace::login(&state, "owner", "correct horse battery").unwrap();
+        let client = call(&state, "client_save", json!({ "client": { "id": null, "name": "Acme", "contact_person": "", "email": "", "phone": "", "address": "", "pan": "", "gstin": "" } })).unwrap();
+        let project = call(&state, "project_save", json!({ "project": { "id": null, "client_id": client, "code": "", "name": "Villa", "site_address": "", "status": "active" } })).unwrap();
+        assert_eq!(call(&state, "project_list", json!({ "client_id": null, "include_archived": false })).unwrap()[0]["client_name"], "Acme");
+        call(&state, "project_brief_save", json!({ "project_id": project, "brief": { "style": "Modern" } })).unwrap();
+        assert_eq!(call(&state, "project_brief_get", json!({ "project_id": project })).unwrap()["brief"]["style"], "Modern");
+        call(&state, "staff_save", json!({ "input": { "id": null, "name": "Meera", "role": "Architect", "specialisation": "", "phone": "", "email": "", "joined_date": "2024-01-01", "left_date": "" } })).unwrap();
+        assert_eq!(call(&state, "staff_list", json!({})).unwrap().as_array().unwrap().len(), 1);
+        call(&state, "library_save", json!({ "input": { "id": null, "kind": "lesson", "title": "Waterproofing", "category": "", "reference": "", "body": "Test tanks first" } })).unwrap();
+        assert_eq!(call(&state, "library_list", json!({ "kind": null, "search": "tanks" })).unwrap().as_array().unwrap().len(), 1);
+        call(&state, "client_set_archived", json!({ "id": client, "archived": true })).unwrap();
+        assert!(call(&state, "client_list", json!({ "include_archived": false })).unwrap().as_array().unwrap().is_empty());
+        assert!(call(&state, "client_save", json!({ "client": "not a client" })).is_err(), "a malformed request is refused");
+        assert!(call(&state, "no_such_op", json!({})).unwrap_err().contains("not part of"));
+    }
+
+    #[test]
+    fn an_app_adds_its_own_tables_under_the_track_rules_and_a_reader_cannot_change_records() {
+        let (_dir, state) = open("tracks");
+        workspace::login(&state, "owner", "correct horse battery").unwrap();
+        let migrations = json!(["CREATE TABLE aqc_schedules (id INTEGER PRIMARY KEY, project_id INTEGER REFERENCES projects(id), title TEXT NOT NULL);"]);
+        assert_eq!(call(&state, "track.apply", json!({ "name": "aqc", "migrations": migrations })).unwrap(), 1);
+        assert_eq!(call(&state, "track.apply", json!({ "name": "aqc", "migrations": migrations })).unwrap(), 1, "applying again changes nothing");
+        assert_eq!(call(&state, "track.version", json!({ "name": "aqc" })).unwrap(), 1);
+        assert!(call(&state, "track.apply", json!({ "name": "aqc", "migrations": [] })).unwrap_err().contains("newer version"), "an older list is refused");
+        assert!(call(&state, "track.apply", json!({ "name": "aqd", "migrations": ["ALTER TABLE clients ADD COLUMN note TEXT;"] })).unwrap_err().contains("may not change"));
+        {
+            let conn = state.db.lock().unwrap();
+            conn.execute("INSERT INTO users (username, password_hash, role) VALUES ('viewer', ?1, 'auditor')", [office_core::auth::hash_password("another long password").unwrap()]).unwrap();
+        }
+        workspace::logout(&state).unwrap();
+        workspace::login(&state, "viewer", "another long password").unwrap();
+        assert!(call(&state, "client_list", json!({ "include_archived": false })).is_ok(), "a read-only user can read");
+        assert!(call(&state, "staff_save", json!({ "input": {} })).unwrap_err().contains("permission"));
+    }
+}

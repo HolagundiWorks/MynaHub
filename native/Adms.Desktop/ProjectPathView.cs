@@ -21,6 +21,14 @@ internal static class ProjectPathView
         _ => state,
     };
 
+    /// <summary>Whether this role may do the action, so a button is never shown that the engine would refuse.</summary>
+    public static bool CanAct(AppShell shell, string kind) => kind switch
+    {
+        "bill_stage" or "issue_invoice" => shell.CanIssue,
+        "record_payment" or "reconcile" => shell.CanFinance && shell.CanEdit,
+        _ => shell.CanEdit,
+    };
+
     /// <summary>Shows the steps and the next-action button. `local` handles actions that happen on the page already showing the project.</summary>
     public static void Paint(AppShell shell, StackPanel host, JsonElement path, Func<string, bool>? local = null)
     {
@@ -54,7 +62,7 @@ internal static class ProjectPathView
                 host.Children.Add(line);
             }
         }
-        if (path.TryGetProperty("next", out var next) && next.ValueKind == JsonValueKind.Object && shell.CanEdit)
+        if (path.TryGetProperty("next", out var next) && next.ValueKind == JsonValueKind.Object && CanAct(shell, Kit.Str(next, "kind")))
         {
             var captured = next.Clone();
             host.Children.Add(Flow.Command(Kit.Str(next, "label"), () => Go(shell, projectId, captured, local), primary: true));
@@ -85,6 +93,11 @@ internal static class ProjectPathView
                     shell.Navigate?.Invoke("invoices");
                 });
             });
+            return;
+        }
+        if (kind == "reconcile")
+        {
+            shell.Navigate?.Invoke(page);
             return;
         }
         var action = kind switch

@@ -35,6 +35,28 @@ try
         {
             project = new { id = (long?)null, client_id = clientId, code = "P-1", name = "Villa", site_address = "Baner", status = "active" },
         }).GetInt64();
+        var activity = session.Call("client_activity", new { client_id = clientId });
+        if (activity.GetProperty("name").GetString() != "Acme" || activity.GetProperty("invoices").GetArrayLength() != 0 || !activity.GetProperty("finance").GetBoolean())
+            throw new InvalidOperationException("The client's records should be readable and empty for a new client.");
+        var siteId = session.Call("site_record_save", new { input = new { id = (long?)null, project_id = projectId, kind = "snag", record_date = "2026-01-10", title = "Crack", details = "", location = "", assigned_to = "", due_date = "", status = "open" } }).GetInt64();
+        if (session.Call("site_record_list", new { project_id = projectId, kind = (string?)null }).GetArrayLength() != 1 || siteId <= 0)
+            throw new InvalidOperationException("The site record should be listed.");
+        var enquiryId = session.Call("enquiry_save", new { input = new { id = (long?)null, received_date = "2026-01-10", name = "Rao", contact = "", source = "", brief = "", status = "new", follow_up = "", notes = "" } }).GetInt64();
+        session.Call("enquiry_convert", new { id = enquiryId });
+        if (session.Call("permit_list", new { project_id = projectId }).GetArrayLength() != 0)
+            throw new InvalidOperationException("No permits were added.");
+        var staffId = session.Call("staff_save", new { input = new { id = (long?)null, name = "Meera", role = "Architect", specialisation = "", phone = "", email = "", joined_date = "2024-01-01", left_date = "" } }).GetInt64();
+        session.Call("leave_save", new { input = new { id = (long?)null, staff_id = staffId, kind = "casual", from_date = "2026-05-04", to_date = "2026-05-06", status = "approved", reason = "" } });
+        if (session.Call("leave_list", new { }).GetArrayLength() != 1 || session.Call("staff_list", new { }).GetArrayLength() != 1)
+            throw new InvalidOperationException("The roster and leave should be listed.");
+        session.Call("library_save", new { input = new { id = (long?)null, kind = "lesson", title = "Waterproofing", category = "", reference = "", body = "Test tanks first" } });
+        if (session.Call("library_list", new { kind = (string?)null, search = "tanks" }).GetArrayLength() != 1)
+            throw new InvalidOperationException("The library search should find the entry.");
+
+        // the portal link is off until someone signs in: an address that is not https is refused before any network call
+        try { session.Call("aorms_restore", new { base_url = "http://example.com" }); throw new InvalidOperationException("A plain http portal address should be refused."); }
+        catch (AdmsException ex) when (ex.Message.Contains("https")) { }
+
         var path = session.Call("project_path", new { project_id = projectId });
         if (path.GetProperty("next").GetProperty("kind").GetString() != "assign_stages")
             throw new InvalidOperationException("A new project should point at assigning stages first.");
@@ -45,6 +67,14 @@ try
         var attention = session.Call("project_attention");
         if (attention.GetArrayLength() != 1 || attention[0].GetProperty("action").GetProperty("kind").GetString() != "new_agreement")
             throw new InvalidOperationException("Pulse should list the project with its next action.");
+
+        var taxPeriod = new { from = "2026-04-01", to = "2027-03-31" };
+        var taxAbstract = session.Call("report_tax_abstract", taxPeriod);
+        if (taxAbstract.GetProperty("from").GetString() != "2026-04-01" || taxAbstract.GetProperty("tds_by_clients_total").GetProperty("deducted").GetInt64() != 0)
+            throw new InvalidOperationException("The tax abstract should read an empty period.");
+        var taxCsv = session.Call("report_tax_abstract_csv", taxPeriod).GetString() ?? "";
+        if (!taxCsv.StartsWith("Tax abstract", StringComparison.Ordinal) || !taxCsv.Contains("Tax payments", StringComparison.Ordinal))
+            throw new InvalidOperationException("The tax abstract CSV is missing its sections.");
 
         var pdf = session.SamplePdf();
         if (pdf.Length < 5 || pdf[0] != (byte)'%' || pdf[1] != (byte)'P')

@@ -619,11 +619,13 @@ internal sealed class DashboardPage : UserControl, IPageCommands
     {
         _next.Children.Clear();
         var any = false;
-        if (list is JsonElement rows && rows.ValueKind == JsonValueKind.Array && _shell.CanEdit)
+        if (list is JsonElement rows && rows.ValueKind == JsonValueKind.Array)
         {
             foreach (var row in rows.EnumerateArray())
             {
                 if (!row.TryGetProperty("action", out var action) || action.ValueKind != JsonValueKind.Object)
+                    continue;
+                if (!ProjectPathView.CanAct(_shell, Kit.Str(action, "kind")))
                     continue;
                 var id = row.TryGetProperty("project_id", out var pid) && pid.ValueKind == JsonValueKind.Number ? pid.GetInt64() : 0;
                 var captured = action.Clone();
@@ -1439,6 +1441,19 @@ internal sealed class ClientsPage : UserControl, IPageCommands
     private readonly TextBlock _title = Flow.Heading("New client");
     private readonly Button _save = new();
     private readonly Button _archive = new() { Content = "Archive", Visibility = Visibility.Collapsed };
+    private readonly Button _edit = new() { Content = "Edit", Visibility = Visibility.Collapsed };
+    private readonly Button _back = new() { Content = "Back to clients" };
+    private readonly Button _cancelEdit = new() { Content = "Cancel" };
+    private readonly TextBlock _readOnlyNote = Flow.Secondary("These details are read-only. Press Edit to change them.");
+    private readonly Pivot _tabs = new();
+    private readonly List<PivotItem> _recordTabs = [];
+    private readonly StackPanel _invoicesTab = new() { Spacing = 8 };
+    private readonly StackPanel _paymentsTab = new() { Spacing = 8 };
+    private readonly StackPanel _lettersTab = new() { Spacing = 8 };
+    private readonly StackPanel _reportsTab = new() { Spacing = 8 };
+    private JsonElement _current;
+    private long? _savedId;
+    private bool _editing;
     private readonly InfoBar _error = new() { IsOpen = false, IsClosable = false, Severity = InfoBarSeverity.Error };
     private static readonly GridLength[] ClientWidths = [new(2, GridUnitType.Star), new(1.4, GridUnitType.Star), new(1, GridUnitType.Star)];
     private long? _id;
@@ -1511,32 +1526,53 @@ internal sealed class ClientsPage : UserControl, IPageCommands
         list.Children.Add(table);
         _save.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
         _save.Click += (_, _) => SaveClient();
-        var cancel = new Button { Content = "Cancel" };
-        cancel.Click += async (_, _) => { if (await CanLeave()) ShowList(); };
+        // Opening a client shows its details read-only. They become editable only after Edit is pressed.
+        _cancelEdit.Click += async (_, _) =>
+        {
+            if (!await CanLeave())
+                return;
+            if (_id == null)
+                ShowList();
+            else
+                Open(_current);
+        };
+        _back.Click += async (_, _) => { if (await CanLeave()) ShowList(); };
+        _edit.Click += (_, _) => SetEditing(true);
+        AutomationProperties.SetName(_edit, "Edit client details");
         _archive.Click += async (_, _) => await ArchiveClient();
-        var actions = Flow.Bar(cancel, _archive, _save);
-        var form = new StackPanel { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
-        form.Children.Add(_title);
-        form.Children.Add(Flow.Section("Client"));
-        form.Children.Add(Flow.Pair(_name, _contact));
-        form.Children.Add(Flow.Pair(_phone, _email));
-        form.Children.Add(Flow.Section("Onboarding"));
-        form.Children.Add(Flow.Secondary("Correspondence is where letters go. The legal name, GSTIN, PAN, TAN and state are what a tax invoice and a TDS certificate need. Send the pre-design questionnaire after the proposal is accepted, and before concept design."));
-        form.Children.Add(Flow.Pair(_kind, _legal));
-        form.Children.Add(_address);
-        form.Children.Add(_billing);
-        form.Children.Add(Flow.Pair(_city, _state));
-        form.Children.Add(Flow.Pair(_pan, _tan));
-        form.Children.Add(Flow.Pair(_gstin, _gstRegistration));
-        form.Children.Add(_preference);
-        form.Children.Add(Flow.Section("Authorised representatives"));
+        var actions = Flow.Bar(_cancelEdit, _save);
+        var details = new StackPanel { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 8, 0, 0) };
+        details.Children.Add(_readOnlyNote);
+        details.Children.Add(Flow.Section("Client"));
+        details.Children.Add(Flow.Pair(_name, _contact));
+        details.Children.Add(Flow.Pair(_phone, _email));
+        details.Children.Add(Flow.Section("Onboarding"));
+        details.Children.Add(Flow.Secondary("Correspondence is where letters go. The legal name, GSTIN, PAN, TAN and state are what a tax invoice and a TDS certificate need. Send the pre-design questionnaire after the proposal is accepted, and before concept design."));
+        details.Children.Add(Flow.Pair(_kind, _legal));
+        details.Children.Add(_address);
+        details.Children.Add(_billing);
+        details.Children.Add(Flow.Pair(_city, _state));
+        details.Children.Add(Flow.Pair(_pan, _tan));
+        details.Children.Add(Flow.Pair(_gstin, _gstRegistration));
+        details.Children.Add(_preference);
+        details.Children.Add(Flow.Section("Authorised representatives"));
         for (var i = 0; i < 3; i++)
         {
-            form.Children.Add(Flow.Pair(_repName[i], _repRole[i]));
-            form.Children.Add(_repPhone[i]);
+            details.Children.Add(Flow.Pair(_repName[i], _repRole[i]));
+            details.Children.Add(_repPhone[i]);
         }
+        details.Children.Add(actions);
+        _tabs.Items.Add(new PivotItem { Header = "Details", Content = details });
+        foreach (var (header, panel) in new[] { ("Invoices", _invoicesTab), ("Payments", _paymentsTab), ("Letters and communication", _lettersTab), ("Reports", _reportsTab) })
+        {
+            var item = new PivotItem { Header = header, Content = Flow.Scroll(panel) };
+            _recordTabs.Add(item);
+        }
+        var form = new StackPanel { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
+        form.Children.Add(_title);
+        form.Children.Add(Flow.Bar(_back, _edit, _archive));
         form.Children.Add(_error);
-        form.Children.Add(actions);
+        form.Children.Add(_tabs);
         var host = new Grid { Margin = (Thickness)Application.Current.Resources["PageMargin"] };
         host.Children.Add(list);
         var editorScroll = Flow.Scroll(form);
@@ -1565,10 +1601,11 @@ internal sealed class ClientsPage : UserControl, IPageCommands
         _gstRegistration.SelectedIndex = 0;
         _title.Text = "New client";
         _save.Content = "Create";
-        _archive.Visibility = Visibility.Collapsed;
         _error.IsOpen = false;
         _filling = false;
         _dirty = false;
+        ShowRecordTabs(false);
+        SetEditing(true);
         Host.Children[0].Visibility = Visibility.Collapsed;
         Host.Children[1].Visibility = Visibility.Visible;
         _name.Focus(FocusState.Programmatic);
@@ -1576,6 +1613,7 @@ internal sealed class ClientsPage : UserControl, IPageCommands
 
     private void Open(JsonElement row)
     {
+        _current = row.Clone();
         _filling = true;
         _id = Kit.Id(row);
         _archived = row.TryGetProperty("archived", out var flag) && flag.ValueKind == JsonValueKind.True;
@@ -1615,12 +1653,156 @@ internal sealed class ClientsPage : UserControl, IPageCommands
         }
         _title.Text = _name.Text;
         _save.Content = "Save changes";
-        _archive.Visibility = _shell.CanEdit ? Visibility.Visible : Visibility.Collapsed;
         _error.IsOpen = false;
         _filling = false;
         _dirty = false;
+        ShowRecordTabs(true);
+        SetEditing(false);
+        _tabs.SelectedIndex = 0;
         Host.Children[0].Visibility = Visibility.Collapsed;
         Host.Children[1].Visibility = Visibility.Visible;
+        if (_id is long id)
+            LoadActivity(id);
+    }
+
+    /// <summary>Details are read-only until Edit is pressed. Only then can a field change, and only then is Save offered.</summary>
+    private void SetEditing(bool editing)
+    {
+        _editing = editing;
+        var fields = new[] { _name, _contact, _email, _phone, _address, _billing, _legal, _city, _state, _pan, _tan, _gstin }.Concat(_repName).Concat(_repRole).Concat(_repPhone);
+        foreach (var box in fields)
+            box.IsReadOnly = !editing;
+        foreach (var combo in new[] { _preference, _kind, _gstRegistration })
+            combo.IsEnabled = editing;
+        _save.Visibility = editing ? Visibility.Visible : Visibility.Collapsed;
+        _cancelEdit.Visibility = editing ? Visibility.Visible : Visibility.Collapsed;
+        _readOnlyNote.Visibility = editing || _id == null ? Visibility.Collapsed : Visibility.Visible;
+        var existing = _id != null;
+        _edit.Visibility = !editing && existing && _shell.CanEdit ? Visibility.Visible : Visibility.Collapsed;
+        _archive.Visibility = !editing && existing && _shell.CanEdit ? Visibility.Visible : Visibility.Collapsed;
+        if (editing && existing)
+            _name.Focus(FocusState.Programmatic);
+    }
+
+    /// <summary>A client that has not been saved has no records yet, so the record tabs only appear for a saved client.</summary>
+    private void ShowRecordTabs(bool show)
+    {
+        foreach (var item in _recordTabs)
+        {
+            var present = _tabs.Items.Contains(item);
+            if (show && !present)
+                _tabs.Items.Add(item);
+            else if (!show && present)
+                _tabs.Items.Remove(item);
+        }
+    }
+
+    private void LoadActivity(long id)
+    {
+        foreach (var panel in new[] { _invoicesTab, _paymentsTab, _lettersTab, _reportsTab })
+        {
+            panel.Children.Clear();
+            panel.Children.Add(Flow.Secondary("Loading…"));
+        }
+        _ = _shell.Run("Loading the client's records…", () =>
+        {
+            var activity = _shell.Call("client_activity", new { client_id = id });
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (_id == id)
+                    PaintActivity(activity);
+            });
+        });
+    }
+
+    private static Button RowButton(Action open, string label = "Open")
+    {
+        var button = new Button { Content = label, MinWidth = 72 };
+        AutomationProperties.SetName(button, label);
+        button.Click += (_, _) => open();
+        return button;
+    }
+
+    private void Go(string page, long id, string kind = "open")
+    {
+        _shell.PendingOpen = (page, id, kind);
+        _shell.Navigate?.Invoke(page);
+    }
+
+    private static IEnumerable<JsonElement> Rows(JsonElement activity, string key) =>
+        activity.TryGetProperty(key, out var list) && list.ValueKind == JsonValueKind.Array ? list.EnumerateArray().Select(row => row.Clone()) : [];
+
+    private static void Table(StackPanel host, string[] headers, GridLength[] widths, IEnumerable<(string[] Cells, Action? Open)> lines, string empty, bool[]? alignEnd = null)
+    {
+        var any = false;
+        var rows = new StackPanel { Spacing = 2 };
+        foreach (var (cells, open) in lines)
+        {
+            any = true;
+            var body = Flow.Columns(cells, widths, alignEnd);
+            rows.Children.Add(open == null ? body : Flow.Line(body, RowButton(open)));
+        }
+        if (!any)
+        {
+            host.Children.Add(Flow.Secondary(empty));
+            return;
+        }
+        host.Children.Add(Flow.Header(headers, widths, alignEnd));
+        host.Children.Add(rows);
+    }
+
+    private void PaintActivity(JsonElement activity)
+    {
+        var finance = activity.TryGetProperty("finance", out var f) && f.ValueKind == JsonValueKind.True;
+        foreach (var panel in new[] { _invoicesTab, _paymentsTab, _lettersTab, _reportsTab })
+            panel.Children.Clear();
+
+        if (!finance)
+        {
+            _invoicesTab.Children.Add(Flow.Secondary("Invoices are shown to roles that have access to the accounts."));
+            _paymentsTab.Children.Add(Flow.Secondary("Payments are shown to roles that have access to the accounts."));
+        }
+        else
+        {
+            _invoicesTab.Children.Add(Flow.Secondary($"Billed {Kit.Str(activity, "billed_display")}  ·  received {Kit.Str(activity, "received_display")}  ·  outstanding {Kit.Str(activity, "outstanding_display")}. Totals count issued tax invoices only."));
+            Table(_invoicesTab, ["Invoice", "Project", "Status", "Issued", "Total", "Balance"], [new(1.3, GridUnitType.Star), new(1.5, GridUnitType.Star), new(90), new(100), new(1, GridUnitType.Star), new(1, GridUnitType.Star)],
+                Rows(activity, "invoices").Select<JsonElement, (string[] Cells, Action? Open)>(row =>
+                {
+                    var id = Kit.Id(row) ?? 0;
+                    var number = Kit.Str(row, "number");
+                    return (new[] { number.Length == 0 ? "Draft" : number, Kit.Str(row, "project"), Kit.Str(row, "status"), Kit.Str(row, "issue_date"), Kit.Str(row, "total_display"), Kit.Str(row, "balance_display") },
+                        (Action?)(() => Go("invoices", id)));
+                }),
+                "No invoices for this client yet. Create one from the project's path.", [false, false, false, false, true, true]);
+
+            Table(_paymentsTab, ["Date", "Receipt", "Invoice", "Mode", "Amount", "TDS"], [new(100), new(1.2, GridUnitType.Star), new(1.2, GridUnitType.Star), new(80), new(1, GridUnitType.Star), new(1, GridUnitType.Star)],
+                Rows(activity, "payments").Select<JsonElement, (string[] Cells, Action? Open)>(row =>
+                {
+                    var invoiceId = row.TryGetProperty("invoice_id", out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : 0;
+                    var reversed = row.TryGetProperty("reversed", out var r) && r.ValueKind == JsonValueKind.True;
+                    var number = Kit.Str(row, "number") + (reversed ? " (reversed)" : "");
+                    return (new[] { Kit.Str(row, "date"), number, Kit.Str(row, "invoice"), Kit.Str(row, "mode"), Kit.Str(row, "amount_display"), Kit.Str(row, "tds_display") },
+                        invoiceId > 0 ? (Action?)(() => Go("invoices", invoiceId)) : null);
+                }),
+                "No payments recorded for this client yet.", [false, false, false, false, true, true]);
+        }
+
+        Table(_lettersTab, ["Date", "Type", "Reference", "Subject", "Project", "Status"], [new(100), new(110), new(1.1, GridUnitType.Star), new(2, GridUnitType.Star), new(1.3, GridUnitType.Star), new(100)],
+            Rows(activity, "communications").Select<JsonElement, (string[] Cells, Action? Open)>(row =>
+            {
+                var kind = Kit.Str(row, "kind");
+                var id = Kit.Id(row) ?? 0;
+                var label = kind switch { "letter_out" => "Letter sent", "letter_in" => "Letter received", "agreement" => "Agreement", "transmittal" => "Transmittal", _ => kind };
+                Action open = kind == "transmittal" ? () => _shell.Navigate?.Invoke("transmittals") : () => Go("documents", id);
+                return (new[] { Kit.Str(row, "date"), label, Kit.Str(row, "number"), Kit.Str(row, "subject"), Kit.Str(row, "project"), Kit.Str(row, "status") }, (Action?)open);
+            }),
+            "No letters, agreements or transmittals for this client yet.");
+
+        Table(_reportsTab, ["Updated", "Type", "Title", "Project", "Status"], [new(110), new(110), new(2, GridUnitType.Star), new(1.3, GridUnitType.Star), new(100)],
+            Rows(activity, "reports").Select<JsonElement, (string[] Cells, Action? Open)>(row =>
+                (new[] { Kit.Str(row, "updated").Split(' ')[0], Kit.Str(row, "kind") == "presentation" ? "Presentation" : "Report", Kit.Str(row, "title"), Kit.Str(row, "project"), Kit.Str(row, "status") },
+                    (Action?)(() => _shell.Navigate?.Invoke("boards")))),
+            "No project reports or presentations for this client yet.");
     }
 
     private void Paint()
@@ -1657,7 +1839,7 @@ internal sealed class ClientsPage : UserControl, IPageCommands
         _empty.Visibility = count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void Reload() => _ = _shell.Run("Loading clients…", () =>
+    private void Reload(Action? after = null) => _ = _shell.Run("Loading clients…", () =>
     {
         var rows = _shell.Call("client_list", new { include_archived = false });
         _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -1666,6 +1848,7 @@ internal sealed class ClientsPage : UserControl, IPageCommands
             if (rows.ValueKind == JsonValueKind.Array)
                 foreach (var row in rows.EnumerateArray()) _rows.Add(row.Clone());
             Paint();
+            after?.Invoke();
         });
     });
 
@@ -1703,7 +1886,13 @@ internal sealed class ClientsPage : UserControl, IPageCommands
         };
         _saving = true;
         _save.IsEnabled = false;
-        _ = _shell.Run(_id == null ? "Creating client…" : "Saving client…", () => _shell.Call("client_save", new { client }))
+        _savedId = null;
+        _ = _shell.Run(_id == null ? "Creating client…" : "Saving client…", () =>
+            {
+                var saved = _shell.Call("client_save", new { client });
+                if (saved.ValueKind == JsonValueKind.Number)
+                    _savedId = saved.GetInt64();
+            })
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 _saving = false;
@@ -1711,8 +1900,16 @@ internal sealed class ClientsPage : UserControl, IPageCommands
                 if (task.Result)
                 {
                     _dirty = false;
-                    ShowList();
-                    Reload();
+                    var target = _id ?? _savedId;
+                    // back to the saved client, read-only again
+                    Reload(() =>
+                    {
+                        var row = target == null ? default : _rows.FirstOrDefault(r => Kit.Id(r) == target);
+                        if (row.ValueKind == JsonValueKind.Object)
+                            Open(row);
+                        else
+                            ShowList();
+                    });
                 }
             }));
     }
@@ -1750,7 +1947,7 @@ internal sealed class ClientsPage : UserControl, IPageCommands
     }
 
     public async void NewItem() => await BeginNew();
-    public void Save() => SaveClient();
+    public void Save() { if (_editing) SaveClient(); }
     public void Print() { }
     public void FocusSearch() => _search.Focus(FocusState.Programmatic);
     public async Task<bool> CanLeave() => await Flow.Discard(this, _dirty);

@@ -647,6 +647,7 @@ internal static class Ledgers
             book.Form.Children.Add(pay);
             book.Watch(kind, date, amount, narration, via);
         }
+        TaxAbstractView.Add(shell, book);
         LoadTax(shell, book);
         return book;
     }

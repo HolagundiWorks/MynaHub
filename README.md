@@ -30,6 +30,8 @@ cargo build --manifest-path src-tauri/Cargo.toml
 dotnet build native/Adms.Desktop/Adms.Desktop.csproj -c Release
 ```
 
+Logo: the artwork is generated from one shape definition by `cargo run --release --manifest-path tools/brand/Cargo.toml`, which writes SVG, PNG and ICO files to `brand/`. The app uses Option A (Amber and Ink); see `brand/README.md` for colours and contrast ratios.
+
 Tests:
 
 ```bash

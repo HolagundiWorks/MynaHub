@@ -44,7 +44,12 @@ fn count(c: &Connection, table: &str) -> i64 {
 /// Every command that Tauri exposes must check the session. The only exceptions are the sign-in flow itself.
 #[test]
 fn every_tauri_command_checks_the_session_and_permission() {
-    let files: [(&str, &str); 19] = [
+    let files: [(&str, &str); 24] = [
+        ("aorms.rs", include_str!("aorms.rs")),
+        ("office.rs", include_str!("office.rs")),
+        ("fieldwork.rs", include_str!("fieldwork.rs")),
+        ("taxabstract.rs", include_str!("taxabstract.rs")),
+        ("clientfile.rs", include_str!("clientfile.rs")),
         ("workflow.rs", include_str!("workflow.rs")),
         ("studio.rs", include_str!("studio.rs")),
         ("company_file.rs", include_str!("company_file.rs")),
@@ -102,7 +107,7 @@ fn role_permission_matrix_is_exactly_as_designed() {
 #[test]
 fn sensitive_code_never_logs_or_returns_secrets() {
     // Password material must only ever be handled in auth/commands/admin and never be formatted into messages.
-    for (name, text) in [("commands.rs", include_str!("commands.rs")), ("admin.rs", include_str!("admin.rs")), ("auth.rs", include_str!("auth.rs"))] {
+    for (name, text) in [("commands.rs", include_str!("commands.rs")), ("admin.rs", include_str!("admin.rs")), ("auth.rs", include_str!("../../office-core/src/auth.rs")), ("workspace.rs", include_str!("../../office-core/src/workspace.rs")), ("company.rs", include_str!("../../office-core/src/company.rs"))] {
         for (i, line) in text.lines().enumerate() {
             let l = line.trim();
             if l.starts_with("//") { continue; }
@@ -112,7 +117,7 @@ fn sensitive_code_never_logs_or_returns_secrets() {
             assert!(!(without_literals.contains("audit(") && (without_literals.contains("password") || without_literals.contains("recovery") || without_literals.contains("hash"))), "{name}:{} writes a secret into the audit log", i + 1);
         }
     }
-    assert!(!include_str!("commands.rs").contains("admin/admin"), "no default credentials");
+    assert!(!include_str!("commands.rs").contains("admin/admin") && !include_str!("../../office-core/src/workspace.rs").contains("admin/admin"), "no default credentials");
 }
 
 // ---------------------------------------------------------------- hostile and extreme input

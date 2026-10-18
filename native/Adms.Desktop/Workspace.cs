@@ -192,7 +192,10 @@ internal sealed class WorkspaceView : UserControl
             ("dashboard", "01", "Pulse", "\uE9D2"),
             ("clients", "02", "Clients", "\uE716"),
             ("projects", "03", "Projects", "\uE8F1"),
-            ("time", "04", "Time", "\uE823"));
+            ("time", "04", "Time", "\uE823"),
+            ("enquiries", "05", "Enquiries", "\uE77B"),
+            ("site", "06", "Site records", "\uE7C1"),
+            ("permits", "07", "Permits and approvals", "\uE8D7"));
         AddGroup("02", "Documents",
             ("documents", "01", "Letters and agreements", "\uE8A5"),
             ("transmittals", "02", "Transmittals", "\uE724"),
@@ -216,7 +219,11 @@ internal sealed class WorkspaceView : UserControl
         }
         AddGroup("06", "Office",
             ("company", "01", "Firm", "\uE731"),
-            ("settings", "02", "Security and backup", "\uE713"));
+            ("staff", "02", "Staff", "\uE716"),
+            ("leave", "03", "Leave", "\uE787"),
+            ("library", "04", "Library", "\uE82D"),
+            ("aorms", "05", "AORMS portal", "\uE774"),
+            ("settings", "06", "Security and backup", "\uE713"));
     }
 
     private void AddTop(string id, string sheet, string label, string glyph)
@@ -258,6 +265,13 @@ internal sealed class WorkspaceView : UserControl
         "dashboard" => new DashboardPage(_shell),
         "documents" => new LettersPage(_shell),
         "transmittals" => TransmittalLog.Page(_shell),
+        "enquiries" => RecordPages.Enquiries(_shell),
+        "site" => RecordPages.Site(_shell),
+        "permits" => RecordPages.Permits(_shell),
+        "staff" => RecordPages.Staff(_shell),
+        "leave" => RecordPages.Leave(_shell),
+        "library" => RecordPages.Library(_shell),
+        "aorms" => new AormsPage(_shell),
         "clients" => new ClientsPage(_shell),
         "projects" => new ProjectsPage(_shell),
         "time" => TimeSheet.Page(_shell),

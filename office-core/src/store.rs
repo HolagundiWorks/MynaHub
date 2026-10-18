@@ -1,5 +1,5 @@
 //! Documents (issued PDFs, attachments) are stored inside the company database, never beside it.
-use crate::billing::sha2_lite::sha256_hex;
+use crate::hash::sha256_hex;
 use rusqlite::{params, Connection, OptionalExtension};
 
 /// Stores `data` under `key`. A key is written once; reusing it is refused rather than overwritten.
