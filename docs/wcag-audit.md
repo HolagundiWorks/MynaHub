@@ -67,7 +67,7 @@ Status is **Pass** (measured or seen), **Likely** (the mechanism is in place but
 | 1.3.1 Info and relationships | Pass (headings, named table cells) | Fail inside pages (O4) | Untested |
 | 1.4.3 Contrast (text) | Pass, lowest 5.1:1 | Pass, lowest 5.8:1 | Untested |
 | 1.4.4 Resize text | Untested | Untested (O8) | Untested |
-| 1.4.10 Reflow | Pass after O3 fix (one page checked) | Pass after O1 fix | Untested |
+| 1.4.10 Reflow | Pass after O3 fix (all 31 pages checked) | Pass after O1 fix | Untested |
 | 1.4.11 Non-text contrast | Pass. Button edges 3:1 or more; field borders 3.6:1 | Pass | Untested |
 | 1.4.12 Text spacing | Untested | Untested | Untested |
 | 2.1.1 Keyboard | Likely. Every control is focusable; no keyboard-only walk done | Likely; O7 fixed | Docs: keyboard drafting path exists (arrow keys, command line); Tab traversal listed as open in its own test matrix |
