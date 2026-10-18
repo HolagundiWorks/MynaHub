@@ -39,7 +39,7 @@ public interface IProbe
 /// <summary>Finds which of the suite's apps are installed. It never starts or changes anything.</summary>
 public sealed class AppCatalog
 {
-    private sealed record Spec(SuiteApp App, string Name, string Purpose, string ExeName, string[] Registry, string[] Folders);
+    private sealed record Spec(SuiteApp App, string Name, string Purpose, string ExeName, string[] Registry, string[] Folders, string[]? OlderExeNames = null);
 
     private static readonly Spec[] Specs =
     [
@@ -49,9 +49,9 @@ public sealed class AppCatalog
         new(SuiteApp.Metra, "O-Metra", "Quantities, estimates and billing", "AQCCore.exe",
             [@"HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{A8F3C2E1-9B4D-4E6A-8C1F-2D7E5A9B0C3D}_is1|InstallLocation"],
             ["%LOCALAPPDATA%\\Programs\\O-Metra", "%LOCALAPPDATA%\\Programs\\AQC-Core"]),
-        new(SuiteApp.Draft, "O-Draft", "Drafting", "aad.exe",
+        new(SuiteApp.Draft, "O-Draft", "Drafting", "o-draft.exe",
             [],
-            ["%LOCALAPPDATA%\\Programs\\O-Draft", "%LOCALAPPDATA%\\Programs\\AAD"]),
+            ["%LOCALAPPDATA%\\Programs\\O-Draft", "%LOCALAPPDATA%\\Programs\\AAD"], ["aad.exe"]),
     ];
 
     private readonly IProbe _probe;
@@ -74,6 +74,8 @@ public sealed class AppCatalog
         }
 
         var saved = _probe.SavedPath(spec.App);
+        // The current program name is tried first, then the name used before the rename.
+        var names = new[] { spec.ExeName }.Concat(spec.OlderExeNames ?? []).ToArray();
         if (saved != null && Path.GetFileName(saved).EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
             Try(saved, "chosen by you");
         foreach (var entry in spec.Registry)
@@ -81,12 +83,15 @@ public sealed class AppCatalog
             var split = entry.Split('|');
             var folder = _probe.RegistryValue(split[0], split[1]);
             if (!string.IsNullOrWhiteSpace(folder))
-                Try(Path.Combine(folder.Trim().Trim('"'), spec.ExeName), "registered by its installer");
+                foreach (var name in names)
+                    Try(Path.Combine(folder.Trim().Trim('"'), name), "registered by its installer");
         }
         foreach (var folder in spec.Folders)
-            Try(Path.Combine(_probe.ExpandedFolder(folder) ?? folder, spec.ExeName), "in the usual folder");
+            foreach (var name in names)
+                Try(Path.Combine(_probe.ExpandedFolder(folder) ?? folder, name), "in the usual folder");
         foreach (var folder in _probe.PathFolders())
-            Try(Path.Combine(folder, spec.ExeName), "on the path");
+            foreach (var name in names)
+                Try(Path.Combine(folder, name), "on the path");
 
         return new AppInfo(spec.App, spec.Name, spec.Purpose, spec.ExeName, path, path == null ? null : _probe.FileVersion(path), source);
     }

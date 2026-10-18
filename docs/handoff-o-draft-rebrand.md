@@ -70,7 +70,7 @@ Today `accent` is orange (`#F2841C` dark, `#D9660A` light) and `icon_accent` ora
 
 Check every new pair with `node tools/a11y/contrast.mjs` (in the `HolagundiWorks/AOS-Architecture-Office-Suite` repository, `tools/a11y/`): text 4.5:1, component edges and focus rings 3:1. The two palettes and their old values were read from `theme.rs` without a build, so confirm the token names before editing.
 
-The WinUI shell (`apps/aad-winui`) has `App.xaml` with only `XamlControlsResources`, so it uses the system accent. Give it the same look: the `SuiteAccent.Black` colours, an amber-free primary button and the navigation look from `hcw-ui`. `Hcw.Ui` has **no licence chosen yet** and AAD is MIT OR Apache-2.0, so do not add `Hcw.Ui` as a dependency until the owner picks one. Until then, copy the values (they are plain colour constants, not code).
+The WinUI shell (`apps/aad-winui`) has `App.xaml` with only `XamlControlsResources`, so it uses the system accent. Give it the same look: the `SuiteAccent.Black` colours, an amber-free primary button and the navigation look from `hcw-ui`. AAD is MIT OR Apache-2.0 and `Hcw.Ui` is now MIT licensed (see section 10), so it can be referenced directly.
 
 ## 5. Names: where to change them
 From a text search of the repository. The first group is user-visible and must change.
@@ -122,14 +122,9 @@ git grep -n "aad-logo\|app-icon" -- ":!assets"
 ```
 
 ## 10. Decisions for the owner
-Answered on 2026-10-18: (1) a light-neutral accent in the dark palette is acceptable; (2) the executables are renamed (see below); (4) the old "A with crosshair" logo is retired completely. Item 3 is still open.
+Answered on 2026-10-18: (1) a light-neutral accent in the dark palette is acceptable; (2) the executables are renamed (see below); (4) the old "A with crosshair" logo is retired completely. Item 3 is settled: `hcw-ui` is MIT licensed, the marks have their own notice (`hcw-ui/brand/LICENSE.md`), so `Hcw.Ui` may now be added to O-Draft's WinUI shell as a dependency, and the `ATTRIBUTION.md` row can read "Original artwork by Human Centric Works, derived from the AQC logo; used under the owner's grant."
 
 **Renaming the executables.** `aad.exe` becomes `o-draft.exe` (and `Aad.WinUi.exe` becomes `ODraft.WinUi.exe`). The cargo crates and library names stay, because other crates import them. Change the binary name in `apps/aad/Cargo.toml` (`[[bin]] name`), the WiX file and installer script, the WinUI project `AssemblyName`, and every place that starts the shell. The OSAS launcher looks for `aad.exe` today (`Osas.Core/AppCatalog.cs`, `ExeName`); it must be changed to `o-draft.exe` in the same release, with `aad.exe` kept as a fallback for old installs. Keep the `aad` AORMS session name.
 
 **Retired logo.** Delete the old artwork from `assets/app-icon/` and drawing code from `xtask/src/logo.rs`; do not keep it as an alternative.
 
-### Still to decide
-1. Dark palette: is a light-neutral accent acceptable for a "black" app? (The alternative is a black accent in the light palette only.)
-2. Rename the executables (`aad.exe` and the others), or keep them?
-3. The licence of `hcw-ui` and the wording of the mark's `ATTRIBUTION.md` row.
-4. Whether the old AAD logo (the "A" with the crosshair) is retired completely.

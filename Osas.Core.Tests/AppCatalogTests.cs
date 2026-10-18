@@ -68,6 +68,16 @@ public class AppCatalogTests
     }
 
     [Fact]
+    public void O_Draft_is_found_by_its_new_program_name_and_an_older_install_by_the_old_one()
+    {
+        var pc = new FakeComputer();
+        pc.Files.Add(@"C:UsersmeAppDataLocalProgramsAADaad.exe");
+        Assert.Equal(@"C:UsersmeAppDataLocalProgramsAADaad.exe", Of(pc, SuiteApp.Draft).ExePath);
+        pc.Files.Add(@"C:UsersmeAppDataLocalProgramsO-Drafto-draft.exe");
+        Assert.Equal(@"C:UsersmeAppDataLocalProgramsO-Drafto-draft.exe", Of(pc, SuiteApp.Draft).ExePath);
+    }
+
+    [Fact]
     public void The_registry_can_point_at_a_missing_folder_without_breaking_anything()
     {
         var pc = new FakeComputer();
