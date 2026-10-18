@@ -206,6 +206,7 @@ fn company_value(conn: &Connection) -> Result<Value, String> {
     .map_err(|e| e.to_string())
 }
 
+#[cfg(test)]
 /// Renders HTML, CSS and data to PDF with the template's own paper and margins.
 pub fn render_pdf(html: &str, css: &str, data: &Value) -> Result<(pdf::Rendered, eng::PageSetup, Vec<Diagnostic>), String> {
     render_pdf_with_logos(html, css, data, "", "")

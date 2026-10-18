@@ -35,9 +35,12 @@ pub fn bundled_fonts() -> BTreeMap<String, Base64OrRaw> {
 pub struct Rendered {
     pub bytes: Vec<u8>,
     pub pages: usize,
+    // Read by the tests that check what the renderer complained about.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub warnings: Vec<String>,
 }
 
+#[cfg(test)]
 pub fn render_html(html: &str, fonts: &BTreeMap<String, Base64OrRaw>) -> Result<Rendered, String> {
     render_html_with_qr(html, fonts, None)
 }
@@ -153,6 +156,7 @@ fn footer_ops(page: usize, total: usize, page_w: f32, font: &PdfFontHandle) -> V
     ]
 }
 
+#[cfg(test)]
 /// Renders with an explicit paper size and margins (from the template's @page rule).
 pub fn render_html_with_page(html: &str, fonts: &BTreeMap<String, Base64OrRaw>, setup: &crate::template_engine::PageSetup) -> Result<Rendered, String> {
     render_html_with_page_and_images(html, fonts, setup, &BTreeMap::new())

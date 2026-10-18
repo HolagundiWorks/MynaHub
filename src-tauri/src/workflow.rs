@@ -71,7 +71,7 @@ pub fn project_path(conn: &Connection, project_id: i64) -> Result<ProjectPath, S
 
     let mut steps: Vec<Step> = Vec::new();
     let mut next: Option<NextAction> = None;
-    let mut want = |slot: &mut Option<NextAction>, action: NextAction| {
+    let want = |slot: &mut Option<NextAction>, action: NextAction| {
         if slot.is_none() {
             *slot = Some(action);
         }

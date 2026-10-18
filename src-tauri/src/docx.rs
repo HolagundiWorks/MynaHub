@@ -49,6 +49,7 @@ pub fn prepare(html: &str, css: &str) -> Result<(String, String), String> {
     Ok(ooxml_to_html(&files))
 }
 
+#[cfg(test)]
 pub fn source_html(payload: &str) -> Result<String, String> {
     let files = unzip(&decode(payload)?)?;
     files.get("word/adms-source.html").map(|b| String::from_utf8_lossy(b).into_owned()).ok_or_else(|| "This Word document has no letter text.".into())

@@ -860,6 +860,7 @@ fn render(s: &Snapshot) -> Result<pdf::Rendered, String> {
 
 // ---------- issue ----------
 
+#[cfg(test)]
 pub fn issue(conn: &mut Connection, id: i64) -> Result<String, String> {
     issue_by(conn, None, id)
 }

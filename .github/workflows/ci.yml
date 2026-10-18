@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  rust:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        crate: [office-core, office-ffi, aorms-connect, office-agent, src-tauri]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ matrix.crate }}
+      - name: Test ${{ matrix.crate }}
+        run: cargo test --manifest-path ${{ matrix.crate }}/Cargo.toml
+
+  windows-app:
+    # hcw-ui is a private repository checked out beside this one; add a read-only token as the secret HCW_UI_TOKEN.
+    runs-on: windows-latest
+    needs: rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: aos
+      - uses: actions/checkout@v4
+        with:
+          repository: HolagundiWorks/hcw-ui
+          token: ${{ secrets.HCW_UI_TOKEN }}
+          path: hcw-ui
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Build the engine
+        working-directory: aos
+        run: cargo build --release --manifest-path src-tauri/Cargo.toml
+      - name: Build O-Studio
+        working-directory: aos
+        run: >
+          dotnet build native/Adms.Desktop/Adms.Desktop.csproj -c Release
+          -p:Platform=x64 -p:WindowsPackageType=None -p:EngineProfile=release
+
+  carbon-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test:unit
