@@ -45,8 +45,8 @@ public class AppCatalogTests
         var pc = new FakeComputer();
         pc.Files.Add(@"C:\Users\me\AppData\Local\Programs\AQC-Core\AQCCore.exe");
         Assert.Equal("in the usual folder", Of(pc, SuiteApp.Metra).Source);
-        pc.Files.Add(@"C:\Users\me\AppData\Local\Programs\O-Metra\AQCCore.exe");
-        Assert.Equal(@"C:\Users\me\AppData\Local\Programs\O-Metra\AQCCore.exe", Of(pc, SuiteApp.Metra).ExePath);
+        pc.Files.Add(@"C:\Users\me\AppData\Local\Programs\O-CoreOp\AQCCore.exe");
+        Assert.Equal(@"C:\Users\me\AppData\Local\Programs\O-CoreOp\AQCCore.exe", Of(pc, SuiteApp.Metra).ExePath);
         pc.Path.Add(@"C:\Tools");
         pc.Files.Add(@"C:\Tools\aad.exe");
         var draft = Of(pc, SuiteApp.Draft);
@@ -68,6 +68,14 @@ public class AppCatalogTests
     }
 
     [Fact]
+    public void An_install_in_the_folder_used_before_the_rename_is_still_found()
+    {
+        var pc = new FakeComputer();
+        pc.Files.Add(@"C:\Users\me\AppData\Local\Programs\O-Metra\AQCCore.exe");
+        Assert.True(Of(pc, SuiteApp.Metra).Installed);
+    }
+
+    [Fact]
     public void O_Draft_is_found_by_its_new_program_name_and_an_older_install_by_the_old_one()
     {
         var pc = new FakeComputer();
@@ -81,7 +89,7 @@ public class AppCatalogTests
     public void The_registry_can_point_at_a_missing_folder_without_breaking_anything()
     {
         var pc = new FakeComputer();
-        pc.Registry[@"HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{A8F3C2E1-9B4D-4E6A-8C1F-2D7E5A9B0C3D}_is1|InstallLocation"] = "\"D:\\Gone\\O-Metra\\\"";
+        pc.Registry[@"HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{A8F3C2E1-9B4D-4E6A-8C1F-2D7E5A9B0C3D}_is1|InstallLocation"] = "\"D:\\Gone\\O-CoreOp\\\"";
         Assert.False(Of(pc, SuiteApp.Metra).Installed);
     }
 
@@ -113,7 +121,7 @@ public class AppCatalogTests
     public void Every_app_has_a_name_a_purpose_and_a_program_name()
     {
         var all = new AppCatalog(new FakeComputer()).Detect();
-        Assert.Equal(new[] { "O-Studio", "O-Metra", "O-Draft" }, all.Select(a => a.Name).ToArray());
+        Assert.Equal(new[] { "O-Studio", "O-CoreOp", "O-Draft" }, all.Select(a => a.Name).ToArray());
         Assert.All(all, a => Assert.False(string.IsNullOrWhiteSpace(a.Purpose) || string.IsNullOrWhiteSpace(a.ExeName)));
     }
 }

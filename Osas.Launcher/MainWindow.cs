@@ -13,7 +13,7 @@ using WinRT.Interop;
 namespace Osas.Launcher;
 
 /// <summary>
-/// OSAS, the Open Source Architecture Suit: one window that shows which of O-Studio, O-Metra and O-Draft are installed on this
+/// OSAS, the Open Source Architecture Suit: one window that shows which of O-Studio, O-CoreOp and O-Draft are installed on this
 /// computer and opens them. It starts the apps and changes nothing in them.
 /// </summary>
 public sealed class MainWindow : Window
@@ -62,7 +62,7 @@ public sealed class MainWindow : Window
 
         var intro = new TextBlock
         {
-            Text = "Open an app. Each one keeps its own window. O-Studio and O-Metra can use the same company file, but only one of them at a time, so close one before opening the other on that file.",
+            Text = "Open an app. Each one keeps its own window. O-Studio and O-CoreOp can use the same company file, but only one of them at a time, so close one before opening the other on that file.",
             Style = Style("SecondaryStyle"),
             Margin = new Thickness(32, 0, 32, 12),
             MaxWidth = 760,
@@ -197,7 +197,7 @@ public sealed class MainWindow : Window
         var text = new StackPanel { Spacing = 8, MaxWidth = 440 };
         text.Children.Add(new TextBlock { Text = "OSAS is the Open Source Architecture Suit: three apps for an architecture practice.", TextWrapping = TextWrapping.Wrap });
         text.Children.Add(new TextBlock { Text = "O-Studio — office and project management", TextWrapping = TextWrapping.Wrap });
-        text.Children.Add(new TextBlock { Text = "O-Metra — quantities, estimates and billing", TextWrapping = TextWrapping.Wrap });
+        text.Children.Add(new TextBlock { Text = "O-CoreOp — quantities, estimates and billing", TextWrapping = TextWrapping.Wrap });
         text.Children.Add(new TextBlock { Text = "O-Draft — drafting", TextWrapping = TextWrapping.Wrap });
         text.Children.Add(new TextBlock { Text = "Developed by Human Centric Works. This launcher is version 0.1.0.", Style = Style("CaptionStyle"), TextWrapping = TextWrapping.Wrap });
         await new ContentDialog { Title = "About OSAS", Content = text, CloseButtonText = "Close", XamlRoot = Content.XamlRoot }.ShowAsync();

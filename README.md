@@ -5,25 +5,25 @@ A small launcher for the three apps of the suite:
 | App | For | Was |
 |---|---|---|
 | **O-Studio** | Office and project management | AOS |
-| **O-Metra** | Quantities, estimates and billing | AQC |
+| **O-CoreOp** | Quantities, estimates and billing | AQC |
 | **O-Draft** | Drafting | AAD |
 
-OSAS shows which of them are installed on this computer, with their versions, and opens them. It starts the apps and changes nothing in them. O-Studio and O-Metra can use the same company file, but only one of them at a time.
+OSAS shows which of them are installed on this computer, with their versions, and opens them. It starts the apps and changes nothing in them. O-Studio and O-CoreOp can use the same company file, but only one of them at a time.
 
 ## How an app is found
-In this order, for each app: a program you chose with **Find it…** (kept in `%LOCALAPPDATA%\OSAS\paths.json`); the folder its installer registered; the usual install folder (`%LOCALAPPDATA%\Programs\O-Studio`, `O-Metra`, `O-Draft`, and the earlier names); and the `PATH`. A chosen path must be an absolute path to an `.exe` that exists.
+In this order, for each app: a program you chose with **Find it…** (kept in `%LOCALAPPDATA%\OSAS\paths.json`); the folder its installer registered; the usual install folder (`%LOCALAPPDATA%\Programs\O-Studio`, `O-CoreOp`, `O-Draft`, and the earlier names); and the `PATH`. A chosen path must be an absolute path to an `.exe` that exists.
 
 | App | Program | Registered by |
 |---|---|---|
 | O-Studio | `Adms.Desktop.exe` | `HKCU\Software\Human Centric Works\OStudio` |
-| O-Metra | `AQCCore.exe` | Inno Setup entry `{A8F3C2E1-…}_is1` |
+| O-CoreOp | `AQCCore.exe` | Inno Setup entry `{A8F3C2E1-…}_is1` |
 | O-Draft | `o-draft.exe` (older installs: `aad.exe`) | nothing known yet |
 
 ## Projects
 | Folder | |
 |---|---|
 | `Osas.Core` | Finding the apps and the saved paths. No user interface, so it is tested on its own |
-| `Osas.Core.Tests` | Seven tests with a pretend computer: `dotnet test Osas.Core.Tests` |
+| `Osas.Core.Tests` | Eight tests with a pretend computer: `dotnet test Osas.Core.Tests` |
 | `Osas.Launcher` | The WinUI 3 window. Uses the shared design in `hcw-ui` (check it out beside this repository) |
 
 ```powershell

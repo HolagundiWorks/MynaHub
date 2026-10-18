@@ -8,7 +8,7 @@ OSAS, the Open Source Architecture Suit, has three apps. Two are rebranded; this
 | App | Was | Accent | State |
 |---|---|---|---|
 | **O-Studio** | AOS, Architecture Office Suit | orange `#FF6B00` | Done, in `HolagundiWorks/AOS-Architecture-Office-Suite` |
-| **O-Metra** | AQC, Accelerated Quantity and Costing | blue `#1F5FD1` | Done, on branch `claude/aos-shell` of `HolagundiWorks/AQC` |
+| **O-CoreOp** | AQC, Accelerated Quantity and Costing | blue `#1F5FD1` | Done, on branch `claude/aos-shell` of `HolagundiWorks/AQC` |
 | **O-Draft** | AAD, Accelerated Architecture Drafting | black `#1B1C20` | **This hand-off** |
 
 The decision, from the owner: all three use **the AQC logo**, redrawn in each app's colour. O-Draft's is the logo on a black plate. The suite launcher is `HolagundiWorks/osas`; the shared design and the marks are in `HolagundiWorks/hcw-ui` (both private).
@@ -98,7 +98,7 @@ Install folder: make it `%LOCALAPPDATA%\Programs\O-Draft` (or the machine-wide e
 - **Layering.** `cargo xtask layers`. Colours stay in the UI crate; nothing below it learns about the brand.
 
 ## 7. Accessibility to carry over
-O-Draft has not been audited. The audit of O-Studio and O-Metra is in `AOS-Architecture-Office-Suite/docs/wcag-audit.md`. For O-Draft:
+O-Draft has not been audited. The audit of O-Studio and O-CoreOp is in `AOS-Architecture-Office-Suite/docs/wcag-audit.md`. For O-Draft:
 - Check the new accent pairs (section 4).
 - Run `tools/a11y/uia-audit.ps1 -Exe <Aad.WinUi.exe> -Pages <menu items>` and `analyse.mjs` once the shell is rebuilt. Look for unnamed controls and targets under 24 px.
 - AAD's own test matrix lists Tab and arrow traversal as open. Fill it in.

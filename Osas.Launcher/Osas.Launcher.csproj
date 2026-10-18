@@ -17,7 +17,7 @@
     <Company>Human Centric Works</Company>
     <Product>OSAS</Product>
     <AssemblyTitle>OSAS, the Open Source Architecture Suit</AssemblyTitle>
-    <Description>Opens O-Studio, O-Metra and O-Draft</Description>
+    <Description>Opens O-Studio, O-CoreOp and O-Draft</Description>
     <Copyright>Copyright © 2026 Human Centric Works</Copyright>
     <Version>0.1.0</Version>
     <AssemblyVersion>0.1.0.0</AssemblyVersion>
