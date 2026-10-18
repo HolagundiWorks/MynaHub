@@ -15,9 +15,22 @@ Sign-in uses the admin password. The password needs 12 or more characters. A rec
 - **Practice** — Pulse, Clients, and Projects. A project records its Council of Architecture consultancy type and floors, which choose its standard stages and payment schedule. Time book, transmittal log, and project reports and presentations are records only; they never post a journal. See [Project records](docs/help/Project-records.md).
 - **Documents** — Letters and Templates. Built-in templates stay as shipped. Copy one, then edit the copy. Word templates are saved as `.docx`.
 - **Billing** — Invoices and receipts, and bank reconciliation. **Books** — expenses, income, salaries, assets, and journals. **Reports and tax** — financial reports, tax, and the chart of accounts and financial years. Each client and project has its own ledger, and an uncollected bill can be written off to a bad-debts account.
-- **Office** — Firm profile, recent activity, audit, and backup.
+- **Office** — Firm profile, staff, leave, attendance, the office library, the optional AORMS portal link, security and backup. Under **Practice** there are also enquiries, site records, permits, fee proposals, and meetings and decisions. Under **Reports and tax** there is a 26AS check against the TDS booked on receipts. See [Proposals, meetings and 26AS](docs/help/Proposals-meetings-and-26AS.md) and [Enquiries, site records and permits](docs/help/Enquiries-site-and-permits.md).
 
 Shortcuts: Ctrl+N new record, Ctrl+S save, Ctrl+P print, Ctrl+F search, Ctrl+K go to a page.
+
+## The suite
+
+AOS is one of several apps that share an office's records. The pieces in this repository:
+
+| Folder | What it is |
+|---|---|
+| `office-core/` | The company file, sign-in, schema tracks and the shared records. Not ShilpiDB, which is the separate drawing store. |
+| `office-ffi/`, `native/Office.Interop/` | A C interface and .NET wrapper so another native app can use the same file. Contract: [docs/office-abi.md](docs/office-abi.md) |
+| `aorms-connect/` | The optional shared AORMS sign-in and project pull. Server change needed: [docs/aorms-aos-server.md](docs/aorms-aos-server.md) |
+| `office-agent/` | Governed read-only tools and an MCP server for an AI assistant |
+
+The architecture and integration map for AOS, AAD, AQC, ShilpiDB and AORMS is [docs/suite-architecture.md](docs/suite-architecture.md). Each folder is its own Cargo crate; run `cargo test` inside it.
 
 ## Develop
 

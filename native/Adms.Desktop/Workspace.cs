@@ -195,7 +195,9 @@ internal sealed class WorkspaceView : UserControl
             ("time", "04", "Time", "\uE823"),
             ("enquiries", "05", "Enquiries", "\uE77B"),
             ("site", "06", "Site records", "\uE7C1"),
-            ("permits", "07", "Permits and approvals", "\uE8D7"));
+            ("permits", "07", "Permits and approvals", "\uE8D7"),
+            ("proposals", "08", "Fee proposals", "\uE8A5"),
+            ("meetings", "09", "Meetings and decisions", "\uE787"));
         AddGroup("02", "Documents",
             ("documents", "01", "Letters and agreements", "\uE8A5"),
             ("transmittals", "02", "Transmittals", "\uE724"),
@@ -215,12 +217,14 @@ internal sealed class WorkspaceView : UserControl
             AddGroup("05", "Reports and tax",
                 ("acc-reports", "01", "Financial reports", "\uE9F9"),
                 ("acc-tax", "02", "Tax", "\uE9D9"),
+                ("tds26as", "03", "26AS check", "\uE9D9"),
                 ("acc-setup", "03", "Chart and financial years", "\uE9D2"));
         }
         AddGroup("06", "Office",
             ("company", "01", "Firm", "\uE731"),
             ("staff", "02", "Staff", "\uE716"),
             ("leave", "03", "Leave", "\uE787"),
+            ("attendance", "03", "Attendance", "\uE823"),
             ("library", "04", "Library", "\uE82D"),
             ("aorms", "05", "AORMS portal", "\uE774"),
             ("settings", "06", "Security and backup", "\uE713"));
@@ -272,6 +276,10 @@ internal sealed class WorkspaceView : UserControl
         "leave" => RecordPages.Leave(_shell),
         "library" => RecordPages.Library(_shell),
         "aorms" => new AormsPage(_shell),
+        "proposals" => RecordPages.Proposals(_shell),
+        "meetings" => RecordPages.Meetings(_shell),
+        "attendance" => new AttendancePage(_shell),
+        "tds26as" => new TdsReconPage(_shell),
         "clients" => new ClientsPage(_shell),
         "projects" => new ProjectsPage(_shell),
         "time" => TimeSheet.Page(_shell),

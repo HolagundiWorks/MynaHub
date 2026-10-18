@@ -57,6 +57,21 @@ try
         try { session.Call("aorms_restore", new { base_url = "http://example.com" }); throw new InvalidOperationException("A plain http portal address should be refused."); }
         catch (AdmsException ex) when (ex.Message.Contains("https")) { }
 
+        var proposalId = session.Call("proposal_save", new { input = new { id = (long?)null, client_id = clientId, project_id = (long?)null, title = "Villa design", basis = "percent", cost_paise = 500000000L, rate_bp = 600L, area_milli = 0L, area_rate_paise = 0L, lump_paise = 0L, gst_bp = 1800L, issued_date = "2026-10-01", valid_until = "2026-10-31", notes = "" } }).GetInt64();
+        session.Call("proposal_set_status", new { id = proposalId, status = "sent" });
+        if (session.Call("proposal_list", new { client_id = (long?)null })[0].GetProperty("fee_paise").GetInt64() != 30000000L)
+            throw new InvalidOperationException("A 6 percent fee on 50,00,000.00 should be 3,00,000.00.");
+        session.Call("meeting_save", new { input = new { id = (long?)null, meeting_date = "2026-10-02", title = "Site visit", client_id = clientId, project_id = (long?)null, attendees = "", notes = "", decisions = "Move the stair", follow_up_date = "", follow_up_done = false } });
+        if (session.Call("meeting_list", new { project_id = (long?)null }).GetArrayLength() != 1)
+            throw new InvalidOperationException("The meeting should be listed.");
+        var crew = session.Call("staff_save", new { input = new { id = (long?)null, name = "Ravi", role = "", specialisation = "", phone = "", email = "", joined_date = "2024-01-01", left_date = "" } }).GetInt64();
+        session.Call("attendance_mark", new { staff_id = crew, day = "2026-10-02", status = "half", note = (string?)null });
+        if (session.Call("attendance_month", new { month = "2026-10" }).EnumerateArray().First(r => r.GetProperty("name").GetString() == "Ravi").GetProperty("worked_half_days").GetInt64() != 1)
+            throw new InvalidOperationException("One half day should count as one half-day.");
+        var imported = session.Call("tds26as_import", new { csv = "Deductor,TAN,Date,Amount,Tax Deducted" + (char)10 + "Acme,PUNA12345B,2026-06-10,100000,10000" + (char)10 });
+        if (imported.GetProperty("added").GetInt64() != 1 || session.Call("tds26as_reconcile", new { from = "2026-04-01", to = "2027-03-31" }).GetProperty("only_reported").GetArrayLength() != 1)
+            throw new InvalidOperationException("The 26AS entry should be imported and reported as not booked.");
+
         var path = session.Call("project_path", new { project_id = projectId });
         if (path.GetProperty("next").GetProperty("kind").GetString() != "assign_stages")
             throw new InvalidOperationException("A new project should point at assigning stages first.");

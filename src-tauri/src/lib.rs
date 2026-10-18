@@ -1,6 +1,7 @@
 use office_core::{auth, store, vault};
 mod accounting;
 mod aorms;
+mod desk;
 mod admin;
 mod bank;
 mod boards;
@@ -79,6 +80,17 @@ pub fn run() {
             stages::project_stages,
             clientfile::client_activity_get,
             workflow::project_path_get,
+            desk::proposal_save_record,
+            desk::proposal_list_records,
+            desk::proposal_set_status_record,
+            desk::meeting_save_record,
+            desk::meeting_list_records,
+            desk::attendance_mark_record,
+            desk::attendance_day_records,
+            desk::attendance_month_records,
+            desk::tds26as_import_csv,
+            desk::tds26as_reconcile_report,
+            desk::tds26as_list_entries,
             aorms::aorms_restore,
             aorms::aorms_sign_in,
             aorms::aorms_connect,

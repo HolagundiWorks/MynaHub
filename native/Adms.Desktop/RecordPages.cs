@@ -7,7 +7,8 @@ namespace Adms.Desktop;
 /// <summary>One input on a record page. Choice fields store the first value of each (value, label) pair.</summary>
 internal sealed record RecordField(string Key, string Label, RecordKind Kind = RecordKind.Text, (string Value, string Label)[]? Choices = null, string Default = "");
 
-internal enum RecordKind { Text, Date, Choice, Project, Staff }
+/// <summary>Money is typed in rupees and sent as paise, Percent is typed as a percentage and sent as basis points, Quantity is typed as a number and sent in thousandths.</summary>
+internal enum RecordKind { Text, Date, Choice, Project, Staff, Client, OptionalProject, OptionalClient, Money, Percent, Quantity, YesNo }
 
 /// <summary>
 /// A list and an editing form for one kind of plain record: site records, permits and enquiries. Choose Edit on a line to
@@ -72,8 +73,10 @@ internal sealed class RecordPage : UserControl
         page.Children.Add(_list);
         Content = new ScrollViewer { Content = page };
         Reset();
-        if (fields.Any(f => f.Kind == RecordKind.Project))
+        if (fields.Any(f => f.Kind is RecordKind.Project or RecordKind.OptionalProject))
             LoadProjects();
+        if (fields.Any(f => f.Kind is RecordKind.Client or RecordKind.OptionalClient))
+            LoadClients();
         if (fields.Any(f => f.Kind == RecordKind.Staff))
             LoadStaff();
         Load();
@@ -81,14 +84,19 @@ internal sealed class RecordPage : UserControl
 
     private FrameworkElement Make(RecordField field)
     {
-        if (field.Kind is RecordKind.Choice or RecordKind.Project or RecordKind.Staff)
+        if (field.Kind is RecordKind.Choice or RecordKind.Project or RecordKind.Staff or RecordKind.Client or RecordKind.OptionalProject or RecordKind.OptionalClient or RecordKind.YesNo)
         {
-            var box = new ComboBox { Header = field.Label, HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = field.Kind == RecordKind.Project ? "Choose a project" : field.Kind == RecordKind.Staff ? "Choose a person" : "" };
-            foreach (var (value, label) in field.Choices ?? [])
+            var box = new ComboBox
+            {
+                Header = field.Label,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                PlaceholderText = field.Kind is RecordKind.Project or RecordKind.OptionalProject ? "Choose a project" : field.Kind == RecordKind.Staff ? "Choose a person" : field.Kind is RecordKind.Client or RecordKind.OptionalClient ? "Choose a client" : "",
+            };
+            foreach (var (value, label) in field.Kind == RecordKind.YesNo ? [("false", "No"), ("true", "Yes")] : field.Choices ?? [])
                 box.Items.Add(new ComboBoxItem { Content = label, Tag = value });
             return box;
         }
-        var multiline = field.Key is "details" or "brief" or "notes" or "body";
+        var multiline = field.Key is "details" or "brief" or "notes" or "body" or "decisions";
         return new TextBox
         {
             Header = field.Label,
@@ -109,11 +117,13 @@ internal sealed class RecordPage : UserControl
             {
                 if (rows.ValueKind != JsonValueKind.Array)
                     return;
-                foreach (var field in _fields.Where(f => f.Kind == RecordKind.Project))
+                foreach (var field in _fields.Where(f => f.Kind is RecordKind.Project or RecordKind.OptionalProject))
                 {
                     if (!_inputs.TryGetValue(field.Key, out var element) || element is not ComboBox box)
                         continue;
                     box.Items.Clear();
+                    if (field.Kind == RecordKind.OptionalProject)
+                        box.Items.Add(new ComboBoxItem { Content = "(No project)", Tag = null });
                     foreach (var row in rows.EnumerateArray())
                     {
                         if (Kit.Id(row) is not long id)
@@ -122,6 +132,32 @@ internal sealed class RecordPage : UserControl
                         var name = Kit.Str(row, "name");
                         box.Items.Add(new ComboBoxItem { Content = client.Length == 0 ? name : $"{client} — {name}", Tag = id });
                     }
+                    if (box.SelectedItem == null && box.Items.Count > 0)
+                        box.SelectedIndex = 0;
+                }
+            });
+        });
+    }
+
+    private void LoadClients()
+    {
+        _ = _shell.Run("Loading clients…", () =>
+        {
+            var rows = _shell.Call("client_list", new { include_archived = false });
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (rows.ValueKind != JsonValueKind.Array)
+                    return;
+                foreach (var field in _fields.Where(f => f.Kind is RecordKind.Client or RecordKind.OptionalClient))
+                {
+                    if (!_inputs.TryGetValue(field.Key, out var element) || element is not ComboBox box)
+                        continue;
+                    box.Items.Clear();
+                    if (field.Kind == RecordKind.OptionalClient)
+                        box.Items.Add(new ComboBoxItem { Content = "(No client)", Tag = null });
+                    foreach (var row in rows.EnumerateArray())
+                        if (Kit.Id(row) is long id)
+                            box.Items.Add(new ComboBoxItem { Content = Kit.Str(row, "name"), Tag = id });
                     if (box.SelectedItem == null && box.Items.Count > 0)
                         box.SelectedIndex = 0;
                 }
@@ -175,7 +211,7 @@ internal sealed class RecordPage : UserControl
             var initial = field.Kind == RecordKind.Date && field.Default == "today" ? Kit.Today() : field.Default;
             if (element is TextBox text)
                 text.Text = initial;
-            else if (element is ComboBox box && field.Kind == RecordKind.Choice)
+            else if (element is ComboBox box && field.Kind is RecordKind.Choice or RecordKind.YesNo or RecordKind.OptionalProject or RecordKind.OptionalClient)
                 box.SelectedIndex = box.Items.Count > 0 ? 0 : -1;
         }
     }
@@ -190,11 +226,18 @@ internal sealed class RecordPage : UserControl
                 continue;
             var value = Kit.Str(row, field.Key);
             if (element is TextBox text)
-                text.Text = value;
+                text.Text = field.Kind switch
+                {
+                    RecordKind.Money => value.Length == 0 ? "" : (long.Parse(value, System.Globalization.CultureInfo.InvariantCulture) / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+                    RecordKind.Percent => value.Length == 0 ? "" : (long.Parse(value, System.Globalization.CultureInfo.InvariantCulture) / 100m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture),
+                    RecordKind.Quantity => value.Length == 0 ? "" : (long.Parse(value, System.Globalization.CultureInfo.InvariantCulture) / 1000m).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
+                    _ => value,
+                };
             else if (element is ComboBox box)
             {
+                box.SelectedItem = null;
                 foreach (var item in box.Items.OfType<ComboBoxItem>())
-                    if (Convert.ToString(item.Tag, System.Globalization.CultureInfo.InvariantCulture) == value)
+                    if (string.Equals(Convert.ToString(item.Tag, System.Globalization.CultureInfo.InvariantCulture), value, StringComparison.OrdinalIgnoreCase))
                         box.SelectedItem = item;
             }
         }
@@ -213,10 +256,27 @@ internal sealed class RecordPage : UserControl
                     _shell.Problem($"Choose the {field.Label.ToLowerInvariant()}.");
                     return;
                 }
-                input[field.Key] = item.Tag;
+                input[field.Key] = field.Kind == RecordKind.YesNo ? item.Tag as string == "true" : item.Tag;
             }
             else if (element is TextBox text)
-                input[field.Key] = text.Text.Trim();
+            {
+                var typed = text.Text.Trim();
+                if (field.Kind is RecordKind.Money or RecordKind.Percent or RecordKind.Quantity)
+                {
+                    var scale = field.Kind == RecordKind.Quantity ? 1000m : 100m;
+                    if (typed.Length == 0)
+                        input[field.Key] = 0L;
+                    else if (decimal.TryParse(typed.Replace(",", ""), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var number) && number >= 0 && number < 1_000_000_000_000m)
+                        input[field.Key] = (long)Math.Round(number * scale, MidpointRounding.AwayFromZero);
+                    else
+                    {
+                        _shell.Problem($"Enter {field.Label.ToLowerInvariant()} as a number that is not negative.");
+                        return;
+                    }
+                }
+                else
+                    input[field.Key] = typed;
+            }
         }
         _ = _shell.Run("Saving…", () => _shell.Call(_saveOp, new { input })).ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
         {
@@ -370,6 +430,76 @@ internal static class RecordPages
         ["Type", "Title", "Category", "Reference"],
         [new(120), new(2, GridUnitType.Star), new(1, GridUnitType.Star), new(1, GridUnitType.Star)],
         r => [Label(LibraryKinds, Kit.Str(r, "kind")), Kit.Str(r, "title"), Kit.Str(r, "category"), Kit.Str(r, "reference")]);
+
+    private static readonly (string, string)[] ProposalBasis = [("percent", "A percentage of the cost of the work"), ("per_area", "A rate per unit of area"), ("lump_sum", "A lump sum")];
+    private static readonly (string, string)[] ProposalStatus = [("draft", "Draft"), ("sent", "Sent"), ("accepted", "Accepted"), ("declined", "Declined")];
+
+    public static UIElement Proposals(AppShell shell) => new RecordPage(
+        shell, "01.08", "Practice", "Fee proposals",
+        "What the practice proposes to charge a client. Choose how the fee is worked out and fill in only the figures for that basis. A proposal is drafted, sent, then accepted or declined; once the client has decided it cannot change.",
+        "proposal_list", "proposal_save",
+        [
+            new("client_id", "Client", RecordKind.Client),
+            new("project_id", "Project", RecordKind.OptionalProject),
+            new("title", "Title"),
+            new("basis", "Fee is", RecordKind.Choice, ProposalBasis),
+            new("cost_paise", "Estimated cost of the work (₹)", RecordKind.Money),
+            new("rate_bp", "Fee percentage", RecordKind.Percent),
+            new("area_milli", "Built-up area", RecordKind.Quantity),
+            new("area_rate_paise", "Rate per unit of area (₹)", RecordKind.Money),
+            new("lump_paise", "Lump-sum fee (₹)", RecordKind.Money),
+            new("gst_bp", "GST (%)", RecordKind.Percent, null, "18"),
+            new("issued_date", "Issued on", RecordKind.Date, null, "today"),
+            new("valid_until", "Valid until", RecordKind.Date),
+            new("notes", "Notes"),
+        ],
+        ["Number", "Client", "Title", "Fee with GST (₹)", "Status"],
+        [new(80), new(1.2, GridUnitType.Star), new(1.6, GridUnitType.Star), new(130), new(110)],
+        r => [Kit.Str(r, "number"), Kit.Str(r, "client"), Kit.Str(r, "title"), Flow.Money(long.TryParse(Kit.Str(r, "total_paise"), out var total) ? total : 0).Replace("₹", "").Trim(),
+              Kit.Str(r, "lapsed") is "true" or "True" ? "Sent (lapsed)" : Label(ProposalStatus, Kit.Str(r, "status"))],
+        (page, r) =>
+        {
+            var status = Kit.Str(r, "status");
+            if (Kit.Id(r) is not long id || status is "accepted" or "declined")
+                return null;
+            var next = new Button { Content = status == "draft" ? "Mark sent" : "Client decided…", MinHeight = 28 };
+            void Move(string to) => _ = page.Shell.Run("Updating the proposal…", () => page.Shell.Call("proposal_set_status", new { id, status = to }))
+                .ContinueWith(task => page.Shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) page.Reload(); }));
+            if (status == "draft")
+                next.Click += (_, _) => Move("sent");
+            else
+            {
+                var menu = new MenuFlyout();
+                var accepted = new MenuFlyoutItem { Text = "Accepted" };
+                accepted.Click += (_, _) => Move("accepted");
+                var declined = new MenuFlyoutItem { Text = "Declined" };
+                declined.Click += (_, _) => Move("declined");
+                menu.Items.Add(accepted);
+                menu.Items.Add(declined);
+                next.Flyout = menu;
+            }
+            return next;
+        });
+
+    public static UIElement Meetings(AppShell shell) => new RecordPage(
+        shell, "01.09", "Practice", "Meetings and decisions",
+        "A record of what was discussed and decided with a client, and what has to be followed up. A follow-up shows as due once its date has come and until it is marked done.",
+        "meeting_list", "meeting_save",
+        [
+            new("meeting_date", "Date", RecordKind.Date, null, "today"),
+            new("title", "Title"),
+            new("client_id", "Client", RecordKind.OptionalClient),
+            new("project_id", "Project", RecordKind.OptionalProject),
+            new("attendees", "Who was there"),
+            new("follow_up_date", "Follow up on", RecordKind.Date),
+            new("follow_up_done", "Follow-up done", RecordKind.YesNo),
+            new("notes", "Discussion"),
+            new("decisions", "Decisions"),
+        ],
+        ["Date", "Title", "Client", "Follow up"],
+        [new(96), new(1.8, GridUnitType.Star), new(1.2, GridUnitType.Star), new(130)],
+        r => [Kit.Str(r, "meeting_date"), Kit.Str(r, "title"), Kit.Str(r, "client"),
+              Kit.Str(r, "follow_up_due") is "true" or "True" ? Kit.Str(r, "follow_up_date") + " (due)" : Kit.Str(r, "follow_up_done") is "true" or "True" ? "Done" : Kit.Str(r, "follow_up_date")]);
 
     public static UIElement Enquiries(AppShell shell) => new RecordPage(
         shell, "01.07", "Practice", "Enquiries",
