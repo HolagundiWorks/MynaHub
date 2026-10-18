@@ -1,6 +1,6 @@
 # What AORMS needs so that O-Studio can have its own session
 
-O-Studio signs in the same way O-Metra and O-Draft do (contract `2026-10-aqc-1`) and starts its own session with `POST /api/aqc/v1/session` and `app: "aos"`. The AORMS server accepts only `"aqc"` and `"aad"` today, so O-Studio gets a refusal on that step until the server is changed. The change is in the AORMS repository and is not made here.
+O-Studio signs in the same way O-CoreOp and O-Draft do (contract `2026-10-aqc-1`) and starts its own session with `POST /api/aqc/v1/session` and `app: "aos"`. The AORMS server accepts only `"aqc"` and `"aad"` today, so O-Studio gets a refusal on that step until the server is changed. The change is in the AORMS repository and is not made here.
 
 Needed on the AORMS side:
 1. `web/lib/aqc/contract.ts`: add `"aos"` to `AQC_APPS`.

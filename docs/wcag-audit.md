@@ -1,10 +1,10 @@
 # WCAG 2.2 AA audit of the OSAS apps
 
-Audit of **O-Studio**, **O-Metra** and **O-Draft** on 2026-10-18, against WCAG 2.2 level AA. O-Studio and O-Metra were run and measured. O-Draft was not run, because it is not installed on this computer, so its section is a review of its documentation and is marked as such.
+Audit of **O-Studio**, **O-CoreOp** and **O-Draft** on 2026-10-18, against WCAG 2.2 level AA. O-Studio and O-CoreOp were run and measured. O-Draft was not run, because it is not installed on this computer, so its section is a review of its documentation and is marked as such.
 
 ## What was checked, and what was not
 
-| Method | O-Studio | O-Metra | O-Draft |
+| Method | O-Studio | O-CoreOp | O-Draft |
 |---|---|---|---|
 | Colour contrast, calculated from the colour tokens (`tools/a11y/contrast.mjs`) | Yes | Yes | Palette only |
 | UI Automation walk of the running app: every element's role, name, keyboard focusability, size (`tools/a11y/uia-audit.ps1`, `analyse.mjs`) | 26 pages, 1,765 elements | 25 pages, 2,901 elements | Not run |
@@ -18,7 +18,7 @@ A clean automated result does not mean the app passes. Automated checks find mis
 
 ## Summary
 
-| | O-Studio | O-Metra | O-Draft |
+| | O-Studio | O-CoreOp | O-Draft |
 |---|---|---|---|
 | Interactive controls with no name | 0 of ~1,000 | **150+ found, now 0** | Not checked |
 | Controls the keyboard cannot reach | 0 (system caption buttons excluded) | 0 (same) | Not checked |
@@ -30,31 +30,31 @@ A clean automated result does not mean the app passes. Automated checks find mis
 
 | # | App | Criterion | Finding | Fix |
 |---|---|---|---|---|
-| F1 | O-Metra | 4.1.2 Name, role, value | 67 drop-down cells and 44 text cells in the entry sheets, the calculator button, 13 layer toggles, the floor drop-down, the layers button and the letter text box had no name. A screen reader would announce "edit" or "button" | Each cell is named by its column and row ("Breadth b, row 3"), the others by their purpose. Re-run: 0 unnamed controls on 25 pages |
-| F2 | O-Metra | 2.5.8 Target size (24 px) | Layer toggles were 24 px, below the limit once the shell's 0.96 scale is applied. The All and None links were 21 px high | Toggles 28 px, links at least 28 px high |
-| F3 | O-Studio, O-Metra | 1.1.1 Non-text content | The logo in the O-Studio pane had no name. O-Metra's navigation icons repeat the label beside them | The logo is named. The icons are hidden from assistive technology |
-| F4 | O-Metra | 1.3.1, 2.4.6 | No headings at all in the app | The page title line is now a level 1 heading. Headings inside pages are still missing (O4) |
+| F1 | O-CoreOp | 4.1.2 Name, role, value | 67 drop-down cells and 44 text cells in the entry sheets, the calculator button, 13 layer toggles, the floor drop-down, the layers button and the letter text box had no name. A screen reader would announce "edit" or "button" | Each cell is named by its column and row ("Breadth b, row 3"), the others by their purpose. Re-run: 0 unnamed controls on 25 pages |
+| F2 | O-CoreOp | 2.5.8 Target size (24 px) | Layer toggles were 24 px, below the limit once the shell's 0.96 scale is applied. The All and None links were 21 px high | Toggles 28 px, links at least 28 px high |
+| F3 | O-Studio, O-CoreOp | 1.1.1 Non-text content | The logo in the O-Studio pane had no name. O-CoreOp's navigation icons repeat the label beside them | The logo is named. The icons are hidden from assistive technology |
+| F4 | O-CoreOp | 1.3.1, 2.4.6 | No headings at all in the app | The page title line is now a level 1 heading. Headings inside pages are still missing (O4) |
 | F5 | O-Studio | 1.4.3 Contrast | Ink text on the pressed orange button measured 4.11:1 | The orange hover and pressed colours are lighter: 5.6 and 5.1:1 |
 
 ## Open findings
 
 | # | App | Criterion | Finding | Severity |
 |---|---|---|---|---|
-| O1 | O-Metra | 1.4.10 Reflow | At a 520 px wide window the page title ran into the Generate button, the tabs were cut off, the entry sheet disappeared and the status strip was clipped. **Fixed:** the pane is a menu button below 900 px and hidden below 560 px; headings and toolbars wrap; the sketch column gives its space back under 700 px. Checked at 520, 760 and 1300 px | Fixed |
-| O2 | O-Metra | 2.4.11 Focus not obscured | The floating clock and calculator covered the bottom right of the page. **Fixed:** the clock is in the navigation pane (shown when it is fully open); the calculator and notices are rows above the status strip | Fixed |
+| O1 | O-CoreOp | 1.4.10 Reflow | At a 520 px wide window the page title ran into the Generate button, the tabs were cut off, the entry sheet disappeared and the status strip was clipped. **Fixed:** the pane is a menu button below 900 px and hidden below 560 px; headings and toolbars wrap; the sketch column gives its space back under 700 px. Checked at 520, 760 and 1300 px | Fixed |
+| O2 | O-CoreOp | 2.4.11 Focus not obscured | The floating clock and calculator covered the bottom right of the page. **Fixed:** the clock is in the navigation pane (shown when it is fully open); the calculator and notices are rows above the status strip | Fixed |
 | O3 | O-Studio | 1.4.10 Reflow | The window would not go narrower than about 960 px. **Fixed:** the minimum is 480 px, the navigation pane becomes a menu button below 900 px and hides below 560 px, and the page starts below the button. Checked at 520 px on the Pulse page. Other pages stack at 960 px but were not each checked at 520 px | Fixed (partly checked) |
-| O4 | O-Metra | 1.3.1, 2.4.6 | Pages had no headings of their own. **Fixed:** the page title style is a level 2 heading and the section header style a level 3, under the level 1 page line in the shell | Fixed |
-| O5 | Both | 4.1.3 Status messages | Success notices and O-Metra's toast had no live setting. **Fixed in code:** every notice in O-Studio is a `LiveNotice` (polite), errors stay assertive, and O-Metra's notice host is polite. Not verified with a screen reader | Fixed in code, unverified |
+| O4 | O-CoreOp | 1.3.1, 2.4.6 | Pages had no headings of their own. **Fixed:** the page title style is a level 2 heading and the section header style a level 3, under the level 1 page line in the shell | Fixed |
+| O5 | Both | 4.1.3 Status messages | Success notices and O-CoreOp's toast had no live setting. **Fixed in code:** every notice in O-Studio is a `LiveNotice` (polite), errors stay assertive, and O-CoreOp's notice host is polite. Not verified with a screen reader | Fixed in code, unverified |
 | O6 | O-Studio | 3.3.1 Error identification | The field at fault was not marked. **Partly fixed:** for the required-field checks (name, subject) `Flow.Fault` outlines the field in the error colour, sets its help text to the message, and moves the keyboard to it. Errors that come back from the engine are still shown as a message only | Partly fixed |
-| O7 | O-Metra | 2.5.8, 2.1.1 | The Scale tool in the Drawing takeoff toolbar showed 4 px because the toolbar scrolled sideways. **Fixed:** the toolbar wraps | Fixed |
-| O8 | O-Metra | 1.4.4 Resize text | The shell was drawn at 0.96 scale. **Fixed:** it is 1.0 now, so text and targets follow the system settings. Text size at 200% not tested | Fixed |
+| O7 | O-CoreOp | 2.5.8, 2.1.1 | The Scale tool in the Drawing takeoff toolbar showed 4 px because the toolbar scrolled sideways. **Fixed:** the toolbar wraps | Fixed |
+| O8 | O-CoreOp | 1.4.4 Resize text | The shell was drawn at 0.96 scale. **Fixed:** it is 1.0 now, so text and targets follow the system settings. Text size at 200% not tested | Fixed |
 | O9 | O-Studio | 2.5.8 | The title bar's caption buttons are 46 by 23 px. They are supplied by Windows, so this is probably exempt | Informational |
 
 ## Criteria, by app
 
 Status is **Pass** (measured or seen), **Likely** (the mechanism is in place but not tested end to end), **Fail**, or **Untested**.
 
-| Criterion | O-Studio | O-Metra | O-Draft (documentation only) |
+| Criterion | O-Studio | O-CoreOp | O-Draft (documentation only) |
 |---|---|---|---|
 | 1.1.1 Non-text content | Pass | Pass after F3 | Untested. Docs: controls are named; the drawing canvas has no text alternative, which is inherent to a CAD canvas |
 | 1.3.1 Info and relationships | Pass (headings, named table cells) | Fail inside pages (O4) | Untested |
@@ -83,7 +83,7 @@ Run `node tools/a11y/contrast.mjs`. All 32 pairs pass. The accents:
 | App | Fill | Text on the fill | Accent as text on white |
 |---|---|---|---|
 | O-Studio | orange `#FF6B00` | ink, 6.2:1 | `#A83F00`, 6.2:1 |
-| O-Metra | blue `#1F5FD1` | white, 5.8:1 | `#1A52B8`, 7.1:1 |
+| O-CoreOp | blue `#1F5FD1` | white, 5.8:1 | `#1A52B8`, 7.1:1 |
 | O-Draft | black `#1B1C20` | white, 17.0:1 | `#17181B`, 17.8:1 |
 
 Amber and orange on white are not used for small text. The orange fill against white measures 2.9:1 as a shape; the button is identified by its label (6.2:1) and its edge (3.3:1), so it passes 1.4.11.
@@ -93,7 +93,7 @@ Amber and orange on white are not used for small text. The orange fill against w
 ```powershell
 cd tools\a11y
 .\uia-audit.ps1 -Exe "<path to O-Studio>\Adms.Desktop.exe" -Company "<a demo company>.adms" -User owner -Password $env:AUDIT_PASSWORD -Pages Pulse,Clients,"Fee proposals" -Out studio.json
-.\uia-audit.ps1 -Exe "<path to O-Metra>\AQCCore.exe" -Pages Dashboard,Columns -Out metra.json
+.\uia-audit.ps1 -Exe "<path to O-CoreOp>\AQCCore.exe" -Pages Dashboard,Columns -Out metra.json
 node analyse.mjs studio.json
 node analyse.mjs metra.json
 node contrast.mjs
@@ -103,7 +103,7 @@ Use a throw-away demo company, never a real one. The script types only into the 
 
 ## What to do next
 
-1. A Narrator and NVDA pass over the main tasks in O-Studio and O-Metra (sign in, create a client, save a record, read a table). This is the part automation cannot do, and it is the only way to confirm O5.
+1. A Narrator and NVDA pass over the main tasks in O-Studio and O-CoreOp (sign in, create a client, save a record, read a table). This is the part automation cannot do, and it is the only way to confirm O5.
 2. O-Studio: check every page at 520 px (O3), and mark the field at fault for errors that come back from the engine (O6).
 3. Test at 200% text size and 400% display zoom, and in Windows high contrast.
 4. Install O-Draft and run the same audit (see the hand-off in the OSAS repository).

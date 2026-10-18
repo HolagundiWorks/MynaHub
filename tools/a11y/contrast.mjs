@@ -6,7 +6,7 @@ const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
 const N = { bg: "#F6F5F1", side: "#EFEDE6", surface: "#FFFFFF", ink: "#17181B", soft: "#45484D", edgeStrong: "#8A877D", danger: "#B83A26" };
 const A = {
   "O-Studio (orange)": { accent: "#FF6B00", hover: "#F26400", pressed: "#E65F00", text: "#A83F00", wash: "#FFDCC2", on: "#17181B" },
-  "O-Metra (blue)": { accent: "#1F5FD1", hover: "#1A52B8", pressed: "#15449A", text: "#1A52B8", wash: "#D3E3FF", on: "#FFFFFF" },
+  "O-CoreOp (blue)": { accent: "#1F5FD1", hover: "#1A52B8", pressed: "#15449A", text: "#1A52B8", wash: "#D3E3FF", on: "#FFFFFF" },
   "O-Draft (black)": { accent: "#1B1C20", hover: "#34363C", pressed: "#4B4E56", text: "#17181B", wash: "#E4E3DE", on: "#FFFFFF" },
 };
 const rows = [];

@@ -9,10 +9,10 @@ The suite is **OSAS, the Open Source Architecture Suit**. The apps were renamed;
 | Name | Was | For | Accent | Repository |
 |---|---|---|---|---|
 | **O-Studio** | AOS, Architecture Office Suit | Office and project management | Orange | `HolagundiWorks/AOS-Architecture-Office-Suite` |
-| **O-Metra** | AQC, Accelerated Quantity and Costing | Quantities, estimates, billing | Blue | `HolagundiWorks/AQC` |
+| **O-CoreOp** | AQC, Accelerated Quantity and Costing (called O-Metra from 2026-10-18 to 2026-10-19) | Quantities, estimates, billing | Blue | `HolagundiWorks/AQC` |
 | **O-Draft** | AAD, Accelerated Architecture Drafting | Drafting | Black | `HolagundiWorks/AAD` |
 
-The rest of this document uses the old names, because it was written before the rename and quotes the repositories as they are. The shared design is the `hcw-ui` library (MIT licensed; the marks in its brand folder have their own notice), and the folder has the marks for all three apps in their colours. O-Studio and O-Metra use the same responsive layout: a pane that collapses below 900 px, and pages that wrap down to 520 px. The accessibility audit is `docs/wcag-audit.md`.
+The rest of this document uses the old names, because it was written before the rename and quotes the repositories as they are. The shared design is the `hcw-ui` library (MIT licensed; the marks in its brand folder have their own notice), and the folder has the marks for all three apps in their colours. O-Studio and O-CoreOp use the same responsive layout: a pane that collapses below 900 px, and pages that wrap down to 520 px. The accessibility audit is `docs/wcag-audit.md`.
 
 ## 1. The products today (verified)
 

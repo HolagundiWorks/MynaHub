@@ -1,6 +1,6 @@
 # O-Studio
 
-O-Studio is the office app of **OSAS, the Open Source Architecture Suit**. The suite is O-Studio (office and project management, orange), O-Metra (quantities, estimates and billing, blue) and O-Draft (drafting, black). Earlier names: AOS, AQC and AAD. The repository and the code keep the old names in places such as the `aos` portal session name and the `AOSENC1` file marker, because files and servers already use them.
+O-Studio is the office app of **OSAS, the Open Source Architecture Suit**. The suite is O-Studio (office and project management, orange), O-CoreOp (quantities, estimates and billing, blue) and O-Draft (drafting, black). Earlier names: AOS, AQC and AAD. The repository and the code keep the old names in places such as the `aos` portal session name and the `AOSENC1` file marker, because files and servers already use them.
 
 Offline Windows desktop app for an architectural practice. Clients, projects, letters, invoices, and the accounts live in one company file. Developed by Human Centric Works.
 
@@ -32,7 +32,7 @@ O-Studio is one of several apps that share an office's records. The pieces in th
 | `aorms-connect/` | The optional shared AORMS sign-in and project pull. Server change needed: [docs/aorms-aos-server.md](docs/aorms-aos-server.md) |
 | `office-agent/` | Governed read-only tools and an MCP server for an AI assistant |
 
-The architecture and integration map for O-Studio, O-Draft, O-Metra, ShilpiDB and AORMS is [docs/suite-architecture.md](docs/suite-architecture.md). Each folder is its own Cargo crate; run `cargo test` inside it.
+The architecture and integration map for O-Studio, O-Draft, O-CoreOp, ShilpiDB and AORMS is [docs/suite-architecture.md](docs/suite-architecture.md). Each folder is its own Cargo crate; run `cargo test` inside it.
 
 ## Develop
 

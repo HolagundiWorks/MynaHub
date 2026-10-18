@@ -1,6 +1,6 @@
 //! Sign in to AORMS with the suite's shared login and pull project details, for the office app.
 //!
-//! The contract is `docs/esti/AORMS-SUITE-SIGNIN.md` and `O-Metra-CLIENT-SPEC.md` in the AORMS repository (version `2026-10-aqc-1`).
+//! The contract is `docs/esti/AORMS-SUITE-SIGNIN.md` and `O-CoreOp-CLIENT-SPEC.md` in the AORMS repository (version `2026-10-aqc-1`).
 //! Everything here is optional: signed out, the office app works as it always has and makes no network calls.
 //!
 //! Rules this crate keeps:

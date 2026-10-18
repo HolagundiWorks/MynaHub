@@ -1,6 +1,6 @@
 # Office Core
 
-The shared company file for the architecture office apps: O-Studio (the office app), O-Metra (quantities, bar bending, estimation and billing) and O-Draft (CAD).
+The shared company file for the architecture office apps: O-Studio (the office app), O-CoreOp (quantities, bar bending, estimation and billing) and O-Draft (CAD).
 
 This is not ShilpiDB. ShilpiDB is the separate spatial store for drawing data. Office Core holds the office's clients, projects, staff and library and the company file that holds them.
 
@@ -27,9 +27,9 @@ Rules, checked on every migration and rolled back if broken:
 - Track names are lower-case letters and digits, start with a letter, and are not `core`.
 
 ```rust
-const O-Metra: Track = Track { name: "aqc", migrations: &[include_str!("../migrations/0001_schedules.sql")] };
+const O-CoreOp: Track = Track { name: "aqc", migrations: &[include_str!("../migrations/0001_schedules.sql")] };
 office_core::migrate(&mut conn)?;          // the core chain
-office_core::track::migrate(&mut conn, &O-Metra)?; // this app's tables
+office_core::track::migrate(&mut conn, &O-CoreOp)?; // this app's tables
 ```
 
 ## Not moved yet

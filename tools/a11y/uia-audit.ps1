@@ -7,7 +7,7 @@
   Analyse it with analyse.mjs. The screenshots (-Shot) show how a page lays out at the given window width.
 .EXAMPLE
   .\uia-audit.ps1 -Exe "C:\Apps\O-Studio\Adms.Desktop.exe" -Company "D:\Demo\Demo Studio.adms" -User owner -Password $env:AUDIT_PASSWORD -Pages Pulse,Clients -Out studio.json
-  .\uia-audit.ps1 -Exe "C:\Apps\O-Metra\AQCCore.exe" -Pages Dashboard,Columns -Out metra.json
+  .\uia-audit.ps1 -Exe "C:\Apps\O-CoreOp\AQCCore.exe" -Pages Dashboard,Columns -Out metra.json
 #>
 param(
     [Parameter(Mandatory)][string]$Exe,

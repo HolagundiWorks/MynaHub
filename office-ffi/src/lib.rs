@@ -1,4 +1,4 @@
-//! A C interface to Office Core, for native apps that share the office company file (O-Metra, and others).
+//! A C interface to Office Core, for native apps that share the office company file (O-CoreOp, and others).
 //!
 //! The operations are the common ones from `office_core::host` (`company.open`, `company.create`, `auth.login` and so on) and the
 //! shared records: clients, projects with their briefs, staff, leave and the library. `track.apply` lets an app add its own tables
