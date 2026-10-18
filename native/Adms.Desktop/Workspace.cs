@@ -27,6 +27,8 @@ internal sealed class AppShell
     public Action<string>? Navigate { get; set; }
     public string? PendingCreate { get; set; }
     public long? PendingTemplateId { get; set; }
+    /// <summary>Where a follow-through button wants the next page to land: a page, a record id, and what to do there.</summary>
+    public (string Page, long Id, string Kind)? PendingOpen { get; set; }
 
     public bool CanEdit => Role != "Auditor";
     public bool CanIssue => Role is "Owner" or "Principal" or "Accounts";
@@ -185,33 +187,36 @@ internal sealed class WorkspaceView : UserControl
 
     private void BuildMenu()
     {
+        // Grouped by the job being done, not by the accounting ledger they belong to: what a practice does every day sits first.
         AddGroup("01", "Practice",
             ("dashboard", "01", "Pulse", "\uE9D2"),
             ("clients", "02", "Clients", "\uE716"),
             ("projects", "03", "Projects", "\uE8F1"),
             ("time", "04", "Time", "\uE823"));
         AddGroup("02", "Documents",
-            ("documents", "01", "Letters", "\uE8A5"),
+            ("documents", "01", "Letters and agreements", "\uE8A5"),
             ("transmittals", "02", "Transmittals", "\uE724"),
             ("templates", "03", "Templates", "\uE943"),
-            ("boards", "04", "Reports, Presentations", "\uE786"));
+            ("boards", "04", "Project reports and presentations", "\uE786"));
         if (_shell.Role != "DocumentEditor")
         {
-            AddGroup("03", "Accounts",
-                ("invoices", "01", "Invoices", "\uE8A1"),
-                ("acc-reports", "02", "Reports", "\uE9F9"),
-                ("acc-journals", "03", "Journals", "\uE8A5"),
-                ("acc-expenses", "04", "Expenses", "\uE8C7"),
-                ("acc-income", "05", "Income", "\uEAFD"),
-                ("acc-salaries", "06", "Salaries", "\uE77B"),
-                ("acc-assets", "07", "Assets", "\uE7C5"),
-                ("acc-tax", "08", "Tax", "\uE9D9"),
-                ("bank", "09", "Reconciliation", "\uE825"),
-                ("acc-setup", "10", "Chart and years", "\uE9D2"));
+            AddGroup("03", "Billing",
+                ("invoices", "01", "Invoices and receipts", "\uE8A1"),
+                ("bank", "02", "Bank reconciliation", "\uE825"));
+            AddGroup("04", "Books",
+                ("acc-expenses", "01", "Expenses", "\uE8C7"),
+                ("acc-income", "02", "Income", "\uEAFD"),
+                ("acc-salaries", "03", "Salaries", "\uE77B"),
+                ("acc-assets", "04", "Assets", "\uE7C5"),
+                ("acc-journals", "05", "Journals", "\uE8A5"));
+            AddGroup("05", "Reports and tax",
+                ("acc-reports", "01", "Financial reports", "\uE9F9"),
+                ("acc-tax", "02", "Tax", "\uE9D9"),
+                ("acc-setup", "03", "Chart and financial years", "\uE9D2"));
         }
-        AddGroup("04", "Office",
+        AddGroup("06", "Office",
             ("company", "01", "Firm", "\uE731"),
-            ("settings", "02", "Security", "\uE713"));
+            ("settings", "02", "Security and backup", "\uE713"));
     }
 
     private void AddTop(string id, string sheet, string label, string glyph)

@@ -201,6 +201,8 @@ pub fn invoke(state: &AppState, op: &str, args: &Value) -> Result<Option<Vec<u8>
         "project_brief_get" => run(crate::clients::project_brief_get(HostState::new(state), arg(args, "project_id")?)),
         "project_brief_save" => run(crate::clients::project_brief_save(HostState::new(state), arg(args, "project_id")?, arg(args, "brief")?)),
         "project_stages" => run(crate::stages::project_stages(HostState::new(state), arg(args, "project_id")?)),
+        "project_path" => run(crate::workflow::project_path_get(HostState::new(state), arg(args, "project_id")?)),
+        "project_attention" => run(crate::workflow::project_attention(HostState::new(state))),
         "project_stages_apply" => run(crate::stages::project_stages_apply(HostState::new(state), arg(args, "project_id")?, arg(args, "consultancy")?, arg(args, "floors")?)),
         "project_stage_mark" => run(crate::stages::project_stage_mark(HostState::new(state), arg(args, "stage_id")?, arg(args, "marked_on")?)),
         "project_stage_unmark" => run(crate::stages::project_stage_unmark(HostState::new(state), arg(args, "stage_id")?)),

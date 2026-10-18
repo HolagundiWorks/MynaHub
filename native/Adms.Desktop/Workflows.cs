@@ -385,6 +385,14 @@ internal static class Flow
         filters = filters ?? new Dictionary<string, string>(),
     };
 
+    public static (long Id, string Kind)? TakeOpen(AppShell shell, string page)
+    {
+        if (shell.PendingOpen is not { } pending || pending.Page != page)
+            return null;
+        shell.PendingOpen = null;
+        return (pending.Id, pending.Kind);
+    }
+
     public static bool TakeCreate(AppShell shell, string page)
     {
         if (shell.PendingCreate != page)
@@ -448,6 +456,8 @@ internal sealed class DashboardPage : UserControl, IPageCommands
     private readonly StackPanel _attention = new() { Spacing = 8, Visibility = Visibility.Collapsed };
     private readonly TextBlock _attentionHeading;
     private readonly StackPanel _projectList = new() { Spacing = 4 };
+    private readonly StackPanel _next = new() { Spacing = 4 };
+    private readonly TextBlock _nextHeading = Flow.Section("Next on your projects");
     private readonly TextBlock _context = Flow.Secondary("Loading the company overview…");
     private readonly List<UIElement> _metricItems = [];
     private readonly List<(string Label, Action Run)> _creates = [];
@@ -476,6 +486,9 @@ internal sealed class DashboardPage : UserControl, IPageCommands
         page.Children.Add(Flow.Heading("Pulse"));
         page.Children.Add(_context);
         page.Children.Add(Flow.Command("Refresh", Load));
+        _nextHeading.Visibility = Visibility.Collapsed;
+        page.Children.Add(_nextHeading);
+        page.Children.Add(_next);
         _attentionHeading = Flow.Section("Needs attention");
         _attentionHeading.Visibility = Visibility.Collapsed;
         page.Children.Add(_attentionHeading);
@@ -513,7 +526,12 @@ internal sealed class DashboardPage : UserControl, IPageCommands
             JsonElement? draftInvoices = _shell.CanFinance ? Flow.Try(_shell, "invoice_page", new { query = Flow.PageQuery(new Dictionary<string, string> { ["status"] = "draft" }) }) : null;
             JsonElement? bank = _shell.CanFinance ? Flow.Try(_shell, "bank_summary", new { account_id = (long?)null }) : null;
             var year = FinancialYear();
-            _shell.Window.DispatcherQueue.TryEnqueue(() => Paint(company, year, clients, projects, drafts, draftInvoices, invoices, bank));
+            var upNext = Flow.Try(_shell, "project_attention");
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                Paint(company, year, clients, projects, drafts, draftInvoices, invoices, bank);
+                PaintNext(upNext);
+            });
         });
     }
 
@@ -596,6 +614,31 @@ internal sealed class DashboardPage : UserControl, IPageCommands
         _attentionHeading.Visibility = showAttention ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    /// <summary>One line per project that has something to do now: money to collect first, then bills to raise, then set-up.</summary>
+    private void PaintNext(JsonElement? list)
+    {
+        _next.Children.Clear();
+        var any = false;
+        if (list is JsonElement rows && rows.ValueKind == JsonValueKind.Array && _shell.CanEdit)
+        {
+            foreach (var row in rows.EnumerateArray())
+            {
+                if (!row.TryGetProperty("action", out var action) || action.ValueKind != JsonValueKind.Object)
+                    continue;
+                var id = row.TryGetProperty("project_id", out var pid) && pid.ValueKind == JsonValueKind.Number ? pid.GetInt64() : 0;
+                var captured = action.Clone();
+                var text = $"{Kit.Str(row, "project")}  ·  {Kit.Str(row, "client")}  ·  {Kit.Str(captured, "label")}";
+                var button = new Button { HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Left, Content = text };
+                AutomationProperties.SetName(button, text);
+                button.Click += (_, _) => ProjectPathView.Go(_shell, id, captured);
+                _next.Children.Add(button);
+                any = true;
+            }
+        }
+        _nextHeading.Visibility = any ? Visibility.Visible : Visibility.Collapsed;
+        _next.Visibility = any ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void PaintProjects(JsonElement? projects)
     {
         _projectList.Children.Clear();
@@ -624,7 +667,12 @@ internal sealed class DashboardPage : UserControl, IPageCommands
                 Content = $"{name}  ·  {client}  ·  {service}",
             };
             AutomationProperties.SetName(button, $"{name}, {client}, {service}");
-            button.Click += (_, _) => _shell.Navigate?.Invoke("projects");
+            var projectId = Kit.Id(row) ?? 0;
+            button.Click += (_, _) =>
+            {
+                _shell.PendingOpen = projectId > 0 ? ("projects", projectId, "open") : null;
+                _shell.Navigate?.Invoke("projects");
+            };
             _projectList.Children.Add(button);
         }
         if (shown == 0)
@@ -716,6 +764,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
     private readonly TextBox _floors = Flow.Input("Floors");
     private readonly TextBlock _phase = Flow.Secondary("");
     private readonly StackPanel _stageList = new() { Spacing = 8 };
+    private readonly StackPanel _path = new() { Spacing = 8 };
     private readonly Button _assignStages = new() { Content = "Assign standard stages" };
     private readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true, Severity = InfoBarSeverity.Informational };
     private readonly TextBox _site = Flow.Input("Site address", true);
@@ -824,6 +873,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
         var actions = Flow.Bar(cancel, _report, archive, _save);
         _editor.Children.Add(_title);
         _editor.Children.Add(Flow.Secondary("A client can have many projects. Each project keeps its own agreements, letters and invoices."));
+        _editor.Children.Add(_path);
         _editor.Children.Add(Flow.Section("Project details"));
         _editor.Children.Add(Flow.Pair(_name, _code));
         _editor.Children.Add(Flow.Pair(_client, _state));
@@ -873,6 +923,12 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
                 PaintList();
                 if (Flow.TakeCreate(_shell, "projects"))
                     _ = BeginNew();
+                else if (Flow.TakeOpen(_shell, "projects") is { } target)
+                {
+                    var row = _rows.FirstOrDefault(r => Kit.Id(r) == target.Id);
+                    if (row.ValueKind == JsonValueKind.Object)
+                        Open(row);
+                }
             });
         });
     }
@@ -911,6 +967,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
         _floors.Text = "1";
         _phase.Text = "";
         _stageList.Children.Clear();
+        _path.Children.Clear();
         _assignStages.Visibility = Visibility.Collapsed;
         _notice.IsOpen = false;
         _title.Text = "New project";
@@ -1179,8 +1236,41 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
         });
     }
 
+    /// <summary>Reloads where the project stands and what to do next. Called whenever the stages change.</summary>
+    private void LoadPath(long id)
+    {
+        _ = _shell.Run("Checking the project path…", () =>
+        {
+            var path = _shell.Call("project_path", new { project_id = id });
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (_id != id)
+                    return;
+                ProjectPathView.Paint(_shell, _path, path, LocalAction);
+            });
+        });
+    }
+
+    /// <summary>Actions that are done on this very page: choosing stages, and reminding to mark one when it is reached.</summary>
+    private bool LocalAction(string kind)
+    {
+        if (kind == "assign_stages")
+        {
+            AssignStages();
+            return true;
+        }
+        if (kind == "mark_stage")
+        {
+            Notice("Mark a stage as reached in the Stages list below when the work for it is done. Its payment then appears here as the next thing to bill.");
+            return true;
+        }
+        return false;
+    }
+
     private void PaintStages(JsonElement plan)
     {
+        if (_id is long pathId)
+            LoadPath(pathId);
         var phase = Kit.Str(plan, "phase");
         _phase.Text = phase.Length == 0 ? "No stages yet." : phase == "Complete" ? "Phase: complete." : $"Phase: {phase}";
         _stageList.Children.Clear();
@@ -1751,7 +1841,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
         titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var titles = new StackPanel { Spacing = 4 };
         titles.Children.Add(Flow.SheetMark("03.01", "Office", "Letters"));
-        titles.Children.Add(Flow.Heading("Letters"));
+        titles.Children.Add(Flow.Heading("Letters and agreements"));
         titles.Children.Add(Flow.Secondary("Drafts stay editable. Issued documents are frozen."));
         titleRow.Children.Add(titles);
         Grid.SetColumn(commands, 1);
@@ -1820,6 +1910,31 @@ internal sealed class LettersPage : UserControl, IPageCommands
         Reload();
         if (Flow.TakeCreate(_shell, "documents"))
             _ = BeginNew("letter_out");
+        else if (Flow.TakeOpen(_shell, "documents") is { } target)
+        {
+            if (target.Kind == "new_agreement")
+                _ = BeginNewAgreementFor(target.Id);
+            else
+                OpenById(target.Id);
+        }
+    }
+
+    /// <summary>Starts an agreement with the project already chosen, so its client and stages are not typed again.</summary>
+    private async Task BeginNewAgreementFor(long projectId)
+    {
+        await BeginNew("agreement");
+        _filling = true;
+        LoadProjects(projectId);
+        _filling = false;
+    }
+
+    private void OpenById(long documentId)
+    {
+        _ = _shell.Run("Opening document…", () =>
+        {
+            var detail = _shell.Call("doc_get", new { id = documentId });
+            _shell.Window.DispatcherQueue.TryEnqueue(() => Apply(detail));
+        });
     }
 
     private Grid Host => (Grid)Content;

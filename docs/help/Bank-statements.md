@@ -1,6 +1,6 @@
 # Bank statements
 
-Open **Accounts → Reconciliation**.
+Open **Billing → Bank reconciliation**.
 
 ## Add the account
 

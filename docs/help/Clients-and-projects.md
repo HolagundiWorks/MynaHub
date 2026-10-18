@@ -26,3 +26,16 @@ The project list shows the consultancy type beside the project. **Edit** changes
 ## Pulse
 
 **Pulse** is the practice home. It shows the work that needs attention. **Refresh** reloads it. Use **Ctrl+K** when you want to jump to another page.
+
+## The project path
+
+Open a project and the top of the page shows where it stands and the one thing to do next. The steps are: client and project, stages, agreement, invoices, and payments. Each is marked **Done**, **Next**, **Waiting** or **Not needed**, and the **Next** button takes you straight there:
+
+- **Assign the standard stages** when the project has none.
+- **Draft the agreement** (opens a new agreement with this project chosen), then **Open the draft agreement** to issue it.
+- **Bill a stage** once you mark the stage as reached in the Stages list. This creates the draft invoice for that stage and opens it; it does not issue it.
+- **Review and issue the draft invoice**, then **Record payment** (opens the invoice with the amount received ready to type).
+
+When a payment is waiting and a bill is also ready to raise, the bill comes first. When the only thing left is to wait for the next stage, the page says so and does not nag. The path reads records that already exist and posts nothing by itself.
+
+**Pulse** lists "Next on your projects": every active project that has something to do now, with money to collect first, then bills to raise, then set-up. Press a line to go to it.

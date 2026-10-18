@@ -65,7 +65,7 @@ internal sealed class BoardsPage : UserControl, IPageCommands
 
         var page = new StackPanel { Spacing = 14, Margin = (Thickness)Application.Current.Resources["PageMargin"] };
         page.Children.Add(Flow.SheetMark("03.04", "Documents", "Reports, Presentations"));
-        page.Children.Add(Flow.Heading("Reports, Presentations"));
+        page.Children.Add(Flow.Heading("Project reports and presentations"));
         page.Children.Add(Flow.Secondary("Project reports and presentations submitted for a project. A presentation is a 16:9 landscape slide. Export writes a full-definition PDF. Present fills the screen from here."));
         page.Children.Add(_project);
         page.Children.Add(Flow.Bar(

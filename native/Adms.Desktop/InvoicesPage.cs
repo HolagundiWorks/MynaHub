@@ -24,7 +24,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     private readonly TextBox _due = Flow.Input("Due date");
     private readonly TextBox _notes = Flow.Input("Notes", true);
     private readonly StackPanel _lines = new() { Spacing = 8 };
-    private readonly TextBlock _title = Flow.Heading("Invoices");
+    private readonly TextBlock _title = Flow.Heading("Invoices and receipts");
     private readonly TextBlock _state = Flow.Secondary("");
     private readonly Button _save = new();
     private readonly Button _issueButton = new() { Content = "Issue" };
@@ -101,7 +101,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var titles = new StackPanel { Spacing = 4 };
         titles.Children.Add(Flow.SheetMark("04.01", "Accounts", "Invoices"));
-        titles.Children.Add(Flow.Heading("Invoices"));
+        titles.Children.Add(Flow.Heading("Invoices and receipts"));
         titles.Children.Add(Flow.Secondary("Fees billed and recovered on time."));
         titleRow.Children.Add(titles);
         Grid.SetColumn(create, 1);
@@ -245,13 +245,22 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
 
     private void Open(JsonElement row)
     {
-        var id = Kit.Id(row);
-        if (id is not long invoiceId)
-            return;
+        if (Kit.Id(row) is long invoiceId)
+            OpenById(invoiceId, focusReceipt: false);
+    }
+
+    /// <summary>Opens one invoice. From the project path "record payment", focus goes to the amount received.</summary>
+    private void OpenById(long invoiceId, bool focusReceipt)
+    {
         _ = _shell.Run("Opening invoice…", () =>
         {
             var detail = _shell.Call("invoice_get", new { id = invoiceId });
-            _shell.Window.DispatcherQueue.TryEnqueue(() => Apply(detail));
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                Apply(detail);
+                if (focusReceipt && _receiptAmount.IsEnabled)
+                    _receiptAmount.Focus(FocusState.Programmatic);
+            });
         });
     }
 
@@ -407,6 +416,8 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             Paint();
             if (Flow.TakeCreate(_shell, "invoices"))
                 _ = BeginNew();
+            else if (Flow.TakeOpen(_shell, "invoices") is { } target)
+                OpenById(target.Id, focusReceipt: target.Kind == "pay");
         });
     });
 

@@ -23,12 +23,19 @@ h1 { font-family: 'IBM Plex Sans SemiBold'; font-size: 22pt; font-weight: 400; m
 h2 { font-family: 'IBM Plex Sans SemiBold'; font-size: 12pt; font-weight: 400; margin-top: 10pt; margin-bottom: 2pt; color: #1a1a1a; }
 .keep { break-inside: avoid; }
 .amount { text-align: right; }
-table.schedule { width: 178mm; border-collapse: separate; border-spacing: 0 1px; background-color: #1a1a1a; margin-top: 6pt; }
-table.schedule th, table.schedule td { background-color: #ffffff; padding: 4pt; font-size: 9pt; color: #1a1a1a; }
-table.schedule th { font-family: 'IBM Plex Sans Medium'; font-weight: 400; text-align: left; }
+table.schedule { width: 178mm; table-layout: fixed; border-collapse: collapse; margin-top: 6pt; }
+table.schedule thead { display: table-header-group; }
+table.schedule tr { break-inside: avoid; }
+table.schedule th, table.schedule td { padding: 5pt 4pt; font-size: 9pt; color: #1a1a1a; }
+table.schedule th { font-family: 'IBM Plex Sans Medium'; font-weight: 400; text-align: left; background-color: #e8e8e8; }
 table.schedule th.amount, table.schedule td.amount { text-align: right; }
-table.sign { width: 178mm; margin-top: 28pt; break-inside: avoid; }
-table.sign td { width: 50%; vertical-align: top; padding-top: 30pt; font-size: 9pt; }
+table.schedule th.c-no { width: 10mm; }
+table.schedule td.lab { width: 32mm; color: #5c5c5c; }
+table.schedule th.c-share { width: 18mm; }
+table.schedule th.c-amt { width: 32mm; }
+table.schedule td { word-wrap: break-word; overflow-wrap: break-word; }
+table.sign { width: 178mm; table-layout: fixed; margin-top: 28pt; break-inside: avoid; }
+table.sign td { width: 89mm; vertical-align: top; padding-top: 30pt; font-size: 9pt; word-wrap: break-word; overflow-wrap: break-word; }
 footer { margin-top: 18pt; border-top: 0.6pt solid #1a1a1a; padding-top: 6pt; }";
 
 /// A practice proposal for one service in the Council of Architecture Conditions of Engagement.
@@ -82,7 +89,8 @@ footer { margin-top: 18pt; border-top: 0.6pt solid #1a1a1a; padding-top: 6pt; }
 .meta { font-family: 'IBM Plex Sans'; font-size: 8.5pt; color: #5c5c5c; }
 .doc-ref { font-family: 'IBM Plex Mono'; font-size: 9pt; }
 h2 { font-family: 'IBM Plex Sans SemiBold'; font-size: 12pt; font-weight: 400; margin-top: 12pt; margin-bottom: 2pt; }
-table.head { width: 178mm; border-collapse: collapse; }
+table.head { width: 178mm; table-layout: fixed; border-collapse: collapse; }
+table.head td { word-wrap: break-word; overflow-wrap: break-word; }
 td.brand { width: 56mm; vertical-align: top; }
 td.who { width: 74mm; vertical-align: top; }
 td.when { width: 48mm; vertical-align: top; text-align: right; }
@@ -130,7 +138,7 @@ table.sign td { width: 50%; vertical-align: top; font-size: 9pt; }",
 {{#if fee_items}}
 <h2>Professional fee: {{ fee.total }}</h2>
 <table class=\"schedule\">
-  <thead><tr><th>#</th><th>Milestone</th><th class=\"amount\">Share</th><th class=\"amount\">Amount</th></tr></thead>
+  <thead><tr><th class=\"c-no\">#</th><th>Milestone</th><th class=\"amount c-share\">Share</th><th class=\"amount c-amt\">Amount</th></tr></thead>
   <tbody>
   {{#each fee_items}}
   <tr><td>{{ no }}</td><td>{{ description }}</td><td class=\"amount\">{{ share }}</td><td class=\"amount\">{{ formatted_amount }}</td></tr>
@@ -175,9 +183,9 @@ table.sign td { width: 50%; vertical-align: top; font-size: 9pt; }",
 <h1>{{ document.title | default \"Meeting minutes\" }}</h1>
 <p class=\"meta\"><span class=\"doc-ref\">{{ document.number }}</span> &nbsp; {{ document.date | date }} {{#if document.reference}}| Ref: {{ document.reference }}{{/if}}</p>
 <table class=\"schedule\">
-  <tr><td>Project</td><td>{{ project.name }}</td></tr>
-  <tr><td>Client</td><td>{{ client.name }}</td></tr>
-  <tr><td>Site</td><td>{{ project.site_address }}</td></tr>
+  <tr><td class=\"lab\">Project</td><td>{{ project.name }}</td></tr>
+  <tr><td class=\"lab\">Client</td><td>{{ client.name }}</td></tr>
+  <tr><td class=\"lab\">Site</td><td>{{ project.site_address }}</td></tr>
 </table>
 <main>{{ document.body }}</main>
 <p class=\"keep\">Prepared by {{ signatory.name | default \"the architect\" }}, {{ signatory.firm }}</p>",
@@ -194,9 +202,9 @@ table.sign td { width: 50%; vertical-align: top; font-size: 9pt; }",
 <h1>Drawing and document transmittal</h1>
 <p class=\"meta\"><span class=\"doc-ref\">{{ document.number }}</span> &nbsp; {{ document.date | date }}</p>
 <table class=\"schedule\">
-  <tr><td>Project</td><td>{{ project.name }}</td></tr>
-  <tr><td>Sent to</td><td>{{ addressee.name }}<br/>{{ addressee.address }}</td></tr>
-  <tr><td>Reference</td><td>{{ document.reference }}</td></tr>
+  <tr><td class=\"lab\">Project</td><td>{{ project.name }}</td></tr>
+  <tr><td class=\"lab\">Sent to</td><td>{{ addressee.name }}<br/>{{ addressee.address }}</td></tr>
+  <tr><td class=\"lab\">Reference</td><td>{{ document.reference }}</td></tr>
 </table>
 <h2>Items sent</h2>
 <main>{{ document.body }}</main>
@@ -214,7 +222,7 @@ table.sign td { width: 50%; vertical-align: top; font-size: 9pt; }",
 <p>Project: {{ project.name }}, {{ project.site_address }}<br/>Client: {{ client.name }}</p>
 <h2>Total professional fee: {{ fee.total }}</h2>
 <table class=\"schedule\">
-  <thead><tr><th>#</th><th>Milestone</th><th class=\"amount\">Share</th><th class=\"amount\">Amount</th></tr></thead>
+  <thead><tr><th class=\"c-no\">#</th><th>Milestone</th><th class=\"amount c-share\">Share</th><th class=\"amount c-amt\">Amount</th></tr></thead>
   <tbody>
   {{#each fee_items}}
   <tr><td>{{ no }}</td><td>{{ description }}</td><td class=\"amount\">{{ share }}</td><td class=\"amount\">{{ formatted_amount }}</td></tr>
@@ -430,6 +438,20 @@ mod tests {
         assert_eq!(again, latest);
         let drafts: i64 = c.query_row("SELECT COUNT(*) FROM template_drafts WHERE template_id = ?1", params![id], |r| r.get(0)).unwrap();
         assert_eq!(drafts, 0);
+    }
+
+    /// The renderer sizes an auto-layout table to its longest unbroken text, which pushed amount columns past the right margin
+    /// when long descriptions or names were used. Tables that carry data must use a fixed layout so cells wrap instead.
+    #[test]
+    fn data_tables_use_a_fixed_layout_so_long_text_wraps_inside_the_page() {
+        for t in LIBRARY {
+            for class in ["schedule", "head", "sign"] {
+                if t.html.contains(&format!("<table class=\"{class}\"")) {
+                    assert!(t.css.contains(&format!("table.{class} {{")) && t.css.split(&format!("table.{class} {{")).nth(1).unwrap().split('}').next().unwrap().contains("table-layout: fixed"),
+                        "{}: table.{class} must set table-layout: fixed", t.key);
+                }
+            }
+        }
     }
 
     #[test]

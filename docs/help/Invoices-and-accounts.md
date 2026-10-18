@@ -1,6 +1,6 @@
 # Invoices and accounts
 
-Open these from **Accounts** in the menu.
+Open these from **Billing**, **Books** and **Reports and tax** in the menu. **Billing** holds Invoices and receipts and Bank reconciliation. **Books** holds Expenses, Income, Salaries, Assets and Journals. **Reports and tax** holds Financial reports, Tax, and Chart and financial years.
 
 ## Invoices
 
@@ -16,13 +16,13 @@ The GST scheme printed on invoices comes from **Office → Firm**: not registere
 
 | Page | What you do there |
 | --- | --- |
-| Reports | Choose a date range and open a report. |
+| Financial reports | Choose a date range and open a report. |
 | Journals | List posted journals for a period. A posted journal stays as posted. A correction is a reversal. |
 | Expenses | Record practice expenses. |
 | Income | Record rent, interest, and other income. |
 | Salaries | Record salary payments. |
 | Assets | Record assets the firm owns and depreciation for the year. |
 | Tax | Record GST, TDS, and other tax payments. |
-| Chart and years | Review the chart of accounts and close the selected financial year. |
+| Chart and financial years | Review the chart of accounts and close the selected financial year. |
 
 Use the accent button on each form to post or save. **Refresh** reloads a list after a change.

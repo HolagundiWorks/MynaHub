@@ -26,6 +26,26 @@ try
         if (profile.Name != "वास्तु कार्यालय")
             throw new InvalidOperationException("Company profile did not round-trip as UTF-8.");
 
+        // The project path: the engine's next step must follow a project from set-up to billing through the real bridge.
+        var clientId = session.Call("client_save", new
+        {
+            client = new { id = (long?)null, name = "Acme", contact_person = "", email = "", phone = "", address = "Pune", pan = "", gstin = "" },
+        }).GetInt64();
+        var projectId = session.Call("project_save", new
+        {
+            project = new { id = (long?)null, client_id = clientId, code = "P-1", name = "Villa", site_address = "Baner", status = "active" },
+        }).GetInt64();
+        var path = session.Call("project_path", new { project_id = projectId });
+        if (path.GetProperty("next").GetProperty("kind").GetString() != "assign_stages")
+            throw new InvalidOperationException("A new project should point at assigning stages first.");
+        session.Call("project_stages_apply", new { project_id = projectId, consultancy = "comprehensive", floors = 1 });
+        var afterStages = session.Call("project_path", new { project_id = projectId });
+        if (afterStages.GetProperty("next").GetProperty("kind").GetString() != "new_agreement")
+            throw new InvalidOperationException("With stages assigned the next step should be the agreement.");
+        var attention = session.Call("project_attention");
+        if (attention.GetArrayLength() != 1 || attention[0].GetProperty("action").GetProperty("kind").GetString() != "new_agreement")
+            throw new InvalidOperationException("Pulse should list the project with its next action.");
+
         var pdf = session.SamplePdf();
         if (pdf.Length < 5 || pdf[0] != (byte)'%' || pdf[1] != (byte)'P')
             throw new InvalidOperationException("The engine did not return a PDF.");

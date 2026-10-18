@@ -815,7 +815,7 @@ pub fn sample_data(profile: &str, company: Option<&Value>) -> Value {
         ],
         "tax": { "scheme": "Regular GST registration" },
         "payment": { "bank_details": "HDFC Bank, Current A/c 0123456789, IFSC HDFC0000123", "upi_id": "studio@bank" },
-        "document": { "number": "PREVIEW", "date": "2026-10-05", "title": "Consultancy proposal", "subject": "Proposal for architectural consultancy services",
+        "document": { "number": "PREVIEW", "date": "2026-10-05", "title": "", "subject": "Proposal for architectural consultancy services",
                       "reference": "MA/2026/041",
                       "body": "Thank you for considering our practice for this project.\n\nWe set out below our understanding of the brief and our proposal for the services." },
         "addressee": { "name": "Acme Developers Pvt Ltd", "address": "Plot 12, Baner Road, Pune 411045" },

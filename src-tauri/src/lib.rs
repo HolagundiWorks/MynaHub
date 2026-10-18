@@ -32,6 +32,7 @@ mod timebook;
 mod transmittals;
 mod typography;
 mod vault;
+mod workflow;
 
 use commands::AppState;
 use tauri::Manager;
@@ -73,6 +74,8 @@ pub fn run() {
             clients::project_brief_get,
             clients::project_brief_save,
             stages::project_stages,
+            workflow::project_path_get,
+            workflow::project_attention,
             stages::project_stages_apply,
             stages::project_stage_mark,
             stages::project_stage_unmark,

@@ -14,7 +14,7 @@ Sign-in uses the admin password. The password needs 12 or more characters. A rec
 
 - **Practice** — Pulse, Clients, and Projects. A project records its Council of Architecture consultancy type and floors, which choose its standard stages and payment schedule. Time book, transmittal log, and project reports and presentations are records only; they never post a journal. See [Project records](docs/help/Project-records.md).
 - **Documents** — Letters and Templates. Built-in templates stay as shipped. Copy one, then edit the copy. Word templates are saved as `.docx`.
-- **Accounts** — Invoices, reports, journals, expenses, income, salaries, assets, tax, bank reconciliation, and the chart of accounts. Each client and project has its own ledger, and an uncollected bill can be written off to a bad-debts account.
+- **Billing** — Invoices and receipts, and bank reconciliation. **Books** — expenses, income, salaries, assets, and journals. **Reports and tax** — financial reports, tax, and the chart of accounts and financial years. Each client and project has its own ledger, and an uncollected bill can be written off to a bad-debts account.
 - **Office** — Firm profile, recent activity, audit, and backup.
 
 Shortcuts: Ctrl+N new record, Ctrl+S save, Ctrl+P print, Ctrl+F search, Ctrl+K go to a page.

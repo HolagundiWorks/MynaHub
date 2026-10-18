@@ -10,11 +10,11 @@ Set the **GST scheme** (not registered, composition, or regular) and the **Lette
 
 ## Security
 
-**Security** shows recent activity in the company file. **Refresh activity** loads it again. **Show audit** lists the latest events.
+**Security and backup** shows recent activity in the company file. **Refresh activity** loads it again. **Show audit** lists the latest events.
 
 ## Backup
 
-1. Open **Security**.
+1. Open **Security and backup**.
 2. Enter the admin password.
 3. Choose **Create backup**.
 
