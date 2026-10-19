@@ -165,7 +165,7 @@ public class CompanyFileMonitorTests : IDisposable
         using var foreign = new CompanyFileMonitor(other, new NoHolders());
         var s = foreign.Sample();
         Assert.False(s.IsCompanyFile);
-        Assert.Contains("not an ADMS company file", s.Problem);
+        Assert.Contains("not a company file", s.Problem);
     }
 
     [Fact]

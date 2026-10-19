@@ -128,7 +128,7 @@ public sealed class CompanyFileMonitor : IDisposable
                     isCompany = Scalar(db, "PRAGMA application_id") == AppId;
                     if (!isCompany)
                     {
-                        problem = "This is a database, but not an ADMS company file.";
+                        problem = "This is a database, but not a company file.";
                     }
                     else
                     {
