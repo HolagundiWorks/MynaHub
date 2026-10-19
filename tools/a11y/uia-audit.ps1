@@ -4,6 +4,8 @@
 .DESCRIPTION
   Uses UI Automation. It does not use the keyboard, except to type a file name into the system file dialog, and only while that
   dialog has the keyboard. Writes one JSON file with, for every element: type, name, automation id, focusable, off-screen and size.
+  A page called "(current)" is recorded without navigating. When the window is narrow the navigation pane is a menu button; the script
+  opens it, scrolls to the item, and answers a "Discard unsaved changes?" prompt with Discard before moving on (it reports each one).
   Analyse it with analyse.mjs. The screenshots (-Shot) show how a page lays out at the given window width.
 .EXAMPLE
   .\uia-audit.ps1 -Exe "C:\Apps\O-Studio\Adms.Desktop.exe" -Company "D:\Demo\Demo Studio.adms" -User owner -Password $env:AUDIT_PASSWORD -Pages Pulse,Clients -Out studio.json
@@ -17,7 +19,9 @@ param(
     [string[]]$Pages = @(),
     [string]$Out = "uia.json",
     [int]$Width = 1300,
-    [string]$Shot = ""
+    [string]$Shot = "",
+    # "save-empty": on each page press Save once with nothing entered, to see how a refused save is reported.
+    [string]$Action = ""
 )
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Windows.Forms, System.Drawing
@@ -81,14 +85,45 @@ if ($Company) {
     Start-Sleep 5
 }
 
+function FindNav($root, $name) {
+    # a navigation item has the page's name; cards and buttons on the page may share it, so skip those
+    foreach ($e in $root.FindAll($TS::Descendants, (Prop $AE::NameProperty $name))) {
+        if ($e.Current.ControlType.ProgrammaticName -notmatch "Button|Text|Group|Image") { return $e }
+    }
+    return $null
+}
+function ScrollTo($nav) {
+    $o = $null
+    if ($nav.TryGetCurrentPattern([System.Windows.Automation.ScrollItemPattern]::Pattern, [ref]$o)) { $o.ScrollIntoView(); Start-Sleep 1 }
+    if (-not $nav.Current.IsOffscreen) { return }
+    $walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker; $parent = $walker.GetParent($nav)
+    while ($parent -and $nav.Current.IsOffscreen) {
+        $sp = $null
+        if ($parent.TryGetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern, [ref]$sp) -and $sp.Current.VerticallyScrollable) { $sp.SetScrollPercent(-1, 100); Start-Sleep 1; break }
+        $parent = $walker.GetParent($parent)
+    }
+}
+
 $report = @()
+$discarded = @()
 foreach ($page in $Pages) {
-    $nav = FindName $root $page
-    if ($null -eq $nav) { $report += [pscustomobject]@{ page = $page; count = 0; items = @(); note = "not found" }; continue }
-    $scroll = $null
-    if ($nav.TryGetCurrentPattern([System.Windows.Automation.ScrollItemPattern]::Pattern, [ref]$scroll)) { $scroll.ScrollIntoView() }
-    Activate $nav | Out-Null
-    Start-Sleep 3
+    $dirty = FindName $root "Discard" ([System.Windows.Automation.ControlType]::Button)
+    if ($dirty) { $discarded += "before $page"; Activate $dirty | Out-Null; Start-Sleep 1 }
+    if ($page -ne "(current)") {
+        $nav = FindNav $root $page
+        if ($null -eq $nav) {
+            $toggle = FindName $root "Open Navigation" ([System.Windows.Automation.ControlType]::Button)
+            if ($toggle) { Activate $toggle | Out-Null; Start-Sleep 2; $nav = FindNav $root $page }
+        }
+        if ($null -eq $nav) { $report += [pscustomobject]@{ page = $page; count = 0; items = @(); note = "not found" }; continue }
+        if ($nav.Current.IsOffscreen) { ScrollTo $nav }
+        Activate $nav | Out-Null
+        Start-Sleep 3
+    }
+    if ($Action -eq "save-empty") {
+        $save = FindName $root "Save" ([System.Windows.Automation.ControlType]::Button)
+        if ($save) { Activate $save | Out-Null; Start-Sleep 2 }
+    }
     if ($Shot) {
         $rc = $root.Current.BoundingRectangle
         $bmp = New-Object System.Drawing.Bitmap ([int]$rc.Width), ([int]$rc.Height)
@@ -98,10 +133,12 @@ foreach ($page in $Pages) {
     }
     $items = @()
     foreach ($e in $root.FindAll($TS::Descendants, [System.Windows.Automation.Condition]::TrueCondition)) {
-        $c = $e.Current
+        try { $c = $e.Current } catch { continue }
+        if ($null -eq $c -or $null -eq $c.ControlType) { continue }
         $r = $c.BoundingRectangle
         $items += [pscustomobject]@{
             type = $c.ControlType.ProgrammaticName.Replace("ControlType.", ""); name = $c.Name; id = $c.AutomationId; focusable = $c.IsKeyboardFocusable; offscreen = $c.IsOffscreen
+            x = if ($r.IsEmpty) { 0 } else { [int]$r.X }; y = if ($r.IsEmpty) { 0 } else { [int]$r.Y }
             w = if ($r.IsEmpty) { 0 } else { [int]$r.Width }; h = if ($r.IsEmpty) { 0 } else { [int]$r.Height }; enabled = $c.IsEnabled
         }
     }
@@ -109,4 +146,5 @@ foreach ($page in $Pages) {
 }
 $report | ConvertTo-Json -Depth 5 -Compress | Out-File (Join-Path (Get-Location) $Out) -Encoding utf8
 Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+if ($discarded.Count) { "discard prompts appeared: " + ($discarded -join "; ") }
 "done: " + (($report | ForEach-Object { "$($_.page)=$($_.count)" }) -join ", ")

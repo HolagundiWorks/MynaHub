@@ -43,6 +43,8 @@ internal sealed class AppShell
 
     public void Problem(string message) => Window.ShowProblem(message);
 
+    public string LastProblem => Window.LastError;
+
     public Action? RefreshPaneLogo { get; set; }
 }
 

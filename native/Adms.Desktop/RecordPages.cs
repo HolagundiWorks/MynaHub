@@ -281,7 +281,14 @@ internal sealed class RecordPage : UserControl
         _ = _shell.Run("Saving…", () => _shell.Call(_saveOp, new { input })).ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
         {
             if (!task.Result)
+            {
+                // The engine's message usually names the field it is about; mark that one.
+                var problem = _shell.LastProblem;
+                var about = _fields.FirstOrDefault(f => problem.Contains(f.Label, StringComparison.OrdinalIgnoreCase));
+                if (about != null && _inputs[about.Key] is Control control)
+                    Flow.Mark(control, problem);
                 return;
+            }
             Reset();
             Notice("Saved.");
             Load();

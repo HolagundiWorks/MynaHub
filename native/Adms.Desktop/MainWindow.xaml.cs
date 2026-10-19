@@ -1185,8 +1185,12 @@ public sealed partial class MainWindow : Window
         SwitchFromLogin.IsEnabled = !_busy && _companyOpen;
     }
 
+    /// <summary>The last error shown at the top of the window, so a page can mark the field it is about.</summary>
+    internal string LastError { get; private set; } = "";
+
     private void ShowError(string message)
     {
+        LastError = message?.Trim() ?? "";
         if (string.IsNullOrWhiteSpace(message))
         {
             Notice.IsOpen = false;

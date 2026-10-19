@@ -31,19 +31,33 @@ internal static class Flow
         bar.Severity = InfoBarSeverity.Error;
         bar.Message = message;
         bar.IsOpen = true;
-        var original = field.BorderBrush;
-        field.BorderBrush = (Brush)Application.Current.Resources["SystemFillColorCriticalBrush"];
-        field.BorderThickness = new Thickness(2);
+        Mark(field, message);
+    }
+
+    /// <summary>Outlines a field in the error colour, gives it the message as help text and moves the keyboard to it. The outline clears when it is edited.</summary>
+    public static void Mark(Control field, string message)
+    {
+        var critical = (Brush)Application.Current.Resources["SystemFillColorCriticalBrush"];
+        // The controls draw their border from these resources in every state, so the red stays while the field has the keyboard.
+        string[] keys = field is ComboBox
+            ? new[] { "ComboBoxBorderBrush", "ComboBoxBorderBrushPointerOver", "ComboBoxBorderBrushFocused", "ComboBoxBorderBrushPressed" }
+            : new[] { "TextControlBorderBrush", "TextControlBorderBrushPointerOver", "TextControlBorderBrushFocused" };
+        foreach (var key in keys)
+            field.Resources[key] = critical;
         AutomationProperties.SetHelpText(field, message);
+        void Clear()
+        {
+            foreach (var key in keys)
+                field.Resources.Remove(key);
+            AutomationProperties.SetHelpText(field, "");
+        }
         if (field is TextBox box)
         {
             TextChangedEventHandler? clear = null;
             clear = (_, _) =>
             {
                 box.TextChanged -= clear;
-                field.BorderBrush = original;
-                field.BorderThickness = new Thickness(1);
-                AutomationProperties.SetHelpText(field, "");
+                Clear();
             };
             box.TextChanged += clear;
         }
@@ -53,9 +67,7 @@ internal static class Flow
             clear = (_, _) =>
             {
                 combo.SelectionChanged -= clear;
-                field.BorderBrush = original;
-                field.BorderThickness = new Thickness(1);
-                AutomationProperties.SetHelpText(field, "");
+                Clear();
             };
             combo.SelectionChanged += clear;
         }
