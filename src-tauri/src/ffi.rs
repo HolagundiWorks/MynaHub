@@ -152,6 +152,8 @@ fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, CallErr
         "company.profile" => to_json(&commands::read_profile(state).map_err(CallError::Domain)?),
         "auth.status" => to_json(&commands::read_auth_status(state).map_err(CallError::Domain)?),
         "auth.login" => to_json(&commands::login(state, field(args, "username"), field(args, "password")).map_err(CallError::Domain)?),
+        "auth.ticket" => to_json(&office_core::suite::issue(state, field(args, "app")).map_err(CallError::Domain)?),
+        "auth.login_ticket" => to_json(&office_core::suite::redeem(state, field(args, "ticket")).map_err(CallError::Domain)?),
         "auth.logout" => {
             commands::logout(state).map_err(CallError::Domain)?;
             Ok(b"{}".to_vec())
@@ -412,6 +414,22 @@ mod tests {
         assert_eq!(status, ADMS_OK, "{error}");
         let profile: Value = serde_json::from_slice(&data).unwrap();
         assert_eq!(profile["name"], "वास्तु कार्यालय");
+
+        // the suite app signs this person in once and signs another app in as them with a one-time ticket
+        let (status, data, error) = call(handle, "auth.ticket", "{\"app\":\"O-CoreOp\"}");
+        assert_eq!(status, ADMS_OK, "{error}");
+        let ticket: Value = serde_json::from_slice(&data).unwrap();
+        let secret = ticket["ticket"].as_str().unwrap().to_string();
+        let redeem = serde_json::json!({ "ticket": secret }).to_string();
+        let app = create_session(&temp.dir);
+        assert_eq!(call(app, "company.open", &args).0, ADMS_OK);
+        let (status, data, error) = call(app, "auth.login_ticket", &redeem);
+        assert_eq!(status, ADMS_OK, "{error}");
+        let who: Value = serde_json::from_slice(&data).unwrap();
+        assert_eq!(who["username"], "owner");
+        let (status, _, error) = call(app, "auth.login_ticket", &redeem);
+        assert_eq!(status, ADMS_ERR_DOMAIN, "a ticket works once: {error}");
+        assert_eq!(taken(unsafe { adms_session_destroy(app) }).0, ADMS_OK);
 
         let (status, data, error) = call(handle, "documents.sample_pdf", "{}");
         assert_eq!(status, ADMS_OK, "{error}");

@@ -2,7 +2,7 @@ use base64::Engine;
 use crate::auth::{Permission, SessionInfo};
 use crate::db;
 use rusqlite::{params, Connection};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 pub use office_core::workspace::*;
 
@@ -69,30 +69,7 @@ pub fn auth_logout(state: HostState<'_>) -> Result<(), String> {
     logout(&state)
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct CompanyProfile {
-    pub name: String,
-    pub address: String,
-    pub email: String,
-    pub phone: String,
-    pub pan: String,
-    pub gstin: String,
-    pub coa_registration: String,
-    #[serde(default)]
-    pub bank_details: String,
-    #[serde(default)]
-    pub gst_scheme: String,
-    #[serde(default)]
-    pub upi_id: String,
-    #[serde(default)]
-    pub architect_name: String,
-    /// `classic` or `minimal`: how the firm's details are set at the top of issued documents.
-    #[serde(default)]
-    pub letterhead_style: String,
-    /// `#RRGGBB`, or blank for near-black ink on new documents.
-    #[serde(default)]
-    pub accent_hex: String,
-}
+pub use office_core::profile::CompanyProfile;
 
 pub fn read_profile(state: &AppState) -> Result<CompanyProfile, String> {
     require(state, Permission::View)?;
@@ -101,28 +78,7 @@ pub fn read_profile(state: &AppState) -> Result<CompanyProfile, String> {
 }
 
 fn read_profile_row(conn: &Connection) -> Result<CompanyProfile, String> {
-    conn.query_row(
-        "SELECT name, address, email, phone, pan, gstin, coa_registration, bank_details, gst_scheme, upi_id, architect_name, letterhead_style, accent_hex FROM company_profile WHERE id = 1",
-        [],
-        |r| {
-            Ok(CompanyProfile {
-                name: r.get(0)?,
-                address: r.get(1)?,
-                email: r.get(2)?,
-                phone: r.get(3)?,
-                pan: r.get(4)?,
-                gstin: r.get(5)?,
-                coa_registration: r.get(6)?,
-                bank_details: r.get(7)?,
-                gst_scheme: r.get(8)?,
-                upi_id: r.get(9)?,
-                architect_name: r.get(10)?,
-                letterhead_style: r.get(11)?,
-                accent_hex: r.get(12)?,
-            })
-        },
-    )
-    .map_err(|e| e.to_string())
+    office_core::profile::read(conn)
 }
 
 #[tauri::command]
@@ -134,15 +90,8 @@ pub fn company_get_profile(state: HostState<'_>) -> Result<CompanyProfile, Strin
 #[tauri::command]
 pub fn company_save_profile(state: HostState<'_>, profile: CompanyProfile) -> Result<(), String> {
     let uid = require(&state, Permission::ManageSettings)?;
-    let accent = crate::sheets::normalize_accent(&profile.accent_hex)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
-    conn.execute(
-        "UPDATE company_profile SET name=?1, address=?2, email=?3, phone=?4, pan=?5, gstin=?6, coa_registration=?7, bank_details=?8, gst_scheme=?9, upi_id=?10, architect_name=?11, letterhead_style=?12, accent_hex=?13, updated_at=datetime('now') WHERE id=1",
-        params![profile.name, profile.address, profile.email, profile.phone, profile.pan, profile.gstin, profile.coa_registration, profile.bank_details, profile.gst_scheme, profile.upi_id.trim(), profile.architect_name.trim(), if profile.letterhead_style == "minimal" { "minimal" } else { "classic" }, accent],
-    )
-    .map_err(|e| e.to_string())?;
-    db::audit(&conn, Some(uid), "company_profile_saved", "");
-    Ok(())
+    office_core::profile::save(&conn, uid, &profile)
 }
 
 /// Square mark and wide lockup stored on the firm. Empty strings mean that shape has not been stored.

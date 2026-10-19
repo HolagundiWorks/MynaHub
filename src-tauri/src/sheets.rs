@@ -21,16 +21,7 @@ pub const QUIET: &str = "#5C5C5C";
 
 /// Blank stays blank. A six-digit hex colour is stored as `#RRGGBB`. Anything else is rejected.
 pub fn normalize_accent(raw: &str) -> Result<String, String> {
-    let trimmed = raw.trim();
-    if trimmed.is_empty() {
-        return Ok(String::new());
-    }
-    let body = trimmed.strip_prefix('#').unwrap_or(trimmed);
-    if body.len() == 6 && body.bytes().all(|b| b.is_ascii_hexdigit()) {
-        Ok(format!("#{}", body.to_ascii_uppercase()))
-    } else {
-        Err("Enter the document accent as six hex digits, such as #3E5240, or leave it blank for black.".into())
-    }
+    office_core::profile::normalize_accent(raw)
 }
 
 /// The colour rules and labels use. Blank or unreadable values fall back to near-black.

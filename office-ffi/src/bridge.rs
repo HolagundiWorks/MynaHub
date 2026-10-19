@@ -19,8 +19,9 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
         return json(&share::watch(&guard, project_id, kind.as_deref().unwrap_or("aqc.project"))?);
     }
     let permission = match op {
-        "client_list" | "project_list" | "project_brief_get" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" => Permission::View,
+        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" => Permission::View,
         "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" => Permission::Edit,
+        "company_profile_save" => Permission::ManageSettings,
         "" => return Err(CallError::BadRequest("The operation name was missing.".into())),
         _ => return Err(CallError::BadRequest("That operation is not part of the office interface.".into())),
     };
@@ -60,6 +61,11 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
             let (id, archived): (i64, bool) = (arg(args, "id")?, arg(args, "archived")?);
             clients::set_project_archived(conn, id, archived)?;
             audit(conn, Some(user), if archived { "project_archived" } else { "project_restored" }, &format!("project {id}"));
+            json(&Value::Null)
+        }
+        "company_profile_get" => json(&office_core::profile::read(conn)?),
+        "company_profile_save" => {
+            office_core::profile::save(conn, user, &arg(args, "profile")?)?;
             json(&Value::Null)
         }
         "data_version" => json(&share::data_version(conn)?),
@@ -228,5 +234,27 @@ mod tests {
         assert_eq!(a.session.lock().unwrap().as_ref().unwrap().last_activity, before, "watching left the idle timer alone");
         call(&a, "client_list", json!({ "include_archived": false })).unwrap();
         assert!(a.session.lock().unwrap().as_ref().unwrap().last_activity > before, "an ordinary call does count");
+    }
+
+    #[test]
+    fn the_company_details_are_shared_and_only_someone_who_manages_settings_can_change_them() {
+        let (_dir, a) = open("profile");
+        workspace::login(&a, "owner", "correct horse battery").unwrap();
+        let mut profile = call(&a, "company_profile_get", json!({})).unwrap();
+        assert_eq!(profile["name"], "Studio");
+        profile["name"] = json!("Studio One");
+        profile["gstin"] = json!("29ABCDE1234F1Z5");
+        call(&a, "company_profile_save", json!({ "profile": profile })).unwrap();
+        assert_eq!(call(&a, "company_profile_get", json!({})).unwrap()["gstin"], "29ABCDE1234F1Z5");
+        {
+            let conn = a.db.lock().unwrap();
+            conn.execute("INSERT INTO users (username, password_hash, role) VALUES ('viewer', ?1, 'auditor')", [office_core::auth::hash_password("another long password").unwrap()]).unwrap();
+        }
+        workspace::logout(&a).unwrap();
+        workspace::login(&a, "viewer", "another long password").unwrap();
+        assert_eq!(call(&a, "company_profile_get", json!({})).unwrap()["name"], "Studio One", "anyone signed in can read the details");
+        let mut again = call(&a, "company_profile_get", json!({})).unwrap();
+        again["name"] = json!("Changed");
+        assert!(call(&a, "company_profile_save", json!({ "profile": again })).unwrap_err().contains("permission"));
     }
 }

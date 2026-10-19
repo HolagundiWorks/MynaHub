@@ -125,6 +125,8 @@ fn common(state: &AppState, op: &str, args: &Value) -> Result<Option<Vec<u8>>, C
         }
         "auth.status" => json(&workspace::read_auth_status(state)?)?,
         "auth.login" => json(&workspace::login(state, field(args, "username"), field(args, "password"))?)?,
+        "auth.ticket" => json(&crate::suite::issue(state, field(args, "app"))?)?,
+        "auth.login_ticket" => json(&crate::suite::redeem(state, field(args, "ticket"))?)?,
         "auth.unlock" => {
             workspace::unlock(state, field(args, "password"))?;
             b"{}".to_vec()

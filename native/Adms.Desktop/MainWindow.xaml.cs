@@ -98,9 +98,37 @@ public sealed partial class MainWindow : Window
         Root.Loaded += (_, _) => RestoreTheme();
         RestoreTheme();
         _ = LoadWelcomeAsync();
+        _ = StartFromSuiteAsync();
     }
 
     private void RestoreTheme() => AppTheme.Apply(Root, AppWindow, Hwnd);
+
+    /// <summary>
+    /// OSAS, the suite app, chooses the company file and signs the person in once. It starts this app with the file in OSAS_COMPANY and, when
+    /// someone is signed in there, a one-time ticket in OSAS_TICKET that signs this app in as the same person. The file opens through the
+    /// ordinary path (so the upgrade and protected-file prompts still apply); a ticket that has expired just leaves the sign-in page showing.
+    /// </summary>
+    private async Task StartFromSuiteAsync()
+    {
+        var path = Environment.GetEnvironmentVariable("OSAS_COMPANY");
+        var ticket = Environment.GetEnvironmentVariable("OSAS_TICKET");
+        Environment.SetEnvironmentVariable("OSAS_TICKET", null);
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            return;
+        for (var i = 0; i < 100 && (_session == null || _busy); i++)
+            await Task.Delay(100);
+        if (_session == null)
+            return;
+        await OpenPathAsync(path);
+        if (!_companyOpen || string.IsNullOrWhiteSpace(ticket))
+            return;
+        await RunEngineAsync("Signing in…", () =>
+        {
+            _session.Call("auth.login_ticket", new { ticket });
+            var status = _session.Call("auth_status");
+            DispatcherQueue.TryEnqueue(() => ApplyStatus(status));
+        });
+    }
 
     private nint Hwnd => WindowNative.GetWindowHandle(this);
 
