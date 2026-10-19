@@ -85,6 +85,12 @@ public sealed class MainWindow : Window
         page.Children.Add(_company);
         page.Children.Add(_cards);
         page.Children.Add(monitor);
+        var shilpi = new ShilpiPanel(settings, () => _company.CompanyPath);
+        var agent = new AgentPanel(settings, () => _company.CompanyPath, () => "auditor");
+        _company.Changed += agent.Refresh;
+        page.Children.Add(shilpi);
+        page.Children.Add(agent);
+        Closed += (_, _) => shilpi.Shutdown();
         var scroll = new ScrollViewer { Content = page };
         Grid.SetRow(scroll, 2);
         root.Children.Add(scroll);

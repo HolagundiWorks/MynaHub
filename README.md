@@ -41,6 +41,12 @@ Below the app cards, OSAS watches the company file that O-Studio and O-CoreOp sh
 
 It opens the file read-only, never signs in, and shows sizes and counts only: no names, amounts or documents. A protected (encrypted) file can only be measured from outside, so for those it shows the size and who has it open.
 
+## ShilpiDB
+The suite's spatial store for drawing geometry (shapes as boxes with data, found by place). The **ShilpiDB** section shows whether the server is running, its web gateway, and how many records it holds, and starts or stops a server for the chosen company. The data file is kept beside the company file, named `<company>.shilpi.vdb`. OSAS starts it only on `127.0.0.1`, stops only a server it started itself, and asks for the record count only, never the records. It looks for `shilpid.exe` and `shilpi-http.exe` beside OSAS, in `%LOCALAPPDATA%\Programs\shilpidb`, in the folder set as `shilpi_dir` in `suite.json`, and on the `PATH`. Host and ports (`shilpi_host`, `shilpi_port`, `shilpi_http_port`) are set in `suite.json` too. Clients, projects and money stay in the company file; ShilpiDB records point at them by ProjectRef.
+
+## AI assistant
+The **AI assistant** section prepares the connection for an assistant such as Claude Desktop or Claude Code. The assistant is `office-mcp`, started by that tool, not a chat window in OSAS. It signs in as one company user, so it sees only what that user's role allows, and it can use only fixed read-only tools (clients, projects, library, staff, proposals, meetings, TDS check). OSAS shows the tools and gives a settings block to paste. The password in it is a placeholder: OSAS never holds or writes a password. Tools that change records (preview, approval, audit) and tools for O-Draft and ShilpiDB are not built.
+
 ## Install
 ```powershell
 powershell -ExecutionPolicy Bypass -File installerinstall.ps1            # install for the current user
@@ -61,7 +67,7 @@ In this order, for each app: a program you chose with **Find it…** (kept in `%
 | Folder | |
 |---|---|
 | `Osas.Core` | Finding the apps and the saved paths, and the company file monitor (`Monitor/`). No user interface, so it is tested on its own |
-| `Osas.Core.Tests` | Twenty-seven tests: the monitor, and the company details, tickets and settings against the real engine (set `OFFICE_DLL_DIR` to the folder with `office.dll`); one asks Windows which program holds a file with a pretend computer: `dotnet test Osas.Core.Tests` |
+| `Osas.Core.Tests` | Thirty-six tests: the monitor, ShilpiDB and the assistant settings, and the company details, tickets and settings against the real engine (set `OFFICE_DLL_DIR` to the folder with `office.dll`); one asks Windows which program holds a file with a pretend computer: `dotnet test Osas.Core.Tests` |
 | `Osas.Launcher` | The WinUI 3 window. Uses the shared design in `hcw-ui` (check it out beside this repository) |
 
 ```powershell

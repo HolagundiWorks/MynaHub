@@ -213,6 +213,27 @@ public sealed class SuiteSettings
         }
     }
 
+    /// <summary>A named setting that is not a secret (a program's location, a port). Returns null when it was never set.</summary>
+    public string? Get(string key)
+    {
+        try
+        {
+            return File.Exists(_file) && JsonNode.Parse(File.ReadAllText(_file)) is JsonObject o ? o[key]?.GetValue<string>() : null;
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    public void Set(string key, string? value)
+    {
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(_file)!);
+        var o = File.Exists(_file) && JsonNode.Parse(File.ReadAllText(_file)) is JsonObject existing ? existing : new JsonObject();
+        o[key] = value;
+        File.WriteAllText(_file, o.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+    }
+
     /// <summary>The environment an app is started with: where the company file is, and the ticket that signs it in.</summary>
     public static IReadOnlyDictionary<string, string> AppEnvironment(string companyPath, AppTicket? ticket)
     {
