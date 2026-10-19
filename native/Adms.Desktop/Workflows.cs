@@ -39,6 +39,7 @@ internal static class Flow
     {
         var critical = (Brush)Application.Current.Resources["SystemFillColorCriticalBrush"];
         // The controls draw their border from these resources in every state, so the red stays while the field has the keyboard.
+        // A password box takes the same text-control resources as a text box.
         string[] keys = field is ComboBox
             ? new[] { "ComboBoxBorderBrush", "ComboBoxBorderBrushPointerOver", "ComboBoxBorderBrushFocused", "ComboBoxBorderBrushPressed" }
             : new[] { "TextControlBorderBrush", "TextControlBorderBrushPointerOver", "TextControlBorderBrushFocused" };
@@ -60,6 +61,16 @@ internal static class Flow
                 Clear();
             };
             box.TextChanged += clear;
+        }
+        else if (field is PasswordBox secret)
+        {
+            RoutedEventHandler? clear = null;
+            clear = (_, _) =>
+            {
+                secret.PasswordChanged -= clear;
+                Clear();
+            };
+            secret.PasswordChanged += clear;
         }
         else if (field is ComboBox combo)
         {

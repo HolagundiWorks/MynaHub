@@ -110,6 +110,7 @@ internal sealed class AormsPage : UserControl
         if (email.Length == 0 || password.Length == 0)
         {
             _shell.Problem("Enter your AORMS e-mail and password.");
+            Flow.Mark(email.Length == 0 ? _email : _password, "Enter your AORMS e-mail and password.");
             return;
         }
         _ = _shell.Run("Signing in to AORMS…", () =>

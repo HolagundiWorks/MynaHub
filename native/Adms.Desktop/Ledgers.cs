@@ -954,6 +954,7 @@ internal static class Ledgers
                 if (personPassword.Password != confirm.Password)
                 {
                     shell.Problem("The new passwords do not match.");
+                    Flow.Mark(confirm, "The new passwords do not match.");
                     return;
                 }
                 var chosen = (role.SelectedItem as ComboBoxItem)?.Tag as string ?? "accounts";
@@ -982,6 +983,7 @@ internal static class Ledgers
                 if (yours.Password.Length == 0)
                 {
                     shell.Problem("Enter your password.");
+                    Flow.Mark(yours, "Enter your password.");
                     return;
                 }
                 var ask = new ContentDialog
@@ -1030,6 +1032,7 @@ internal static class Ledgers
                 if (yours.Password.Length == 0)
                 {
                     shell.Problem("Enter your password.");
+                    Flow.Mark(yours, "Enter your password.");
                     return;
                 }
                 var adminPassword = yours.Password;
