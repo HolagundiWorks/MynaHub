@@ -83,6 +83,30 @@ public class SuiteCompanyTests : IDisposable
     }
 
     [Fact]
+    public void Users_are_added_changed_and_given_new_passwords_and_each_change_needs_the_signed_in_persons_password()
+    {
+        if (!Available) return;
+        var path = NewCompany();
+        using var company = SuiteCompany.Open(Path.Combine(_dir, "osas"), path, "owner", Password);
+        Assert.Single(company.Users());
+        var refused = Assert.Throws<EngineException>(() => company.CreateUser("ravi", "a long enough password", "accounts", "not my password"));
+        Assert.Contains("not accepted", refused.Message);
+        var id = company.CreateUser("ravi", "a long enough password", "accounts", Password);
+        company.UpdateUser(id, "principal", false, Password);
+        Assert.Contains(company.Users(), u => u.Username == "ravi" && u.Role == "principal" && u.RoleLabel == "Principal" && !u.Disabled);
+        company.SetPassword(id, "another long password", Password);
+        company.UpdateUser(id, "principal", true, Password);
+        Assert.Contains(company.Users(), u => u.Username == "ravi" && u.Disabled);
+        // the last owner cannot be removed, and the person set up with a new password can sign in once allowed again
+        var owner = company.Users().Single(u => u.Username == "owner");
+        Assert.Contains("at least one active owner", Assert.Throws<EngineException>(() => company.UpdateUser(owner.Id, "owner", true, Password)).Message);
+        company.UpdateUser(id, "principal", false, Password);
+        using var ravi = SuiteCompany.Open(Path.Combine(_dir, "ravi"), path, "ravi", "another long password");
+        Assert.Equal("principal", ravi.Role);
+        Assert.Throws<EngineException>(() => ravi.Users());
+    }
+
+    [Fact]
     public void A_wrong_password_is_refused_and_the_choice_is_remembered_without_any_secret()
     {
         if (!Available) return;

@@ -23,6 +23,17 @@ public sealed record CompanyDetails(
     };
 }
 
+/// <summary>One of the company's users. They are the same for every app.</summary>
+public sealed record UserInfo(long Id, string Username, string Role, bool Disabled)
+{
+    public string RoleLabel => RoleLabels.TryGetValue(Role, out var label) ? label : Role;
+
+    public static readonly IReadOnlyDictionary<string, string> RoleLabels = new Dictionary<string, string>
+    {
+        ["owner"] = "Owner", ["principal"] = "Principal", ["accounts"] = "Accounts", ["document_editor"] = "Document editor", ["auditor"] = "Auditor",
+    };
+}
+
 /// <summary>A one-time sign-in for an app OSAS is about to start. It works once, for two minutes.</summary>
 public sealed record AppTicket(string Ticket, string Username);
 
@@ -79,6 +90,25 @@ public sealed class SuiteCompany : IDisposable
         _engine.Call("company_profile_save", new JsonObject { ["profile"] = details.ToJson() });
         Name = details.Name.Trim();
     }
+
+    /// <summary>The company's users. Only someone who manages users can ask; anyone else gets the engine's refusal.</summary>
+    public IReadOnlyList<UserInfo> Users() =>
+        (_engine.Call("user_list") as JsonArray ?? [])
+            .Where(n => n != null)
+            .Select(n => new UserInfo(n!["id"]!.GetValue<long>(), n["username"]!.GetValue<string>(), n["role"]!.GetValue<string>(), n["disabled"]!.GetValue<bool>()))
+            .ToList();
+
+    /// <summary>Adds a user. Every change to people needs the signed-in person's own password again (<paramref name="adminPassword"/>).</summary>
+    public long CreateUser(string username, string password, string role, string adminPassword) =>
+        _engine.Call("user_create", new JsonObject { ["username"] = username, ["password"] = password, ["role"] = role, ["admin_password"] = adminPassword })!.GetValue<long>();
+
+    /// <summary>Changes a user's role and whether they can sign in. The last active owner can never be demoted or disabled.</summary>
+    public void UpdateUser(long id, string role, bool disabled, string adminPassword) =>
+        _engine.Call("user_update", new JsonObject { ["id"] = id, ["role"] = role, ["disabled"] = disabled, ["admin_password"] = adminPassword });
+
+    /// <summary>Sets a user's password, for someone who has forgotten theirs. It also clears any lockout.</summary>
+    public void SetPassword(long id, string password, string adminPassword) =>
+        _engine.Call("user_set_password", new JsonObject { ["id"] = id, ["password"] = password, ["admin_password"] = adminPassword });
 
     /// <summary>A ticket for one app. It works once, for two minutes, and signs that app in as the person signed in here.</summary>
     public AppTicket TicketFor(string app)

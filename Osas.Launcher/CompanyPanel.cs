@@ -13,7 +13,7 @@ namespace Osas.Launcher;
 /// The company the whole suite works in: where its file is, who is signed in, and the company's details. The apps follow what is chosen
 /// here, and OSAS signs them in as the same person with a one-time ticket, so the password is typed once and never passed on.
 /// </summary>
-public sealed class CompanyPanel : StackPanel
+public sealed partial class CompanyPanel : StackPanel
 {
     private static readonly string EngineFolder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OSAS", "office");
 
@@ -54,6 +54,7 @@ public sealed class CompanyPanel : StackPanel
         Children.Add(_who);
         Children.Add(new FlexBar { Children = { choose, _signIn, _signOut, _details } });
         Children.Add(_notice);
+        BuildUsers();
         Paint();
     }
 
@@ -130,6 +131,7 @@ public sealed class CompanyPanel : StackPanel
             _company = company;
             _settings.LastUser = company.User;
             _notice.IsOpen = false;
+            _ = LoadUsers();
         }
         catch (EngineException ex)
         {
@@ -143,6 +145,7 @@ public sealed class CompanyPanel : StackPanel
     {
         _company?.Dispose();
         _company = null;
+        ClearUsers();
         Paint();
         Changed?.Invoke();
         if (announce)
