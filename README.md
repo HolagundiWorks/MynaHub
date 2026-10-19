@@ -10,6 +10,17 @@ A small launcher for the three apps of the suite:
 
 OSAS shows which of them are installed on this computer, with their versions, and opens them. It starts the apps and changes nothing in them. O-Studio and O-CoreOp can have the same company file open at the same time.
 
+## Company: one company file, one sign-in
+The **Company** section at the top is where the suite's company file is chosen. Choose the `.adms` file, sign in once with your own user name and password, and OSAS:
+
+- shows the company's name and who is signed in, and **Company details…** edits the name, address, contact, PAN, GSTIN, registration, bank details, letterhead style and accent that every app prints on its documents (saving needs the settings permission);
+- starts each app on that company file, and signs it in as the same person with a **one-time ticket** (32 random bytes, good for two minutes and one use), so you do not type the password again and it is never passed on or stored;
+- remembers only the file's path and your user name, in `%LOCALAPPDATA%OSASsuite.json`.
+
+If you are not signed in in OSAS, the app is still started on the file and asks for the sign-in itself. If the company file is protected (encrypted), OSAS asks for the file password too, but an app started on it asks for it again. The design is in the O-Studio repository, `docs/suite-hub.md`.
+
+OSAS needs `office.dll`, the company-file engine, beside it. It is built from `office-ffi` in the O-Studio repository; the installer finds it there, or give `-OfficeDllDir <folder>`.
+
 ## Company file monitor
 Below the app cards, OSAS watches the company file that O-Studio and O-CoreOp share. Choose the `.adms` file once (it is remembered in `%LOCALAPPDATA%OSAScompany.txt`); it looks again every two seconds.
 
@@ -48,7 +59,7 @@ In this order, for each app: a program you chose with **Find it…** (kept in `%
 | Folder | |
 |---|---|
 | `Osas.Core` | Finding the apps and the saved paths, and the company file monitor (`Monitor/`). No user interface, so it is tested on its own |
-| `Osas.Core.Tests` | Twenty-two tests, including one that asks Windows which program holds a file with a pretend computer: `dotnet test Osas.Core.Tests` |
+| `Osas.Core.Tests` | Twenty-seven tests: the monitor, and the company details, tickets and settings against the real engine (set `OFFICE_DLL_DIR` to the folder with `office.dll`); one asks Windows which program holds a file with a pretend computer: `dotnet test Osas.Core.Tests` |
 | `Osas.Launcher` | The WinUI 3 window. Uses the shared design in `hcw-ui` (check it out beside this repository) |
 
 ```powershell

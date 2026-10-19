@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Osas.Core;
+using Osas.Core.Suite;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 
@@ -29,6 +30,7 @@ public sealed class MainWindow : Window
 
     private readonly SavedPaths _saved = new(SavedPaths.DefaultFile);
     private readonly FlexBar _cards = new();
+    private readonly CompanyPanel _company;
     private readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true, Margin = new Thickness(32, 0, 32, 8) };
 
     public MainWindow()
@@ -75,8 +77,14 @@ public sealed class MainWindow : Window
         root.Children.Add(introRow);
 
         var page = new StackPanel { Padding = new Thickness(32, 8, 32, 24), Spacing = 24 };
+        var settings = new SuiteSettings();
+        _company = new CompanyPanel(this, settings);
+        var monitor = new MonitorPanel(this);
+        _company.Changed += () => monitor.Follow(_company.CompanyPath);
+        monitor.Follow(_company.CompanyPath);
+        page.Children.Add(_company);
         page.Children.Add(_cards);
-        page.Children.Add(new MonitorPanel(this));
+        page.Children.Add(monitor);
         var scroll = new ScrollViewer { Content = page };
         Grid.SetRow(scroll, 2);
         root.Children.Add(scroll);
@@ -169,8 +177,13 @@ public sealed class MainWindow : Window
     {
         try
         {
-            Process.Start(new ProcessStartInfo(app.ExePath!) { UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(app.ExePath)! });
-            Say(InfoBarSeverity.Success, $"{app.Name} is starting.");
+            // The app is started on the suite's company file and, when someone is signed in here, with a one-time ticket that signs it in
+            // as the same person. Environment variables, not the command line, because other programs can read a command line.
+            var info = new ProcessStartInfo(app.ExePath!) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(app.ExePath)! };
+            foreach (var (key, value) in _company.EnvironmentFor(app.Name))
+                info.Environment[key] = value;
+            Process.Start(info);
+            Say(InfoBarSeverity.Success, _company.SignedIn ? $"{app.Name} is starting, signed in as you." : $"{app.Name} is starting.");
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or InvalidOperationException)
         {
@@ -202,7 +215,7 @@ public sealed class MainWindow : Window
         text.Children.Add(new TextBlock { Text = "O-Studio — office and project management", TextWrapping = TextWrapping.Wrap });
         text.Children.Add(new TextBlock { Text = "O-CoreOp — quantities, estimates and billing", TextWrapping = TextWrapping.Wrap });
         text.Children.Add(new TextBlock { Text = "O-Draft — drafting", TextWrapping = TextWrapping.Wrap });
-        text.Children.Add(new TextBlock { Text = "Developed by Human Centric Works. This launcher is version 0.2.0.", Style = Style("CaptionStyle"), TextWrapping = TextWrapping.Wrap });
+        text.Children.Add(new TextBlock { Text = "Developed by Human Centric Works. This launcher is version 0.3.0.", Style = Style("CaptionStyle"), TextWrapping = TextWrapping.Wrap });
         await new ContentDialog { Title = "About OSAS", Content = text, CloseButtonText = "Close", XamlRoot = Content.XamlRoot }.ShowAsync();
     }
 }

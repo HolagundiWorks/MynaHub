@@ -4,8 +4,6 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using Osas.Core.Monitor;
-using Windows.Storage.Pickers;
-using WinRT.Interop;
 
 namespace Osas.Launcher;
 
@@ -15,8 +13,6 @@ namespace Osas.Launcher;
 /// </summary>
 public sealed class MonitorPanel : StackPanel
 {
-    private static readonly string RememberFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OSAS", "company.txt");
-
     private readonly Window _window;
     private readonly TextBlock _path = new() { Style = Resource<Style>("CaptionStyle"), TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
     private readonly InfoBar _problem = new() { IsOpen = false, IsClosable = false, Severity = InfoBarSeverity.Warning };
@@ -43,11 +39,9 @@ public sealed class MonitorPanel : StackPanel
             MaxWidth = 760,
             HorizontalAlignment = HorizontalAlignment.Left,
         });
-        var choose = new Button { Content = "Choose company file…" };
-        choose.Click += async (_, _) => await Choose();
         var refresh = new Button { Content = "Look now" };
         refresh.Click += async (_, _) => await Look();
-        Children.Add(new FlexBar { Children = { choose, refresh } });
+        Children.Add(new FlexBar { Children = { refresh } });
         Children.Add(_path);
         Children.Add(_problem);
         Children.Add(_tiles);
@@ -57,11 +51,7 @@ public sealed class MonitorPanel : StackPanel
         Children.Add(_tables);
         Children.Add(_stamp);
 
-        var saved = Saved();
-        if (saved != null)
-            Use(saved);
-        else
-            Say("No company file chosen yet. Choose the .adms file your office uses.");
+        Say("No company file chosen yet. Choose it in the Company section above.");
         _timer.Tick += async (_, _) => await Look();
         Loaded += (_, _) => _timer.Start();
         Unloaded += (_, _) => _timer.Stop();
@@ -76,44 +66,21 @@ public sealed class MonitorPanel : StackPanel
         return block;
     }
 
-    private static string? Saved()
-    {
-        try
-        {
-            var path = File.Exists(RememberFile) ? File.ReadAllText(RememberFile).Trim() : "";
-            return path.Length > 0 ? path : null;
-        }
-        catch (IOException)
-        {
-            return null;
-        }
-    }
-
-    private void Use(string path)
+    /// <summary>Watches the company file the suite is working in (the one chosen in the Company section).</summary>
+    public void Follow(string? path)
     {
         _monitor?.Dispose();
+        _monitor = null;
+        if (path == null)
+        {
+            _path.Text = "";
+            Say("No company file chosen yet. Choose it in the Company section above.");
+            return;
+        }
         _monitor = new CompanyFileMonitor(path);
         _path.Text = path;
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(RememberFile)!);
-            File.WriteAllText(RememberFile, path);
-        }
-        catch (IOException)
-        {
-            // Remembering the choice is a convenience only.
-        }
+        _problem.IsOpen = false;
         _ = Look();
-    }
-
-    private async Task Choose()
-    {
-        var picker = new FileOpenPicker { SuggestedStartLocation = PickerLocationId.DocumentsLibrary };
-        picker.FileTypeFilter.Add(".adms");
-        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(_window));
-        var file = await picker.PickSingleFileAsync();
-        if (file != null)
-            Use(file.Path);
     }
 
     private void Say(string message)

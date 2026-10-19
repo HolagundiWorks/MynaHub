@@ -7,9 +7,10 @@
   Nothing outside the current user's folders is changed and no administrator rights are needed.
   Run from the repository root:   powershell -ExecutionPolicy Bypass -File installer\install.ps1
   Remove it:                      powershell -ExecutionPolicy Bypass -File installer\install.ps1 -Uninstall
-  The sibling folder hcw-ui (the shared design) must be checked out beside this repository.
+  The sibling folder hcw-ui (the shared design) must be checked out beside this repository. office.dll (the company-file engine) comes from
+  the O-Studio repository: build office-ffi there in release mode; it is found beside this repository, or give -OfficeDllDir <folder>.
 #>
-param([switch]$Uninstall, [string]$Version = "0.2.0")
+param([switch]$Uninstall, [string]$Version = "0.3.0", [string]$OfficeDllDir = "")
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $target = Join-Path $env:LOCALAPPDATA "Programs\OSAS"
@@ -28,9 +29,15 @@ if ($Uninstall) {
 $stage = Join-Path ([IO.Path]::GetTempPath()) ("osas-publish-" + [Guid]::NewGuid().ToString("N").Substring(0, 8))
 try {
     Write-Host "1/3 Publishing"
-    dotnet publish (Join-Path $root "Osas.Launcher\Osas.Launcher.csproj") -c Release -r win-x64 --self-contained true -p:Platform=x64 -p:Version=$Version -o $stage
+    $publish = @("publish", (Join-Path $root "Osas.Launcher\Osas.Launcher.csproj"), "-c", "Release", "-r", "win-x64", "--self-contained", "true", "-p:Platform=x64", "-p:Version=$Version")
+    if ($OfficeDllDir) { $publish += "-p:OfficeDllDir=$OfficeDllDir" }
+    $publish += @("-o", $stage)
+    dotnet @publish
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
     if (-not (Test-Path (Join-Path $stage "OSAS.exe"))) { throw "OSAS.exe was not produced." }
+    if (-not (Test-Path (Join-Path $stage "office.dll"))) {
+        Write-Warning "office.dll was not found, so OSAS will not be able to sign in or show the company details. Build office-ffi in the O-Studio repository in release mode, or pass -OfficeDllDir <folder>."
+    }
 
     Write-Host "2/3 Installing to $target"
     Get-Process OSAS -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$target\*" } | Stop-Process -Force

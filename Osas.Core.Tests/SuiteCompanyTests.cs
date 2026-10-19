@@ -1,0 +1,108 @@
+using System.Text.Json.Nodes;
+using Osas.Core.Suite;
+using Xunit;
+
+namespace Osas.Core.Tests;
+
+/// <summary>
+/// These talk to the real office engine. They need office.dll (build office-ffi in the O-Studio repository in release mode) and the
+/// environment variable OFFICE_DLL_DIR set to its folder. Without it they do nothing, and one test says so when the variable is set but wrong.
+/// </summary>
+public class SuiteCompanyTests : IDisposable
+{
+    private const string Password = "correct horse battery";
+    private static readonly bool Available = Locate();
+    private readonly string _dir = Path.Combine(Path.GetTempPath(), "osas-suite-" + Guid.NewGuid().ToString("N")[..8]);
+
+    public SuiteCompanyTests() => Directory.CreateDirectory(_dir);
+
+    private static bool Locate()
+    {
+        var folder = Environment.GetEnvironmentVariable("OFFICE_DLL_DIR");
+        if (!string.IsNullOrEmpty(folder))
+            Engine.LookIn(folder);
+        return Engine.IsAvailable();
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            Directory.Delete(_dir, true);
+        }
+        catch (IOException)
+        {
+        }
+    }
+
+    private string NewCompany()
+    {
+        using var engine = Engine.Start(Path.Combine(_dir, "setup"));
+        engine.Call("company.create", new JsonObject { ["path"] = Path.Combine(_dir, "Studio"), ["name"] = "Studio One", ["username"] = "owner", ["password"] = Password, ["confirm"] = Password });
+        engine.Call("company.close");
+        return Path.Combine(_dir, "Studio.adms");
+    }
+
+    [Fact]
+    public void The_engine_is_found_when_its_folder_is_given()
+    {
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OFFICE_DLL_DIR")))
+            Assert.True(Available, "office.dll was not found in OFFICE_DLL_DIR");
+    }
+
+    [Fact]
+    public void The_company_details_are_read_and_edited_through_the_shared_engine()
+    {
+        if (!Available) return;
+        using var company = SuiteCompany.Open(Path.Combine(_dir, "osas"), NewCompany(), "owner", Password);
+        Assert.Equal(("Studio One", "owner"), (company.Name, company.User));
+        var details = company.Details();
+        Assert.Equal("Studio One", details.Name);
+        company.Save(details with { Name = "Studio One LLP", Gstin = "29ABCDE1234F1Z5", AccentHex = "3e5240", GstScheme = "regular" });
+        var again = company.Details();
+        Assert.Equal(("Studio One LLP", "29ABCDE1234F1Z5", "#3E5240"), (again.Name, again.Gstin, again.AccentHex));
+        Assert.Equal("Studio One LLP", company.Name);
+    }
+
+    [Fact]
+    public void An_app_is_signed_in_as_the_same_person_by_a_ticket_that_works_once_and_no_password_is_passed()
+    {
+        if (!Available) return;
+        var path = NewCompany();
+        using var company = SuiteCompany.Open(Path.Combine(_dir, "osas"), path, "owner", Password);
+        var ticket = company.TicketFor("O-CoreOp");
+        Assert.Equal(("owner", 64), (ticket.Username, ticket.Ticket.Length));
+        Assert.DoesNotContain(Password, ticket.Ticket);
+        using var app = Engine.Start(Path.Combine(_dir, "app"));
+        app.Call("company.open", new JsonObject { ["path"] = path, ["secret"] = "", ["unlock"] = "" });
+        var who = app.Call("auth.login_ticket", new JsonObject { ["ticket"] = ticket.Ticket });
+        Assert.Equal("owner", who!["username"]!.GetValue<string>());
+        Assert.NotNull(app.Call("company_profile_get"));
+        var second = Assert.Throws<EngineException>(() => app.Call("auth.login_ticket", new JsonObject { ["ticket"] = ticket.Ticket }));
+        Assert.Contains("expired", second.Message);
+    }
+
+    [Fact]
+    public void A_wrong_password_is_refused_and_the_choice_is_remembered_without_any_secret()
+    {
+        if (!Available) return;
+        var path = NewCompany();
+        Assert.Throws<EngineException>(() => SuiteCompany.Open(Path.Combine(_dir, "osas"), path, "owner", "not the password at all"));
+        var settings = new SuiteSettings(Path.Combine(_dir, "settings", "suite.json"));
+        Assert.Null(settings.CompanyPath);
+        settings.CompanyPath = path;
+        Assert.Equal(path, new SuiteSettings(Path.Combine(_dir, "settings", "suite.json")).CompanyPath);
+        var text = File.ReadAllText(Path.Combine(_dir, "settings", "suite.json"));
+        Assert.DoesNotContain("password", text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ticket", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void The_environment_an_app_is_started_with_names_the_company_and_the_ticket()
+    {
+        var env = SuiteSettings.AppEnvironment(@"C:\Files\Studio.adms", new AppTicket("abc", "owner"));
+        Assert.Equal((@"C:\Files\Studio.adms", "abc", "owner"), (env["OSAS_COMPANY"], env["OSAS_TICKET"], env["OSAS_USER"]));
+        var bare = SuiteSettings.AppEnvironment(@"C:\Files\Studio.adms", null);
+        Assert.Single(bare);
+    }
+}
