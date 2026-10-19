@@ -12,7 +12,7 @@ fn the_program_serves_the_office_tools_over_standard_input_and_output() {
     let dir = std::env::temp_dir().join(format!("office-mcp-process-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let file = dir.join("Studio.adms");
+    let file = dir.join("Studio.osas");
     {
         let state = AppState::new(company::placeholder(), dir.clone(), office_core::schema::migrate);
         company::create_company(&state, &dir.join("Studio").to_string_lossy(), "Studio", "owner", "correct horse battery", "correct horse battery").unwrap();

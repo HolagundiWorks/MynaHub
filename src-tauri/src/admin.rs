@@ -197,10 +197,10 @@ pub struct BackupInfo {
 fn write_backup(conn: &Connection, dir: &std::path::Path, actor: i64, envelope: Option<&crate::vault::Envelope>) -> Result<BackupInfo, String> {
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     let stamp: String = conn.query_row("SELECT strftime('%Y%m%d-%H%M%S','now')", [], |r| r.get(0)).map_err(|e| e.to_string())?;
-    let mut path = dir.join(format!("backup-{stamp}.adms"));
+    let mut path = dir.join(format!("backup-{stamp}.osas"));
     let mut n = 1;
     while path.exists() {
-        path = dir.join(format!("backup-{stamp}-{n}.adms"));
+        path = dir.join(format!("backup-{stamp}-{n}.osas"));
         n += 1;
     }
     conn.execute("VACUUM INTO ?1", params![path.to_string_lossy()]).map_err(|e| format!("Backup failed: {e}"))?;
@@ -249,7 +249,7 @@ pub fn list_backups(dir: &std::path::Path) -> Result<Vec<BackupFile>, String> {
     if let Ok(rd) = std::fs::read_dir(dir) {
         for e in rd.flatten() {
             let name = e.file_name().to_string_lossy().to_string();
-            if name.starts_with("backup-") && (name.ends_with(".adms") || name.ends_with(".aorms")) {
+            if name.starts_with("backup-") && (name.ends_with(".osas") || name.ends_with(".adms") || name.ends_with(".aorms")) {
                 out.push(BackupFile { filename: name, bytes: e.metadata().map(|m| m.len()).unwrap_or(0) });
             }
         }
@@ -262,7 +262,7 @@ pub fn list_backups(dir: &std::path::Path) -> Result<Vec<BackupFile>, String> {
 /// integrity-checked and must not come from a newer version of the app, and the schema is brought up to date afterwards.
 /// Everything is restored together, including issued documents and attachments, because they live in the same file.
 fn restore_sealed(conn: &mut Connection, dir: &std::path::Path, actor: i64, filename: &str, envelope: Option<&crate::vault::Envelope>) -> Result<String, String> {
-    if filename.contains(['/', '\\']) || !filename.starts_with("backup-") || !(filename.ends_with(".adms") || filename.ends_with(".aorms")) {
+    if filename.contains(['/', '\\']) || !filename.starts_with("backup-") || !(filename.ends_with(".osas") || filename.ends_with(".adms") || filename.ends_with(".aorms")) {
         return Err("Choose a backup from the list.".into());
     }
     let path = dir.join(filename);

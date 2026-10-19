@@ -10,7 +10,7 @@ try
     using (var session = new AdmsSession(root))
     {
         var created = session.CreateCompany(
-            Path.Combine(root, "Studio.adms"),
+            Path.Combine(root, "Studio.osas"),
             "वास्तु कार्यालय",
             "owner",
             "correct horse battery",
@@ -109,7 +109,7 @@ try
 
     using (var again = new AdmsSession(root))
     {
-        var summary = again.OpenCompany(Path.Combine(root, "Studio.adms"));
+        var summary = again.OpenCompany(Path.Combine(root, "Studio.osas"));
         if (summary.Name != "वास्तु कार्यालय")
             throw new InvalidOperationException("The company file stayed locked after the session was released.");
         again.CloseCompany();

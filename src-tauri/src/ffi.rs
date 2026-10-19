@@ -375,7 +375,7 @@ mod tests {
             crate::db::migrate,
         )
         .unwrap();
-        let path = temp.dir.join("Studio.adms");
+        let path = temp.dir.join("Studio.osas");
         let handle = create_session(&temp.dir);
         let (status, _, error) = call(handle, "documents.sample_pdf", "{}");
         assert_eq!(status, ADMS_ERR_DOMAIN, "{error}");

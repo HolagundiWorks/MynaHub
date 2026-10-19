@@ -7,11 +7,11 @@ import { api, errorText, type FileCheck, type RecentCompany } from "../../api";
 import { PRODUCT, ProductCredit } from "../../brand";
 import { Add, Folder, FolderOpen } from "@carbon/icons-react";
 
-// New files use .adms; files saved by earlier builds (.aorms) are the same format and still open.
-const FILTER = [{ name: "Company file", extensions: ["adms", "aorms"] }];
+// New files use .osas; files saved by earlier builds (.adms, .aorms) are the same format and still open.
+const FILTER = [{ name: "Company file", extensions: ["osas", "adms", "aorms"] }];
 
 /** "Studio One" becomes a safe default file name; the user can change it in the save dialog. */
-const fileNameFor = (name: string) => `${name.trim().replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim() || "Company"}.adms`;
+const fileNameFor = (name: string) => `${name.trim().replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim() || "Company"}.osas`;
 
 function lastOpened(secs: number): string {
   return secs ? new Date(secs * 1000).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "";
@@ -143,7 +143,7 @@ export default function StartScreen({ onOpened }: { onOpened: () => void }) {
 
   const convert = async () => {
     try {
-      const dest = await save({ title: "Save your existing data as a company file", defaultPath: "My company.adms", filters: FILTER });
+      const dest = await save({ title: "Save your existing data as a company file", defaultPath: "My company.osas", filters: FILTER });
       if (!dest) return;
       await api.companyConvertLegacy(dest);
       onOpened();

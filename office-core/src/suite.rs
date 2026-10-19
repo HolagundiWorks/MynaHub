@@ -112,7 +112,7 @@ mod tests {
         company::create_company(&osas, &dir.join("Studio").to_string_lossy(), "Studio", "owner", "correct horse battery", "correct horse battery").unwrap();
         workspace::login(&osas, "owner", "correct horse battery").unwrap();
         let app = AppState::new(company::placeholder(), dir.join("app"), crate::schema::migrate);
-        company::open_company(&app, &dir.join("Studio.adms").to_string_lossy(), "", "").unwrap();
+        company::open_company(&app, &dir.join("Studio.osas").to_string_lossy(), "", "").unwrap();
         (Temp(dir), osas, app)
     }
 

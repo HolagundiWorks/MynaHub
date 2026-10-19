@@ -1,4 +1,4 @@
-/** Product identity. Company files stay .adms. */
+/** Product identity. Company files use .osas; earlier .adms files still open. */
 export const PRODUCT = "Architecture Office Suit";
 export const PRODUCT_FULL = "Architecture Office Suit";
 export const DEVELOPER = "Human Centric Works";

@@ -13,6 +13,7 @@ internal static class FileDialogs
             ViewMode = PickerViewMode.List,
             SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
         };
+        picker.FileTypeFilter.Add(".osas");
         picker.FileTypeFilter.Add(".adms");
         picker.FileTypeFilter.Add(".aorms");
         InitializeWithWindow.Initialize(picker, window);

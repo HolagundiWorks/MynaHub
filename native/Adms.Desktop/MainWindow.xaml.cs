@@ -505,7 +505,7 @@ public sealed partial class MainWindow : Window
         }
         if (folder == null)
             return;
-        var path = Path.Combine(folder, "My company.adms");
+        var path = Path.Combine(folder, "My company.osas");
         await RunEngineAsync("Converting…", () =>
         {
             _session.Call("company_convert_legacy", new { path });
@@ -1134,7 +1134,7 @@ public sealed partial class MainWindow : Window
         var cleaned = new string(company.Select(ch => invalid.Contains(ch) ? ' ' : ch).ToArray()).Trim();
         if (cleaned.Length == 0)
             cleaned = "Company";
-        return cleaned + ".adms";
+        return cleaned + ".osas";
     }
 
     private static string SafeFileName(string company)

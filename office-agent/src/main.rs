@@ -1,7 +1,7 @@
 //! `office-mcp`: lets an AI assistant read the office records through a fixed set of tools.
 //!
 //! ```text
-//! office-mcp --company "D:\Studio\Studio.adms" --user owner
+//! office-mcp --company "D:\Studio\Studio.osas" --user owner
 //! ```
 //!
 //! The password is read from the environment variable `OFFICE_MCP_PASSWORD`, because the assistant talks to this program on standard
@@ -9,7 +9,7 @@
 //! app first. The assistant can use only the tools in `office_agent::TOOLS`, and only as the user named here.
 //!
 //! Example client configuration (Claude Desktop or Claude Code):
-//! `{ "mcpServers": { "office": { "command": "office-mcp", "args": ["--company", "D:\\Studio\\Studio.adms", "--user", "owner"], "env": { "OFFICE_MCP_PASSWORD": "..." } } } }`
+//! `{ "mcpServers": { "office": { "command": "office-mcp", "args": ["--company", "D:\\Studio\\Studio.osas", "--user", "owner"], "env": { "OFFICE_MCP_PASSWORD": "..." } } } }`
 
 use office_core::workspace::{self, AppState};
 use office_core::company;

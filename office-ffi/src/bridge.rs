@@ -216,7 +216,7 @@ mod tests {
         let client = call(&a, "client_save", json!({ "client": { "id": null, "name": "Acme", "contact_person": "", "email": "", "phone": "", "address": "", "pan": "", "gstin": "" } })).unwrap();
         let project = call(&a, "project_save", json!({ "project": { "id": null, "client_id": client, "code": "", "name": "Villa", "site_address": "", "status": "active" } })).unwrap();
         // the second app opens the same company file while the first still has it
-        let path = dir.0.join("Studio.adms");
+        let path = dir.0.join("Studio.osas");
         let b = AppState::new(company::placeholder(), dir.0.clone(), office_core::schema::migrate);
         company::open_company(&b, &path.to_string_lossy(), "", "").unwrap();
         workspace::login(&b, "owner", "correct horse battery").unwrap();

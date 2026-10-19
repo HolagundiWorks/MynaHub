@@ -1,4 +1,4 @@
-//! The company file: one `.adms` SQLite database holds a whole company (data, documents, audit history).
+//! The company file: one `.osas` SQLite database holds a whole company (data, documents, audit history).
 //! The extension is a convention. Opening trusts content, never the name.
 //! The file stays plain SQLite until the owner protects it. A protected file starts with `AOSENC1`.
 use crate::schema as db;
@@ -7,9 +7,9 @@ use rusqlite::{params, Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-pub const EXTENSION: &str = "adms";
-/// Files made by the first builds used `.aorms`; they are the same format and still open.
-const LEGACY_EXTENSION: &str = "aorms";
+pub const EXTENSION: &str = "osas";
+/// Files made by earlier builds used `.adms` or `.aorms`; they are the same format and still open, and are never renamed.
+const LEGACY_EXTENSIONS: [&str; 2] = ["adms", "aorms"];
 /// Internal format marker and SQLite application id. These identify files that already exist, so they are not renamed.
 const FORMAT: &str = "AORMS-1";
 /// SQLite `application_id` stamped into every company file ("AORM").
@@ -317,7 +317,7 @@ pub fn cleanup(staging: &Path) {
 
 pub fn with_extension(path: &Path) -> PathBuf {
     match path.extension().and_then(|e| e.to_str()) {
-        Some(e) if e.eq_ignore_ascii_case(EXTENSION) || e.eq_ignore_ascii_case(LEGACY_EXTENSION) => path.to_path_buf(),
+        Some(e) if e.eq_ignore_ascii_case(EXTENSION) || LEGACY_EXTENSIONS.iter().any(|l| e.eq_ignore_ascii_case(l)) => path.to_path_buf(),
         _ => PathBuf::from(format!("{}.{EXTENSION}", path.display())),
     }
 }
@@ -785,7 +785,7 @@ mod tests {
     fn creates_a_valid_self_describing_file_with_no_fake_records() {
         let d = temp_dir("create");
         let (path, recovery) = create_file(&d.join("Studio"), &setup("Studio One")).unwrap();
-        assert_eq!(path.extension().unwrap(), "adms");
+        assert_eq!(path.extension().unwrap(), "osas");
         assert!(recovery.len() >= 8);
         let check = validate(&path).unwrap();
         assert_eq!(check.name, "Studio One");
@@ -1066,6 +1066,24 @@ mod tests {
         let (plain, _) = create_file(&d.join("Plain"), &setup("Plain")).unwrap();
         assert_eq!(open_company(&state, plain.to_str().unwrap(), "", "").unwrap().name, "Plain");
         close(&state).unwrap();
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn new_files_are_osas_and_earlier_names_are_kept() {
+        assert_eq!(with_extension(Path::new("D:/Firm/Acme")), PathBuf::from("D:/Firm/Acme.osas"));
+        for name in ["Acme.osas", "Acme.OSAS", "Acme.adms", "Acme.aorms"] {
+            assert_eq!(with_extension(Path::new(name)), PathBuf::from(name), "{name} must not be renamed");
+        }
+    }
+
+    #[test]
+    fn a_file_made_with_the_earlier_adms_name_still_opens() {
+        let d = temp_dir("legacy-name");
+        let (path, _) = create_file(&d.join("Old"), &setup("Old Co")).unwrap();
+        let old = d.join("Old Company.adms");
+        std::fs::rename(&path, &old).unwrap();
+        assert_eq!(validate(&old).unwrap().name, "Old Co");
         let _ = std::fs::remove_dir_all(&d);
     }
 }

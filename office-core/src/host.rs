@@ -276,7 +276,7 @@ mod tests {
 
         assert_eq!(taken(registry.destroy(handle)).0, OK);
         assert_eq!(taken(registry.destroy(handle)).0, ERR_HANDLE);
-        assert!(crate::company::open_file(&dir.join("Studio.adms"), crate::schema::migrate).is_ok(), "destroying the session releases the file");
+        assert!(crate::company::open_file(&dir.join("Studio.osas"), crate::schema::migrate).is_ok(), "destroying the session releases the file");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
