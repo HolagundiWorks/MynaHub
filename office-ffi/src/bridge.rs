@@ -18,6 +18,22 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
         let guard = state.db.lock().map_err(|_| CallError::Domain(INTERNAL.into()))?;
         return json(&share::watch(&guard, project_id, kind.as_deref().unwrap_or("aqc.project"))?);
     }
+    // The assistant's tools. Each tool checks the signed-in user's own permission, writes the audit entry and locks the database
+    // itself, so these are answered before the database is locked here. `agent_tools` lists what the assistant may use and
+    // `agent_call` runs one. Every tool only reads; nothing else reaches the records through them.
+    if op == "agent_tools" {
+        require(state, Permission::View)?;
+        let tools: Vec<Value> = office_agent::TOOLS
+            .iter()
+            .map(|t| serde_json::json!({ "name": t.name, "description": t.description, "input_schema": (t.input_schema)() }))
+            .collect();
+        return json(&tools);
+    }
+    if op == "agent_call" {
+        let (name, arguments): (String, Option<Value>) = (arg(args, "name")?, arg(args, "arguments")?);
+        let result = office_agent::call(state, &name, &arguments.unwrap_or(Value::Null)).map_err(CallError::Domain)?;
+        return json(&result);
+    }
     let permission = match op {
         "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" => Permission::View,
         "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" => Permission::Edit,
@@ -250,6 +266,33 @@ mod tests {
         assert_eq!(a.session.lock().unwrap().as_ref().unwrap().last_activity, before, "watching left the idle timer alone");
         call(&a, "client_list", json!({ "include_archived": false })).unwrap();
         assert!(a.session.lock().unwrap().as_ref().unwrap().last_activity > before, "an ordinary call does count");
+    }
+
+    #[test]
+    fn the_assistant_reads_through_governed_tools_and_never_sees_bank_details() {
+        let (_dir, a) = open("assistant");
+        assert!(call(&a, "agent_tools", json!({})).unwrap_err().contains("Not signed in"), "no tools without a signed-in person");
+        workspace::login(&a, "owner", "correct horse battery").unwrap();
+        let tools = call(&a, "agent_tools", json!({})).unwrap();
+        let names: Vec<&str> = tools.as_array().unwrap().iter().filter_map(|t| t["name"].as_str()).collect();
+        assert!(names.contains(&"company.details") && names.contains(&"projects.list"), "{names:?}");
+        assert!(tools.as_array().unwrap().iter().all(|t| t["input_schema"]["additionalProperties"] == json!(false)), "unknown arguments are refused");
+
+        let mut profile = call(&a, "company_profile_get", json!({})).unwrap();
+        profile["bank_details"] = json!("HDFC 0000 1111 2222");
+        profile["upi_id"] = json!("studio@upi");
+        profile["gstin"] = json!("29ABCDE1234F1Z5");
+        call(&a, "company_profile_save", json!({ "profile": profile })).unwrap();
+        let answer = call(&a, "agent_call", json!({ "name": "company.details", "arguments": {} })).unwrap();
+        assert_eq!(answer["data"]["company"]["gstin"], "29ABCDE1234F1Z5");
+        assert_eq!(answer["data_is_untrusted"], true);
+        assert!(!answer.to_string().contains("HDFC") && !answer.to_string().contains("studio@upi"), "{answer}");
+
+        assert!(call(&a, "agent_call", json!({ "name": "no.such.tool", "arguments": {} })).is_err());
+        assert!(call(&a, "agent_call", json!({ "name": "company.details", "arguments": { "sql": "drop table users" } })).is_err(), "unknown arguments are refused");
+        let conn = a.db.lock().unwrap();
+        let logged: i64 = conn.query_row("SELECT COUNT(*) FROM audit_log WHERE event = 'agent_tool_call'", [], |r| r.get(0)).unwrap();
+        assert_eq!(logged, 1, "the one successful call is in the audit log");
     }
 
     #[test]

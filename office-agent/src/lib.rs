@@ -69,6 +69,21 @@ pub const TOOLS: &[Tool] = &[
         },
     },
     Tool {
+        name: "company.details",
+        description: "The company's own details (name, address, contacts, PAN, GSTIN, Council of Architecture registration) and, when a project is given, that project's name, site, client, service, stage and brief. Bank and UPI details are not included.",
+        input_schema: || object(json!({ "project_id": { "type": "integer", "minimum": 1 } }), &[]),
+        permission: Permission::View,
+        run: |conn, args| {
+            let context = office_core::context::read(conn, int(args, "project_id"))?;
+            let mut value = to_value(&context)?;
+            if let Some(company) = value.get_mut("company").and_then(Value::as_object_mut) {
+                company.remove("bank_details");
+                company.remove("upi_id");
+            }
+            Ok(value)
+        },
+    },
+    Tool {
         name: "projects.list",
         description: "List projects, optionally only those of one client. Each has its client's name, site address, status and the stage it has reached.",
         input_schema: || object(json!({ "client_id": { "type": "integer", "minimum": 1 } }), &[]),

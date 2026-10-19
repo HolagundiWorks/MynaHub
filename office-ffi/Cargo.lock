@@ -289,6 +289,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
+name = "office-agent"
+version = "0.1.0"
+dependencies = [
+ "office-core",
+ "rusqlite",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "office-core"
 version = "0.1.0"
 dependencies = [
@@ -304,6 +314,7 @@ dependencies = [
 name = "office-ffi"
 version = "0.1.0"
 dependencies = [
+ "office-agent",
  "office-core",
  "rusqlite",
  "serde",
