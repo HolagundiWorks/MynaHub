@@ -11,7 +11,7 @@ internal sealed class Book : UserControl, IPageCommands
     private readonly ListView _list = new() { SelectionMode = ListViewSelectionMode.Single };
     private readonly TextBox _search = new() { Header = "Search", PlaceholderText = "Search this list", HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly TextBlock _summary = Flow.Secondary("");
-    private readonly ContentControl _tableHead = new();
+    private readonly ContentControl _tableHead = new() { HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(0) };
     private readonly Grid _split = new();
     private readonly Grid _listPane = new() { RowSpacing = 12 };
     private readonly ScrollViewer _formScroll;
