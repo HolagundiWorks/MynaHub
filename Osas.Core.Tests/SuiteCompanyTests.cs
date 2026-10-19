@@ -107,6 +107,24 @@ public class SuiteCompanyTests : IDisposable
     }
 
     [Fact]
+    public void A_new_company_is_made_in_OSAS_with_its_owner_and_a_recovery_code_and_opens_signed_in()
+    {
+        if (!Available) return;
+        var path = Path.Combine(_dir, "Fresh.adms");
+        var (company, recovery) = SuiteCompany.Create(Path.Combine(_dir, "osas"), path, "Fresh Studio", "meera", Password, Password);
+        using (company)
+        {
+            Assert.Equal(("Fresh Studio", "meera", "owner"), (company.Name, company.User, company.Role));
+            Assert.True(File.Exists(path));
+            Assert.False(string.IsNullOrWhiteSpace(recovery));
+            Assert.Equal("Fresh Studio", company.Details().Name);
+        }
+        var refused = Assert.Throws<EngineException>(() => SuiteCompany.Create(Path.Combine(_dir, "osas2"), Path.Combine(_dir, "Other.adms"), "Other", "meera", Password, "a different password!"));
+        Assert.False(string.IsNullOrWhiteSpace(refused.Message));
+        Assert.False(File.Exists(Path.Combine(_dir, "Other.adms")), "nothing is left behind when the passwords differ");
+    }
+
+    [Fact]
     public void A_wrong_password_is_refused_and_the_choice_is_remembered_without_any_secret()
     {
         if (!Available) return;

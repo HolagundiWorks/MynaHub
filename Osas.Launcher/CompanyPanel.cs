@@ -38,7 +38,7 @@ public sealed partial class CompanyPanel : StackPanel
         Children.Add(heading);
         Children.Add(new TextBlock
         {
-            Text = "The company file the whole suite works in. Choose it here, sign in once, and the apps open it already signed in as you.",
+            Text = "The company file the whole suite works in. It is chosen or created only here: sign in once, and the apps open it already signed in as you.",
             Style = Resource<Style>("SecondaryStyle"),
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 760,
@@ -46,13 +46,14 @@ public sealed partial class CompanyPanel : StackPanel
         });
         var choose = new Button { Content = "Choose company file…" };
         choose.Click += async (_, _) => await Choose();
+        _create.Click += async (_, _) => await CreateCompany();
         _signIn.Click += async (_, _) => await SignIn();
         _signOut.Click += (_, _) => SignOut();
         _details.Click += async (_, _) => await EditDetails();
         Children.Add(_name);
         Children.Add(_path);
         Children.Add(_who);
-        Children.Add(new FlexBar { Children = { choose, _signIn, _signOut, _details } });
+        Children.Add(new FlexBar { Children = { choose, _create, _signIn, _signOut, _details } });
         Children.Add(_notice);
         BuildUsers();
         Paint();

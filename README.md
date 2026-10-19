@@ -13,6 +13,7 @@ OSAS shows which of them are installed on this computer, with their versions, an
 ## Company: one company file, one sign-in
 The **Company** section at the top is where the suite's company file is chosen. Choose the `.adms` file, sign in once with your own user name and password, and OSAS:
 
+- **creates** a new company (**Create a company…**: its name, the owner's user name and password, where to keep the file, and the recovery code shown once), or **chooses** an existing file. This is the only place a company is chosen or created: O-Studio and O-CoreOp have no file picker of their own;
 - shows the company's name and who is signed in, and **Company details…** edits the name, address, contact, PAN, GSTIN, registration, bank details, letterhead style and accent that every app prints on its documents (saving needs the settings permission);
 - starts each app on that company file, and signs it in as the same person with a **one-time ticket** (32 random bytes, good for two minutes and one use), so you do not type the password again and it is never passed on or stored;
 - shows the company's **Users** (below the buttons) and manages them: add a user, change a role, set a new password for someone who forgot theirs, stop or allow sign-in. These people are the same in every app, and each change asks for your own password again. The last active owner can never be removed. O-Studio no longer has its own People section;

@@ -82,6 +82,28 @@ public sealed class SuiteCompany : IDisposable
         }
     }
 
+    /// <summary>
+    /// Makes a new company file with its first user, the owner, and signs in as that person. The recovery code is returned once; it is the only
+    /// way back in if the owner's password is forgotten, so the person must be shown it and asked to keep it.
+    /// </summary>
+    public static (SuiteCompany Company, string RecoveryCode) Create(string folder, string path, string companyName, string owner, string password, string confirm)
+    {
+        var engine = Engine.Start(folder);
+        try
+        {
+            var made = engine.Call("company.create", new JsonObject { ["path"] = path, ["name"] = companyName, ["username"] = owner, ["password"] = password, ["confirm"] = confirm });
+            var summary = made?["summary"];
+            var who = engine.Call("auth.login", new JsonObject { ["username"] = owner, ["password"] = password });
+            var actual = summary?["path"]?.GetValue<string>() ?? path;
+            return (new SuiteCompany(engine, actual, summary?["name"]?.GetValue<string>() ?? companyName, summary?["uuid"]?.GetValue<string>() ?? "", who?["username"]?.GetValue<string>() ?? owner, who?["role"]?.GetValue<string>() ?? ""), made?["recovery"]?.GetValue<string>() ?? "");
+        }
+        catch
+        {
+            engine.Dispose();
+            throw;
+        }
+    }
+
     public CompanyDetails Details() => CompanyDetails.From(_engine.Call("company_profile_get") ?? throw new EngineException("The company details could not be read."));
 
     /// <summary>Saves the details. Only someone who manages settings can; anyone else gets the engine's refusal.</summary>
