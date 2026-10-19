@@ -4,12 +4,12 @@
 use office_core::auth::Permission;
 use office_core::host::{arg, json, CallError};
 use office_core::workspace::{require, AppState, INTERNAL};
-use office_core::{audit, clients, office, track};
+use office_core::{audit, clients, office, refs, track};
 use serde_json::Value;
 
 pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, CallError> {
     let permission = match op {
-        "client_list" | "project_list" | "project_brief_get" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" => Permission::View,
+        "client_list" | "project_list" | "project_brief_get" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" => Permission::View,
         "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" => Permission::Edit,
         "" => return Err(CallError::BadRequest("The operation name was missing.".into())),
         _ => return Err(CallError::BadRequest("That operation is not part of the office interface.".into())),
@@ -50,6 +50,12 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
             let (id, archived): (i64, bool) = (arg(args, "id")?, arg(args, "archived")?);
             clients::set_project_archived(conn, id, archived)?;
             audit(conn, Some(user), if archived { "project_archived" } else { "project_restored" }, &format!("project {id}"));
+            json(&Value::Null)
+        }
+        "project_ref" => json(&refs::project_ref(conn, arg(args, "project_id")?)?),
+        "project_resolve" => json(&refs::resolve_project(conn, &arg(args, "reference")?)?),
+        "artifact_ref_check" => {
+            refs::check_artifact(&arg(args, "reference")?)?;
             json(&Value::Null)
         }
         "project_brief_get" => json(&clients::get_brief(conn, arg(args, "project_id")?)?),
@@ -139,5 +145,25 @@ mod tests {
         workspace::login(&state, "viewer", "another long password").unwrap();
         assert!(call(&state, "client_list", json!({ "include_archived": false })).is_ok(), "a read-only user can read");
         assert!(call(&state, "staff_save", json!({ "input": {} })).unwrap_err().contains("permission"));
+    }
+
+    #[test]
+    fn a_project_is_named_by_a_reference_that_finds_it_again_and_a_malformed_artifact_reference_is_refused() {
+        let (_dir, state) = open("refs");
+        assert_eq!(call(&state, "project_ref", json!({ "project_id": 1 })).unwrap_err(), "Not signed in.");
+        workspace::login(&state, "owner", "correct horse battery").unwrap();
+        let client = call(&state, "client_save", json!({ "client": { "id": null, "name": "Acme", "contact_person": "", "email": "", "phone": "", "address": "", "pan": "", "gstin": "" } })).unwrap();
+        let project = call(&state, "project_save", json!({ "project": { "id": null, "client_id": client, "code": "", "name": "Villa", "site_address": "", "status": "active" } })).unwrap();
+        let reference = call(&state, "project_ref", json!({ "project_id": project })).unwrap();
+        assert_eq!(reference["v"], 1);
+        assert_eq!(reference["project_id"], project);
+        assert!(reference.get("aorms_project_office_id").is_none());
+        assert_eq!(call(&state, "project_resolve", json!({ "reference": reference })).unwrap(), project);
+        assert!(call(&state, "project_ref", json!({ "project_id": 999 })).is_err());
+        let artifact = json!({ "v": 1, "project": reference, "kind": "boq", "id": "BOQ-1", "revision": 1, "checksum_sha256": "a".repeat(64), "made_from": [] });
+        call(&state, "artifact_ref_check", json!({ "reference": artifact })).unwrap();
+        let mut bad = artifact.clone();
+        bad["checksum_sha256"] = json!("nope");
+        assert!(call(&state, "artifact_ref_check", json!({ "reference": bad })).unwrap_err().contains("checksum"));
     }
 }

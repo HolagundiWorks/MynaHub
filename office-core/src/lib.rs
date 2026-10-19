@@ -12,6 +12,7 @@ pub mod hash;
 pub mod host;
 pub mod office;
 pub mod practice;
+pub mod refs;
 pub mod schema;
 pub mod store;
 pub mod tds26as;

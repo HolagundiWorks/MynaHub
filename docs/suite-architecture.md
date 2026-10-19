@@ -71,7 +71,7 @@ Keep each app's data its own. Share through a small versioned contract package. 
 | Sign-in and session (`2026-10-aqc-1`) | Exists, in the aorms repo |
 | CAD to quantities (`hcw-aqc-bridge` v1) | Exists, in the AQC repo |
 | Office records (`docs/office-abi.md`) | Exists, in this repo |
-| `ProjectRef` and `ArtifactRef` (a drawing, an estimate or a document with revision, checksum and the revisions it was made from) | **Missing.** Needed before an estimate can name the drawing revision and rate schedule it used |
+| `ProjectRef` and `ArtifactRef` (a drawing, an estimate or a document with revision, checksum and the revisions it was made from) | **Written** (`docs/contracts/refs.md`, version 1) and implemented in `office-core`. No other app produces or reads them yet |
 | Tool schema (below) | Partly exists: AAD's registry, `office-agent`. No common definition |
 
 ### 4.3 One AI platform, built on MCP

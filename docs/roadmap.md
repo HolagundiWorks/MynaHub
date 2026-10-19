@@ -35,7 +35,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 |---|---|---|---|
 | 2.1 | Apply the AORMS migration `0113_aqc_sessions_aos_app.sql` and test the portal sign-in and project pull against the real portal | Studio, CoreOp | Checked: the change is on branch `claude/aos-suite-session` of the portal repository and is not applied; the portal client has only been tested against a fake |
 | 2.2 | Let O-CoreOp read the shared company file through `office-ffi` (clients, projects), so a project is created once | CoreOp | Checked: O-CoreOp does not reference `Office.Interop`; it only gets projects through the portal |
-| 2.3 | Write down `ProjectRef` and `ArtifactRef` and make both apps produce and read them (suite architecture, phase 1) | Both | Checked: not written |
+| 2.3 | `ProjectRef` and `ArtifactRef`: **written and implemented in `office-core`** (`docs/contracts/refs.md`, with a JSON schema and three operations on the office interface). Still to do: O-CoreOp and O-Draft producing and reading them, and apps computing checksums | Both | Checked: 6 tests in `office-core`, 1 in `office-ffi` |
 | 2.4 | Estimates and running bills: O-CoreOp calculates, O-Studio shows the result against the fee proposal | Both | Checked: O-Studio has fee proposals but no link to quantities |
 | 2.5 | An MCP tool server for O-CoreOp, with the same descriptor shape as O-Studio's | CoreOp | Checked: only O-Studio has one (`office-agent`) |
 | 2.6 | Write tools for the agent, with approval and an audit trail | Studio | Checked: every tool is read-only today |

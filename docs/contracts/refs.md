@@ -1,0 +1,81 @@
+# Contract: `ProjectRef` and `ArtifactRef` (version 1)
+
+Written 2026-10-19. This is phase 1 of the suite plan in `docs/suite-architecture.md`. The code is `office-core/src/refs.rs`; the schema is `refs.schema.json` beside this file.
+
+An app that follows this contract can say "this estimate was made from revision 3 of that drawing, for this project" in a way another app can check. No app has to share its data to do it.
+
+## What a reference is, and is not
+- A reference **names** something. It carries no project data and gives no right to read any.
+- A reference is **versioned**. Field `v` is `1`. A reader refuses a version it does not know.
+- Apps never write each other's tables. They exchange references and ask each other for the thing named.
+
+## ProjectRef
+
+```json
+{ "v": 1, "company_uuid": "…", "project_id": 7, "aorms_project_office_id": "…" }
+```
+
+| Field | Meaning |
+|---|---|
+| `company_uuid` | The id of the O-Studio company file the project lives in (`company_file.company_uuid`). |
+| `project_id` | The project's id in that file. |
+| `aorms_project_office_id` | The portal's `projectOfficeId`. Present only when the project was pulled from, or linked to, AORMS. Left out otherwise. |
+
+**Finding a project again.** A reader looks in this order and stops at the first hit:
+1. `company_uuid` equals this file's, and `project_id` exists here.
+2. `aorms_project_office_id` is present and this file has a link for it (`aorms_links`).
+
+If neither matches, the project is not here and the reader says so. It does not guess from the project's name.
+
+**Which id is the system of record** (the open question in the suite plan): the rule is *the portal id when there is one, otherwise the pair*. A project linked to AORMS keeps its identity when the file is copied or restored, because the portal id travels with it. An offline project is identified by the file it was made in.
+
+## ArtifactRef
+
+```json
+{
+  "v": 1,
+  "project": { "v": 1, "company_uuid": "…", "project_id": 7 },
+  "kind": "estimate",
+  "id": "EST-0004",
+  "revision": 2,
+  "checksum_sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+  "made_from": [
+    { "kind": "drawing", "id": "GF-PLAN", "revision": 3, "checksum_sha256": "…" }
+  ]
+}
+```
+
+| Field | Rule |
+|---|---|
+| `kind` | One of `drawing`, `boq`, `estimate`, `rate_schedule`, `document`. A new kind means a new contract version. |
+| `id` | The maker's own id, 1 to 200 characters. Nobody else interprets it. |
+| `revision` | 1 or more, and goes up by one each time the maker saves a new revision. |
+| `checksum_sha256` | The SHA-256 of the artifact's content at that revision, as 64 **lower-case** hex digits. Upper case is refused so two apps cannot disagree on spelling. |
+| `made_from` | The revisions this one was calculated or drafted from, at most 100. Empty for a source such as a drawing. |
+
+**Rules a reader checks** (`check_artifact`):
+- the version, the kind, the id, the revision and the checksum are valid, for the artifact and for each input;
+- an artifact is never made from itself, nor from a later revision of itself (an earlier revision of itself is allowed).
+
+A reader does **not** check that the artifact exists or that the checksum is true. That is for the app that holds the content: it recomputes the checksum and compares.
+
+## Who produces what
+
+| App | Produces | Reads |
+|---|---|---|
+| O-Studio | `ProjectRef` for any project; `ArtifactRef` for a fee proposal or document it issues | `ProjectRef` and `ArtifactRef` from other apps, to attach an estimate to a project |
+| O-CoreOp | `ArtifactRef` for a BOQ, estimate or rate schedule, naming the drawing revision it used in `made_from` | `ProjectRef` to open or create the project it belongs to |
+| O-Draft | `ArtifactRef` for a drawing, and a `ProjectRef` in the bridge file | `ProjectRef`, to say which project a drawing is for |
+
+## Operations (office interface, `docs/office-abi.md`)
+
+| Operation | Needs | Does |
+|---|---|---|
+| `project_ref` `{ project_id }` | View | Returns the `ProjectRef` of a project in the open company file |
+| `project_resolve` `{ reference }` | View | Returns the project id the reference names here, or an error |
+| `artifact_ref_check` `{ reference }` | View | Returns `null` when the reference is well formed, or an error naming the problem |
+
+## What is not done yet
+- O-CoreOp does not produce or read these references; it has no link to the company file yet (roadmap 2.2).
+- The bridge file from O-Draft (`hcw-aqc-bridge`) does not carry a `ProjectRef` yet.
+- No app computes and stores checksums for its artifacts yet.

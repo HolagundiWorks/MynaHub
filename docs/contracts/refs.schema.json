@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/HolagundiWorks/AOS-Architecture-Office-Suite/docs/contracts/refs.schema.json",
+  "title": "OSAS references, version 1",
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "kind": { "enum": ["drawing", "boq", "estimate", "rate_schedule", "document"] },
+    "ProjectRef": {
+      "type": "object",
+      "required": ["v", "company_uuid", "project_id"],
+      "additionalProperties": false,
+      "properties": {
+        "v": { "const": 1 },
+        "company_uuid": { "type": "string", "minLength": 1 },
+        "project_id": { "type": "integer" },
+        "aorms_project_office_id": { "type": "string", "minLength": 1 }
+      }
+    },
+    "ArtifactInput": {
+      "type": "object",
+      "required": ["kind", "id", "revision", "checksum_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "$ref": "#/$defs/kind" },
+        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "revision": { "type": "integer", "minimum": 1 },
+        "checksum_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "ArtifactRef": {
+      "type": "object",
+      "required": ["v", "project", "kind", "id", "revision", "checksum_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "v": { "const": 1 },
+        "project": { "$ref": "#/$defs/ProjectRef" },
+        "kind": { "$ref": "#/$defs/kind" },
+        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "revision": { "type": "integer", "minimum": 1 },
+        "checksum_sha256": { "$ref": "#/$defs/sha256" },
+        "made_from": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/ArtifactInput" } }
+      }
+    }
+  },
+  "oneOf": [{ "$ref": "#/$defs/ProjectRef" }, { "$ref": "#/$defs/ArtifactRef" }]
+}

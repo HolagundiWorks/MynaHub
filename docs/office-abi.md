@@ -33,6 +33,9 @@ Every other operation needs a signed-in, unlocked session. Reading needs View. A
 | `project_save` | project | id |
 | `project_set_archived` | id, archived | null |
 | `project_brief_get` / `project_brief_save` | project_id [, brief] | `{project_id, brief}` / null |
+| `project_ref` | project_id | `ProjectRef` (see [contracts/refs.md](contracts/refs.md)) |
+| `project_resolve` | reference | the project id the `ProjectRef` names in this file |
+| `artifact_ref_check` | reference | null when the `ArtifactRef` is well formed |
 | `staff_list` / `staff_save` | / input | staff with leave days this year / id |
 | `leave_list` / `leave_save` | / input | leave / id |
 | `library_list` / `library_save` | kind (or null), search (or null) / input | entries / id |
