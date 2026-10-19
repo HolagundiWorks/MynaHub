@@ -36,6 +36,7 @@ Every other operation needs a signed-in, unlocked session. Reading needs View. A
 | `project_ref` | project_id | `ProjectRef` (see [contracts/refs.md](contracts/refs.md)) |
 | `project_resolve` | reference | the project id the `ProjectRef` names in this file |
 | `artifact_ref_check` | reference | null when the `ArtifactRef` is well formed |
+| `watch` | [project_id] | `{version, schema_ok, revision}`; the version goes up when another app writes. Needs a session but no permission, and does not count as activity (an idle session still locks) |
 | `data_version` | | `{version, schema_ok}`; the version goes up when another app writes |
 | `doc_get` / `doc_list` / `doc_revision` | project_id, kind [, revision] | a project's document, its documents without bodies, or one revision |
 | `doc_put` | project_id, kind, expected_revision, body | `{revision, checksum_sha256}`, or a refusal if the revision is stale |

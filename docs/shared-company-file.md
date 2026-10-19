@@ -21,9 +21,18 @@ O-CoreOp keeps the content of a project as one JSON document. The relational tab
 - **Taking the file to itself.** Protecting a file (encrypting it at rest) and upgrading its format change the file for every app, so they take the exclusive lock, which is refused while any other app has the company open. The message says to close it there first. An upgrade refused this way changes nothing, and the safety copy is only taken once the exclusive lock is held.
 - **Protected (encrypted) files stay one app at a time.** They are opened through a decrypted working copy that only one app can hold. A second app gets "already open".
 
-## Seeing the other app's changes
+## Live sync: seeing the other app's changes
 
-`data_version` returns a number that goes up whenever another connection has written to the file (SQLite's `PRAGMA data_version`), and `schema_ok`, which is false when another app has upgraded the file past what this build understands. O-CoreOp polls it every two seconds and, when the open project's document has moved on, says so.
+`watch` returns `{ version, schema_ok, revision }`: a number that moves when another connection has written to the file (SQLite's `PRAGMA data_version`), whether this build still understands the file, and the revision of one project document. Several commits between two looks can show as a single move.
+
+`watch` is answered **before** the permission check and does not count as activity. Every ordinary call resets the idle timer, so a poll that used them would stop an idle session from ever locking. It needs a signed-in session to exist and returns only a counter and a revision.
+
+Both apps poll every two seconds:
+
+| App | When it sees a change |
+|---|---|
+| O-CoreOp | If the other app saved the open project and nothing is unsaved, the project reloads and a notice says so. With unsaved changes it warns once, and the next save is refused with an offer to reload. |
+| O-Studio | The page being shown refreshes itself if it has nothing unsaved: Pulse, Projects, Clients and the record pages. A page being edited is left alone and refreshes once the edit is finished or saved. |
 
 ## Not overwriting each other
 
@@ -35,6 +44,7 @@ The last ten revisions of each document are kept in `project_document_history`. 
 
 | Operation | Needs | Does |
 |---|---|---|
+| `watch` `{ project_id? }` | a session (no permission, not activity) | `{ version, schema_ok, revision }` |
 | `data_version` | View | `{ version, schema_ok }` |
 | `doc_get` `{ project_id, kind }` | View | The document, or null |
 | `doc_list` `{ project_id }` | View | The project's documents without their bodies |
@@ -54,7 +64,7 @@ A kind is lower-case letters, digits, dots and underscores, starting with a lett
 
 ## What is not done
 
-- O-Studio does not yet watch `data_version` or show a project's O-CoreOp quantities. It reads the same file, so a refresh shows the new projects.
+- O-Studio refreshes its Pulse, Projects, Clients and record pages when the other app writes. Its other pages (invoices, letters, books) do not watch; only O-Studio writes those. It does not show a project's O-CoreOp quantities.
 - The quantities are one document, not tables (above).
 - The conflict dialog offers reload or keep-mine; there is no merge.
 - O-CoreOp's other stores (rate books, parties, schedules) are inside the project document today.

@@ -8,6 +8,16 @@ use office_core::{audit, clients, office, refs, share, track};
 use serde_json::Value;
 
 pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, CallError> {
+    // Polling for changes must not count as activity (that would stop an idle session from ever locking), so it is answered before the
+    // permission check. It needs a signed-in session to exist, and returns only a counter and a revision number.
+    if op == "watch" {
+        if state.session.lock().map_err(|_| CallError::Domain(INTERNAL.into()))?.is_none() {
+            return Err(CallError::Domain("Not signed in.".into()));
+        }
+        let (project_id, kind): (Option<i64>, Option<String>) = (arg(args, "project_id")?, arg(args, "kind")?);
+        let guard = state.db.lock().map_err(|_| CallError::Domain(INTERNAL.into()))?;
+        return json(&share::watch(&guard, project_id, kind.as_deref().unwrap_or("aqc.project"))?);
+    }
     let permission = match op {
         "client_list" | "project_list" | "project_brief_get" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" => Permission::View,
         "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" => Permission::Edit,
@@ -204,5 +214,19 @@ mod tests {
         assert_eq!(call(&a, "doc_list", json!({ "project_id": project })).unwrap()[0]["revision"], 2);
         assert_eq!(call(&a, "doc_revision", json!({ "project_id": project, "kind": "aqc.project", "revision": 1 })).unwrap()["body"], "{\"levels\":2}");
         assert!(call(&b, "project_list", json!({ "client_id": null, "include_archived": false })).unwrap().as_array().unwrap().iter().any(|p| p["name"] == "Villa"), "the project A made is B's too");
+    }
+
+    #[test]
+    fn watching_for_changes_does_not_count_as_activity_so_an_idle_session_still_locks() {
+        let (_dir, a) = open("watch");
+        assert_eq!(call(&a, "watch", json!({})).unwrap_err(), "Not signed in.");
+        workspace::login(&a, "owner", "correct horse battery").unwrap();
+        let before = a.session.lock().unwrap().as_ref().unwrap().last_activity;
+        std::thread::sleep(std::time::Duration::from_millis(30));
+        let watched = call(&a, "watch", json!({ "project_id": null })).unwrap();
+        assert_eq!(watched["schema_ok"], true);
+        assert_eq!(a.session.lock().unwrap().as_ref().unwrap().last_activity, before, "watching left the idle timer alone");
+        call(&a, "client_list", json!({ "include_archived": false })).unwrap();
+        assert!(a.session.lock().unwrap().as_ref().unwrap().last_activity > before, "an ordinary call does count");
     }
 }

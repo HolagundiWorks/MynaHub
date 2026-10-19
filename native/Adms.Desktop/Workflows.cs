@@ -474,8 +474,12 @@ internal static class Flow
     }
 }
 
-internal sealed class DashboardPage : UserControl, IPageCommands
+internal sealed class DashboardPage : UserControl, IPageCommands, ILiveRefresh
 {
+    public bool CanRefreshLive => true;
+
+    public void RefreshLive() => Load();
+
     private readonly AppShell _shell;
     private readonly Grid _metrics = new() { RowSpacing = 8, ColumnSpacing = 8 };
     private readonly StackPanel _attention = new() { Spacing = 8, Visibility = Visibility.Collapsed };
@@ -771,8 +775,30 @@ internal sealed class DashboardPage : UserControl, IPageCommands
     public void FocusSearch() { }
 }
 
-internal sealed class ProjectsPage : UserControl, IPageCommands
+internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
 {
+    public bool CanRefreshLive => !_dirty && ListPane.Visibility == Visibility.Visible;
+
+    /// <summary>Reloads the list and the client choices after another app changed them. The editor is hidden when this runs.</summary>
+    public void RefreshLive() => _ = _shell.Run("Updating from another app…", () =>
+    {
+        var projects = _shell.Call("project_list", new { client_id = (long?)null, include_archived = false });
+        var clients = _shell.Call("client_list", new { include_archived = false });
+        _shell.Window.DispatcherQueue.TryEnqueue(() =>
+        {
+            _rows.Clear();
+            if (projects.ValueKind == JsonValueKind.Array)
+                foreach (var row in projects.EnumerateArray())
+                    _rows.Add(row.Clone());
+            _client.Items.Clear();
+            _client.Items.Add(Item("Select a client", 0L));
+            if (clients.ValueKind == JsonValueKind.Array)
+                foreach (var row in clients.EnumerateArray())
+                    _client.Items.Add(Item(Kit.Str(row, "name"), Kit.Id(row) ?? 0));
+            PaintList();
+        });
+    });
+
     private readonly AppShell _shell;
     private readonly List<JsonElement> _rows = [];
     private readonly ListView _list = new() { SelectionMode = ListViewSelectionMode.Single };
@@ -1436,8 +1462,12 @@ internal sealed class ProjectsPage : UserControl, IPageCommands
     private static string StatusLabel(string status) => status switch { "on_hold" => "On hold", "completed" => "Completed", "active" => "Active", _ => status };
 }
 
-internal sealed class ClientsPage : UserControl, IPageCommands
+internal sealed class ClientsPage : UserControl, IPageCommands, ILiveRefresh
 {
+    public bool CanRefreshLive => !_dirty && Host.Children[0].Visibility == Visibility.Visible;
+
+    public void RefreshLive() => Reload();
+
     private readonly AppShell _shell;
     private readonly List<JsonElement> _rows = [];
     private readonly ListView _list = new() { SelectionMode = ListViewSelectionMode.Single };

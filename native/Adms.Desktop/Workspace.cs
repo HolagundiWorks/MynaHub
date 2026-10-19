@@ -18,6 +18,17 @@ internal interface IPageCommands
     Task<bool> CanLeave() => Task.FromResult(true);
 }
 
+/// <summary>
+/// A page that can show what another app has written, with nobody asking, when it has nothing unsaved. The workspace asks every
+/// page that is showing; a page that is being edited says no and is left alone.
+/// </summary>
+internal interface ILiveRefresh
+{
+    bool CanRefreshLive { get; }
+
+    void RefreshLive();
+}
+
 internal sealed class AppShell
 {
     public required AdmsSession Session { get; init; }
@@ -84,9 +95,14 @@ internal sealed class WorkspaceView : UserControl
 
     public Task<bool> ConfirmLeave() => _shell.Page?.CanLeave() ?? Task.FromResult(true);
 
+    private long _lastSync = -1;
+    private bool _syncing;
+    private bool _stale;
+
     public WorkspaceView(AppShell shell)
     {
         _shell = shell;
+        StartLiveSync();
         Hcw.Ui.SuiteNavigation.Apply(_nav, Hcw.Ui.SuiteApp.Studio);
         AutomationProperties.SetName(_paneLogo, "O-Studio");
         _nav.ItemInvoked += (_, args) =>
@@ -168,6 +184,51 @@ internal sealed class WorkspaceView : UserControl
         if (stored.ValueKind != JsonValueKind.Object || !stored.TryGetProperty(shape, out var mark))
             return "";
         return Kit.Str(mark, "present") is "true" or "True" ? Kit.Str(mark, "data_base64") : "";
+    }
+
+    /// <summary>
+    /// The company file can be open in another app (O-CoreOp) at the same time. Every two seconds this asks the engine whether anyone else
+    /// has written; if so, the page being shown refreshes itself, unless it has unsaved changes, in which case it refreshes once they are gone.
+    /// Asking does not count as activity, so an idle session still locks.
+    /// </summary>
+    private void StartLiveSync()
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        timer.Tick += async (_, _) =>
+        {
+            if (_syncing)
+                return;
+            _syncing = true;
+            try
+            {
+                var version = await Task.Run(() =>
+                {
+                    try
+                    {
+                        return _shell.Session.Call("watch", new { }).GetProperty("version").GetInt64();
+                    }
+                    catch (Exception ex) when (ex is AdmsException or KeyNotFoundException or InvalidOperationException)
+                    {
+                        return -1L;
+                    }
+                });
+                if (version < 0)
+                    return;
+                if (_lastSync >= 0 && version != _lastSync)
+                    _stale = true;
+                _lastSync = version;
+                if (_stale && _host.Children.FirstOrDefault() is ILiveRefresh page && page.CanRefreshLive)
+                {
+                    _stale = false;
+                    page.RefreshLive();
+                }
+            }
+            finally
+            {
+                _syncing = false;
+            }
+        };
+        timer.Start();
     }
 
     private string _shown = "";

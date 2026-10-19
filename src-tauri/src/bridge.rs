@@ -24,6 +24,16 @@ fn run<T: Serialize>(result: Result<T, String>) -> Result<Option<Vec<u8>>, Bridg
 
 pub fn invoke(state: &AppState, op: &str, args: &Value) -> Result<Option<Vec<u8>>, BridgeError> {
     match op {
+        // Polled for changes made by another app. Answered without a permission check so it does not count as activity (an idle
+        // session must still lock); it returns only a counter.
+        "watch" => {
+            if state.session.lock().map_err(|_| BridgeError::Domain("Internal error.".into()))?.is_none() {
+                return Err(BridgeError::Domain("Not signed in.".into()));
+            }
+            let project_id: Option<i64> = arg(args, "project_id")?;
+            let conn = state.db.lock().map_err(|_| BridgeError::Domain("Internal error.".into()))?;
+            run(office_core::share::watch(&conn, project_id, "aqc.project"))
+        }
         "auth_status" => run(crate::commands::auth_status(HostState::new(state))),
         "auth_setup" => run(crate::commands::auth_setup(HostState::new(state), arg(args, "username")?, arg(args, "password")?, arg(args, "confirm")?)),
         "auth_login" => run(crate::commands::auth_login(HostState::new(state), arg(args, "username")?, arg(args, "password")?)),

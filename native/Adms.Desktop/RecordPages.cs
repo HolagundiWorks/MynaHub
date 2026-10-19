@@ -14,8 +14,13 @@ internal enum RecordKind { Text, Date, Choice, Project, Staff, Client, OptionalP
 /// A list and an editing form for one kind of plain record: site records, permits and enquiries. Choose Edit on a line to
 /// change it; Save adds a new record or updates the one being edited. Nothing here posts to the books.
 /// </summary>
-internal sealed class RecordPage : UserControl
+internal sealed class RecordPage : UserControl, ILiveRefresh
 {
+    /// <summary>Another app may have added to the list; reload it unless the person is typing in the form.</summary>
+    public bool CanRefreshLive => !_inputs.Values.Any(i => i is Control c && c.FocusState != FocusState.Unfocused);
+
+    public void RefreshLive() => Load();
+
     private readonly AppShell _shell;
     private readonly string _listOp;
     private readonly string _saveOp;

@@ -29,6 +29,28 @@ pub fn data_version(conn: &Connection) -> Result<DataVersion, String> {
     Ok(DataVersion { version, schema_ok: schema <= crate::schema::latest_version() })
 }
 
+/// What an app polls for: has anyone else written, is the file still one this build understands, and where is a document now.
+/// It reads no records and does not count as activity, so polling it never keeps an idle session from locking.
+#[derive(Debug, Serialize)]
+pub struct Watch {
+    pub version: i64,
+    pub schema_ok: bool,
+    /// The revision of the document asked about, or 0 when there is none (or none was asked about).
+    pub revision: i64,
+}
+
+pub fn watch(conn: &Connection, project_id: Option<i64>, kind: &str) -> Result<Watch, String> {
+    let base = data_version(conn)?;
+    let revision = match project_id {
+        Some(id) => {
+            check_kind(kind)?;
+            conn.query_row("SELECT revision FROM project_documents WHERE project_id = ?1 AND kind = ?2", params![id, kind], |r| r.get(0)).optional().map_err(|e| e.to_string())?.unwrap_or(0)
+        }
+        None => 0,
+    };
+    Ok(Watch { version: base.version, schema_ok: base.schema_ok, revision })
+}
+
 #[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct Document {
     pub project_id: i64,
@@ -227,6 +249,17 @@ mod tests {
         doc_put(&c, 7, "aqc.rates", 0, "r", "a").unwrap();
         doc_put(&c, 7, "aqc.project", 0, "p", "a").unwrap();
         assert_eq!(doc_list(&c, 7).unwrap().iter().map(|d| d.kind.as_str()).collect::<Vec<_>>(), ["aqc.project", "aqc.rates"]);
+    }
+
+    #[test]
+    fn watching_reports_the_document_revision_without_reading_it() {
+        let c = conn();
+        assert_eq!(watch(&c, Some(7), "aqc.project").unwrap().revision, 0);
+        doc_put(&c, 7, "aqc.project", 0, "x", "a").unwrap();
+        let w = watch(&c, Some(7), "aqc.project").unwrap();
+        assert_eq!((w.revision, w.schema_ok), (1, true));
+        assert_eq!(watch(&c, None, "aqc.project").unwrap().revision, 0);
+        assert!(watch(&c, Some(7), "Bad Kind").is_err());
     }
 
     #[test]
