@@ -4,7 +4,7 @@
 
 This is not ShilpiDB. ShilpiDB is the separate store for drawing data. This interface is for the office's records: clients, projects, staff, leave and the library.
 
-Only one app can have a company file open at a time. The file is locked while a session has it open, and destroying the session releases it.
+Several apps can have the same company file open at the same time (see [shared-company-file.md](shared-company-file.md)). A session holds a shared claim on the file while it is open, and destroying the session releases it. Protecting a file or upgrading its format needs the file to itself and is refused while another app has it open; a protected (encrypted) file can be open in one app at a time.
 
 ## Functions
 
@@ -36,6 +36,9 @@ Every other operation needs a signed-in, unlocked session. Reading needs View. A
 | `project_ref` | project_id | `ProjectRef` (see [contracts/refs.md](contracts/refs.md)) |
 | `project_resolve` | reference | the project id the `ProjectRef` names in this file |
 | `artifact_ref_check` | reference | null when the `ArtifactRef` is well formed |
+| `data_version` | | `{version, schema_ok}`; the version goes up when another app writes |
+| `doc_get` / `doc_list` / `doc_revision` | project_id, kind [, revision] | a project's document, its documents without bodies, or one revision |
+| `doc_put` | project_id, kind, expected_revision, body | `{revision, checksum_sha256}`, or a refusal if the revision is stale |
 | `staff_list` / `staff_save` | / input | staff with leave days this year / id |
 | `leave_list` / `leave_save` | / input | leave / id |
 | `library_list` / `library_save` | kind (or null), search (or null) / input | entries / id |

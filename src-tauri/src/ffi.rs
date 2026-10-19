@@ -390,9 +390,11 @@ mod tests {
         assert!(error.contains("Close the current company"), "{error}");
 
         let other = create_session(&temp.dir);
-        let (status, _, error) = call(other, "company.open", &args);
-        assert_eq!(status, ADMS_ERR_DOMAIN, "{error}");
-        assert!(error.to_lowercase().contains("already open"), "{error}");
+        // A second app (a second session) may have the same company open; they share the file.
+        let (status, data, error) = call(other, "company.open", &args);
+        assert_eq!(status, ADMS_OK, "{error}");
+        let shared: Value = serde_json::from_slice(&data).unwrap();
+        assert_eq!(shared["uuid"], summary["uuid"]);
         assert_eq!(taken(unsafe { adms_session_destroy(other) }).0, ADMS_OK);
 
         let login = serde_json::json!({ "username": "owner", "password": "correct horse battery" }).to_string();

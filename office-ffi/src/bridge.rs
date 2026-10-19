@@ -4,13 +4,13 @@
 use office_core::auth::Permission;
 use office_core::host::{arg, json, CallError};
 use office_core::workspace::{require, AppState, INTERNAL};
-use office_core::{audit, clients, office, refs, track};
+use office_core::{audit, clients, office, refs, share, track};
 use serde_json::Value;
 
 pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, CallError> {
     let permission = match op {
-        "client_list" | "project_list" | "project_brief_get" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" => Permission::View,
-        "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" => Permission::Edit,
+        "client_list" | "project_list" | "project_brief_get" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" => Permission::View,
+        "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" => Permission::Edit,
         "" => return Err(CallError::BadRequest("The operation name was missing.".into())),
         _ => return Err(CallError::BadRequest("That operation is not part of the office interface.".into())),
     };
@@ -51,6 +51,17 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
             clients::set_project_archived(conn, id, archived)?;
             audit(conn, Some(user), if archived { "project_archived" } else { "project_restored" }, &format!("project {id}"));
             json(&Value::Null)
+        }
+        "data_version" => json(&share::data_version(conn)?),
+        "doc_get" => json(&share::doc_get(conn, arg(args, "project_id")?, &arg::<String>(args, "kind")?)?),
+        "doc_list" => json(&share::doc_list(conn, arg(args, "project_id")?)?),
+        "doc_revision" => json(&share::doc_revision(conn, arg(args, "project_id")?, &arg::<String>(args, "kind")?, arg(args, "revision")?)?),
+        "doc_put" => {
+            let (project_id, kind, expected, body): (i64, String, i64, String) = (arg(args, "project_id")?, arg(args, "kind")?, arg(args, "expected_revision")?, arg(args, "body")?);
+            let by: String = conn.query_row("SELECT username FROM users WHERE id = ?1", [user], |r| r.get(0)).unwrap_or_default();
+            let (revision, checksum) = share::doc_put(conn, project_id, &kind, expected, &body, &by)?;
+            audit(conn, Some(user), "document_saved", &format!("project {project_id} {kind} revision {revision}"));
+            json(&serde_json::json!({ "revision": revision, "checksum_sha256": checksum }))
         }
         "project_ref" => json(&refs::project_ref(conn, arg(args, "project_id")?)?),
         "project_resolve" => json(&refs::resolve_project(conn, &arg(args, "reference")?)?),
@@ -165,5 +176,33 @@ mod tests {
         let mut bad = artifact.clone();
         bad["checksum_sha256"] = json!("nope");
         assert!(call(&state, "artifact_ref_check", json!({ "reference": bad })).unwrap_err().contains("checksum"));
+    }
+
+    #[test]
+    fn two_apps_share_a_project_document_and_neither_overwrites_the_other() {
+        let (dir, a) = open("sharedocs");
+        workspace::login(&a, "owner", "correct horse battery").unwrap();
+        let client = call(&a, "client_save", json!({ "client": { "id": null, "name": "Acme", "contact_person": "", "email": "", "phone": "", "address": "", "pan": "", "gstin": "" } })).unwrap();
+        let project = call(&a, "project_save", json!({ "project": { "id": null, "client_id": client, "code": "", "name": "Villa", "site_address": "", "status": "active" } })).unwrap();
+        // the second app opens the same company file while the first still has it
+        let path = dir.0.join("Studio.adms");
+        let b = AppState::new(company::placeholder(), dir.0.clone(), office_core::schema::migrate);
+        company::open_company(&b, &path.to_string_lossy(), "", "").unwrap();
+        workspace::login(&b, "owner", "correct horse battery").unwrap();
+        let before = call(&b, "data_version", json!({})).unwrap();
+        assert_eq!(before["schema_ok"], true);
+        assert!(call(&a, "doc_get", json!({ "project_id": project, "kind": "aqc.project" })).unwrap().is_null());
+        let first = call(&a, "doc_put", json!({ "project_id": project, "kind": "aqc.project", "expected_revision": 0, "body": "{\"levels\":2}" })).unwrap();
+        assert_eq!(first["revision"], 1);
+        assert_ne!(call(&b, "data_version", json!({})).unwrap()["version"], before["version"], "B sees that A wrote");
+        let seen = call(&b, "doc_get", json!({ "project_id": project, "kind": "aqc.project" })).unwrap();
+        assert_eq!((seen["revision"].as_i64(), seen["body"].as_str()), (Some(1), Some("{\"levels\":2}")));
+        assert_eq!(seen["checksum_sha256"], first["checksum_sha256"]);
+        call(&b, "doc_put", json!({ "project_id": project, "kind": "aqc.project", "expected_revision": 1, "body": "{\"levels\":3}" })).unwrap();
+        let stale = call(&a, "doc_put", json!({ "project_id": project, "kind": "aqc.project", "expected_revision": 1, "body": "{\"levels\":9}" })).unwrap_err();
+        assert!(stale.contains("changed in another app"), "{stale}");
+        assert_eq!(call(&a, "doc_list", json!({ "project_id": project })).unwrap()[0]["revision"], 2);
+        assert_eq!(call(&a, "doc_revision", json!({ "project_id": project, "kind": "aqc.project", "revision": 1 })).unwrap()["body"], "{\"levels\":2}");
+        assert!(call(&b, "project_list", json!({ "client_id": null, "include_archived": false })).unwrap().as_array().unwrap().iter().any(|p| p["name"] == "Villa"), "the project A made is B's too");
     }
 }

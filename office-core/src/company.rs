@@ -22,6 +22,17 @@ pub struct CompanySummary {
     pub name: String,
     pub path: String,
     pub uuid: String,
+    /// Keeps this app's shared claim on the file for as long as the company is open. Never sent to the window.
+    #[serde(skip)]
+    #[allow(dead_code)]
+    pub(crate) claim: Option<std::sync::Arc<Claim>>,
+}
+
+/// A shared claim on a company file: a lock on its `.aoslock` sidecar that any number of apps can hold together.
+/// An app that needs the file to itself (to protect it, or to upgrade its format) takes the exclusive lock instead, which is
+/// refused while any other app holds a claim.
+pub struct Claim {
+    _file: std::fs::File,
 }
 
 /// What validation learned about a file, without having changed it.
@@ -149,6 +160,15 @@ pub fn swap_in(path: &Path, bytes: &[u8]) -> Result<(), String> {
     Ok(())
 }
 
+/// Takes this app's shared claim on a company file. Refused only while some app has the file to itself.
+pub fn take_claim(path: &Path) -> Result<Claim, String> {
+    let lock_path = sidecar(path, "aoslock");
+    let file = std::fs::OpenOptions::new().read(true).write(true).create(true).open(&lock_path).map_err(|e| e.to_string())?;
+    fs4::FileExt::try_lock_shared(&file).map_err(|_| fail("This company is being protected or upgraded by another app. Try again in a moment."))?;
+    Ok(Claim { _file: file })
+}
+
+/// Takes the file to itself. Refused while any other app has the company open.
 pub fn take_lock(path: &Path) -> Result<std::fs::File, String> {
     let lock_path = sidecar(path, "aoslock");
     let file = std::fs::OpenOptions::new().read(true).write(true).create(true).open(&lock_path).map_err(|e| e.to_string())?;
@@ -190,7 +210,18 @@ pub fn random_uuid(conn: &Connection) -> Result<String, String> {
     Ok(format!("{}-{}-{}-{}-{}", &h[0..8], &h[8..12], &h[12..16], &h[16..20], &h[20..32]))
 }
 
+/// Opens a company database read-write for use alongside other apps: write-ahead logging, ordinary locking, and a wait of up to five
+/// seconds for another app's write to finish.
+pub fn open_shared(path: &Path) -> Result<Connection, String> {
+    let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_WRITE).map_err(|_| fail("This company file could not be opened."))?;
+    conn.busy_timeout(std::time::Duration::from_secs(5)).map_err(|e| e.to_string())?;
+    conn.pragma_update(None, "foreign_keys", "ON").map_err(|e| e.to_string())?;
+    conn.pragma_update(None, "journal_mode", "WAL").map_err(map_open_error)?;
+    Ok(conn)
+}
+
 /// Opens a company database read-write and takes an exclusive lock on it, so a second window or program cannot use it.
+/// Used for the decrypted working copy of a protected file, which only one app can hold.
 pub fn open_exclusive(path: &Path) -> Result<Connection, String> {
     let mut conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_WRITE).map_err(|_| fail("This company file could not be opened."))?;
     conn.busy_timeout(std::time::Duration::from_millis(800)).map_err(|e| e.to_string())?;
@@ -291,22 +322,35 @@ pub fn with_extension(path: &Path) -> PathBuf {
     }
 }
 
-/// Opens an existing company: validates, snapshots before any upgrade, locks, upgrades, and stamps the open time.
+/// Opens an existing company so that other apps can have it open too: validates, takes a shared claim, snapshots and upgrades if the
+/// file is older, and stamps the open time.
+///
+/// An upgrade changes the file for every app, so it needs the file to itself. If another app has it open the upgrade is refused with
+/// a message to close that app first, and nothing is changed.
 pub fn open_file(path: &Path, prepare: Prepare) -> Result<(Connection, CompanySummary), String> {
     let check = validate(path)?;
+    let mut claim = take_claim(path)?;
     if check.needs_upgrade {
+        drop(claim);
+        let alone = take_lock(path).map_err(|_| fail("This company file was made by an older version and has to be upgraded. Close it in every other app, then open it here."))?;
         // Take a verified copy first. The upgrade only starts if the copy exists.
         let src = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(|e| e.to_string())?;
         let copy = PathBuf::from(format!("{}.before-upgrade-v{}.bak", path.display(), check.schema_version));
         if !copy.exists() {
             src.execute("VACUUM INTO ?1", params![path_str(&copy)]).map_err(|e| format!("Could not take a safety copy before upgrading: {e}"))?;
         }
+        drop(src);
+        let mut conn = open_shared(path)?;
+        prepare(&mut conn)?;
+        drop(conn);
+        drop(alone);
+        claim = take_claim(path)?;
     }
-    let mut conn = open_exclusive(path)?;
+    let mut conn = open_shared(path)?;
     prepare(&mut conn)?;
     conn.execute("UPDATE company_file SET last_opened_at = datetime('now') WHERE id = 1", []).map_err(|e| e.to_string())?;
     let name: String = conn.query_row("SELECT display_name FROM company_file WHERE id = 1", [], |r| r.get(0)).map_err(|e| e.to_string())?;
-    let summary = CompanySummary { name, path: path_str(path), uuid: check.uuid };
+    let summary = CompanySummary { name, path: path_str(path), uuid: check.uuid, claim: Some(std::sync::Arc::new(claim)) };
     Ok((conn, summary))
 }
 
@@ -541,7 +585,7 @@ pub fn open_protected(state: &AppState, path: &Path, secret: &str, unlock: &str)
     conn.execute("UPDATE company_file SET last_opened_at = datetime('now') WHERE id = 1", []).map_err(|e| e.to_string())?;
     let name: String = conn.query_row("SELECT display_name FROM company_file WHERE id = 1", [], |r| r.get(0)).map_err(|e| e.to_string())?;
     let uuid: String = conn.query_row("SELECT company_uuid FROM company_file WHERE id = 1", [], |r| r.get(0)).map_err(|e| e.to_string())?;
-    let summary = CompanySummary { name, path: path_str(path), uuid };
+    let summary = CompanySummary { name, path: path_str(path), uuid, claim: None };
     Ok((conn, summary, Some(Seal { envelope, working, sealed_path: path.to_path_buf(), lock: Some(lock) })))
 }
 
@@ -567,15 +611,31 @@ pub fn confirm_owner(state: &AppState, password: &str) -> Result<(), String> {
 }
 
 pub fn protect_open(state: &AppState, uid: i64, password: &str) -> Result<String, String> {
-    let summary = {
-        let company = state.company.lock().map_err(|_| INTERNAL)?;
-        let current = company.as_ref().ok_or_else(|| fail("No company is open."))?;
+    let mut summary = {
+        let mut company = state.company.lock().map_err(|_| INTERNAL)?;
+        let current = company.as_mut().ok_or_else(|| fail("No company is open."))?;
         if current.seal.is_some() {
             return Err(fail("This company file is already protected."));
         }
+        // Protecting changes the file for every app, so this app lets go of its shared claim to take the file to itself.
+        current.summary.claim = None;
         current.summary.clone()
     };
     let sealed_path = PathBuf::from(&summary.path);
+    let lock = match take_lock(&sealed_path) {
+        Ok(lock) => lock,
+        Err(_) => {
+            if let Ok(claim) = take_claim(&sealed_path) {
+                if let Ok(mut company) = state.company.lock() {
+                    if let Some(current) = company.as_mut() {
+                        current.summary.claim = Some(std::sync::Arc::new(claim));
+                    }
+                }
+            }
+            return Err(fail("This company is open in another app. Close it there, then protect it here."));
+        }
+    };
+    summary.claim = None;
     let recovery = crate::auth::generate_recovery_code();
     let recovery_hash = crate::auth::hash_password(&recovery)?;
     let snapshot = state.app_dir.join("adms-working").join("protecting.adms");
@@ -634,13 +694,6 @@ pub fn protect_open(state: &AppState, uid: i64, password: &str) -> Result<String
         revert(&old_hash);
         return Err(e);
     }
-    let lock = match take_lock(&sealed_path) {
-        Ok(lock) => lock,
-        Err(e) => {
-            *state.company.lock().map_err(|_| INTERNAL)? = None;
-            return Err(e);
-        }
-    };
     let working = working_path(&state.app_dir, &sealed_path);
     if let Err(e) = write_synced(&working, &plain) {
         *state.company.lock().map_err(|_| INTERNAL)? = None;
@@ -817,14 +870,15 @@ mod tests {
     }
 
     #[test]
-    fn a_company_cannot_be_opened_twice_and_can_be_moved() {
+    fn two_apps_can_have_a_company_open_together_and_it_can_be_moved_when_closed() {
         let d = temp_dir("lock");
         let (path, _) = create_file(&d.join("Lock"), &setup("Lock Co")).unwrap();
         let (first, summary) = open_file(&path).unwrap();
         assert_eq!(summary.name, "Lock Co");
-        let second = open_file(&path);
-        assert!(second.is_err(), "a second open must be refused while the first is open");
+        let (second, second_summary) = open_file(&path).expect("a second app may open the same company");
+        assert_eq!(second_summary.uuid, summary.uuid);
         drop(first);
+        drop(second);
         // after closing, the file can be renamed and still opens: identity is the uuid, not the path
         let moved = d.join("Renamed.adms");
         for suffix in ["-wal", "-shm"] {
@@ -833,6 +887,68 @@ mod tests {
         std::fs::rename(&path, &moved).unwrap();
         let (_c, again) = open_file(&moved).unwrap();
         assert_eq!(again.uuid, summary.uuid);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn what_one_app_writes_the_other_sees_and_the_change_counter_moves() {
+        let d = temp_dir("sharing");
+        let (path, _) = create_file(&d.join("Share"), &setup("Share Co")).unwrap();
+        let (a, _keep_a) = open_file(&path).unwrap();
+        let (b, _keep_b) = open_file(&path).unwrap();
+        let before = crate::share::data_version(&b).unwrap().version;
+        a.execute("INSERT INTO clients (name) VALUES ('Written by A')", []).unwrap();
+        let seen: String = b.query_row("SELECT name FROM clients WHERE name = 'Written by A'", [], |r| r.get(0)).unwrap();
+        assert_eq!(seen, "Written by A");
+        assert_ne!(crate::share::data_version(&b).unwrap().version, before, "B can tell that A wrote");
+        b.execute("INSERT INTO clients (name) VALUES ('Written by B')", []).unwrap();
+        assert_eq!(a.query_row("SELECT COUNT(*) FROM clients", [], |r| r.get::<_, i64>(0)).unwrap(), 2);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn taking_the_file_to_itself_is_refused_while_another_app_has_it_open() {
+        let d = temp_dir("alone");
+        let (path, _) = create_file(&d.join("Alone"), &setup("Alone Co")).unwrap();
+        let (_conn, summary) = open_file(&path).unwrap();
+        assert!(take_lock(&path).is_err(), "protecting or upgrading needs every other app closed");
+        drop(summary);
+        assert!(take_lock(&path).is_ok(), "once the claim is gone the file can be taken");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn an_older_file_is_not_upgraded_under_another_app_that_has_it_open() {
+        let d = temp_dir("upgrade-shared");
+        let path = d.join("Old.adms");
+        {
+            let mut c = Connection::open(&path).unwrap();
+            db::apply_first(&mut c, 13).unwrap();
+            c.pragma_update(None, "application_id", APP_ID).unwrap();
+            c.execute("INSERT INTO company_file (id, format, company_uuid, display_name) VALUES (1, ?1, 'old-uuid', 'Old Co')", params![FORMAT]).unwrap();
+        }
+        let holder = take_claim(&path).unwrap();
+        let refused = open_file(&path).err().expect("refused");
+        assert!(refused.contains("upgraded") && refused.contains("Close"), "{refused}");
+        assert_eq!(validate(&path).unwrap().schema_version, 13, "nothing was changed");
+        drop(holder);
+        let (c, _keep) = open_file(&path).unwrap();
+        assert_eq!(c.pragma_query_value(None, "user_version", |r| r.get::<_, usize>(0)).unwrap(), db::latest_version());
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn protecting_is_refused_while_another_app_has_the_company_open() {
+        let d = temp_dir("protect-shared");
+        let (path, _) = create_file(&d.join("Studio"), &setup("Studio One")).unwrap();
+        let state = AppState::new(placeholder(), d.clone(), crate::schema::migrate);
+        open_company(&state, path.to_str().unwrap(), "", "").unwrap();
+        let (_other, _other_summary) = open_file(&path).unwrap();
+        let owner_id: i64 = state.db.lock().unwrap().query_row("SELECT id FROM users WHERE username = 'owner'", [], |r| r.get(0)).unwrap();
+        let error = protect_open(&state, owner_id, "correct horse battery").unwrap_err();
+        assert!(error.contains("open in another app"), "{error}");
+        assert!(!crate::vault::is_protected(&path), "the file is still plain");
+        close(&state).unwrap();
         let _ = std::fs::remove_dir_all(&d);
     }
 
@@ -908,7 +1024,7 @@ mod tests {
     #[test]
     fn recent_list_is_shortcuts_only_and_deduplicated() {
         let d = temp_dir("recent");
-        let a = CompanySummary { name: "A".into(), path: "C:/a.adms".into(), uuid: "u1".into() };
+        let a = CompanySummary { name: "A".into(), path: "C:/a.adms".into(), uuid: "u1".into(), claim: None };
         remember(&d, &a);
         remember(&d, &CompanySummary { path: "D:/moved/a.adms".into(), ..a.clone() });
         let list = load_recent(&d);
