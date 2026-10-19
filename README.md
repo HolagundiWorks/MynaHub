@@ -1,6 +1,6 @@
 # O-Studio
 
-O-Studio is the office app of **OSAS, the Open Source Architecture Suit**. The suite is O-Studio (office and project management, orange), O-CoreOp (quantities, estimates and billing, blue) and O-Draft (drafting, black). Earlier names: AOS, AQC and AAD. The repository and the code keep the old names in places such as the `aos` portal session name and the `AOSENC1` file marker, because files and servers already use them.
+O-Studio is the office app of **OSAS, the Open Source Architecture Suit**. The suite is O-Studio (office and project management, orange), O-CoreOp (quantities, estimates and billing, blue) and O-Draft (drafting, black). Some code identifiers keep older spellings, such as the `aos` portal session name and the `AOSENC1` file marker, because files and servers already use them.
 
 Offline Windows desktop app for an architectural practice. Clients, projects, letters, invoices, and the accounts live in one company file. Developed by Human Centric Works.
 
