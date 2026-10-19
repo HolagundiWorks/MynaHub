@@ -8,7 +8,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 
 | | O-Studio | O-CoreOp |
 |---|---|---|
-| Repository | `HolagundiWorks/O-STUDIO`, `master` | `HolagundiWorks/O-COREOP`, branch `claude/aos-shell` (not merged to `main`) |
+| Repository | `HolagundiWorks/O-STUDIO`, `master` | `HolagundiWorks/O-COREOP`, `main` |
 | Window | WinUI 3, `native/Adms.Desktop` | WinUI 3, `BBSDesktop/BBSApp` |
 | Engine | Rust, `src-tauri` and `office-core`, one `.adms` company file | C# and its own project file |
 | Shared design | `hcw-ui`, orange | `hcw-ui`, blue |
@@ -20,7 +20,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 
 | # | Item | App | Evidence |
 |---|---|---|---|
-| 1.1 | Merge `claude/aos-shell` into `main` of the O-CoreOp repository, after the owner reviews it | CoreOp | Checked: the branch holds the whole new shell and is two commits ahead of what was last pushed |
+| 1.1 | ~~Merge the O-CoreOp shell into `main`~~ Done 2026-10-19 (merge commit `a0aa37d`, with the AORMS sign-in and Online projects branch) | CoreOp | Checked |
 | 1.2 | Add continuous integration: build, `cargo test`, `dotnet test`, the static QA test | Both | Checked: neither repository has a workflow |
 | 1.3 | Narrator and NVDA pass over sign-in, create a client, save a record, read a table. Confirms audit item O5 | Both | Not tested; automation cannot do this |
 | 1.4 | ~~Check every page at 520 px (O3)~~ Done 2026-10-19: all 31 pages, no loss of content. Cosmetic follow-ups: narrow table columns break words; the header row of Chart and financial years is narrower than its rows | Studio | Checked |
