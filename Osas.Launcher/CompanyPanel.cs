@@ -79,7 +79,7 @@ public sealed partial class CompanyPanel : StackPanel
     {
         var path = _settings.CompanyPath;
         _name.Text = _company?.Name ?? (path != null ? System.IO.Path.GetFileNameWithoutExtension(path) : "No company chosen");
-        _path.Text = path ?? "Choose the .adms file your office uses.";
+        _path.Text = path ?? "Choose the company file your office uses (.osas).";
         _who.Text = _company != null ? $"Signed in as {_company.User} ({_company.Role})" : path != null ? "Not signed in" : "";
         _signIn.Visibility = _company == null && path != null ? Visibility.Visible : Visibility.Collapsed;
         _signOut.Visibility = _company != null ? Visibility.Visible : Visibility.Collapsed;
@@ -90,7 +90,9 @@ public sealed partial class CompanyPanel : StackPanel
     private async Task Choose()
     {
         var picker = new FileOpenPicker { SuggestedStartLocation = PickerLocationId.DocumentsLibrary };
+        picker.FileTypeFilter.Add(".osas");
         picker.FileTypeFilter.Add(".adms");
+        picker.FileTypeFilter.Add(".aorms");
         InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(_window));
         var file = await picker.PickSingleFileAsync();
         if (file == null)

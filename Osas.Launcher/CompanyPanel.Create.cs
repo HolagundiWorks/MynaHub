@@ -45,7 +45,7 @@ public sealed partial class CompanyPanel
             return;
         }
         var picker = new FileSavePicker { SuggestedStartLocation = PickerLocationId.DocumentsLibrary, SuggestedFileName = companyName };
-        picker.FileTypeChoices.Add("Company file", [".adms"]);
+        picker.FileTypeChoices.Add("Company file", [".osas"]);
         InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(_window));
         var file = await picker.PickSaveFileAsync();
         if (file == null)

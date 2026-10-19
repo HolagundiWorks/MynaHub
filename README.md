@@ -11,7 +11,7 @@ A small launcher for the three apps of the suite:
 OSAS shows which of them are installed on this computer, with their versions, and opens them. It starts the apps and changes nothing in them. O-Studio and O-CoreOp can have the same company file open at the same time.
 
 ## Company: one company file, one sign-in
-The **Company** section at the top is where the suite's company file is chosen. Choose the `.adms` file, sign in once with your own user name and password, and OSAS:
+The **Company** section at the top is where the suite's company file is chosen. Choose the `.osas` file (earlier `.adms` files open too), sign in once with your own user name and password, and OSAS:
 
 - **creates** a new company (**Create a company…**: its name, the owner's user name and password, where to keep the file, and the recovery code shown once), or **chooses** an existing file. This is the only place a company is chosen or created: O-Studio and O-CoreOp have no file picker of their own;
 - shows the company's name and who is signed in, and **Company details…** edits the name, address, contact, PAN, GSTIN, registration, bank details, letterhead style and accent that every app prints on its documents (saving needs the settings permission);
@@ -24,7 +24,7 @@ If you are not signed in in OSAS, the app is still started on the file and asks 
 OSAS needs `office.dll`, the company-file engine, beside it. It is built from `office-ffi` in the O-Studio repository; the installer finds it there, or give `-OfficeDllDir <folder>`.
 
 ## Company file monitor
-Below the app cards, OSAS watches the company file that O-Studio and O-CoreOp share. Choose the `.adms` file once (it is remembered in `%LOCALAPPDATA%OSAScompany.txt`); it looks again every two seconds.
+Below the app cards, OSAS watches the company file that O-Studio and O-CoreOp share. Choose the `.osas` file (earlier `.adms` files open too) once (it is remembered in `%LOCALAPPDATA%OSAScompany.txt`); it looks again every two seconds.
 
 | Shown | What it is |
 |---|---|

@@ -40,7 +40,7 @@ public class SuiteCompanyTests : IDisposable
         using var engine = Engine.Start(Path.Combine(_dir, "setup"));
         engine.Call("company.create", new JsonObject { ["path"] = Path.Combine(_dir, "Studio"), ["name"] = "Studio One", ["username"] = "owner", ["password"] = Password, ["confirm"] = Password });
         engine.Call("company.close");
-        return Path.Combine(_dir, "Studio.adms");
+        return Path.Combine(_dir, "Studio.osas");
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public class SuiteCompanyTests : IDisposable
     public void A_new_company_is_made_in_OSAS_with_its_owner_and_a_recovery_code_and_opens_signed_in()
     {
         if (!Available) return;
-        var path = Path.Combine(_dir, "Fresh.adms");
+        var path = Path.Combine(_dir, "Fresh.osas");
         var (company, recovery) = SuiteCompany.Create(Path.Combine(_dir, "osas"), path, "Fresh Studio", "meera", Password, Password);
         using (company)
         {
@@ -119,9 +119,9 @@ public class SuiteCompanyTests : IDisposable
             Assert.False(string.IsNullOrWhiteSpace(recovery));
             Assert.Equal("Fresh Studio", company.Details().Name);
         }
-        var refused = Assert.Throws<EngineException>(() => SuiteCompany.Create(Path.Combine(_dir, "osas2"), Path.Combine(_dir, "Other.adms"), "Other", "meera", Password, "a different password!"));
+        var refused = Assert.Throws<EngineException>(() => SuiteCompany.Create(Path.Combine(_dir, "osas2"), Path.Combine(_dir, "Other.osas"), "Other", "meera", Password, "a different password!"));
         Assert.False(string.IsNullOrWhiteSpace(refused.Message));
-        Assert.False(File.Exists(Path.Combine(_dir, "Other.adms")), "nothing is left behind when the passwords differ");
+        Assert.False(File.Exists(Path.Combine(_dir, "Other.osas")), "nothing is left behind when the passwords differ");
     }
 
     [Fact]
@@ -142,9 +142,9 @@ public class SuiteCompanyTests : IDisposable
     [Fact]
     public void The_environment_an_app_is_started_with_names_the_company_and_the_ticket()
     {
-        var env = SuiteSettings.AppEnvironment(@"C:\Files\Studio.adms", new AppTicket("abc", "owner"));
-        Assert.Equal((@"C:\Files\Studio.adms", "abc", "owner"), (env["OSAS_COMPANY"], env["OSAS_TICKET"], env["OSAS_USER"]));
-        var bare = SuiteSettings.AppEnvironment(@"C:\Files\Studio.adms", null);
+        var env = SuiteSettings.AppEnvironment(@"C:\Files\Studio.osas", new AppTicket("abc", "owner"));
+        Assert.Equal((@"C:\Files\Studio.osas", "abc", "owner"), (env["OSAS_COMPANY"], env["OSAS_TICKET"], env["OSAS_USER"]));
+        var bare = SuiteSettings.AppEnvironment(@"C:\Files\Studio.osas", null);
         Assert.Single(bare);
     }
 }

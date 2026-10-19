@@ -46,7 +46,7 @@ public sealed record CompanyStats(
 }
 
 /// <summary>
-/// Watches one company file (.adms) from outside, without signing in and without ever changing it: how big it is, how much of that is
+/// Watches one company file (.osas, or an earlier .adms) from outside, without signing in and without ever changing it: how big it is, how much of that is
 /// free or taken by what, which programs have it open and how busy they are, and how often other programs are writing to it.
 /// It opens the file read-only and counts rows; it does not read names, amounts or documents.
 /// A protected (encrypted) file can only be measured from outside, so its sizes and who has it open are all that is shown.

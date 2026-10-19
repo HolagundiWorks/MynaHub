@@ -2,7 +2,7 @@
 ; Build with installer\build.ps1, or:  makensis /DSOURCE=<publish folder> installer\aos.nsi
 ;
 ; Installs for the current user only (no administrator rights), into a fixed folder, so the uninstaller can remove exactly what
-; was installed and nothing else. Company files (.adms) and OSAS's saved choices are never touched.
+; was installed and nothing else. Company files (.osas, and earlier .adms) and OSAS's saved choices are never touched.
 Unicode true
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
