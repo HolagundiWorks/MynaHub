@@ -66,6 +66,9 @@ public sealed partial class CompanyPanel : StackPanel
 
     public bool SignedIn => _company != null;
 
+    /// <summary>The company signed in to here, or null. The assistant works as this person.</summary>
+    public SuiteCompany? Company => _company;
+
     private static T Resource<T>(string key) => (T)Microsoft.UI.Xaml.Application.Current.Resources[key];
 
     private void Say(InfoBarSeverity severity, string message)

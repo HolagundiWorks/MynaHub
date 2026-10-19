@@ -139,6 +139,26 @@ public sealed class SuiteCompany : IDisposable
         return new AppTicket(t["ticket"]!.GetValue<string>(), t["username"]?.GetValue<string>() ?? User);
     }
 
+    /// <summary>The tools the assistant may use, from the engine's governed list. Every one only reads.</summary>
+    public IReadOnlyList<Osas.Core.Agent.ToolSpec> AssistantTools() =>
+        (_engine.Call("agent_tools") as JsonArray ?? [])
+            .OfType<JsonObject>()
+            .Select(t => new Osas.Core.Agent.ToolSpec(t["name"]!.GetValue<string>(), t["description"]?.GetValue<string>() ?? "", t["input_schema"]?.DeepClone() ?? new JsonObject()))
+            .ToList();
+
+    /// <summary>Runs one assistant tool as the person signed in here. The engine checks the person's role, checks the arguments and writes the audit entry.</summary>
+    public string AssistantCall(string tool, JsonObject arguments)
+    {
+        try
+        {
+            return (_engine.Call("agent_call", new JsonObject { ["name"] = tool, ["arguments"] = arguments.DeepClone() }) ?? new JsonObject()).ToJsonString();
+        }
+        catch (EngineException ex)
+        {
+            throw new Osas.Core.Agent.AssistantException(ex.Message);
+        }
+    }
+
     public void Dispose()
     {
         try

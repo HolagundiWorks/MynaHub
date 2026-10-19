@@ -60,12 +60,21 @@ public sealed class Engine : IDisposable
     }
 
     /// <summary>Makes the loader look for office.dll in a folder, for tests and for builds where it is not beside the program.</summary>
-    public static void LookIn(string folder) =>
-        NativeLibrary.SetDllImportResolver(typeof(Engine).Assembly, (name, _, _) =>
+    public static void LookIn(string folder)
+    {
+        try
         {
-            var path = Path.Combine(folder, "office.dll");
-            return name == "office" && File.Exists(path) && NativeLibrary.TryLoad(path, out var handle) ? handle : 0;
-        });
+            NativeLibrary.SetDllImportResolver(typeof(Engine).Assembly, (name, _, _) =>
+            {
+                var path = Path.Combine(folder, "office.dll");
+                return name == "office" && File.Exists(path) && NativeLibrary.TryLoad(path, out var handle) ? handle : 0;
+            });
+        }
+        catch (InvalidOperationException)
+        {
+            // The loader allows one resolver for the program; the folder chosen first stays.
+        }
+    }
 
     public static Engine Start(string folder)
     {

@@ -86,7 +86,7 @@ public sealed class MainWindow : Window
         page.Children.Add(_cards);
         page.Children.Add(monitor);
         var shilpi = new ShilpiPanel(settings, () => _company.CompanyPath);
-        var agent = new AgentPanel(settings, () => _company.CompanyPath, () => "auditor");
+        var agent = new AgentPanel(settings, () => _company.Company, () => _company.CompanyPath);
         _company.Changed += agent.Refresh;
         page.Children.Add(shilpi);
         page.Children.Add(agent);

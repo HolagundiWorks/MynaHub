@@ -45,8 +45,15 @@ It opens the file read-only, never signs in, and shows sizes and counts only: no
 The suite's spatial store for drawing geometry (shapes as boxes with data, found by place). The **ShilpiDB** section shows whether the server is running, its web gateway, and how many records it holds, and starts or stops a server for the chosen company. The data file is kept beside the company file, named `<company>.shilpi.vdb`. OSAS starts it only on `127.0.0.1`, stops only a server it started itself, and asks for the record count only, never the records. It looks for `shilpid.exe` and `shilpi-http.exe` beside OSAS, in `%LOCALAPPDATA%\Programs\shilpidb`, in the folder set as `shilpi_dir` in `suite.json`, and on the `PATH`. Host and ports (`shilpi_host`, `shilpi_port`, `shilpi_http_port`) are set in `suite.json` too. Clients, projects and money stay in the company file; ShilpiDB records point at them by ProjectRef.
 
 ## AI assistant
-Direction (2026-10-19): the assistant is to run inside OSAS, as the signed-in person, not as a separate program. What is built so far is the tool set and the settings block below; see `docs/suite-hub.md` in O-STUDIO, "Who owns what".
-The **AI assistant** section prepares the connection for an assistant such as Claude Desktop or Claude Code. The assistant is `office-mcp`, started by that tool, not a chat window in OSAS. It signs in as one company user, so it sees only what that user's role allows, and it can use only fixed read-only tools (clients, projects, library, staff, proposals, meetings, TDS check). OSAS shows the tools and gives a settings block to paste. The password in it is a placeholder: OSAS never holds or writes a password. Tools that change records (preview, approval, audit) and tools for O-Draft and ShilpiDB are not built.
+The **AI assistant** section lets you ask questions about the practice in plain words. It runs inside OSAS, as the person signed in: it looks things up in the company file through the engine's fixed, read-only tools (clients, projects, library, staff, proposals, meetings, TDS check, and the company's and a project's details), so it sees only what that person's role allows. Every lookup is written to the audit log, and it cannot change a record or run SQL.
+
+- **Model.** Claude Sonnet 5.5 is the default: careful with several records at once and reliable with tools, at moderate cost. Claude Haiku 5.5 is faster and cheaper for plain lookups; Claude Opus 5.5 is for harder questions. Choose in the section; the choice is remembered.
+- **Key.** You use your own Anthropic API key. It is kept encrypted for your Windows account in `%LOCALAPPDATA%\OSAS\assistant.dat`, never in the company file, and is not shown again. `ANTHROPIC_API_KEY` is used if none is saved.
+- **Consent.** Nothing is sent until you tick the box agreeing that your questions and the records the assistant looks up go to Anthropic. Only the question and what the tools return are sent; bank and UPI details are never included.
+- **Limits.** At most 8 lookups per question, results cut at 200 list entries and 60,000 characters, questions under 4,000 characters. Text found in records is passed to the model as data, with an instruction not to follow it.
+- **Outside assistants.** A collapsed panel still gives the `office-mcp` settings for Claude Desktop or Claude Code, which sign in with their own user name and password.
+
+Not built: changing records through the assistant (it would need a preview, an approval and an audit entry), tools for O-Draft and ShilpiDB, streaming replies, and any run against the live service (it was tested with a scripted model and the real engine).
 
 ## Install
 ```powershell
@@ -68,7 +75,7 @@ In this order, for each app: a program you chose with **Find it…** (kept in `%
 | Folder | |
 |---|---|
 | `Osas.Core` | Finding the apps and the saved paths, and the company file monitor (`Monitor/`). No user interface, so it is tested on its own |
-| `Osas.Core.Tests` | Thirty-six tests: the monitor, ShilpiDB and the assistant settings, and the company details, tickets and settings against the real engine (set `OFFICE_DLL_DIR` to the folder with `office.dll`); one asks Windows which program holds a file with a pretend computer: `dotnet test Osas.Core.Tests` |
+| `Osas.Core.Tests` | Fifty-six tests: the monitor, ShilpiDB and the assistant settings, and the company details, tickets and settings against the real engine (set `OFFICE_DLL_DIR` to the folder with `office.dll`); one asks Windows which program holds a file with a pretend computer: `dotnet test Osas.Core.Tests` |
 | `Osas.Launcher` | The WinUI 3 window. Uses the shared design in `hcw-ui` (check it out beside this repository) |
 
 ```powershell
