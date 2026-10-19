@@ -1,5 +1,8 @@
 # Hand-off: bringing the drafting app into OSAS as O-Draft
 
+> **Status 2026-10-19: mostly done on `O-DRAFT` `main`.** Already there: the product name in the packaging, About, splash and EULA (the last strings were fixed in `1f3f7dc`), the black accent in both palettes with contrast tests in `theme.rs`, the new mark and its arc rasteriser in `xtask/src/logo.rs`, `o-draft.exe` and `ODraft.WinUi.exe`, the installer names, and the OSAS launcher looking for `o-draft.exe` with `aad.exe` as the older fallback.
+> **Still open:** (1) `cargo xtask ci` and a real build of the shell were not run after the last change, and one command-bar test (`space_runs_the_first_command_in_the_list_and_a_sentence_keeps_its_spaces`) failed in `ui-egui` on `origin/main`; it was not checked whether it fails without the rebrand. (2) O-Draft was not installed, so the OSAS Open O-Draft card was never exercised. (3) The hub integration in section 11 below is not started. (4) The accessibility audit (section 7) was not run. (5) The developer working copy `AADT` has 37 uncommitted files of take-off work that are not part of this.
+
 For whoever works in the O-Draft repository (`HolagundiWorks/O-DRAFT`). Written 2026-10-18. Nothing in the O-Draft repository has been changed yet. I read it through GitHub only; it is not cloned on the machine this was written on, so I did not build or run it. Every file and line named below comes from the repository's own text, but run the searches in section 9 to find what I missed.
 
 ## 1. What is being asked
@@ -128,3 +131,6 @@ Answered on 2026-10-18: (1) a light-neutral accent in the dark palette is accept
 
 **Retired logo.** Delete the old artwork from `assets/app-icon/` and drawing code from `xtask/src/logo.rs`; do not keep it as an alternative.
 
+
+## 11. Joining the hub (not started)
+OSAS now chooses the company and signs in once. An app is started with `OSAS_COMPANY`, `OSAS_TICKET` and `OSAS_USER` in its environment; a ticket works once for 120 seconds and is redeemed through `office.dll` (`auth.login_ticket`). O-Draft would need: read those variables at start; open the company file through the same engine to read the `ProjectRef` of the project it draws for; record that `ProjectRef` in the drawing and in the take-off it writes to ShilpiDB. The contract is `docs/contracts/refs.md` and `docs/suite-hub.md` in the O-STUDIO repository. O-Draft should not manage users or choose a company.
