@@ -74,7 +74,10 @@ public sealed class MainWindow : Window
         Grid.SetRow(introRow, 1);
         root.Children.Add(introRow);
 
-        var scroll = new ScrollViewer { Content = new Grid { Padding = new Thickness(32, 8, 32, 24), Children = { _cards } } };
+        var page = new StackPanel { Padding = new Thickness(32, 8, 32, 24), Spacing = 24 };
+        page.Children.Add(_cards);
+        page.Children.Add(new MonitorPanel(this));
+        var scroll = new ScrollViewer { Content = page };
         Grid.SetRow(scroll, 2);
         root.Children.Add(scroll);
 
@@ -199,7 +202,7 @@ public sealed class MainWindow : Window
         text.Children.Add(new TextBlock { Text = "O-Studio — office and project management", TextWrapping = TextWrapping.Wrap });
         text.Children.Add(new TextBlock { Text = "O-CoreOp — quantities, estimates and billing", TextWrapping = TextWrapping.Wrap });
         text.Children.Add(new TextBlock { Text = "O-Draft — drafting", TextWrapping = TextWrapping.Wrap });
-        text.Children.Add(new TextBlock { Text = "Developed by Human Centric Works. This launcher is version 0.1.0.", Style = Style("CaptionStyle"), TextWrapping = TextWrapping.Wrap });
+        text.Children.Add(new TextBlock { Text = "Developed by Human Centric Works. This launcher is version 0.2.0.", Style = Style("CaptionStyle"), TextWrapping = TextWrapping.Wrap });
         await new ContentDialog { Title = "About OSAS", Content = text, CloseButtonText = "Close", XamlRoot = Content.XamlRoot }.ShowAsync();
     }
 }
