@@ -2,11 +2,11 @@
 
 A small launcher for the three apps of the suite:
 
-| App | For | Was |
-|---|---|---|
-| **O-Studio** | Office and project management | AOS |
-| **O-CoreOp** | Quantities, estimates and billing | AQC |
-| **O-Draft** | Drafting | AAD |
+| App | For |
+|---|---|
+| **O-Studio** | Office and project management |
+| **O-CoreOp** | Quantities, estimates and billing |
+| **O-Draft** | Drafting |
 
 OSAS shows which of them are installed on this computer, with their versions, and opens them. It starts the apps and changes nothing in them. O-Studio and O-CoreOp can use the same company file, but only one of them at a time.
 
