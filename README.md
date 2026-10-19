@@ -53,6 +53,8 @@ The **AI assistant** section lets you ask questions about the practice in plain 
 - **Limits.** At most 8 lookups per question, results cut at 200 list entries and 60,000 characters, questions under 4,000 characters. Text found in records is passed to the model as data, with an instruction not to follow it.
 - **Outside assistants.** A collapsed panel still gives the `office-mcp` settings for Claude Desktop or Claude Code, which sign in with their own user name and password.
 
+Bundled with OSAS (when found in the build folder): `shilpidbshilpid.exe`, `shilpidbshilpi-http.exe` and `office-mcp.exe`; `-p:ToolsDir=<folder>` names another folder.
+
 Not built: changing records through the assistant (it would need a preview, an approval and an audit entry), tools for O-Draft and ShilpiDB, streaming replies, and any run against the live service (it was tested with a scripted model and the real engine).
 
 ## Install

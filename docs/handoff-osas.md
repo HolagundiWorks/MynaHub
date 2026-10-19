@@ -14,8 +14,8 @@ Written 2026-10-19. OSAS is the suite app (WinUI 3, this repository). It is the 
 | # | Item |
 |---|---|
 | 1 | ~~`install.ps1` published without `office.dll`~~ it now stops unless the engine is found (`-OfficeDllDir`) or `-WithoutEngine` is passed. |
-| 2 | ShilpiDB: install `shilpid` and `shilpi-http` with OSAS (or beside it), then run Start against them. Confirm `/stats` against the current ShilpiDB `main` (it was 5 commits ahead of the local copy when checked). Link records to the company by `ProjectRef`. |
-| 3 | AI assistant: built in OSAS 2026-10-19 (model choice, own API key, consent, read-only governed tools as the signed-in person). Not yet run against the live service. Still to do: write tools with preview and approval, O-Draft and ShilpiDB tools, streaming, ship `office-mcp.exe` with OSAS. |
+| 2 | ShilpiDB: OSAS now bundles `shilpid` and `shilpi-http` (`shilpidb` beside OSAS) and Start was run for real on 2026-10-20 (server and gateway came up, 0 records, Stop ended them). Still to do: link records to the company by `ProjectRef`, and look at a real drawing's records in the section. |
+| 3 | AI assistant: built in OSAS (model choice, own API key, consent, read-only governed tools as the signed-in person). `office-mcp.exe` is now bundled and was checked on 2026-10-20 (lists nine tools, `company.details` returns a project and client without bank details, an unknown argument is refused). Not yet run against the live service. Still to do: write tools with preview and approval, O-Draft and ShilpiDB tools, streaming. |
 | 4 | Known limits (see O-STUDIO `docs/suite-hub.md`): a protected (encrypted) file is single-program; signing out in OSAS does not sign out apps already open; an idle lock makes an app ask for sign-in; switching company does not move open apps. |
 | 5 | O-Draft is not integrated (`handoff-o-draft-rebrand.md`, section 11). Its card finds `o-draft.exe`, but no O-Draft is installed here. |
 | 6 | Accessibility: UI Automation only. Narrator/NVDA, 200% text, high contrast not done. |

@@ -39,6 +39,17 @@
   <ItemGroup>
     <None Include="$(OfficeDllDir)\office.dll" Condition="Exists('$(OfficeDllDir)\office.dll')" Link="office.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <!-- Programs OSAS starts or hands to other programs, bundled when found in ToolsDir (default: the engine's folder):
+       shilpid and shilpi-http (ShilpiDB, from the shilpidb repository) go in a shilpidb folder; office-mcp (the tool server for outside
+       assistants) goes beside OSAS. Without them the ShilpiDB and outside-assistant sections say they were not found. -->
+  <PropertyGroup>
+    <ToolsDir Condition="'$(ToolsDir)' == ''">$(OfficeDllDir)</ToolsDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="$(ToolsDir)\shilpid.exe" Condition="Exists('$(ToolsDir)\shilpid.exe')" Link="shilpidb\shilpid.exe" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(ToolsDir)\shilpi-http.exe" Condition="Exists('$(ToolsDir)\shilpi-http.exe')" Link="shilpidb\shilpi-http.exe" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(ToolsDir)\office-mcp.exe" Condition="Exists('$(ToolsDir)\office-mcp.exe')" Link="office-mcp.exe" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4188" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
