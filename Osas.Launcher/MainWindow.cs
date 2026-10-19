@@ -62,7 +62,7 @@ public sealed class MainWindow : Window
 
         var intro = new TextBlock
         {
-            Text = "Open an app. Each one keeps its own window. O-Studio and O-CoreOp can use the same company file, but only one of them at a time, so close one before opening the other on that file.",
+            Text = "Open an app. Each one keeps its own window. O-Studio and O-CoreOp can have the same company file open at the same time, and they share its clients and projects.",
             Style = Style("SecondaryStyle"),
             Margin = new Thickness(32, 0, 32, 12),
             MaxWidth = 760,

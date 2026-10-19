@@ -8,7 +8,7 @@ A small launcher for the three apps of the suite:
 | **O-CoreOp** | Quantities, estimates and billing |
 | **O-Draft** | Drafting |
 
-OSAS shows which of them are installed on this computer, with their versions, and opens them. It starts the apps and changes nothing in them. O-Studio and O-CoreOp can use the same company file, but only one of them at a time.
+OSAS shows which of them are installed on this computer, with their versions, and opens them. It starts the apps and changes nothing in them. O-Studio and O-CoreOp can have the same company file open at the same time.
 
 ## How an app is found
 In this order, for each app: a program you chose with **Find it…** (kept in `%LOCALAPPDATA%\OSAS\paths.json`); the folder its installer registered; the usual install folder (`%LOCALAPPDATA%\Programs\O-Studio`, `O-CoreOp`, `O-Draft`, and the earlier names); and the `PATH`. A chosen path must be an absolute path to an `.exe` that exists.
