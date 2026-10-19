@@ -8,6 +8,7 @@ pub mod auth;
 pub mod check;
 pub mod clients;
 pub mod company;
+pub mod context;
 pub mod hash;
 pub mod host;
 pub mod office;

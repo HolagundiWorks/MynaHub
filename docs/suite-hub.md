@@ -45,6 +45,24 @@ When an app is started by OSAS without a valid ticket (it expired, or the person
 | `auth.ticket` `{ app }` | A signed-in, unlocked session | `{ ticket, expires_in, username }` |
 | `auth.login_ticket` `{ ticket }` | A company open in this session | Signs in as the ticket's user |
 
+
+## Who owns what (decision 2026-10-19)
+
+| Data | Owned and edited in | Read by |
+|---|---|---|
+| **Company details**: name, address, registrations, bank, letterhead, accent | **OSAS** | every app, for reports, title plates, letters, invoices |
+| **Users and sign-in** | **OSAS** | every app |
+| **Project details**: code, name, site, client, service, floors, brief | **O-Studio** | O-CoreOp and O-Draft, for reports, title plates and other documents |
+| Quantities, estimates, billing | O-CoreOp | O-Studio shows the results against the fee proposal |
+| Drawings and take-off geometry | O-Draft (ShilpiDB for the spatial records) | O-CoreOp reads the take-off |
+| **The AI assistant** | **OSAS runs it** | it reads the other three through the suite's own connection |
+
+The apps keep no copy of the company or project details. A document is made from one read of the company file, `document_context { project_id? }` (permission: view). It returns the company profile, today's date in the file's clock, and, when a project is named, the project, its client, its brief, the Council of Architecture service in words, and its `ProjectRef`. A change in OSAS or O-Studio shows in the next document any app makes. Apps must not edit what they only read: O-CoreOp and O-Draft do not save company or project details.
+
+**Status.** The engine call `document_context` is built and tested (4 tests). O-Studio already keeps projects in the company file. **O-CoreOp** has not been moved onto it: its reports still print the firm and project details from its own settings and project file. **O-Draft** has no connection to the company file: its title block is drawn from values typed in the drawing. Both are the next steps, and each needs the app to open the company file through `office.dll` as O-CoreOp now does.
+
+**The assistant runs in the suite.** OSAS, not a separate program the user configures, would host the assistant: it opens the company with the signed-in person's own session, so it can use only what that person's role allows, and its tools are the governed, read-only tools in `office-agent` (and later `aqc.*`, `cad.*`, `shilpi.*`). Changes would be proposals the person approves, written to the audit log. What exists today is only the tool set and a settings block for an outside assistant; the assistant inside OSAS is not built. It needs two decisions: which model the suite calls (and who holds the API key), and whether the suite may send company data to that service.
+
 ## Built (2026-10-19)
 
 | Piece | State |
