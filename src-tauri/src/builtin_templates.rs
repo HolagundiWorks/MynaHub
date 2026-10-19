@@ -649,7 +649,7 @@ pub fn seed(conn: &Connection) -> Result<usize, String> {
         }
         // If the firm already has its own template with this name, keep theirs and label the built-in.
         let taken: i64 = conn.query_row("SELECT COUNT(*) FROM templates WHERE name = ?1", params![b.name], |r| r.get(0)).map_err(|e| e.to_string())?;
-        let name = if taken > 0 { format!("{} (ADMS built-in)", b.name) } else { b.name.to_string() };
+        let name = if taken > 0 { format!("{} (built-in)", b.name) } else { b.name.to_string() };
         conn.execute(
             "INSERT INTO templates (kind, name, template_key, family, layout, description, built_in) VALUES (?1,?2,?3,?4,?5,?6,1)",
             params![b.kind, name, b.key, b.family, b.layout, b.description],

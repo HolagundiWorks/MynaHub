@@ -48,7 +48,7 @@ fn with_client<T>(base: &str, f: impl FnOnce(&mut Connect) -> Result<T, ConnectE
     let mut slot = CLIENT.lock().map_err(|_| INTERNAL.to_string())?;
     let stale = slot.as_ref().is_none_or(|(have, _)| have != base);
     if stale {
-        let label = format!("AOS {} · {}", env!("CARGO_PKG_VERSION"), machine());
+        let label = format!("O-Studio {} · {}", env!("CARGO_PKG_VERSION"), machine());
         *slot = Some((base.to_string(), Connect::new(base, APP, &label, token_store()).map_err(|e| e.to_string())?));
     }
     let (_, client) = slot.as_mut().ok_or(INTERNAL)?;

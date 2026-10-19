@@ -115,7 +115,7 @@ try
         again.CloseCompany();
     }
 
-    Console.WriteLine("ADMS native smoke test passed.");
+    Console.WriteLine("O-Studio native smoke test passed.");
 }
 finally
 {

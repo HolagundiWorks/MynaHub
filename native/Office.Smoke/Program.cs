@@ -1,6 +1,6 @@
 using Office.Interop;
 
-// Drives the office C interface the way a native app such as AQC would: create a company, sign in, add the app's own tables,
+// Drives the office C interface the way a native app such as O-CoreOp would: create a company, sign in, add the app's own tables,
 // then work with the shared clients, projects and library.
 var root = Path.Combine(Path.GetTempPath(), "office-smoke-" + Environment.ProcessId);
 Directory.CreateDirectory(root);

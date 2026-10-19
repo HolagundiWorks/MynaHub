@@ -13,7 +13,7 @@ pub struct HtmlTemplate {
     pub css: &'static str,
 }
 
-/// Shared print styles. Fonts come from the bundled IBM Plex families; sizes follow the ADMS print scale.
+/// Shared print styles. Fonts come from the bundled IBM Plex families; sizes follow the O-Studio print scale.
 const BASE: &str = "@page { size: A4; margin: 16mm 16mm 22mm 16mm; }
 .firm-name { font-family: 'IBM Plex Sans SemiBold'; font-size: 16pt; font-weight: 400; color: #1a1a1a; }
 .registration, .meta { font-size: 8.5pt; color: #5c5c5c; }

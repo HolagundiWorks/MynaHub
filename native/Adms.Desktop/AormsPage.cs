@@ -5,7 +5,7 @@ using Microsoft.UI.Xaml.Controls;
 namespace Adms.Desktop;
 
 /// <summary>
-/// The optional link to AORMS, the studio's web portal. Signed out, AOS makes no network call. Signed in, a portal project can be
+/// The optional link to AORMS, the studio's web portal. Signed out, O-Studio makes no network call. Signed in, a portal project can be
 /// pulled into the office file as a client and a project. The password is used once to sign in and is never stored; the sign-in is
 /// the suite's shared one, so the other desktop apps on this computer use it too.
 /// </summary>
@@ -27,7 +27,7 @@ internal sealed class AormsPage : UserControl
         var page = new StackPanel { Spacing = 12, Margin = new Thickness(8) };
         page.Children.Add(Flow.SheetMark("06.05", "Office", "AORMS"));
         page.Children.Add(Flow.Heading("AORMS portal"));
-        page.Children.Add(Flow.Secondary("Optional. AOS works fully without it and makes no network call until you sign in here. Signed in, you can pull a portal project into this company file as a client and a project. Nothing is sent to the portal, and nothing local is deleted."));
+        page.Children.Add(Flow.Secondary("Optional. O-Studio works fully without it and makes no network call until you sign in here. Signed in, you can pull a portal project into this company file as a client and a project. Nothing is sent to the portal, and nothing local is deleted."));
         page.Children.Add(_notice);
         page.Children.Add(_status);
         page.Children.Add(Flow.Pair(_email, _password));
@@ -57,8 +57,8 @@ internal sealed class AormsPage : UserControl
             _status.Text = _state switch
             {
                 "connected" => $"Connected as {Kit.Str(s, "email")} ({Kit.Str(s, "role")}), {Kit.Str(s, "studio")}, {Kit.Str(s, "plan")} plan.",
-                "needs_connect" => $"{Kit.Str(s, "email")} is signed in to AORMS on this computer through another app. Connect AOS to use it here.",
-                _ => "Not signed in. AOS is working on its own.",
+                "needs_connect" => $"{Kit.Str(s, "email")} is signed in to AORMS on this computer through another app. Connect O-Studio to use it here.",
+                _ => "Not signed in. O-Studio is working on its own.",
             };
         }
         else
@@ -71,7 +71,7 @@ internal sealed class AormsPage : UserControl
         if (!signedIn)
             _buttons.Children.Add(Flow.Command("Sign in", SignIn, primary: true));
         if (_state == "needs_connect")
-            _buttons.Children.Add(Flow.Command("Connect AOS", Connect, primary: true));
+            _buttons.Children.Add(Flow.Command("Connect O-Studio", Connect, primary: true));
         if (_state == "connected")
             _buttons.Children.Add(Flow.Command("Load projects", LoadProjects, primary: true));
         if (signedIn)
@@ -133,7 +133,7 @@ internal sealed class AormsPage : UserControl
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 Paint(result);
-                Say(InfoBarSeverity.Success, "AOS is connected to AORMS.");
+                Say(InfoBarSeverity.Success, "O-Studio is connected to AORMS.");
                 LoadProjects();
             });
         });
@@ -175,7 +175,7 @@ internal sealed class AormsPage : UserControl
                     var line = Flow.Columns([Kit.Str(row, "title"), Kit.Str(row, "reference"), Kit.Str(row, "city"), ""], widths);
                     if (_shell.CanEdit && line.Children.Count > 0 && line.Children[line.Children.Count - 1] is Border cell)
                     {
-                        var button = new Button { Content = pulled ? "Update from portal" : "Pull into AOS", MinHeight = 28 };
+                        var button = new Button { Content = pulled ? "Update from portal" : "Pull into O-Studio", MinHeight = 28 };
                         button.Click += (_, _) => Pull(id, pulled);
                         cell.Child = button;
                     }

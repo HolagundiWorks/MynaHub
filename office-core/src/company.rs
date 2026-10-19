@@ -1,4 +1,4 @@
-//! The ADMS company file: one `.adms` SQLite database holds a whole company (data, documents, audit history).
+//! The company file: one `.adms` SQLite database holds a whole company (data, documents, audit history).
 //! The extension is a convention. Opening trusts content, never the name.
 //! The file stays plain SQLite until the owner protects it. A protected file starts with `AOSENC1`.
 use crate::schema as db;
@@ -84,18 +84,18 @@ pub fn validate(path: &Path) -> Result<FileCheck, String> {
         use std::io::Read;
         let mut f = std::fs::File::open(path).map_err(|_| fail("That file could not be read."))?;
         if f.read_exact(&mut head).is_err() || head != *SQLITE_MAGIC {
-            return Err(fail("This is not an ADMS company file."));
+            return Err(fail("This is not a company file."));
         }
     }
     let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(|_| fail("This company file could not be opened."))?;
     conn.busy_timeout(std::time::Duration::from_millis(800)).ok();
     let app_id: i64 = conn.pragma_query_value(None, "application_id", |r| r.get(0)).map_err(map_open_error)?;
     if app_id != APP_ID {
-        return Err(fail("This is not an ADMS company file."));
+        return Err(fail("This is not a company file."));
     }
     let version: usize = conn.pragma_query_value(None, "user_version", |r| r.get(0)).map_err(map_open_error)?;
     if version > db::latest_version() {
-        return Err(fail("This company file was made by a newer version of ADMS. Update the app to open it."));
+        return Err(fail("This company file was made by a newer version of O-Studio. Update the app to open it."));
     }
     let check: String = conn.query_row("PRAGMA quick_check", [], |r| r.get(0)).map_err(|_| fail("This company file is damaged and cannot be opened."))?;
     if check != "ok" {
@@ -103,7 +103,7 @@ pub fn validate(path: &Path) -> Result<FileCheck, String> {
     }
     let meta: Result<(String, String, String), _> =
         conn.query_row("SELECT format, company_uuid, display_name FROM company_file WHERE id = 1", [], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)));
-    let (format, uuid, name) = meta.map_err(|_| fail("This is not an ADMS company file."))?;
+    let (format, uuid, name) = meta.map_err(|_| fail("This is not a company file."))?;
     if format != FORMAT {
         return Err(fail("This company file uses a format this version does not understand."));
     }
@@ -564,13 +564,13 @@ pub fn open_protected(state: &AppState, path: &Path, secret: &str, unlock: &str)
     write_synced(&working, &plain)?;
     let version = {
         let conn = Connection::open_with_flags(&working, OpenFlags::SQLITE_OPEN_READ_ONLY).map_err(|_| fail("This protected company file is damaged."))?;
-        let app_id: i64 = conn.pragma_query_value(None, "application_id", |r| r.get(0)).map_err(|_| fail("This is not an ADMS company file."))?;
+        let app_id: i64 = conn.pragma_query_value(None, "application_id", |r| r.get(0)).map_err(|_| fail("This is not a company file."))?;
         if app_id != APP_ID {
-            return Err(fail("This is not an ADMS company file."));
+            return Err(fail("This is not a company file."));
         }
         let version: usize = conn.pragma_query_value(None, "user_version", |r| r.get(0)).map_err(|_| fail("This protected company file is damaged."))?;
         if version > db::latest_version() {
-            return Err(fail("This company file was made by a newer version of ADMS. Update the app to open it."));
+            return Err(fail("This company file was made by a newer version of O-Studio. Update the app to open it."));
         }
         version
     };
@@ -831,13 +831,13 @@ mod tests {
     fn rejects_files_that_only_look_like_company_files() {
         let d = temp_dir("reject");
         std::fs::write(d.join("random.adms"), b"this is not a database at all").unwrap();
-        assert!(validate(&d.join("random.adms")).unwrap_err().contains("not an ADMS"));
+        assert!(validate(&d.join("random.adms")).unwrap_err().contains("not a company file"));
         // a real SQLite file from another program
         let other = Connection::open(d.join("other.adms")).unwrap();
         other.execute_batch("CREATE TABLE t(x); INSERT INTO t VALUES (1);").unwrap();
         drop(other);
         let before = std::fs::read(d.join("other.adms")).unwrap();
-        assert!(validate(&d.join("other.adms")).unwrap_err().contains("not an ADMS"));
+        assert!(validate(&d.join("other.adms")).unwrap_err().contains("not a company file"));
         assert!(open_file(&d.join("other.adms")).is_err());
         assert_eq!(std::fs::read(d.join("other.adms")).unwrap(), before, "a failed open must not touch the file");
         assert!(validate(&d.join("missing.adms")).is_err());

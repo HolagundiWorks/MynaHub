@@ -8,7 +8,7 @@ import PdfViewer from "../../components/PdfViewer";
  * A constrained design canvas. A template is a list of blocks (heading, paragraph, bullet list) that can be added, edited,
  * reordered and given fields, shown beside a live paginated preview. It writes the same wording format the Template Manager
  * stores ("# " headings, blank-line paragraphs, "- " bullets), and the preview is rendered by the real PDF engine, so what
- * is seen is what is issued. Fonts, sizes and the page layout come from the fixed ADMS type system, not from the canvas.
+ * is seen is what is issued. Fonts, sizes and the page layout come from the fixed O-Studio type system, not from the canvas.
  */
 type Kind = "heading" | "paragraph" | "bullets";
 type Block = { id: number; kind: Kind; text: string };

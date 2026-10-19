@@ -8,7 +8,7 @@ import { PRODUCT, ProductCredit } from "../../brand";
 import { Add, Folder, FolderOpen } from "@carbon/icons-react";
 
 // New files use .adms; files saved by earlier builds (.aorms) are the same format and still open.
-const FILTER = [{ name: "ADMS company file", extensions: ["adms", "aorms"] }];
+const FILTER = [{ name: "Company file", extensions: ["adms", "aorms"] }];
 
 /** "Studio One" becomes a safe default file name; the user can change it in the save dialog. */
 const fileNameFor = (name: string) => `${name.trim().replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim() || "Company"}.adms`;

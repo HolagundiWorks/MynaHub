@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/HolagundiWorks/AOS-Architecture-Office-Suite/docs/contracts/refs.schema.json",
+  "$id": "https://github.com/HolagundiWorks/O-STUDIO/docs/contracts/refs.schema.json",
   "title": "OSAS references, version 1",
   "$defs": {
     "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },

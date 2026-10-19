@@ -1,4 +1,4 @@
-//! The ADMS company file as this app uses it. The file format, locking, protection and open and create logic are in Office Core
+//! The company file as this app uses it. The file format, locking, protection and open and create logic are in Office Core
 //! (`office_core::company`); this file adds the commands the window calls.
 
 use crate::commands::{HostState, INTERNAL};

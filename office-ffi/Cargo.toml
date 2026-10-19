@@ -1,7 +1,7 @@
 [package]
 name = "office-ffi"
 version = "0.1.0"
-description = "A C interface to Office Core: the shared company file and records, for native apps such as AQC"
+description = "A C interface to Office Core: the shared company file and records, for native apps such as O-CoreOp"
 authors = ["Human Centric Works"]
 edition = "2024"
 
