@@ -12,7 +12,7 @@ OSAS  ── chooses the company file ── signs in once ── shows and edit
   └─ launches O-Draft   ─┘
 ```
 
-- **The company file** is the `.adms` file. OSAS remembers the choice (`%LOCALAPPDATA%\OSAS\suite.json`) and the apps follow it. An app started on its own, without OSAS, still works as before: it asks for a file and a sign-in.
+- **The company file** is the `.adms` file. It is **chosen and created only in OSAS** (decision 2026-10-19): O-Studio and O-CoreOp have no "new company" or "open company" of their own. An app started on its own offers "Open OSAS" and, when OSAS has a company chosen, "Open the company OSAS chose", which opens that file and shows the sign-in page. OSAS remembers the choice (`%LOCALAPPDATA%\OSAS\suite.json`) and the apps follow it. An app started on its own, without OSAS, still works as before: it asks for a file and a sign-in.
 - **The company details** (name, address, contact, PAN, GSTIN, registration, bank details, letterhead style and accent) live in the company file's profile. OSAS shows and edits them through the shared office interface, so every app sees the same details.
 - **The sign-in** is the company file's own users (owner, principal, accounts, document editor, auditor). OSAS asks for the user name and password once.
 - **The users** are created and managed in OSAS (decision 2026-10-19): add a user, change a role, set a password for someone who forgot theirs, stop or allow sign-in. Each change asks for the signed-in person's own password again, and the last active owner can never be removed. O-Studio's Security page no longer has a People section; it points here.
@@ -59,4 +59,6 @@ When an app is started by OSAS without a valid ticket (it expired, or the person
 - **Protected (encrypted) files.** A protected file opens through a decrypted working copy that only one program can hold. While OSAS is signed in to one, the apps cannot open it (they say it is already open); sign out of OSAS first, and each app then asks for the file password itself. Plain files, which most offices use, are shared by all of them.
 - **Sign-out.** Signing out of OSAS does not sign out apps that are already open; they keep their own session until closed.
 - **Idle lock.** OSAS's own session locks after sitting idle like any other. A ticket can then not be issued, the apps are started with the file only, and each asks for the sign-in. OSAS says so.
-- **O-Studio's own startup page.** Run without OSAS it still starts on its welcome page and asks for a file.
+- **Standalone start.** Run without OSAS, an app has no file picker: it offers to start OSAS, or to open the company OSAS last chose and sign in there.
+- **Switching company while apps are open.** An app keeps the company it opened until it is closed; choosing another in OSAS does not move apps that are already open.
+- **Earlier-version data.** O-Studio still offers to convert data from the first release (a one-off migration) on its start screen.

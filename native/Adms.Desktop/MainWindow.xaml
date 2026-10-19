@@ -22,12 +22,7 @@
 
         <MenuBar VerticalAlignment="Center" Background="{ThemeResource SidebarBackgroundBrush}" FontSize="13">
             <MenuBarItem Title="File" AccessKey="F">
-                <MenuFlyoutItem x:Name="NewCompanyItem" Text="New company" AccessKey="N" Click="CreateCompany"/>
-                <MenuFlyoutItem x:Name="OpenItem" Text="Open company" AccessKey="O" Click="OpenCompany">
-                    <MenuFlyoutItem.KeyboardAccelerators>
-                        <KeyboardAccelerator Key="O" Modifiers="Control"/>
-                    </MenuFlyoutItem.KeyboardAccelerators>
-                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="ChooseItem" Text="Choose the company in OSAS" AccessKey="O" Click="OpenOsas"/>
                 <MenuFlyoutItem x:Name="CloseItem" Text="Close company" AccessKey="C" Click="CloseCompany">
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="W" Modifiers="Control"/>
@@ -71,11 +66,11 @@
                 <Border Style="{StaticResource SetupCardStyle}" MaxWidth="560">
                     <StackPanel Spacing="12">
                         <Image x:Name="WelcomeLogo" MaxWidth="460" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="O-Studio"/>
-                        <TextBlock Text="Create a company file or open an existing one." TextWrapping="WrapWholeWords" Style="{ThemeResource BodyStyle}"/>
+                        <TextBlock Text="The company is chosen in OSAS, the suite app. Choose or create it there, then open O-Studio from OSAS and it opens already signed in." TextWrapping="WrapWholeWords" Style="{ThemeResource BodyStyle}"/>
                         <TextBlock Text="Developed by Human Centric Works" Style="{ThemeResource CaptionStyle}"/>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button x:Name="NewCompanyButton" Content="Create a new company" Click="CreateCompany" Style="{StaticResource AccentButtonStyle}"/>
-                            <Button x:Name="OpenCompanyButton" Content="Open an existing company" Click="OpenCompany"/>
+                            <Button x:Name="OpenOsasButton" Content="Open OSAS" Click="OpenOsas" Style="{StaticResource AccentButtonStyle}"/>
+                            <Button x:Name="FollowButton" Content="Open the company OSAS chose" Click="FollowSuite" Visibility="Collapsed"/>
                         </StackPanel>
                         <InfoBar x:Name="LegacyNotice" IsOpen="False" IsClosable="False" Severity="Informational"
                                  Title="Data from the earlier version was found on this computer."
@@ -84,27 +79,6 @@
                                 <Button Content="Convert" Click="ConvertLegacy"/>
                             </InfoBar.ActionButton>
                         </InfoBar>
-                        <TextBlock x:Name="RecentHeading" Text="Recent" Style="{ThemeResource SectionTitleStyle}" Visibility="Collapsed"/>
-                        <ListView x:Name="RecentList" SelectionMode="None" Background="Transparent">
-                            <ListView.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid ColumnSpacing="12" Padding="0,4">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding Name}" Style="{ThemeResource BodyStyle}"/>
-                                            <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" Style="{ThemeResource CaptionStyle}"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                            <Button Content="Open" Click="OpenRecent" Tag="{Binding}" IsEnabled="{Binding Exists}"/>
-                                            <Button Content="Remove" Click="RemoveRecent" Tag="{Binding}"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
                     </StackPanel>
                 </Border>
             </ScrollViewer>
@@ -119,7 +93,7 @@
                         <PasswordBox x:Name="PasswordBox" Header="Password" KeyDown="PasswordKeyDown"/>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button x:Name="SignInButton" Content="Sign in" Click="SignIn" Style="{StaticResource AccentButtonStyle}"/>
-                            <Button x:Name="SwitchFromLogin" Content="Switch company" Click="CloseCompany"/>
+                            <Button x:Name="SwitchFromLogin" Content="Close company" Click="CloseCompany"/>
                         </StackPanel>
                         <Button x:Name="ForgotButton" Content="Forgot password? Use recovery code" Click="ShowRecover"/>
                     </StackPanel>

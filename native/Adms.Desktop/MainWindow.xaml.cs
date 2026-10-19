@@ -103,6 +103,53 @@ public sealed partial class MainWindow : Window
 
     private void RestoreTheme() => AppTheme.Apply(Root, AppWindow, Hwnd);
 
+    // ----- the company is chosen in OSAS, the suite app -----
+
+    private static string SuiteFile => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OSAS", "suite.json");
+
+    /// <summary>The company file chosen in OSAS, if there is one and it still exists.</summary>
+    private static string? SuiteCompanyPath()
+    {
+        try
+        {
+            if (!File.Exists(SuiteFile))
+                return null;
+            using var doc = JsonDocument.Parse(File.ReadAllText(SuiteFile));
+            return doc.RootElement.TryGetProperty("company_path", out var p) && p.GetString() is { Length: > 0 } path && File.Exists(path) ? path : null;
+        }
+        catch (Exception ex) when (ex is IOException or JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Starts OSAS, where the company is chosen, created and signed in to.</summary>
+    private void OpenOsas(object sender, RoutedEventArgs e)
+    {
+        var folder = Microsoft.Win32.Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\OSAS", "InstallLocation", null) as string;
+        var exe = Path.Combine(string.IsNullOrWhiteSpace(folder) ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "OSAS") : folder, "OSAS.exe");
+        if (!File.Exists(exe))
+        {
+            ShowError("OSAS, the suite app, is not installed. Install it, choose the company there, and open O-Studio from OSAS.");
+            return;
+        }
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException)
+        {
+            ShowError("OSAS could not be started. " + ex.Message);
+        }
+    }
+
+    /// <summary>Opens the company OSAS chose, when O-Studio was started on its own. It still asks for the sign-in.</summary>
+    private async void FollowSuite(object sender, RoutedEventArgs e)
+    {
+        if (SuiteCompanyPath() is { } path)
+            await OpenPathAsync(path);
+    }
+
     /// <summary>
     /// OSAS, the suite app, chooses the company file and signs the person in once. It starts this app with the file in OSAS_COMPANY and, when
     /// someone is signed in there, a one-time ticket in OSAS_TICKET that signs this app in as the same person. The file opens through the
@@ -315,31 +362,8 @@ public sealed partial class MainWindow : Window
         _signedIn = false;
     }
 
-    private async void OpenCompany(object sender, RoutedEventArgs e) => await PickAndOpenAsync();
 
-    private async Task PickAndOpenAsync()
-    {
-        if (_busy || _companyOpen || _session == null)
-            return;
-        string? path;
-        try
-        {
-            path = await FileDialogs.PickCompanyFile(Hwnd);
-        }
-        catch (Exception ex)
-        {
-            ShowError("The file picker could not be opened. " + ex.Message);
-            return;
-        }
-        if (path != null)
-            await OpenPathAsync(path);
-    }
 
-    private async void OpenRecent(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button { Tag: RecentCompany row } && row.Exists)
-            await OpenPathAsync(row.Path);
-    }
 
     private async Task OpenPathAsync(string path)
     {
@@ -431,15 +455,6 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async void RemoveRecent(object sender, RoutedEventArgs e)
-    {
-        if (_busy || _session == null || sender is not Button { Tag: RecentCompany row })
-            return;
-        var removed = await RunEngineAsync("Updating recent companies…", () =>
-            _session.Call("company_recent_remove", new { uuid = row.Uuid }));
-        if (removed)
-            await LoadWelcomeAsync();
-    }
 
     private void CloseCompany(object sender, RoutedEventArgs e) => _ = CloseCompanyNow();
 
@@ -472,102 +487,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async void CreateCompany(object sender, RoutedEventArgs e) => await CreateCompanyAsync();
 
-    private async Task CreateCompanyAsync()
-    {
-        if (_busy || _companyOpen || _session == null)
-            return;
-        var nameBox = new TextBox { Header = "Company name" };
-        var fileBox = new TextBox { Header = "File name", Text = "Company.adms" };
-        var folderText = new TextBlock { Text = "No folder chosen", TextWrapping = TextWrapping.Wrap };
-        string? folder = null;
-        nameBox.TextChanged += (_, _) =>
-        {
-            if (!fileBox.FocusState.Equals(FocusState.Unfocused) || fileBox.Text.Length == 0)
-                return;
-            fileBox.Text = FileNameFor(nameBox.Text);
-        };
-        var choose = new Button { Content = "Choose folder…" };
-        choose.Click += async (_, _) =>
-        {
-            try
-            {
-                folder = await FileDialogs.PickFolder(Hwnd);
-            }
-            catch (Exception ex)
-            {
-                ShowError("The folder picker could not be opened. " + ex.Message);
-                return;
-            }
-            if (folder != null)
-            {
-                if (string.IsNullOrWhiteSpace(fileBox.Text))
-                    fileBox.Text = FileNameFor(nameBox.Text);
-                folderText.Text = folder;
-            }
-        };
-        var error = new TextBlock { TextWrapping = TextWrapping.Wrap };
-        var form = new StackPanel { Spacing = 8 };
-        form.Children.Add(nameBox);
-        form.Children.Add(fileBox);
-        form.Children.Add(choose);
-        form.Children.Add(folderText);
-        var password = new PasswordBox { Header = "Admin password (12 or more characters)" };
-        var confirm = new PasswordBox { Header = "Confirm password" };
-        form.Children.Add(password);
-        form.Children.Add(confirm);
-        form.Children.Add(error);
-        var dialog = new ContentDialog
-        {
-            Title = "Create a new company",
-            Content = form,
-            PrimaryButtonText = "Create company",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = Content.XamlRoot,
-            RequestedTheme = Root.ActualTheme,
-        };
-        string? recovery = null;
-        dialog.PrimaryButtonClick += async (_, args) =>
-        {
-            var deferral = args.GetDeferral();
-            error.Text = "";
-            try
-            {
-                var fileName = fileBox.Text.Trim();
-                if (nameBox.Text.Trim().Length == 0 || password.Password.Length == 0 || folder == null || fileName.Length == 0)
-                {
-                    args.Cancel = true;
-                    error.Text = "Enter the company, a folder, and the admin password.";
-                    return;
-                }
-                if (!fileName.EndsWith(".adms", StringComparison.OrdinalIgnoreCase))
-                    fileName += ".adms";
-                var path = Path.Combine(folder, fileName);
-                dialog.IsPrimaryButtonEnabled = false;
-                var created = await Task.Run(() => _session.CreateCompany(path, nameBox.Text.Trim(), "admin", password.Password, confirm.Password));
-                recovery = created.Recovery;
-                password.Password = "";
-                confirm.Password = "";
-            }
-            catch (Exception ex)
-            {
-                args.Cancel = true;
-                error.Text = ex.Message;
-                dialog.IsPrimaryButtonEnabled = true;
-            }
-            finally
-            {
-                deferral.Complete();
-            }
-        };
-        await dialog.ShowAsync();
-        if (recovery == null || _shuttingDown)
-            return;
-        await ShowRecoveryAsync(recovery, "Save your recovery code", "This code is shown once. It is the only way to recover the owner account if the password is forgotten.");
-        await RefreshStatusAsync();
-    }
 
     private async void ConvertLegacy(object sender, RoutedEventArgs e)
     {
@@ -861,8 +781,6 @@ public sealed partial class MainWindow : Window
             _workspace?.NewItem();
             return;
         }
-        if (!_companyOpen)
-            _ = CreateCompanyAsync();
     }
 
     private void SaveCommand(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
@@ -1000,40 +918,17 @@ public sealed partial class MainWindow : Window
     {
         if (_session == null || _companyOpen)
             return;
-        JsonElement recent = default;
         JsonElement legacy = default;
-        var loaded = await RunEngineAsync("Loading recent companies…", () =>
+        var loaded = await RunEngineAsync("Looking for earlier data…", () =>
         {
-            recent = _session.Call("company_recent_list");
             legacy = _session.Call("company_legacy_info");
         });
         if (!loaded || _companyOpen)
             return;
-        var rows = new List<RecentCompany>();
-        if (recent.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var row in recent.EnumerateArray())
-            {
-                var exists = row.TryGetProperty("exists", out var flag) && flag.ValueKind == JsonValueKind.True;
-                var path = Text(row, "path");
-                var opened = row.TryGetProperty("last_opened", out var stamp) && stamp.TryGetInt64(out var seconds) && seconds > 0
-                    ? DateTimeOffset.FromUnixTimeSeconds(seconds).LocalDateTime.ToString("dd MMM yyyy")
-                    : "";
-                var detail = exists ? path : path + " (file not found)";
-                if (opened.Length > 0)
-                    detail += " · " + opened;
-                rows.Add(new RecentCompany
-                {
-                    Uuid = Text(row, "uuid"),
-                    Name = Text(row, "name"),
-                    Path = path,
-                    Detail = detail,
-                    Exists = exists,
-                });
-            }
-        }
-        RecentList.ItemsSource = rows;
-        RecentHeading.Visibility = rows.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        var chosen = SuiteCompanyPath();
+        FollowButton.Visibility = chosen != null ? Visibility.Visible : Visibility.Collapsed;
+        if (chosen != null)
+            FollowButton.Content = "Open " + Path.GetFileNameWithoutExtension(chosen) + " (chosen in OSAS)";
         LegacyNotice.IsOpen = legacy.ValueKind == JsonValueKind.Object;
     }
 
@@ -1195,10 +1090,7 @@ public sealed partial class MainWindow : Window
     private void UpdateCommands()
     {
         var engine = _session != null;
-        NewCompanyItem.IsEnabled = !_busy && !_companyOpen && engine;
-        NewCompanyButton.IsEnabled = !_busy && !_companyOpen && engine;
-        OpenItem.IsEnabled = !_busy && !_companyOpen && engine;
-        OpenCompanyButton.IsEnabled = !_busy && !_companyOpen && engine;
+        FollowButton.IsEnabled = !_busy && !_companyOpen && engine;
         CloseItem.IsEnabled = !_busy && _companyOpen;
         LockItem.IsEnabled = !_busy && _signedIn;
         LogoutItem.IsEnabled = !_busy && _signedIn;

@@ -55,7 +55,7 @@ A kind is lower-case letters, digits, dots and underscores, starting with a lett
 
 ## In O-CoreOp
 
-- **File > Open company file…** asks for the user name and password (and the file password for a protected file).
+- **File > Open the company OSAS chose…** opens the company file chosen in OSAS and asks for the user name and password (and the file password for a protected file). O-CoreOp has no file picker: the company is chosen and created only in OSAS.
 - **File > Company projects…** lists the projects; Open loads the project's document, or starts a new project filled in from the office's record when it has none; New project creates the client and project in the company file.
 - **File > Save to company file…** puts the project that is open (for example one opened from a `.bbsproj` file) into the company file, as a new project or over an existing one.
 - **Save** writes to the company file for a project that lives there. A conflict offers to reload.
