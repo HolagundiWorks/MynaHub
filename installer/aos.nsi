@@ -11,7 +11,7 @@ Unicode true
 !define APP_NAME "O-Studio"
 !define APP_ID "OStudio"
 !define PUBLISHER "Human Centric Works"
-!define EXE "Adms.Desktop.exe"
+!define EXE "O-Studio.exe"
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_ID}"
 
 !ifndef VERSION
@@ -54,6 +54,8 @@ VIAddVersionKey "LegalCopyright" "Copyright (c) 2026 ${PUBLISHER}"
 
 Section "Install"
   SetOutPath "$INSTDIR"
+  ; the program was called Adms.Desktop before; remove those files so an upgrade leaves one program behind
+  Delete "$INSTDIR\Adms.Desktop.*"
   File /r "${SOURCE}\*.*"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
