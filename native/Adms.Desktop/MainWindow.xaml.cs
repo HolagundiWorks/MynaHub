@@ -77,7 +77,7 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ADMS");
+            var dir = AppFolder.Prepare();
             _session = new AdmsSession(dir);
             StatusText.Text = "Engine ready";
         }

@@ -12,10 +12,7 @@ internal sealed class WindowPlacement
     public int Height { get; set; }
     public bool Maximized { get; set; }
 
-    private static string FilePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "ADMS",
-        "window.json");
+    private static string FilePath => Path.Combine(AppFolder.Prepare(), "window.json");
 
     public static WindowPlacement LoadOrCenter()
     {
