@@ -3,8 +3,8 @@
 
 use office_core::auth::Permission;
 use office_core::host::{arg, json, CallError};
-use office_core::workspace::{require, AppState, INTERNAL};
-use office_core::{audit, clients, office, refs, share, track};
+use office_core::workspace::{self, require, AppState, INTERNAL};
+use office_core::{audit, clients, office, refs, share, track, users};
 use serde_json::Value;
 
 pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, CallError> {
@@ -22,10 +22,15 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
         "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" => Permission::View,
         "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" => Permission::Edit,
         "company_profile_save" => Permission::ManageSettings,
+        "user_list" | "user_create" | "user_update" | "user_set_password" => Permission::ManageUsers,
         "" => return Err(CallError::BadRequest("The operation name was missing.".into())),
         _ => return Err(CallError::BadRequest("That operation is not part of the office interface.".into())),
     };
     let user = require(state, permission)?;
+    // Changing people needs the administrator's own password again. It is checked before the database is locked for the call.
+    if matches!(op, "user_create" | "user_update" | "user_set_password") {
+        workspace::reauth(state, &arg::<String>(args, "admin_password")?)?;
+    }
     let mut guard = state.db.lock().map_err(|_| CallError::Domain(INTERNAL.into()))?;
     if op == "track.apply" {
         let name: String = arg(args, "name")?;
@@ -61,6 +66,16 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
             let (id, archived): (i64, bool) = (arg(args, "id")?, arg(args, "archived")?);
             clients::set_project_archived(conn, id, archived)?;
             audit(conn, Some(user), if archived { "project_archived" } else { "project_restored" }, &format!("project {id}"));
+            json(&Value::Null)
+        }
+        "user_list" => json(&users::list(conn)?),
+        "user_create" => json(&users::create(conn, user, &arg::<String>(args, "username")?, &arg::<String>(args, "password")?, &arg::<String>(args, "role")?)?),
+        "user_update" => {
+            users::update(conn, user, arg(args, "id")?, &arg::<String>(args, "role")?, arg(args, "disabled")?)?;
+            json(&Value::Null)
+        }
+        "user_set_password" => {
+            users::set_password(conn, user, arg(args, "id")?, &arg::<String>(args, "password")?)?;
             json(&Value::Null)
         }
         "company_profile_get" => json(&office_core::profile::read(conn)?),
@@ -256,5 +271,24 @@ mod tests {
         let mut again = call(&a, "company_profile_get", json!({})).unwrap();
         again["name"] = json!("Changed");
         assert!(call(&a, "company_profile_save", json!({ "profile": again })).unwrap_err().contains("permission"));
+    }
+
+    #[test]
+    fn people_are_managed_through_the_office_interface_and_each_change_needs_the_administrators_password() {
+        let (_dir, a) = open("users");
+        assert_eq!(call(&a, "user_list", json!({})).unwrap_err(), "Not signed in.");
+        workspace::login(&a, "owner", "correct horse battery").unwrap();
+        assert_eq!(call(&a, "user_list", json!({})).unwrap().as_array().unwrap().len(), 1);
+        let refused = call(&a, "user_create", json!({ "username": "ravi", "password": "a long enough password", "role": "accounts", "admin_password": "not my password" })).unwrap_err();
+        assert_eq!(refused, "Your password was not accepted.");
+        let id = call(&a, "user_create", json!({ "username": "ravi", "password": "a long enough password", "role": "accounts", "admin_password": "correct horse battery" })).unwrap();
+        call(&a, "user_update", json!({ "id": id, "role": "principal", "disabled": false, "admin_password": "correct horse battery" })).unwrap();
+        call(&a, "user_set_password", json!({ "id": id, "password": "another long password", "admin_password": "correct horse battery" })).unwrap();
+        let listed = call(&a, "user_list", json!({})).unwrap();
+        assert!(listed.as_array().unwrap().iter().any(|u| u["username"] == "ravi" && u["role"] == "principal"));
+        // the new password works for that person, and a person without the permission cannot manage people
+        workspace::logout(&a).unwrap();
+        workspace::login(&a, "ravi", "another long password").unwrap();
+        assert!(call(&a, "user_list", json!({})).unwrap_err().contains("permission"));
     }
 }

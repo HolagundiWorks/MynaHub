@@ -37,6 +37,7 @@ Every other operation needs a signed-in, unlocked session. Reading needs View. A
 | `project_resolve` | reference | the project id the `ProjectRef` names in this file |
 | `artifact_ref_check` | reference | null when the `ArtifactRef` is well formed |
 | `company_profile_get` / `company_profile_save` | / profile | the company details / null. Saving needs the settings permission and keeps the file's display name in step |
+| `user_list` / `user_create` / `user_update` / `user_set_password` | / username, password, role / id, role, disabled / id, password | the users / id / null / null. Needs the manage-users permission; every change also needs `admin_password`, the signed-in person's own password |
 | `auth.ticket` | app | `{ticket, expires_in, username}`; a one-time sign-in for another app (see [suite-hub.md](suite-hub.md)) |
 | `auth.login_ticket` | ticket | signs this session in as the person the ticket was issued to |
 | `watch` | [project_id] | `{version, schema_ok, revision}`; the version goes up when another app writes. Needs a session but no permission, and does not count as activity (an idle session still locks) |

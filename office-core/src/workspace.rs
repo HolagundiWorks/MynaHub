@@ -193,6 +193,16 @@ pub fn login(state: &AppState, username: &str, password: &str) -> Result<Session
     Ok(SessionInfo { username: uname, role })
 }
 
+/// Checks the signed-in person's own password again, before a sensitive change. It shares the throttling used at sign-in.
+pub fn reauth(state: &AppState, password: &str) -> Result<(), String> {
+    let username = {
+        let g = state.session.lock().map_err(|_| INTERNAL)?;
+        g.as_ref().ok_or("Not signed in.")?.username.clone()
+    };
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    check_credentials(&conn, &username, password).map(|_| ()).map_err(|_| "Your password was not accepted.".to_string())
+}
+
 pub fn logout(state: &AppState) -> Result<(), String> {
     let mut g = state.session.lock().map_err(|_| INTERNAL)?;
     if let Some(s) = g.take() {

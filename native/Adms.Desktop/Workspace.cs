@@ -785,16 +785,7 @@ internal static class Pages
         var page = Kit.Page("Security, users and backup");
         var output = new StackPanel { Spacing = 8 };
         page.Form.Children.Add(output);
-        var username = Kit.Field(page.Form, "New username");
-        var password = Kit.Field(page.Form, "Password");
-        var role = Kit.Field(page.Form, "Role", "accounts");
         var admin = Kit.Field(page.Form, "Your password");
-        page.Actions.Children.Add(Kit.Button("Users", () => shell.Run("Loading users…", () => Show(shell, output, "Users", shell.Call("user_list"), ["Username", "Role", "Disabled"], ["username", "role", "disabled"], [false, false, false]))));
-        page.Actions.Children.Add(Kit.Button("Create user", () =>
-        {
-            var user = new { username = username.Text, password = password.Text, role = role.Text, admin_password = admin.Text };
-            shell.Run("Creating user…", () => shell.Call("user_create", user));
-        }));
         page.Actions.Children.Add(Kit.Button("Audit", () => shell.Run("Loading audit…", () => Show(shell, output, "Audit", shell.Call("audit_list", new { limit = 100 }), ["When", "Person", "Event", "Detail"], ["at", "user", "event", "detail"], [false, false, false, false]))));
         page.Actions.Children.Add(Kit.Button("Backup", () =>
         {

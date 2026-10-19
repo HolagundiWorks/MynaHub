@@ -20,6 +20,7 @@ pub mod store;
 pub mod suite;
 pub mod tds26as;
 pub mod track;
+pub mod users;
 pub mod vault;
 pub mod workspace;
 

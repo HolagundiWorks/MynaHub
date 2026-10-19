@@ -121,62 +121,19 @@ pub fn security_set_idle_minutes(state: HostState<'_>, minutes: u64, password: S
 
 // ---------- users ----------
 
-#[derive(Serialize)]
-pub struct UserRow {
-    pub id: i64,
-    pub username: String,
-    pub role: String,
-    pub disabled: bool,
-}
-
-const ROLES: [&str; 5] = ["owner", "principal", "accounts", "document_editor", "auditor"];
+pub use office_core::users::UserRow;
 
 pub fn list_users(conn: &Connection) -> Result<Vec<UserRow>, String> {
-    let mut stmt = conn.prepare("SELECT id, username, role, disabled FROM users ORDER BY username").map_err(|e| e.to_string())?;
-    let rows = stmt.query_map([], |r| Ok(UserRow { id: r.get(0)?, username: r.get(1)?, role: r.get(2)?, disabled: r.get::<_, i64>(3)? != 0 })).map_err(|e| e.to_string())?;
-    rows.collect::<Result<_, _>>().map_err(|e| e.to_string())
+    office_core::users::list(conn)
 }
 
 pub fn create_user(conn: &Connection, actor: i64, username: &str, password: &str, role: &str) -> Result<i64, String> {
-    let username = username.trim();
-    if username.is_empty() {
-        return Err("Username is required.".into());
-    }
-    if !ROLES.contains(&role) {
-        return Err("Invalid role.".into());
-    }
-    auth::validate_new_password(password)?;
-    conn.execute("INSERT INTO users (username, password_hash, role) VALUES (?1, ?2, ?3)", params![username, auth::hash_password(password)?, role])
-        .map_err(|e| match e {
-            rusqlite::Error::SqliteFailure(f, _) if f.code == rusqlite::ErrorCode::ConstraintViolation => "That username is already taken.".to_string(),
-            other => other.to_string(),
-        })?;
-    let id = conn.last_insert_rowid();
-    db::audit(conn, Some(actor), "user_created", &format!("{username} as {role}"));
-    Ok(id)
+    office_core::users::create(conn, actor, username, password, role)
 }
 
 /// Changes role and/or disabled flag. The last active owner can never be demoted or disabled.
 pub fn update_user(conn: &Connection, actor: i64, id: i64, role: &str, disabled: bool) -> Result<(), String> {
-    if !ROLES.contains(&role) {
-        return Err("Invalid role.".into());
-    }
-    let (cur_role, cur_disabled): (String, i64) = conn
-        .query_row("SELECT role, disabled FROM users WHERE id = ?1", params![id], |r| Ok((r.get(0)?, r.get(1)?)))
-        .map_err(|_| "User not found.".to_string())?;
-    let was_active_owner = cur_role == "owner" && cur_disabled == 0;
-    let stays_active_owner = role == "owner" && !disabled;
-    if was_active_owner && !stays_active_owner {
-        let other_owners: i64 = conn
-            .query_row("SELECT COUNT(*) FROM users WHERE role = 'owner' AND disabled = 0 AND id <> ?1", params![id], |r| r.get(0))
-            .map_err(|e| e.to_string())?;
-        if other_owners == 0 {
-            return Err("There must always be at least one active owner.".into());
-        }
-    }
-    conn.execute("UPDATE users SET role = ?1, disabled = ?2 WHERE id = ?3", params![role, disabled, id]).map_err(|e| e.to_string())?;
-    db::audit(conn, Some(actor), "user_updated", &format!("user {id}: role {role}, disabled {disabled}"));
-    Ok(())
+    office_core::users::update(conn, actor, id, role, disabled)
 }
 
 #[tauri::command]

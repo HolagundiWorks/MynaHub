@@ -937,42 +937,9 @@ internal static class Ledgers
         if (shell.CanManage)
         {
             var yours = new PasswordBox { Header = "Your password" };
+            // People are managed in OSAS, the suite app, so they are the same for every app.
             page.Children.Add(Flow.Section("People"));
-            page.Children.Add(Flow.Secondary("An accounts person signs in with their own username. Your password confirms the new account."));
-            var person = Flow.Input("Username");
-            var personPassword = new PasswordBox { Header = "Password (12 or more characters)" };
-            var confirm = new PasswordBox { Header = "Confirm password" };
-            var role = new ComboBox { Header = "Role", HorizontalAlignment = HorizontalAlignment.Stretch };
-            foreach (var (label, key) in new[] { ("Accounts", "accounts"), ("Principal", "principal"), ("Document editor", "document_editor"), ("Auditor", "auditor") })
-                role.Items.Add(new ComboBoxItem { Content = label, Tag = key });
-            role.SelectedIndex = 0;
-            page.Children.Add(Flow.Pair(person, role));
-            page.Children.Add(Flow.Pair(personPassword, confirm));
-            var create = new Button { Content = "Create account", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
-            create.Click += (_, _) =>
-            {
-                if (personPassword.Password != confirm.Password)
-                {
-                    shell.Problem("The new passwords do not match.");
-                    Flow.Mark(confirm, "The new passwords do not match.");
-                    return;
-                }
-                var chosen = (role.SelectedItem as ComboBoxItem)?.Tag as string ?? "accounts";
-                var user = new { username = person.Text.Trim(), password = personPassword.Password, role = chosen, admin_password = yours.Password };
-                _ = shell.Run("Creating account…", () => shell.Call("user_create", user)).ContinueWith(task =>
-                    shell.Window.DispatcherQueue.TryEnqueue(() =>
-                    {
-                        if (!task.IsCompletedSuccessfully || !task.Result)
-                            return;
-                        person.Text = "";
-                        personPassword.Password = "";
-                        confirm.Password = "";
-                        shell.Run("Loading people…", () => Pages.Show(shell, output, "People", shell.Call("user_list"), ["Username", "Role", "Disabled"], ["username", "role", "disabled"], [false, false, false]));
-                    }));
-            };
-            var people = new Button { Content = "Show people", MinHeight = 32 };
-            people.Click += (_, _) => shell.Run("Loading people…", () => Pages.Show(shell, output, "People", shell.Call("user_list"), ["Username", "Role", "Disabled"], ["username", "role", "disabled"], [false, false, false]));
-            page.Children.Add(Flow.Bar(create, people));
+            page.Children.Add(Flow.Secondary("Who can sign in, their roles and their passwords are managed in OSAS, the suite app, so they are the same in every app. Open OSAS and choose Users."));
             page.Children.Add(Flow.Section("Company file"));
             var protection = new TextBlock { TextWrapping = TextWrapping.Wrap };
             page.Children.Add(protection);
@@ -1082,7 +1049,7 @@ internal static class Ledgers
                 shell.Run("Creating backup…", () => Pages.Show(shell, output, "Backup", shell.Call("backup_create", new { password = adminPassword }), ["File", "SHA-256", "Bytes", "Folder"], ["filename", "sha256", "bytes", "folder"], [false, false, true, false]));
             };
             page.Children.Add(backup);
-            form.Watch([person, role, yours]);
+            form.Watch([yours]);
             form.Arm();
         }
         var audit = new Button { Content = "Show audit", MinHeight = 32 };
