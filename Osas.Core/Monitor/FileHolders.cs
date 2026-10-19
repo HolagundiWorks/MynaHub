@@ -99,8 +99,8 @@ public sealed class WindowsFileHolders : IFileHolders
     public static string AppFor(string program, string fallback = "") =>
         program.ToLowerInvariant() switch
         {
-            "adms.desktop" => "O-Studio",
-            "aqccore" => "O-CoreOp",
+            "o-studio" or "adms.desktop" => "O-Studio",
+            "o-coreop" or "aqccore" => "O-CoreOp",
             "aad" or "o-draft" or "aad.winui" or "odraft.winui" => "O-Draft",
             "osas" => "OSAS",
             _ => fallback.Length > 0 ? fallback : program,

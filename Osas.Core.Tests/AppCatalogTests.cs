@@ -28,15 +28,29 @@ public class AppCatalogTests
     {
         var pc = new FakeComputer();
         pc.Registry[@"HKCU\Software\Human Centric Works\OStudio|InstallDir"] = @"D:\Apps\O-Studio";
-        pc.Files.Add(@"D:\Apps\O-Studio\Adms.Desktop.exe");
-        pc.Versions[@"D:\Apps\O-Studio\Adms.Desktop.exe"] = "0.1.0";
+        pc.Files.Add(@"D:\Apps\O-Studio\O-Studio.exe");
+        pc.Versions[@"D:\Apps\O-Studio\O-Studio.exe"] = "0.1.0";
         var studio = Of(pc, SuiteApp.Studio);
         Assert.True(studio.Installed);
-        Assert.Equal(@"D:\Apps\O-Studio\Adms.Desktop.exe", studio.ExePath);
+        Assert.Equal(@"D:\Apps\O-Studio\O-Studio.exe", studio.ExePath);
         Assert.Equal("0.1.0", studio.Version);
         Assert.Equal("registered by its installer", studio.Source);
         Assert.False(Of(pc, SuiteApp.Metra).Installed);
         Assert.False(Of(pc, SuiteApp.Draft).Installed);
+    }
+
+    [Fact]
+    public void An_install_that_still_has_the_earlier_program_names_is_found()
+    {
+        var pc = new FakeComputer();
+        pc.Registry[@"HKCU\Software\Human Centric Works\OStudio|InstallDir"] = @"D:\Apps\O-Studio";
+        pc.Files.Add(@"D:\Apps\O-Studio\Adms.Desktop.exe");
+        Assert.Equal(@"D:\Apps\O-Studio\Adms.Desktop.exe", Of(pc, SuiteApp.Studio).ExePath);
+        pc.Files.Add(@"D:\Apps\O-Studio\O-Studio.exe");
+        Assert.Equal(@"D:\Apps\O-Studio\O-Studio.exe", Of(pc, SuiteApp.Studio).ExePath);
+        var old = new FakeComputer();
+        old.Files.Add(@"C:\Users\me\AppData\Local\Programs\AQC-Core\AQCCore.exe");
+        Assert.Equal(@"C:\Users\me\AppData\Local\Programs\AQC-Core\AQCCore.exe", Of(old, SuiteApp.Metra).ExePath);
     }
 
     [Fact]
@@ -45,8 +59,8 @@ public class AppCatalogTests
         var pc = new FakeComputer();
         pc.Files.Add(@"C:\Users\me\AppData\Local\Programs\AQC-Core\AQCCore.exe");
         Assert.Equal("in the usual folder", Of(pc, SuiteApp.Metra).Source);
-        pc.Files.Add(@"C:\Users\me\AppData\Local\Programs\O-CoreOp\AQCCore.exe");
-        Assert.Equal(@"C:\Users\me\AppData\Local\Programs\O-CoreOp\AQCCore.exe", Of(pc, SuiteApp.Metra).ExePath);
+        pc.Files.Add(@"C:\Users\me\AppData\Local\Programs\O-CoreOp\O-CoreOp.exe");
+        Assert.Equal(@"C:\Users\me\AppData\Local\Programs\O-CoreOp\O-CoreOp.exe", Of(pc, SuiteApp.Metra).ExePath);
         pc.Path.Add(@"C:\Tools");
         pc.Files.Add(@"C:\Tools\aad.exe");
         var draft = Of(pc, SuiteApp.Draft);

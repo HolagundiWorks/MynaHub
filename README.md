@@ -59,8 +59,8 @@ In this order, for each app: a program you chose with **Find it…** (kept in `%
 
 | App | Program | Registered by |
 |---|---|---|
-| O-Studio | `Adms.Desktop.exe` | `HKCU\Software\Human Centric Works\OStudio` |
-| O-CoreOp | `AQCCore.exe` | Inno Setup entry `{A8F3C2E1-…}_is1` |
+| O-Studio | `O-Studio.exe` (older installs: `Adms.Desktop.exe`) | `HKCU\Software\Human Centric Works\OStudio` |
+| O-CoreOp | `O-CoreOp.exe` (older installs: `AQCCore.exe`) | Inno Setup entry `{A8F3C2E1-…}_is1` |
 | O-Draft | `o-draft.exe` (older installs: `aad.exe`) | nothing known yet |
 
 ## Projects

@@ -188,7 +188,9 @@ public class CompanyFileMonitorTests : IDisposable
     }
 
     [Theory]
+    [InlineData("O-Studio", "O-Studio")]
     [InlineData("Adms.Desktop", "O-Studio")]
+    [InlineData("O-CoreOp", "O-CoreOp")]
     [InlineData("AQCCore", "O-CoreOp")]
     [InlineData("aad", "O-Draft")]
     [InlineData("o-draft", "O-Draft")]

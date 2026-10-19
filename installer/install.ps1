@@ -10,7 +10,7 @@
   The sibling folder hcw-ui (the shared design) must be checked out beside this repository. office.dll (the company-file engine) comes from
   the O-Studio repository: build office-ffi there in release mode; it is found beside this repository, or give -OfficeDllDir <folder>.
 #>
-param([switch]$Uninstall, [string]$Version = "0.3.0", [string]$OfficeDllDir = "")
+param([switch]$Uninstall, [string]$Version = "0.3.0", [string]$OfficeDllDir = "", [switch]$WithoutEngine)
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $target = Join-Path $env:LOCALAPPDATA "Programs\OSAS"
@@ -36,7 +36,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
     if (-not (Test-Path (Join-Path $stage "OSAS.exe"))) { throw "OSAS.exe was not produced." }
     if (-not (Test-Path (Join-Path $stage "office.dll"))) {
-        Write-Warning "office.dll was not found, so OSAS will not be able to sign in or show the company details. Build office-ffi in the O-Studio repository in release mode, or pass -OfficeDllDir <folder>."
+        $why = "office.dll was not found, so OSAS would not be able to sign in or show the company details. Build office-ffi in the O-Studio repository in release mode, or pass -OfficeDllDir <folder>. Pass -WithoutEngine to install anyway."
+        if (-not $WithoutEngine) { throw $why }
+        Write-Warning $why
     }
 
     Write-Host "2/3 Installing to $target"
