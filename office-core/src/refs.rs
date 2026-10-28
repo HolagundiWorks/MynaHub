@@ -2,8 +2,7 @@
 //!
 //! The contract is written out in `docs/contracts/refs.md`. In short:
 //!
-//! * A `ProjectRef` names a project by the company file it lives in (`company_uuid` and `project_id`), and also by the portal's
-//!   `projectOfficeId` once the project is linked to AORMS. Any one of the two names is enough to find the project again.
+//! * A `ProjectRef` names a project by the company file it lives in (`company_uuid` and `project_id`).
 //! * An `ArtifactRef` names one revision of something an app made for a project, with a checksum, and the revisions it was
 //!   made from. Two apps that hold the same revision agree on its checksum.
 //!
@@ -23,8 +22,8 @@ pub struct ProjectRef {
     pub v: u32,
     pub company_uuid: String,
     pub project_id: i64,
-    /// The portal's `projectOfficeId`, when the project has been pulled from or linked to AORMS.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// Legacy field from older references. Accepted on deserialize and never emitted.
+    #[serde(default, skip_serializing)]
     pub aorms_project_office_id: Option<String>,
 }
 
@@ -53,7 +52,7 @@ pub struct ArtifactRef {
     pub made_from: Vec<ArtifactInput>,
 }
 
-/// The reference for a project in this company file, with its portal id when it has one.
+/// The reference for a project in this company file.
 pub fn project_ref(conn: &Connection, project_id: i64) -> Result<ProjectRef, String> {
     let company_uuid: String = conn
         .query_row("SELECT company_uuid FROM company_file WHERE id = 1", [], |r| r.get(0))
@@ -64,14 +63,15 @@ pub fn project_ref(conn: &Connection, project_id: i64) -> Result<ProjectRef, Str
     if !exists {
         return Err("Project not found.".into());
     }
-    let aorms_project_office_id = conn
-        .query_row("SELECT project_office_id FROM aorms_links WHERE project_id = ?1", params![project_id], |r| r.get::<_, String>(0))
-        .ok();
-    Ok(ProjectRef { v: REF_VERSION, company_uuid, project_id, aorms_project_office_id })
+    Ok(ProjectRef {
+        v: REF_VERSION,
+        company_uuid,
+        project_id,
+        aorms_project_office_id: None,
+    })
 }
 
-/// Finds the project a reference names in this company file. It matches by company and id first, and by the portal id second,
-/// so a project that was pulled from the portal into another company file is still found by the id the portal gave it.
+/// Finds the project a reference names in this company file by `company_uuid` and `project_id`.
 pub fn resolve_project(conn: &Connection, reference: &ProjectRef) -> Result<i64, String> {
     check_version(reference.v)?;
     let company_uuid: String = conn
@@ -80,11 +80,6 @@ pub fn resolve_project(conn: &Connection, reference: &ProjectRef) -> Result<i64,
     if reference.company_uuid == company_uuid {
         let found: Option<i64> = conn.query_row("SELECT id FROM projects WHERE id = ?1", params![reference.project_id], |r| r.get(0)).ok();
         if let Some(id) = found {
-            return Ok(id);
-        }
-    }
-    if let Some(office_id) = reference.aorms_project_office_id.as_deref().filter(|s| !s.is_empty()) {
-        if let Ok(id) = conn.query_row("SELECT project_id FROM aorms_links WHERE project_office_id = ?1", params![office_id], |r| r.get::<_, i64>(0)) {
             return Ok(id);
         }
     }
@@ -177,20 +172,6 @@ mod tests {
     }
 
     #[test]
-    fn a_linked_project_is_also_found_by_its_portal_id_in_another_company_file() {
-        let c = conn("uuid-a");
-        c.execute("INSERT INTO aorms_links (project_id, project_office_id) VALUES (7, 'office-123')", []).unwrap();
-        let r = project_ref(&c, 7).unwrap();
-        assert_eq!(r.aorms_project_office_id.as_deref(), Some("office-123"));
-        let other = conn("uuid-b");
-        other.execute("INSERT INTO projects (id, client_id, name) VALUES (11, 1, 'Copy')", []).unwrap();
-        other.execute("INSERT INTO aorms_links (project_id, project_office_id) VALUES (11, 'office-123')", []).unwrap();
-        assert_eq!(resolve_project(&other, &r).unwrap(), 11);
-        let unlinked = ProjectRef { aorms_project_office_id: None, ..r };
-        assert!(resolve_project(&other, &unlinked).is_err(), "company and id do not match, and there is no portal id");
-    }
-
-    #[test]
     fn an_unknown_version_or_project_is_refused() {
         let c = conn("uuid-a");
         let mut r = project_ref(&c, 7).unwrap();
@@ -202,11 +183,15 @@ mod tests {
     }
 
     #[test]
-    fn references_round_trip_as_json_and_omit_an_empty_portal_id() {
+    fn references_round_trip_as_json_and_omit_legacy_portal_id() {
         let r = artifact();
         let text = serde_json::to_string(&r).unwrap();
         assert!(!text.contains("aorms_project_office_id"));
         assert_eq!(serde_json::from_str::<ArtifactRef>(&text).unwrap(), r);
+        let with_legacy = r#"{"v":1,"company_uuid":"a","project_id":7,"aorms_project_office_id":"office-123"}"#;
+        let legacy: ProjectRef = serde_json::from_str(with_legacy).unwrap();
+        assert_eq!(legacy.aorms_project_office_id.as_deref(), Some("office-123"));
+        assert!(!serde_json::to_string(&legacy).unwrap().contains("aorms_project_office_id"));
     }
 
     #[test]

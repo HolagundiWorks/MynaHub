@@ -55,17 +55,20 @@ A kind is lower-case letters, digits, dots and underscores, starting with a lett
 
 ## In O-CoreOp
 
-- **File > Open company file…** asks for the user name and password (and the file password for a protected file).
+- **File > Open the company OSAS chose…** opens the company file remembered in `%LOCALAPPDATA%\OSAS\suite.json` (written by Studio) and asks for the user name and password (and the file password for a protected file). O-CoreOp has no company create of its own: the company is chosen and created in Studio.
 - **File > Company projects…** lists the projects; Open loads the project's document, or starts a new project filled in from the office's record when it has none; New project creates the client and project in the company file.
 - **File > Save to company file…** puts the project that is open (for example one opened from a `.bbsproj` file) into the company file, as a new project or over an existing one.
 - **Save** writes to the company file for a project that lives there. A conflict offers to reload.
 - The **Company** chip in the status strip shows which file is open.
 - The engine is `office.dll`, built from `office-ffi` in this repository and copied beside the app; without it the menu items say it is missing.
 
+## System of record
+
+The company file is the system of record for clients and projects. O-CoreOp and O-Draft identify a project by `ProjectRef` (`company_uuid` + `project_id`). Fee proposals can copy the O-CoreOp estimate grand total (`project_estimate_summary`) and store its `ArtifactRef`; fee and invoice screens also show O-CoreOp running-bill (RA) totals via `project_ra_summary`.
+
 ## What is not done
 
-- O-Studio refreshes its Pulse, Projects, Clients and record pages when the other app writes. Its other pages (invoices, letters, books) do not watch; only O-Studio writes those. It does not show a project's O-CoreOp quantities.
+- O-Studio refreshes its Pulse, Projects, Clients and record pages when the other app writes. Its other pages (invoices, letters, books) do not watch; only O-Studio writes those. Quantities stay in the O-CoreOp document (fee proposals and invoices show the estimate summary, not line items).
 - The quantities are one document, not tables (above).
 - The conflict dialog offers reload or keep-mine; there is no merge.
 - O-CoreOp's other stores (rate books, parties, schedules) are inside the project document today.
-- The `ProjectRef` of a project is available (`project_ref`), but O-CoreOp does not yet put it on its BOQ and estimate outputs.

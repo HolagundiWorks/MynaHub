@@ -36,7 +36,8 @@ internal sealed class AppShell
     public string Role { get; set; } = "";
     public string User { get; init; } = "";
     public string CompanyName { get; init; } = "";
-    public string CompanyPath { get; init; } = "";
+    /// <summary>Path of the open company file; used when launching suite cards.</summary>
+    public string CompanyPath { get; set; } = "";
     public IPageCommands? Page { get; set; }
     public Action<string>? Navigate { get; set; }
     public string? PendingCreate { get; set; }
@@ -278,7 +279,8 @@ internal sealed class WorkspaceView : UserControl
             ("site", "06", "Site records", ""),
             ("permits", "07", "Permits and approvals", ""),
             ("proposals", "08", "Fee proposals", ""),
-            ("meetings", "09", "Meetings and decisions", ""));
+            ("meetings", "09", "Meetings and decisions", ""),
+            ("approvals", "10", "Approvals", ""));
         AddTab("Documents", "");
         AddGroup("02", "Documents",
             ("documents", "01", "Letters and agreements", ""),
@@ -312,7 +314,7 @@ internal sealed class WorkspaceView : UserControl
             ("library", "04", "Library", ""),
             ("settings", "06", "Security and backup", ""));
         AddTab("Suite", "");
-        AddGroup("07", "Suite", ("suite", "01", "Company, users and apps", ""));
+        AddGroup("07", "Suite", ("suite", "01", "Suite apps", ""), ("suitetools", "02", "Company, users and tools", ""));
     }
 
     private void AddTab(string title, string glyph) => _tabs.Add(new RibbonTab(title, glyph));
@@ -445,9 +447,11 @@ internal sealed class WorkspaceView : UserControl
         "site" => RecordPages.Site(_shell),
         "permits" => RecordPages.Permits(_shell),
         "library" => RecordPages.Library(_shell),
-        "suite" => new SuitePage(_shell.Window),
+        "suite" => Ledgers.Suite(_shell),
+        "suitetools" => new SuitePage(_shell.Window),
+        "approvals" => ApprovalsPage.Build(_shell),
         "drawings" => new DrawingsPage(_shell),
-        "assistant" => new AssistantPage(_shell),
+        "assistant" => new AssistantHostPage(_shell),
         "proposals" => RecordPages.Proposals(_shell),
         "meetings" => RecordPages.Meetings(_shell),
         "tds26as" => new TdsReconPage(_shell),

@@ -23,6 +23,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     private readonly TextBox _issue = Flow.Input("Issue date");
     private readonly TextBox _due = Flow.Input("Due date");
     private readonly TextBox _notes = Flow.Input("Notes", true);
+    private readonly TextBlock _estimateHint = Flow.Secondary("Choose a project to see any O-CoreOp estimate saved in this company file.");
     private readonly StackPanel _lines = new() { Spacing = 8 };
     private readonly TextBlock _title = Flow.Heading("Invoices and receipts");
     private readonly TextBlock _state = Flow.Secondary("");
@@ -81,7 +82,11 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         _receiptSection.SelectedIndex = 0;
         foreach (var box in new[] { _issue, _due, _notes, _receiptAmount, _receiptDate })
             box.TextChanged += (_, _) => { if (!_filling) _dirty = true; };
-        _project.SelectionChanged += (_, _) => { if (!_filling) _dirty = true; };
+        _project.SelectionChanged += (_, _) =>
+        {
+            if (!_filling) _dirty = true;
+            RefreshEstimateHint();
+        };
         _kind.SelectionChanged += (_, _) => { if (!_filling) _dirty = true; };
         _gst.SelectionChanged += (_, _) => { if (!_filling) _dirty = true; };
         _search.TextChanged += (_, _) => Paint();
@@ -177,6 +182,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         _editor.Children.Add(_state);
         _editor.Children.Add(Flow.Section("Invoice"));
         _editor.Children.Add(_project);
+        _editor.Children.Add(_estimateHint);
         _editor.Children.Add(Flow.Pair(_kind, _gst));
         _editor.Children.Add(Flow.Secondary("A regular registration charges 18 percent GST. Within the state that is CGST and SGST. Another state is IGST. Architectural fees print under SAC 9983. A pro forma uses the same figures and is not a tax invoice."));
         _editor.Children.Add(Flow.Pair(_issue, _due));
@@ -414,12 +420,54 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
                 foreach (var row in projects.EnumerateArray())
                     _project.Items.Add(Item($"{Kit.Str(row, "client_name")} � {Kit.Str(row, "name")}", Kit.Id(row) ?? 0));
             Paint();
+            RefreshEstimateHint();
             if (Flow.TakeCreate(_shell, "invoices"))
                 _ = BeginNew();
             else if (Flow.TakeOpen(_shell, "invoices") is { } target)
                 OpenById(target.Id, focusReceipt: target.Kind == "pay");
         });
     });
+
+    /// <summary>Surfaces the company-file O-CoreOp estimate next to fee invoices so cost and fee stay on the same project identity.</summary>
+    private void RefreshEstimateHint()
+    {
+        if (_project.SelectedItem is not ComboBoxItem { Tag: long projectId } || projectId <= 0)
+        {
+            _estimateHint.Text = "Choose a project to see any O-CoreOp estimate saved in this company file.";
+            return;
+        }
+        _ = _shell.Run("Reading the O-CoreOp estimate…", () =>
+        {
+            var summary = _shell.Call("project_estimate_summary", new { project_id = projectId });
+            JsonElement? ra = null;
+            try { ra = _shell.Call("project_ra_summary", new { project_id = projectId }); }
+            catch { /* older office.dll */ }
+            _shell.Window.DispatcherQueue.TryEnqueue(() =>
+            {
+                var parts = new List<string>();
+                if (summary.TryGetProperty("present", out var present) && present.ValueKind == JsonValueKind.True
+                    && summary.TryGetProperty("grand_total_paise", out var paise) && paise.TryGetInt64(out var total))
+                {
+                    var book = Kit.Str(summary, "rate_book_version_name");
+                    parts.Add($"O-CoreOp estimate: {Flow.Money(total)}{(book.Length == 0 ? "" : $" · {book}")}");
+                }
+                else
+                    parts.Add(Kit.Str(summary, "reason").Length > 0
+                        ? Kit.Str(summary, "reason")
+                        : "No O-CoreOp estimate is saved for this project yet.");
+                if (ra is JsonElement raSummary && raSummary.TryGetProperty("present", out var raPresent) && raPresent.ValueKind == JsonValueKind.True
+                    && raSummary.TryGetProperty("last_net_paise", out var netNode) && netNode.TryGetInt64(out var net))
+                {
+                    var number = Kit.Str(raSummary, "last_bill_number");
+                    parts.Add($"Last RA {(number.Length == 0 ? "" : number + " ")}net {Flow.Money(net)} ({Kit.Str(raSummary, "certified_count")} certified of {Kit.Str(raSummary, "bill_count")})");
+                }
+                else if (ra is JsonElement raMissing && Kit.Str(raMissing, "reason").Length > 0)
+                    parts.Add(Kit.Str(raMissing, "reason"));
+                parts.Add("Fee proposals can link the estimate ArtifactRef; this invoice bills the practice fee for the same ProjectRef.");
+                _estimateHint.Text = string.Join(" · ", parts);
+            });
+        });
+    }
 
     private void SaveDraft()
     {

@@ -1,0 +1,17 @@
+O-Studio
+Copyright 2026 Human Centric Works, Hospet
+
+O-Studio is open source and dual-licensed:
+  - GNU Affero General Public License v3.0 (Community Edition) — see LICENSE
+  - Optional commercial license (AGPL relief) from Human Centric Works — see LICENSING.md
+Support / commercial: support@hcworks.in · https://hcworks.in
+
+Developed by Human Centric Works.
+
+Third-party notices
+-------------------
+- IBM Plex fonts — SIL Open Font License 1.1; see src-tauri/assets/fonts/plex/
+- DejaVu Sans — see src-tauri/assets/fonts/DejaVu-LICENSE.txt
+- Windows App SDK / WinUI — Microsoft licenses
+- O-UI (Hcw.Ui) — MIT; brand marks in that repository are reserved
+  (see o-ui/brand/LICENSE.md)

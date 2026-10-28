@@ -12,22 +12,17 @@ An app that follows this contract can say "this estimate was made from revision 
 ## ProjectRef
 
 ```json
-{ "v": 1, "company_uuid": "…", "project_id": 7, "aorms_project_office_id": "…" }
+{ "v": 1, "company_uuid": "…", "project_id": 7 }
 ```
 
 | Field | Meaning |
 |---|---|
 | `company_uuid` | The id of the O-Studio company file the project lives in (`company_file.company_uuid`). |
 | `project_id` | The project's id in that file. |
-| `aorms_project_office_id` | The portal's `projectOfficeId`. Present only when the project was pulled from, or linked to, AORMS. Left out otherwise. |
 
-**Finding a project again.** A reader looks in this order and stops at the first hit:
-1. `company_uuid` equals this file's, and `project_id` exists here.
-2. `aorms_project_office_id` is present and this file has a link for it (`aorms_links`).
+**Finding a project again.** A reader matches when `company_uuid` equals this file's and `project_id` exists here. If that fails, the project is not here and the reader says so. It does not guess from the project's name.
 
-If neither matches, the project is not here and the reader says so. It does not guess from the project's name.
-
-**Which id is the system of record** (the open question in the suite plan): the rule is *the portal id when there is one, otherwise the pair*. A project linked to AORMS keeps its identity when the file is copied or restored, because the portal id travels with it. An offline project is identified by the file it was made in.
+An offline project is identified by the company file it was made in (`company_uuid` + `project_id`).
 
 ## ArtifactRef
 
@@ -75,7 +70,18 @@ A reader does **not** check that the artifact exists or that the checksum is tru
 | `project_resolve` `{ reference }` | View | Returns the project id the reference names here, or an error |
 | `artifact_ref_check` `{ reference }` | View | Returns `null` when the reference is well formed, or an error naming the problem |
 
+## System of record
+
+The **company file** (`company_uuid` + `project_id`) is the suite system of record for project identity. Portal / AORMS ids are not used in the desktop suite.
+
+## Operations added for fee linking
+
+| Operation | Needs | Does |
+|---|---|---|
+| `project_estimate_summary` `{ project_id }` | View | Reads the O-CoreOp `aqc.project` document's `last_estimate` (grand total in paise/rupees, rate book, optional `artifact_ref` and `project_ref`) |
+
 ## What is not done yet
-- O-CoreOp does not produce or read these references; it has no link to the company file yet (roadmap 2.2).
-- The bridge file from O-Draft (`hcw-aqc-bridge`) does not carry a `ProjectRef` yet.
-- No app computes and stores checksums for its artifacts yet.
+- O-Draft interactive project picker UI for `companyfile` (engine already stamps `project_ref` on take-off when linked).
+- Bridge file (`hcw-aqc-bridge`): O-CoreOp parses `source.project_ref` when present (Import captions Mine/Other/missing); keep ensuring Draft export always writes it when company-linked. ShilpiDB take-off path already carries the ref.
+- Fee proposals can use the O-CoreOp estimate as cost; Studio also surfaces RA (`project_ra_summary`) beside fee/invoices. Fee invoices do not yet store an `ArtifactRef` column of their own.
+- End-to-end click-through of calculate → company-file save → fee proposal → invoice on a real project (Windows GUI / human).

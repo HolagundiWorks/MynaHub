@@ -168,28 +168,24 @@ pub fn cancel(conn: &Connection, user_id: i64, id: i64) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
 pub fn time_entry_record(state: HostState<'_>, project_id: i64, person: String, work_date: String, hours: String, note: String) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     record(&conn, uid, project_id, &person, &work_date, &hours, &note)
 }
 
-#[tauri::command]
 pub fn time_entry_list(state: HostState<'_>, project_id: Option<i64>) -> Result<Vec<TimeRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list(&conn, project_id)
 }
 
-#[tauri::command]
 pub fn time_entry_cancel(state: HostState<'_>, id: i64) -> Result<(), String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     cancel(&conn, uid, id)
 }
 
-#[tauri::command]
 pub fn time_utilization(state: HostState<'_>) -> Result<Utilization, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;

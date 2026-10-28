@@ -20,48 +20,99 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <MenuBar VerticalAlignment="Center" Background="{ThemeResource SidebarBackgroundBrush}" FontSize="13">
+        <MenuBar VerticalAlignment="Center" Background="{ThemeResource SidebarBackgroundBrush}" FontSize="13"
+                 AutomationProperties.Name="Menu bar"
+                 AutomationProperties.LandmarkType="Navigation">
             <MenuBarItem Title="File" AccessKey="F">
-                <MenuFlyoutItem x:Name="NewCompanyItem" Text="New company" AccessKey="N" Click="CreateCompany"/>
+                <MenuFlyoutItem x:Name="NewCompanyItem" Text="New company" AccessKey="N" Click="CreateCompany">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE8A5;"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
                 <MenuFlyoutItem x:Name="OpenItem" Text="Open company" AccessKey="O" Click="OpenCompany">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE8B7;"/>
+                    </MenuFlyoutItem.Icon>
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="O" Modifiers="Control"/>
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
                 <MenuFlyoutItem x:Name="CloseItem" Text="Close company" AccessKey="C" Click="CloseCompany">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE8BB;"/>
+                    </MenuFlyoutItem.Icon>
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="W" Modifiers="Control"/>
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
                 <MenuFlyoutSeparator/>
-                <MenuFlyoutItem x:Name="LockItem" Text="Lock" Click="LockSession"/>
-                <MenuFlyoutItem x:Name="LogoutItem" Text="Log out" Click="LogOut"/>
+                <MenuFlyoutItem x:Name="LockItem" Text="Lock" Click="LockSession">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE72E;"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="LogoutItem" Text="Log out" Click="LogOut">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xF3B1;"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
                 <MenuFlyoutSeparator/>
-                <MenuFlyoutItem Text="Exit" AccessKey="X" Click="ExitApplication"/>
+                <MenuFlyoutItem Text="Exit" AccessKey="X" Click="ExitApplication">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE711;"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
             </MenuBarItem>
             <MenuBarItem Title="Edit" AccessKey="E">
                 <MenuFlyoutItem Text="New record" Click="NewRecord">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE710;"/>
+                    </MenuFlyoutItem.Icon>
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="N" Modifiers="Control"/>
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
                 <MenuFlyoutItem Text="Save" Click="SaveRecord">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE74E;"/>
+                    </MenuFlyoutItem.Icon>
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="S" Modifiers="Control"/>
                     </MenuFlyoutItem.KeyboardAccelerators>
                 </MenuFlyoutItem>
             </MenuBarItem>
             <MenuBarItem Title="View" AccessKey="V">
-                <MenuFlyoutItem Text="Pulse" Click="GoDashboard"/>
+                <MenuFlyoutItem Text="Pulse" Click="GoDashboard">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE9D9;"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
                 <MenuFlyoutSeparator/>
                 <MenuFlyoutItem Text="Tasks widget…" AccessKey="T" Click="OpenTasksWidget"/>
             </MenuBarItem>
             <MenuBarItem Title="Company" AccessKey="M">
-                <MenuFlyoutItem Text="Company profile" Click="GoCompany"/>
+                <MenuFlyoutItem Text="Company profile" Click="GoCompany">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE77B;"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
             </MenuBarItem>
             <MenuBarItem Title="Help" AccessKey="H">
-                <MenuFlyoutItem x:Name="PreviewItem" Text="Sample letterhead PDF" Click="GeneratePreview"/>
-                <MenuFlyoutItem Text="About" Click="ShowAbout"/>
+                <MenuFlyoutItem x:Name="PreviewItem" Text="Sample letterhead PDF" Click="GeneratePreview">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xEA90;"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Check for updates…" Click="CheckForUpdates" AccessKey="U">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE895;"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem Text="About" Click="ShowAbout">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE946;"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
             </MenuBarItem>
         </MenuBar>
 
@@ -73,12 +124,13 @@
                 <Border Style="{StaticResource SetupCardStyle}" MaxWidth="560">
                     <StackPanel Spacing="12">
                         <Image x:Name="WelcomeLogo" MaxWidth="460" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="O-Studio"/>
-                        <TextBlock Text="Create a company file or open an existing one." TextWrapping="WrapWholeWords" Style="{ThemeResource BodyStyle}"/>
+                        <TextBlock Text="Create a company file or open an existing one. Studio holds the company details and the admin password for the OSAS suite." TextWrapping="WrapWholeWords" Style="{ThemeResource BodyStyle}"/>
                         <TextBlock Text="Developed by Human Centric Works" Style="{ThemeResource CaptionStyle}"/>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button x:Name="NewCompanyButton" Content="Create a new company" Click="CreateCompany" Style="{StaticResource AccentButtonStyle}"/>
                             <Button x:Name="OpenCompanyButton" Content="Open an existing company" Click="OpenCompany"/>
                         </StackPanel>
+                        <Button x:Name="FollowButton" Content="Open the company last chosen" Click="FollowSuite" Visibility="Collapsed" HorizontalAlignment="Left"/>
                         <InfoBar x:Name="LegacyNotice" IsOpen="False" IsClosable="False" Severity="Informational"
                                  Title="Data from the earlier version was found on this computer."
                                  Message="Convert it into a company file. The original is left untouched.">
@@ -182,7 +234,9 @@
             <Grid x:Name="PdfHost" Visibility="Collapsed" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"/>
         </Grid>
 
-        <Border Grid.Row="3" BorderBrush="{ThemeResource BorderSubtleBrush}" BorderThickness="0,1,0,0" Background="{ThemeResource SidebarBackgroundBrush}">
+        <Border x:Name="StatusStrip" Grid.Row="3" BorderBrush="{ThemeResource BorderSubtleBrush}" BorderThickness="0,1,0,0" Background="{ThemeResource SidebarBackgroundBrush}"
+                AutomationProperties.Name="Status"
+                AutomationProperties.LocalizedLandmarkType="status">
         <Grid Padding="20,6,20,8" ColumnSpacing="12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
@@ -191,6 +245,7 @@
             </Grid.ColumnDefinitions>
             <ProgressRing x:Name="BusyRing" Width="20" Height="20" IsActive="False"/>
             <TextBlock x:Name="StatusText" Grid.Column="1" VerticalAlignment="Center" Style="{ThemeResource CaptionStyle}"
+                       AutomationProperties.Name="Status message"
                        AutomationProperties.LiveSetting="Polite"/>
             <TextBlock Grid.Column="2" VerticalAlignment="Center" Style="{ThemeResource CaptionStyle}" Text="Human Centric Works"/>
         </Grid>

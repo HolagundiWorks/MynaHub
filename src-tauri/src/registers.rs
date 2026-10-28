@@ -292,21 +292,18 @@ pub fn page_audit(conn: &Connection, q: &PageQuery) -> Result<Page<AuditPageRow>
 
 // ---------- commands ----------
 
-#[tauri::command]
 pub fn bank_txn_page(state: HostState<'_>, query: PageQuery) -> Result<Page<TxnRow>, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     page_txns(&conn, &query)
 }
 
-#[tauri::command]
 pub fn journal_page(state: HostState<'_>, query: PageQuery) -> Result<Page<JournalRow>, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     page_journals(&conn, &query)
 }
 
-#[tauri::command]
 pub fn invoice_page(state: HostState<'_>, query: PageQuery) -> Result<Page<InvoiceRegisterRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
@@ -314,14 +311,12 @@ pub fn invoice_page(state: HostState<'_>, query: PageQuery) -> Result<Page<Invoi
     page_invoices(&conn, &query, &today)
 }
 
-#[tauri::command]
 pub fn doc_page(state: HostState<'_>, query: PageQuery) -> Result<Page<DocRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     page_docs(&conn, &query)
 }
 
-#[tauri::command]
 pub fn audit_page(state: HostState<'_>, query: PageQuery) -> Result<Page<AuditPageRow>, String> {
     require(&state, Permission::ViewAudit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;

@@ -1,4 +1,4 @@
-//! JSON entry points for every Tauri command. The WinUI host calls these by name.
+//! JSON entry points for every engine command. The WinUI host calls these by name.
 use crate::commands::{AppState, HostState};
 use serde::Serialize;
 use serde_json::Value;
@@ -114,6 +114,7 @@ pub fn invoke(state: &AppState, op: &str, args: &Value) -> Result<Option<Vec<u8>
         "user_list" => run(crate::admin::user_list(HostState::new(state))),
         "user_create" => run(crate::admin::user_create(HostState::new(state), arg(args, "username")?, arg(args, "password")?, arg(args, "role")?, arg(args, "admin_password")?)),
         "user_update" => run(crate::admin::user_update(HostState::new(state), arg(args, "id")?, arg(args, "role")?, arg(args, "disabled")?, arg(args, "admin_password")?)),
+        "user_set_password" => run(crate::admin::user_set_password(HostState::new(state), arg(args, "id")?, arg(args, "password")?, arg(args, "admin_password")?)),
         "audit_list" => run(crate::admin::audit_list(HostState::new(state), arg(args, "limit")?)),
         "backup_list" => run(crate::admin::backup_list(HostState::new(state))),
         "backup_restore" => run(crate::admin::backup_restore(HostState::new(state), arg(args, "filename")?, arg(args, "password")?)),
@@ -247,6 +248,8 @@ pub fn invoke(state: &AppState, op: &str, args: &Value) -> Result<Option<Vec<u8>
         "proposal_save" => run(crate::desk::proposal_save_record(HostState::new(state), arg(args, "input")?)),
         "proposal_list" => run(crate::desk::proposal_list_records(HostState::new(state), arg(args, "client_id")?)),
         "proposal_set_status" => run(crate::desk::proposal_set_status_record(HostState::new(state), arg(args, "id")?, arg(args, "status")?)),
+        "project_estimate_summary" => run(crate::desk::project_estimate_summary(HostState::new(state), arg(args, "project_id")?)),
+        "project_ra_summary" => run(crate::desk::project_ra_summary(HostState::new(state), arg(args, "project_id")?)),
         "meeting_save" => run(crate::desk::meeting_save_record(HostState::new(state), arg(args, "input")?)),
         "meeting_list" => run(crate::desk::meeting_list_records(HostState::new(state), arg(args, "project_id")?)),
         "attendance_mark" => run(crate::desk::attendance_mark_record(HostState::new(state), arg(args, "staff_id")?, arg(args, "day")?, arg(args, "status")?, arg(args, "note")?)),
@@ -267,6 +270,44 @@ pub fn invoke(state: &AppState, op: &str, args: &Value) -> Result<Option<Vec<u8>
         "project_stage_mark" => run(crate::stages::project_stage_mark(HostState::new(state), arg(args, "stage_id")?, arg(args, "marked_on")?)),
         "project_stage_unmark" => run(crate::stages::project_stage_unmark(HostState::new(state), arg(args, "stage_id")?)),
         "grammar_check" => run(crate::grammar::grammar_check(HostState::new(state), serde_json::from_value(args.clone()).map_err(|error| BridgeError::BadRequest(format!("The language check request is invalid: {error}")))?)),
+        "approval_list" => run(crate::approvals_cmd::approval_list(HostState::new(state), arg(args, "project_id")?, arg(args, "kind")?, arg(args, "status")?)),
+        "approval_get" => run(crate::approvals_cmd::approval_get(HostState::new(state), arg(args, "id")?)),
+        "approval_submit" => run(crate::approvals_cmd::approval_submit(
+            HostState::new(state),
+            arg(args, "project_id")?,
+            arg(args, "kind")?,
+            arg(args, "title")?,
+            arg(args, "body")?,
+            arg(args, "supersedes_id")?,
+        )),
+        "approval_approve" => run(crate::approvals_cmd::approval_approve(HostState::new(state), arg(args, "id")?)),
+        "approval_withdraw" => run(crate::approvals_cmd::approval_withdraw(HostState::new(state), arg(args, "id")?)),
+        "studio_draft_list" => run(crate::studio_drafts_cmd::studio_draft_list(HostState::new(state), arg(args, "project_id")?, arg(args, "state")?)),
+        "studio_draft_get" => run(crate::studio_drafts_cmd::studio_draft_get(HostState::new(state), arg(args, "project_id")?, arg(args, "kind")?)),
+        "studio_draft_approve" => run(crate::studio_drafts_cmd::studio_draft_approve(
+            HostState::new(state),
+            arg(args, "project_id")?,
+            arg(args, "kind")?,
+            arg(args, "expected_revision")?,
+        )),
+        "studio_draft_mark_pending" => run(crate::studio_drafts_cmd::studio_draft_mark_pending(
+            HostState::new(state),
+            arg(args, "project_id")?,
+            arg(args, "kind")?,
+            arg(args, "expected_revision")?,
+        )),
+        "studio_draft_mark_superseded" => run(crate::studio_drafts_cmd::studio_draft_mark_superseded(
+            HostState::new(state),
+            arg(args, "project_id")?,
+            arg(args, "kind")?,
+            arg(args, "expected_revision")?,
+        )),
+        "agent_tools" => run(crate::approvals_cmd::agent_tools(HostState::new(state))),
+        "agent_call" => {
+            let name: String = arg(args, "name")?;
+            let arguments: Value = args.get("arguments").cloned().unwrap_or(Value::Null);
+            run(crate::approvals_cmd::agent_call_state(state, &name, &arguments))
+        }
         _ => Ok(None),
     }
 }

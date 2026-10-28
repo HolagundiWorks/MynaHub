@@ -8,119 +8,116 @@ use crate::commands::{HostState, require, INTERNAL};
 use office_core::{practice, subcontracts, tasks, tds26as};
 use serde_json::Value;
 
-#[tauri::command]
 pub fn proposal_save_record(state: HostState<'_>, input: practice::ProposalInput) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     practice::proposal_save(&conn, uid, &input)
 }
 
-#[tauri::command]
 pub fn proposal_list_records(state: HostState<'_>, client_id: Option<i64>) -> Result<Vec<Value>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     practice::proposal_list(&conn, client_id)
 }
 
-#[tauri::command]
+/// O-CoreOp estimate totals saved on the company-file project (for fee proposals and invoices).
+pub fn project_estimate_summary(state: HostState<'_>, project_id: i64) -> Result<Value, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    office_core::share::estimate_summary(&conn, project_id)
+}
+
+/// O-CoreOp running-bill (RA) totals saved on the company-file project.
+pub fn project_ra_summary(state: HostState<'_>, project_id: i64) -> Result<Value, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    office_core::share::ra_summary(&conn, project_id)
+}
+
 pub fn proposal_set_status_record(state: HostState<'_>, id: i64, status: String) -> Result<(), String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     practice::proposal_set_status(&conn, uid, id, &status)
 }
 
-#[tauri::command]
 pub fn meeting_save_record(state: HostState<'_>, input: practice::MeetingInput) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     practice::meeting_save(&conn, uid, &input)
 }
 
-#[tauri::command]
 pub fn meeting_list_records(state: HostState<'_>, project_id: Option<i64>) -> Result<Vec<Value>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     practice::meeting_list(&conn, project_id)
 }
 
-#[tauri::command]
 pub fn attendance_mark_record(state: HostState<'_>, staff_id: i64, day: String, status: String, note: Option<String>) -> Result<(), String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     practice::attendance_mark(&conn, uid, staff_id, &day, &status, note.as_deref().unwrap_or(""))
 }
 
-#[tauri::command]
 pub fn attendance_day_records(state: HostState<'_>, day: String) -> Result<Vec<Value>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     practice::attendance_day(&conn, &day)
 }
 
-#[tauri::command]
 pub fn attendance_month_records(state: HostState<'_>, month: String) -> Result<Vec<Value>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     practice::attendance_month(&conn, &month)
 }
 
-#[tauri::command]
 pub fn tds26as_import_csv(state: HostState<'_>, csv: String) -> Result<Value, String> {
     let uid = require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     tds26as::import_csv(&conn, uid, &csv)
 }
 
-#[tauri::command]
 pub fn tds26as_reconcile_report(state: HostState<'_>, from: String, to: String) -> Result<Value, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     tds26as::reconcile(&conn, &from, &to)
 }
 
-#[tauri::command]
 pub fn tds26as_list_entries(state: HostState<'_>) -> Result<Vec<Value>, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     tds26as::list(&conn)
 }
 
-#[tauri::command]
 pub fn task_list_records(state: HostState<'_>, project_id: Option<i64>) -> Result<Vec<Value>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     tasks::list(&conn, project_id)
 }
 
-#[tauri::command]
 pub fn task_save_record(state: HostState<'_>, input: tasks::TaskInput) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     tasks::save(&conn, uid, &input)
 }
 
-#[tauri::command]
 pub fn task_set_status_record(state: HostState<'_>, id: i64, status: String, position: Option<i64>) -> Result<(), String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     tasks::set_status(&conn, uid, id, &status, position)
 }
 
-#[tauri::command]
 pub fn task_delete_record(state: HostState<'_>, id: i64) -> Result<(), String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     tasks::delete(&conn, uid, id)
 }
 
-#[tauri::command]
 pub fn subcontract_list_records(state: HostState<'_>, project_id: Option<i64>) -> Result<Vec<Value>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     subcontracts::list(&conn, project_id)
 }
 
-#[tauri::command]
 pub fn subcontract_save_record(state: HostState<'_>, input: subcontracts::SubcontractInput) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;

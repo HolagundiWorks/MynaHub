@@ -31,6 +31,12 @@ pub struct ProposalInput {
     pub issued_date: String,
     pub valid_until: String,
     pub notes: String,
+    /// Suite ArtifactRef JSON for the O-CoreOp estimate this fee was based on (empty when not linked).
+    #[serde(default)]
+    pub estimate_artifact_json: String,
+    /// Grand total of that estimate in paise at the time it was linked (0 when not linked).
+    #[serde(default)]
+    pub estimate_total_paise: i64,
 }
 
 /// The fee in paise, rounded half up. Each basis uses only its own figures.
@@ -69,9 +75,16 @@ pub fn proposal_save(conn: &Connection, user_id: i64, i: &ProposalInput) -> Resu
     if !(0..=10_000).contains(&i.rate_bp) {
         return Err("Enter a percentage between 0 and 100.".into());
     }
-    for amount in [i.cost_paise, i.area_milli, i.area_rate_paise, i.lump_paise] {
+    for amount in [i.cost_paise, i.area_milli, i.area_rate_paise, i.lump_paise, i.estimate_total_paise] {
         if !(0..=1_000_000_000_000_00).contains(&amount) {
             return Err("Amounts cannot be negative or absurdly large.".into());
+        }
+    }
+    let estimate_json = text(&i.estimate_artifact_json, 4000, "estimate link", false)?;
+    if !estimate_json.is_empty() {
+        let parsed: Value = serde_json::from_str(&estimate_json).map_err(|_| "The estimate link is not valid JSON.".to_string())?;
+        if parsed.get("kind").and_then(|v| v.as_str()) != Some("estimate") {
+            return Err("The estimate link must name an estimate ArtifactRef.".into());
         }
     }
     let fee = fee_for(&ProposalInput { basis: basis.clone(), ..clone_figures(i) })?;
@@ -93,8 +106,8 @@ pub fn proposal_save(conn: &Connection, user_id: i64, i: &ProposalInput) -> Resu
             }
             conn.execute(
                 "UPDATE fee_proposals SET client_id=?2, project_id=?3, title=?4, basis=?5, cost_paise=?6, rate_bp=?7, area_milli=?8, area_rate_paise=?9,
-                 fee_paise=?10, gst_bp=?11, issued_date=?12, valid_until=?13, notes=?14 WHERE id = ?1",
-                params![id, i.client_id, i.project_id, title, basis, i.cost_paise, i.rate_bp, i.area_milli, i.area_rate_paise, fee, i.gst_bp, issued, valid, notes],
+                 fee_paise=?10, gst_bp=?11, issued_date=?12, valid_until=?13, notes=?14, estimate_artifact_json=?15, estimate_total_paise=?16 WHERE id = ?1",
+                params![id, i.client_id, i.project_id, title, basis, i.cost_paise, i.rate_bp, i.area_milli, i.area_rate_paise, fee, i.gst_bp, issued, valid, notes, estimate_json, i.estimate_total_paise],
             )
             .map_err(|e| e.to_string())?;
             audit(conn, Some(user_id), "proposal_updated", &id.to_string());
@@ -102,9 +115,9 @@ pub fn proposal_save(conn: &Connection, user_id: i64, i: &ProposalInput) -> Resu
         }
         None => {
             conn.execute(
-                "INSERT INTO fee_proposals (client_id, project_id, title, basis, cost_paise, rate_bp, area_milli, area_rate_paise, fee_paise, gst_bp, issued_date, valid_until, notes, created_by)
-                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)",
-                params![i.client_id, i.project_id, title, basis, i.cost_paise, i.rate_bp, i.area_milli, i.area_rate_paise, fee, i.gst_bp, issued, valid, notes, user_id],
+                "INSERT INTO fee_proposals (client_id, project_id, title, basis, cost_paise, rate_bp, area_milli, area_rate_paise, fee_paise, gst_bp, issued_date, valid_until, notes, created_by, estimate_artifact_json, estimate_total_paise)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)",
+                params![i.client_id, i.project_id, title, basis, i.cost_paise, i.rate_bp, i.area_milli, i.area_rate_paise, fee, i.gst_bp, issued, valid, notes, user_id, estimate_json, i.estimate_total_paise],
             )
             .map_err(|e| e.to_string())?;
             let id = conn.last_insert_rowid();
@@ -119,6 +132,7 @@ fn clone_figures(i: &ProposalInput) -> ProposalInput {
     ProposalInput {
         id: i.id, client_id: i.client_id, project_id: i.project_id, title: String::new(), basis: i.basis.clone(), cost_paise: i.cost_paise, rate_bp: i.rate_bp,
         area_milli: i.area_milli, area_rate_paise: i.area_rate_paise, lump_paise: i.lump_paise, gst_bp: i.gst_bp, issued_date: String::new(), valid_until: String::new(), notes: String::new(),
+        estimate_artifact_json: String::new(), estimate_total_paise: 0,
     }
 }
 
@@ -140,7 +154,7 @@ pub fn proposal_list(conn: &Connection, client_id: Option<i64>) -> Result<Vec<Va
     let mut stmt = conn
         .prepare(
             "SELECT f.id, f.number, f.client_id, c.name, f.project_id, COALESCE(p.name, ''), f.title, f.basis, f.cost_paise, f.rate_bp, f.area_milli, f.area_rate_paise,
-                    f.fee_paise, f.gst_bp, f.status, f.issued_date, f.valid_until, f.notes
+                    f.fee_paise, f.gst_bp, f.status, f.issued_date, f.valid_until, f.notes, f.estimate_artifact_json, f.estimate_total_paise
              FROM fee_proposals f JOIN clients c ON c.id = f.client_id LEFT JOIN projects p ON p.id = f.project_id
              WHERE (?1 IS NULL OR f.client_id = ?1) ORDER BY f.id DESC",
         )
@@ -151,6 +165,8 @@ pub fn proposal_list(conn: &Connection, client_id: Option<i64>) -> Result<Vec<Va
             let gst_bp: i64 = r.get(13)?;
             let status: String = r.get(14)?;
             let valid: String = r.get(16)?;
+            let estimate_json: String = r.get(18)?;
+            let estimate_total: i64 = r.get(19)?;
             let gst = (fee as i128 * gst_bp as i128 + 5000) / 10_000;
             Ok(json!({
                 "id": r.get::<_, i64>(0)?, "number": r.get::<_, String>(1)?, "client_id": r.get::<_, i64>(2)?, "client": r.get::<_, String>(3)?,
@@ -158,6 +174,8 @@ pub fn proposal_list(conn: &Connection, client_id: Option<i64>) -> Result<Vec<Va
                 "cost_paise": r.get::<_, i64>(8)?, "rate_bp": r.get::<_, i64>(9)?, "area_milli": r.get::<_, i64>(10)?, "area_rate_paise": r.get::<_, i64>(11)?,
                 "fee_paise": fee, "gst_bp": gst_bp, "gst_paise": gst as i64, "total_paise": fee + gst as i64, "status": status,
                 "issued_date": r.get::<_, String>(15)?, "valid_until": valid, "notes": r.get::<_, String>(17)?,
+                "estimate_artifact_json": estimate_json, "estimate_total_paise": estimate_total,
+                "estimate_linked": estimate_total > 0 || !estimate_json.is_empty(),
                 "lapsed": status == "sent" && !valid.is_empty() && valid < today,
             }))
         })
@@ -354,7 +372,27 @@ mod tests {
         ProposalInput {
             id: None, client_id: 1, project_id: Some(1), title: "Villa design".into(), basis: basis.into(), cost_paise: 500_000_000_00, rate_bp: 600, area_milli: 2_500_000,
             area_rate_paise: 150_00, lump_paise: 7_500_000_00, gst_bp: 1800, issued_date: "2026-10-01".into(), valid_until: "2026-10-31".into(), notes: String::new(),
+            estimate_artifact_json: String::new(), estimate_total_paise: 0,
         }
+    }
+
+    #[test]
+    fn a_proposal_can_record_the_coreop_estimate_it_was_based_on() {
+        let c = conn();
+        let artifact = r#"{"v":1,"kind":"estimate","id":"last_estimate","revision":2,"checksum_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","project":{"v":1,"company_uuid":"u","project_id":1},"made_from":[]}"#;
+        let id = proposal_save(&c, 1, &ProposalInput {
+            estimate_artifact_json: artifact.into(),
+            estimate_total_paise: 123_456_00,
+            cost_paise: 123_456_00,
+            ..proposal("percent")
+        }).unwrap();
+        let row = &proposal_list(&c, None).unwrap()[0];
+        assert_eq!(row["id"], id);
+        assert_eq!(row["estimate_linked"], true);
+        assert_eq!(row["estimate_total_paise"], 123_456_00);
+        assert!(row["estimate_artifact_json"].as_str().unwrap().contains("last_estimate"));
+        assert!(proposal_save(&c, 1, &ProposalInput { estimate_artifact_json: "{".into(), ..proposal("percent") }).is_err());
+        assert!(proposal_save(&c, 1, &ProposalInput { estimate_artifact_json: r#"{"kind":"drawing","id":"x"}"#.into(), ..proposal("percent") }).is_err());
     }
 
     #[test]

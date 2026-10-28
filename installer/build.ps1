@@ -6,10 +6,10 @@ Set-Location $root
 
 $version = "0.1.0"
 $stage = Join-Path $PSScriptRoot "stage"
-$makensis = @("$env:LOCALAPPDATA\tauri\NSIS\makensis.exe", "$env:ProgramFiles (x86)\NSIS\makensis.exe", "$env:ProgramFiles\NSIS\makensis.exe") |
+$makensis = @("$env:ProgramFiles (x86)\NSIS\makensis.exe", "$env:ProgramFiles\NSIS\makensis.exe") |
     Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $makensis) { $cmd = Get-Command makensis -ErrorAction SilentlyContinue; if ($cmd) { $makensis = $cmd.Source } }
-if (-not $makensis) { throw "makensis.exe was not found. Install NSIS, or build once with 'npm run tauri build' so Tauri downloads it." }
+if (-not $makensis) { throw "makensis.exe was not found. Install NSIS and ensure makensis.exe is on PATH." }
 
 # The engine is built into src-tauri\target unless CARGO_TARGET_DIR names another folder (useful when the repository drive is short of space).
 $engineDir = if ($env:CARGO_TARGET_DIR) { Join-Path $env:CARGO_TARGET_DIR "release" } else { Join-Path $root "src-tauri\target\release" }
@@ -30,5 +30,14 @@ Write-Host "3/3 Installer"
 $out = Join-Path $PSScriptRoot "O-Studio-Setup-$version.exe"
 & $makensis "/DVERSION=$version" "/DSOURCE=$stage" "/DOUT=$out" (Join-Path $PSScriptRoot "aos.nsi")
 if ($LASTEXITCODE -ne 0) { throw "makensis failed" }
+
+# Optional Authenticode — no secrets means unsigned (exit 0). See docs/packaging.md.
+$signScript = Join-Path $PSScriptRoot "sign.ps1"
+if (Test-Path -LiteralPath $signScript) {
+    Write-Host "4/4 Signing (if material present)"
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $signScript $out
+    if ($LASTEXITCODE -ne 0) { throw "sign.ps1 failed ($LASTEXITCODE)" }
+}
+
 Write-Host "Built $out"
 Get-FileHash $out -Algorithm SHA256 | Format-List Hash

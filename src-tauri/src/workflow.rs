@@ -282,14 +282,12 @@ pub fn attention(conn: &Connection, limit: usize) -> Result<Vec<Attention>, Stri
     Ok(out)
 }
 
-#[tauri::command]
 pub fn project_path_get(state: HostState<'_>, project_id: i64) -> Result<ProjectPath, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     project_path(&conn, project_id)
 }
 
-#[tauri::command]
 pub fn project_attention(state: HostState<'_>) -> Result<Vec<Attention>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;

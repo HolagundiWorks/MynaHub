@@ -28,6 +28,7 @@
   <ItemGroup>
     <Content Include="Assets\app.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\mark.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\mark.svg" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\wordmark.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\mark-*.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
