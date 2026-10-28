@@ -40,13 +40,13 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 | 2.4 | Estimates and running bills: O-CoreOp calculates, O-Studio shows the result against the fee proposal | Both | Checked: O-Studio has fee proposals but no link to quantities |
 | 2.5 | An MCP tool server for O-CoreOp, with the same descriptor shape as O-Studio's | CoreOp | Checked: only O-Studio has one (`office-agent`) |
 | 2.6 | Write tools for the agent, with approval and an audit trail | Studio | Checked: every tool is read-only today |
-| 2.7 | The OSAS launcher: an installer for the suite, update check, open a company file from the launcher | OSAS | Listed as not built in its README |
+| 2.7 | The OSAS launcher: an installer for the suite, update check, open a company file from the launcher | OSAS | Suite glue + update-check stub landed in OSAS (`install-suite.ps1`, channel JSON); signed single Setup.exe and open-company-from-launcher still open |
 
 ## Phase 3: depth
 
 | # | Item | App |
 |---|---|---|
-| 3.1 | Code signing for the installers, and an update path | Both |
+| 3.1 | Code signing for the installers, and an update path | Both | `installer/sign.ps1` hooks exist; need a real Authenticode / Azure Trusted Signing cert and a hosted channel URL |
 | 3.2 | Automated UI tests with UI Automation for the main flows, run in CI | Both |
 | 3.3 | Check O-CoreOp quantities and purchase-order output against a real project, and add the cases it exposes | CoreOp |
 | 3.4 | O-Studio: reports and presentations are records only; a printable pack per project | Studio |

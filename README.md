@@ -53,7 +53,7 @@ cargo test --manifest-path src-tauri/Cargo.toml   # engine, accounting, company 
 cargo test --manifest-path office-core/Cargo.toml
 ```
 
-The installer is built with `installer/build.ps1` (release engine, self-contained publish, NSIS) and is named `O-Studio-Setup-<version>.exe`. It is not signed. What is open and planned is in [docs/roadmap.md](docs/roadmap.md).
+The installer is built with `installer/build.ps1` (release engine, self-contained publish, NSIS) and is named `O-Studio-Setup-<version>.exe`. It stays unsigned unless signing secrets are set (`installer/sign.ps1`). Help → **Check for updates…** is a channel stub. Packaging notes: [docs/packaging.md](docs/packaging.md). What is open and planned is in [docs/roadmap.md](docs/roadmap.md).
 
 ## Before live use
 

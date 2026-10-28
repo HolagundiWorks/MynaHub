@@ -27,5 +27,14 @@ Write-Host "3/3 Installer"
 $out = Join-Path $PSScriptRoot "O-Studio-Setup-$version.exe"
 & $makensis "/DVERSION=$version" "/DSOURCE=$stage" "/DOUT=$out" (Join-Path $PSScriptRoot "aos.nsi")
 if ($LASTEXITCODE -ne 0) { throw "makensis failed" }
+
+# Optional Authenticode — no secrets means unsigned (exit 0). See docs/packaging.md.
+$signScript = Join-Path $PSScriptRoot "sign.ps1"
+if (Test-Path -LiteralPath $signScript) {
+    Write-Host "4/4 Signing (if material present)"
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $signScript $out
+    if ($LASTEXITCODE -ne 0) { throw "sign.ps1 failed ($LASTEXITCODE)" }
+}
+
 Write-Host "Built $out"
 Get-FileHash $out -Algorithm SHA256 | Format-List Hash
