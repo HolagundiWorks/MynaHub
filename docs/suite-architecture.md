@@ -12,7 +12,7 @@ The suite is **OSAS, the Open Source Architecture Suit**. Some code identifiers 
 | **O-CoreOp** | Quantities, estimates, billing | Blue | `HolagundiWorks/O-COREOP` |
 | **O-Draft** | Drafting | Black | `HolagundiWorks/O-DRAFT` |
 
-The shared design is the `hcw-ui` library (MIT licensed; the marks in its brand folder have their own notice), and the folder has the marks for all three apps in their colours. O-Studio and O-CoreOp use the same responsive layout: a pane that collapses below 900 px, and pages that wrap down to 520 px. The accessibility audit is `docs/wcag-audit.md`.
+The shared design is the public `HolagundiWorks/O-UI` library (assembly `Hcw.Ui`, MIT licensed; the marks in its brand folder have their own notice), and the folder has the marks for all three apps in their colours. O-Studio and O-CoreOp use the same responsive layout: a pane that collapses below 900 px, and pages that wrap down to 520 px. The accessibility audit is `docs/wcag-audit.md`.
 
 ## 1. The products today (verified)
 
@@ -124,6 +124,6 @@ Licence boundary: O-CoreOp is AGPL-3.0, O-Draft is MIT or Apache-2.0, and O-Stud
 
 1. How should O-Draft and O-CoreOp map a portal project onto an O-Studio `ProjectRef` (`company_uuid` + `project_id`)?
 2. The bridge file must carry `ProjectRef` for offline sharing; does O-Studio also need a dedicated export?
-3. What licence does O-Studio carry? (Settled for the shared design: `hcw-ui` is MIT, and its marks are reserved. O-Studio itself is still undecided.)
+3. What licence does O-Studio carry? (Settled for the shared design: `O-UI` / `Hcw.Ui` is MIT, and its marks are reserved. O-Studio itself is still undecided.)
 4. Is the suite host a separate small app, or part of O-Studio?
 5. What is a ShilpiDB "detail", precisely?

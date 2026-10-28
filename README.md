@@ -44,7 +44,7 @@ cargo build --manifest-path src-tauri/Cargo.toml
 dotnet build native/Adms.Desktop/Adms.Desktop.csproj -c Debug -p:Platform=x64 -p:WindowsPackageType=None
 ```
 
-The logos come from the `hcw-ui` library (`brand/` there), in orange for O-Studio. Build output (`target/`, `bin/`, `obj/`, `dist/`, `installer/stage`) is ignored by git and can be deleted at any time.
+The logos come from the `O-UI` library (`brand/` there; assembly `Hcw.Ui`), in orange for O-Studio. Build output (`target/`, `bin/`, `obj/`, `dist/`, `installer/stage`) is ignored by git and can be deleted at any time.
 
 Tests:
 

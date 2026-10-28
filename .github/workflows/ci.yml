@@ -22,7 +22,7 @@ jobs:
         run: cargo test --manifest-path ${{ matrix.crate }}/Cargo.toml
 
   windows-app:
-    # hcw-ui is a private repository checked out beside this one; add a read-only token as the secret HCW_UI_TOKEN.
+    # Public shared design library (assembly Hcw.Ui), checked out beside this repo as o-ui.
     runs-on: windows-latest
     needs: rust
     steps:
@@ -31,9 +31,8 @@ jobs:
           path: aos
       - uses: actions/checkout@v4
         with:
-          repository: HolagundiWorks/hcw-ui
-          token: ${{ secrets.HCW_UI_TOKEN }}
-          path: hcw-ui
+          repository: HolagundiWorks/O-UI
+          path: o-ui
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-dotnet@v4
         with:
