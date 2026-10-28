@@ -1,8 +1,9 @@
 //! Signing the suite's apps in as the same person.
 //!
-//! The suite app (OSAS) signs a person in once. For each app it is about to launch it asks for a **ticket**: 32 random bytes that work
+//! O-Studio (the suite shell) signs a person in once. For each app it is about to launch it asks for a **ticket**: 32 random bytes that work
 //! once, for two minutes, and sign in the person who asked, with that person's role. The app redeems the ticket in its own session and
-//! is signed in without the password ever being passed on. Only a hash of a ticket is stored. See `docs/suite-hub.md`.
+//! is signed in without the password ever being passed on. Only a hash of a ticket is stored. Env names stay `OSAS_*` for compatibility.
+//! See `docs/suite-hub.md`.
 
 use crate::auth::SessionInfo;
 use crate::hash::sha256_hex;
