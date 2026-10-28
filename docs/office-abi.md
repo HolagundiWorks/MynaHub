@@ -46,6 +46,7 @@ Every other operation needs a signed-in, unlocked session. Reading needs View. A
 | `data_version` | | `{version, schema_ok}`; the version goes up when another app writes |
 | `doc_get` / `doc_list` / `doc_revision` | project_id, kind [, revision] | a project's document, its documents without bodies, or one revision |
 | `doc_put` | project_id, kind, expected_revision, body | `{revision, checksum_sha256}`, or a refusal if the revision is stale |
+| `project_estimate_summary` | project_id | O-CoreOp `last_estimate` totals and refs from kind `aqc.project`, or `{ present: false, reason }` |
 | `staff_list` / `staff_save` | / input | staff with leave days this year / id |
 | `leave_list` / `leave_save` | / input | leave / id |
 | `library_list` / `library_save` | kind (or null), search (or null) / input | entries / id |

@@ -62,10 +62,13 @@ A kind is lower-case letters, digits, dots and underscores, starting with a lett
 - The **Company** chip in the status strip shows which file is open.
 - The engine is `office.dll`, built from `office-ffi` in this repository and copied beside the app; without it the menu items say it is missing.
 
+## System of record
+
+The company file is the system of record for clients and projects. O-CoreOp and O-Draft identify a project by `ProjectRef` (`company_uuid` + `project_id`). Fee proposals can copy the O-CoreOp estimate grand total (`project_estimate_summary`) and store its `ArtifactRef`.
+
 ## What is not done
 
-- O-Studio refreshes its Pulse, Projects, Clients and record pages when the other app writes. Its other pages (invoices, letters, books) do not watch; only O-Studio writes those. It does not show a project's O-CoreOp quantities.
+- O-Studio refreshes its Pulse, Projects, Clients and record pages when the other app writes. Its other pages (invoices, letters, books) do not watch; only O-Studio writes those. Quantities stay in the O-CoreOp document (fee proposals and invoices show the estimate summary, not line items).
 - The quantities are one document, not tables (above).
 - The conflict dialog offers reload or keep-mine; there is no merge.
 - O-CoreOp's other stores (rate books, parties, schedules) are inside the project document today.
-- The `ProjectRef` of a project is available (`project_ref`), but O-CoreOp does not yet put it on its BOQ and estimate outputs.

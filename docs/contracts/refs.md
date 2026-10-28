@@ -70,7 +70,18 @@ A reader does **not** check that the artifact exists or that the checksum is tru
 | `project_resolve` `{ reference }` | View | Returns the project id the reference names here, or an error |
 | `artifact_ref_check` `{ reference }` | View | Returns `null` when the reference is well formed, or an error naming the problem |
 
+## System of record
+
+The **company file** (`company_uuid` + `project_id`) is the suite system of record for project identity. Portal / AORMS ids are not used in the desktop suite.
+
+## Operations added for fee linking
+
+| Operation | Needs | Does |
+|---|---|---|
+| `project_estimate_summary` `{ project_id }` | View | Reads the O-CoreOp `aqc.project` document's `last_estimate` (grand total in paise/rupees, rate book, optional `artifact_ref` and `project_ref`) |
+
 ## What is not done yet
-- O-CoreOp does not produce or read these references; it has no link to the company file yet (roadmap 2.2).
-- The bridge file from O-Draft (`hcw-aqc-bridge`) does not carry a `ProjectRef` yet.
-- No app computes and stores checksums for its artifacts yet.
+- O-Draft interactive project picker UI for `companyfile` (engine already stamps `project_ref` on take-off when linked).
+- Bridge file (`hcw-aqc-bridge`) still does not carry a `ProjectRef` (ShilpiDB take-off path does).
+- Fee invoices do not yet store an `ArtifactRef` column of their own (they show the estimate beside the form; fee proposals do store the link).
+- End-to-end click-through of calculate → save → fee proposal on a real project.
