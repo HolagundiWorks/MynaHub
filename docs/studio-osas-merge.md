@@ -1,6 +1,6 @@
 # Studio absorbs the OSAS hub
 
-**Status:** Decision recorded 2026-10-28 (Phase 1).  
+**Status:** Studio-side Phases 1, 3, 4 implemented (2026-10-28).  
 **Audience:** Studio, CoreOp, Draft, Form.
 
 ## Decision (implemented in this repo)
@@ -8,31 +8,34 @@
 | Choice | Value |
 |---|---|
 | Surviving repository | This one (`HolagundiWorks/O-STUDIO` / `holagundiworks/o-studio`) |
-| User-facing shell | **O-Studio** WinUI — company choose/create, admin password, users, firm profile, suite launcher cards |
+| User-facing shell | **O-Studio** WinUI — company, admin password, users, firm, suite cards, approvals, assistant |
 | Source of truth | Company file via `office-core` / `office-ffi` (`office.dll`) |
 | Suite brand | **OSAS** remains the suite name; env vars and `suite.json` keep the `OSAS_*` contract |
-| Secondary OSAS.exe | Deprecated as the place to choose the company; keep ticket redeem for older launchers |
+| Secondary OSAS.exe | **Deprecated** — see [osas-deprecation.md](osas-deprecation.md) |
 
 ## Implemented vs proposed
 
 | Piece | State |
 |---|---|
-| Studio New / Open company (+ recent list) | **Implemented** (Phase 1) |
-| Studio writes `%LOCALAPPDATA%\OSAS\suite.json` (path + username, never password) | **Implemented** (Phase 1) |
-| People: create / list / reset password / stop sign-in | **Implemented** (Phase 1; `user_set_password` on Studio bridge) |
-| Office → Suite apps cards (`auth.ticket` + `OSAS_COMPANY` / `OSAS_TICKET`) | **Implemented** scaffold (Phase 1); exe discovery best-effort |
-| Suite `install-suite.ps1` + channel schema in this repo | **Implemented** (migrated from documented OSAS hub) |
-| Firm profile edit in Studio | **Implemented** (already) |
-| Ticket redeem when launched with env | **Implemented** (already) |
-| AI assistant WinUI (model/key/consent) | **Proposed** — engine ops exist; OSAS UI not importable yet |
-| Bill/estimate approve-lock in Studio | **Proposed** (later phase) |
-| Line-by-line OSAS WinUI import | **Blocked** — OSAS repo still 404 to this cloud agent |
+| Studio New / Open company (+ recent list) | **Implemented** |
+| Studio writes `%LOCALAPPDATA%\OSAS\suite.json` (path + username) | **Implemented** |
+| People: create / list / reset password / stop sign-in | **Implemented** |
+| Office → Suite apps cards | **Implemented** (scaffold) |
+| Suite `install-suite.ps1` + channel schema | **Implemented** |
+| Approvals inbox + ABI (`approval_*`) | **Implemented** — [contracts/approvals.md](contracts/approvals.md) |
+| Assistant local tools + consent prefs | **Implemented** |
+| Firm profile edit in Studio | **Implemented** |
+| Ticket redeem when launched with env | **Implemented** |
+| Full cloud Anthropic chat UI | **Proposed** (consent prefs exist; chat loop thin) |
+| Line-by-line OSAS WinUI import | **Blocked** — OSAS repo still 404 to cloud agent |
+| CoreOp product calling `approval_submit` | **Remaining** (CoreOp repo) |
 
 ## How siblings keep reading company
 
-CoreOp, Draft and Form continue to open with `OSAS_COMPANY` + one-time `OSAS_TICKET`, then call `document_context` (and related read ops). They must not present an admin-password gate. See [suite-hub.md](suite-hub.md) and [office-abi.md](office-abi.md).
+CoreOp, Draft and Form continue to open with `OSAS_COMPANY` + one-time `OSAS_TICKET`, then call `document_context`. They must not present an admin-password gate. CoreOp shares bill/estimate drafts with `approval_submit` (Edit); Studio alone calls `approval_approve` (Issue) in the product path.
 
 ## Related
 
-- Product brief (project store): `studio-osas-merge.md` / `studio-osas-merge-plan.md`
-- Ownership rules: company details and approvals live in Studio only
+- Deprecation: [osas-deprecation.md](osas-deprecation.md)  
+- Approvals: [contracts/approvals.md](contracts/approvals.md)  
+- Project store plan: `studio-osas-merge-plan.md`

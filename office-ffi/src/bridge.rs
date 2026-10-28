@@ -4,7 +4,7 @@
 use office_core::auth::Permission;
 use office_core::host::{arg, json, CallError};
 use office_core::workspace::{self, require, AppState, INTERNAL};
-use office_core::{audit, clients, office, refs, share, track, users};
+use office_core::{approvals, audit, clients, office, refs, share, track, users};
 use serde_json::Value;
 
 pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, CallError> {
@@ -35,8 +35,9 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
         return json(&result);
     }
     let permission = match op {
-        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_estimate_summary" | "project_ra_summary" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" => Permission::View,
-        "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" => Permission::Edit,
+        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_estimate_summary" | "project_ra_summary" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" | "approval_list" | "approval_get" => Permission::View,
+        "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" | "approval_submit" | "approval_withdraw" => Permission::Edit,
+        "approval_approve" => Permission::Issue,
         "company_profile_save" => Permission::ManageSettings,
         "user_list" | "user_create" | "user_update" | "user_set_password" => Permission::ManageUsers,
         "" => return Err(CallError::BadRequest("The operation name was missing.".into())),
@@ -112,6 +113,23 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
             let (revision, checksum) = share::doc_put(conn, project_id, &kind, expected, &body, &by)?;
             audit(conn, Some(user), "document_saved", &format!("project {project_id} {kind} revision {revision}"));
             json(&serde_json::json!({ "revision": revision, "checksum_sha256": checksum }))
+        }
+        "approval_list" => {
+            let project_id: Option<i64> = arg(args, "project_id")?;
+            let kind: Option<String> = arg(args, "kind")?;
+            let status: Option<String> = arg(args, "status")?;
+            json(&approvals::list(conn, project_id, kind.as_deref(), status.as_deref())?)
+        }
+        "approval_get" => json(&approvals::get(conn, arg(args, "id")?)?),
+        "approval_submit" => {
+            let (project_id, kind, title, body, supersedes): (i64, String, String, String, Option<i64>) =
+                (arg(args, "project_id")?, arg(args, "kind")?, arg(args, "title")?, arg(args, "body")?, arg(args, "supersedes_id")?);
+            json(&approvals::submit(conn, user, project_id, &kind, &title, &body, supersedes)?)
+        }
+        "approval_approve" => json(&approvals::approve(conn, user, arg(args, "id")?)?),
+        "approval_withdraw" => {
+            approvals::withdraw(conn, user, arg(args, "id")?)?;
+            json(&Value::Null)
         }
         "project_ref" => json(&refs::project_ref(conn, arg(args, "project_id")?)?),
         "project_resolve" => json(&refs::resolve_project(conn, &arg(args, "reference")?)?),
@@ -317,6 +335,33 @@ mod tests {
         let mut again = call(&a, "company_profile_get", json!({})).unwrap();
         again["name"] = json!("Changed");
         assert!(call(&a, "company_profile_save", json!({ "profile": again })).unwrap_err().contains("permission"));
+    }
+
+    #[test]
+    fn coreop_shares_an_estimate_draft_and_studio_approves_and_locks_it() {
+        let (_dir, a) = open("approvals");
+        workspace::login(&a, "owner", "correct horse battery").unwrap();
+        let client = call(&a, "client_save", json!({ "client": { "id": null, "name": "Acme", "contact_person": "", "email": "", "phone": "", "address": "", "pan": "", "gstin": "" } })).unwrap();
+        let project = call(&a, "project_save", json!({ "project": { "id": null, "client_id": client, "code": "", "name": "Villa", "site_address": "", "status": "active" } })).unwrap();
+        let draft = call(
+            &a,
+            "approval_submit",
+            json!({ "project_id": project, "kind": "estimate", "title": "Villa estimate", "body": "{\"total\":42}", "supersedes_id": null }),
+        )
+        .unwrap();
+        assert_eq!(draft["status"], "draft");
+        let listed = call(&a, "approval_list", json!({ "status": "draft" })).unwrap();
+        assert_eq!(listed.as_array().unwrap().len(), 1);
+        let locked = call(&a, "approval_approve", json!({ "id": draft["id"] })).unwrap();
+        assert_eq!(locked["status"], "approved_locked");
+        let rev = call(
+            &a,
+            "approval_submit",
+            json!({ "project_id": project, "kind": "estimate", "title": "Villa estimate v2", "body": "{\"total\":50}", "supersedes_id": draft["id"] }),
+        )
+        .unwrap();
+        call(&a, "approval_approve", json!({ "id": rev["id"] })).unwrap();
+        assert_eq!(call(&a, "approval_get", json!({ "id": draft["id"] })).unwrap()["status"], "superseded");
     }
 
     #[test]

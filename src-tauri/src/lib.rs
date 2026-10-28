@@ -6,6 +6,7 @@
 use office_core::{auth, store, vault};
 
 mod accounting;
+mod approvals_cmd;
 mod desk;
 mod admin;
 mod bank;

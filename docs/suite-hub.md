@@ -70,8 +70,10 @@ The apps keep no copy of the company or project details. A document is made from
 | Piece | State |
 |---|---|
 | Engine: company details in `office-core` (`profile.rs`), tickets (`suite.rs`, migration 0030), operations on the office interface and on O-Studio's own interface | Built. 62 tests in `office-core`, 7 in `office-ffi`, and a ticket round trip in O-Studio's interface test |
-| Studio: choose/create the company file, sign in once, edit company details and users, write `suite.json`, launch sibling apps with tickets | **Phase 1 (2026-10-28):** create/open/recent, People, suite cards, `suite.json` writer in O-Studio. Separate OSAS.exe hub deprecated as the chooser |
-| O-Studio opens `OSAS_COMPANY` and redeems `OSAS_TICKET` at start | Built (also used when an older launcher starts Studio) |
+| Studio: choose/create the company file, sign in once, edit company details and users, write `suite.json`, launch sibling apps with tickets | **Implemented** in O-Studio. Separate OSAS.exe hub deprecated ([osas-deprecation.md](osas-deprecation.md)) |
+| Approvals inbox (CoreOp draft → Studio approve → lock → revise) | **Implemented** (`docs/contracts/approvals.md`, Practice → Approvals) |
+| Assistant (governed `agent_tools` / `agent_call`, consent prefs) | **Implemented** local tool runner in Studio (Office → Assistant). Cloud Anthropic chat UI still thin vs the old OSAS page |
+| O-Studio opens `OSAS_COMPANY` and redeems `OSAS_TICKET` at start | Built |
 | O-CoreOp does the same, then shows its company projects | Built |
 | O-Draft | Ticket/companyfile path in progress in Draft; not blocked by this merge |
 
