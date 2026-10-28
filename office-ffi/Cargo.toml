@@ -3,6 +3,7 @@ name = "office-ffi"
 version = "0.1.0"
 description = "A C interface to Office Core: the shared company file and records, for native apps such as O-CoreOp"
 authors = ["Human Centric Works"]
+license = "AGPL-3.0-only"
 edition = "2024"
 
 [lib]

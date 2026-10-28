@@ -160,7 +160,6 @@ pub fn client_activity(conn: &Connection, client_id: i64, finance: bool) -> Resu
     })
 }
 
-#[tauri::command]
 pub fn client_activity_get(state: HostState<'_>, client_id: i64) -> Result<ClientActivity, String> {
     require(&state, Permission::View)?;
     // a role without access to the books still sees letters and reports, never money

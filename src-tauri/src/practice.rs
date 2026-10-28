@@ -696,28 +696,24 @@ pub fn party_ledger(conn: &Connection, client_id: i64, project_id: Option<i64>, 
     })
 }
 
-#[tauri::command]
 pub fn party_ledger_report(state: HostState<'_>, client_id: i64, project_id: Option<i64>, from: String, to: String) -> Result<PartyLedger, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     party_ledger(&conn, client_id, project_id, &from, &to)
 }
 
-#[tauri::command]
 pub fn client_statement_report(state: HostState<'_>, client_id: i64, as_of: String) -> Result<ClientStatement, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     client_statement(&conn, client_id, &as_of)
 }
 
-#[tauri::command]
 pub fn project_fee_position(state: HostState<'_>) -> Result<FeePosition, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     fee_position(&conn)
 }
 
-#[tauri::command]
 pub fn project_report(state: HostState<'_>, project_id: i64) -> Result<String, String> {
     use base64::Engine;
     require(&state, Permission::View)?;

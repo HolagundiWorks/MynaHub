@@ -4,6 +4,8 @@
 //! briefs, staff, leave and the office library. An app adds its own commands, sessions and permissions on top. Apps never write
 //! each other's tables; they share these records and refer to one another by id.
 
+pub mod approvals;
+pub mod studio_drafts;
 pub mod auth;
 pub mod check;
 pub mod clients;

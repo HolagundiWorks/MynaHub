@@ -227,14 +227,12 @@ pub fn tax_abstract_csv(conn: &Connection, from: &str, to: &str) -> Result<Strin
     String::from_utf8(bytes).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
 pub fn report_tax_abstract(state: HostState<'_>, from: String, to: String) -> Result<TaxAbstract, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     tax_abstract(&conn, &from, &to)
 }
 
-#[tauri::command]
 pub fn report_tax_abstract_csv(state: HostState<'_>, from: String, to: String) -> Result<String, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;

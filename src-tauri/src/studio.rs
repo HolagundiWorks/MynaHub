@@ -262,61 +262,52 @@ pub fn preview(conn: &Connection, html: &str, css: &str, profile: &str) -> Resul
 
 // ---------------------------------------------------------------- commands
 
-#[tauri::command]
 pub fn studio_fields(state: HostState<'_>) -> Result<Vec<eng::FieldDef>, String> {
     require(&state, Permission::View)?;
     Ok(eng::FIELDS.to_vec())
 }
 
-#[tauri::command]
 pub fn studio_open(state: HostState<'_>, template_id: i64) -> Result<StudioState, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     open(&conn, template_id)
 }
 
-#[tauri::command]
 pub fn studio_validate(state: HostState<'_>, html: String, css: String) -> Result<Vec<Diagnostic>, String> {
     require(&state, Permission::View)?;
     Ok(eng::validate(&html, &css))
 }
 
-#[tauri::command]
 pub fn studio_preview(state: HostState<'_>, html: String, css: String, profile: String) -> Result<StudioPreview, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     preview(&conn, &html, &css, &profile)
 }
 
-#[tauri::command]
 pub fn studio_save_draft(state: HostState<'_>, template_id: i64, html: String, css: String) -> Result<(), String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     save_draft(&conn, uid, template_id, &html, &css)
 }
 
-#[tauri::command]
 pub fn studio_publish(state: HostState<'_>, template_id: i64, summary: String) -> Result<i64, String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     publish(&mut conn, uid, template_id, &summary)
 }
 
-#[tauri::command]
 pub fn studio_restore(state: HostState<'_>, template_id: i64, version: i64) -> Result<(), String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     restore(&conn, uid, template_id, version)
 }
 
-#[tauri::command]
 pub fn studio_discard_draft(state: HostState<'_>, template_id: i64) -> Result<(), String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     discard_draft(&conn, uid, template_id)
 }
 
-#[tauri::command]
 pub fn studio_create(state: HostState<'_>, name: String, family: String, kind: String) -> Result<i64, String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;

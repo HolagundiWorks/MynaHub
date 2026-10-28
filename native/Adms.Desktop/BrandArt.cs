@@ -8,7 +8,13 @@ internal static class BrandArt
 {
     public const string Name = "O-Studio";
 
-    public static ImageSource Mark() => Load("mark.png");
+    public static ImageSource Mark()
+    {
+        var svg = Path.Combine(AppContext.BaseDirectory, "Assets", "mark.svg");
+        if (File.Exists(svg))
+            return new SvgImageSource(new Uri(svg));
+        return Load("mark.png");
+    }
 
     public static ImageSource Wordmark() => Load("wordmark.png");
 

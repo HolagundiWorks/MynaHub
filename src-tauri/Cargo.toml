@@ -1,26 +1,18 @@
 [package]
 name = "architect-office-desktop"
 version = "0.1.0"
-description = "Architects Documents Management System"
+description = "O-Studio company-file engine (cdylib for WinUI)"
 authors = ["Human Centric Works"]
+license = "AGPL-3.0-only"
 edition = "2024"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lib]
-# The `_lib` suffix may seem redundant but it is necessary
-# to make the lib name unique and wouldn't conflict with the bin name.
-# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
 name = "architect_office_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
-
-[build-dependencies]
-tauri-build = { version = "2", features = [] }
 
 [dependencies]
 office-core = { path = "../office-core" }
 office-agent = { path = "../office-agent" }
-tauri = { version = "2", features = [] }
 rusqlite = { version = "0.32", features = ["bundled", "backup"] }
 argon2 = { version = "0.5", features = ["std"] }
 aes-gcm = "0.10"
@@ -32,11 +24,8 @@ base64 = "0.22"
 csv = "1"
 qrcode = { version = "0.14", default-features = false }
 png = "0.17"
-tauri-plugin-dialog = "2.8.2"
 harper-core = { version = "=2.13.0", features = ["concurrent"] }
 
-
-# Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]
 codegen-units = 1
 lto = true

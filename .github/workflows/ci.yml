@@ -22,7 +22,7 @@ jobs:
         run: cargo test --manifest-path ${{ matrix.crate }}/Cargo.toml
 
   windows-app:
-    # O-UI (the shared design, Hcw.Ui) is checked out beside this one as the folder o-ui.
+    # Public shared design library (assembly Hcw.Ui), checked out beside this repo as o-ui.
     runs-on: windows-latest
     needs: rust
     steps:
@@ -32,7 +32,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: HolagundiWorks/O-UI
-          token: ${{ secrets.HCW_UI_TOKEN }}
           path: o-ui
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-dotnet@v4
@@ -46,15 +45,3 @@ jobs:
         run: >
           dotnet build native/Adms.Desktop/Adms.Desktop.csproj -c Release
           -p:Platform=x64 -p:WindowsPackageType=None -p:EngineProfile=release
-
-  carbon-ui:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run test:unit

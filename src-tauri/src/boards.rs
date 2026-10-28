@@ -734,98 +734,84 @@ fn decode(data: &str) -> Result<Vec<u8>, String> {
     base64::engine::general_purpose::STANDARD.decode(data.trim()).map_err(|_| "The file could not be read.".to_string())
 }
 
-#[tauri::command]
 pub fn board_list(state: HostState<'_>, project_id: Option<i64>, kind: Option<String>) -> Result<Vec<BoardRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list(&conn, project_id, kind)
 }
 
-#[tauri::command]
 pub fn board_get(state: HostState<'_>, id: i64) -> Result<BoardDetail, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     get(&conn, id)
 }
 
-#[tauri::command]
 pub fn board_save(state: HostState<'_>, board: BoardInput) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     save(&conn, uid, &board)
 }
 
-#[tauri::command]
 pub fn board_submit(state: HostState<'_>, id: i64) -> Result<(), String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     submit(&conn, uid, id)
 }
 
-#[tauri::command]
 pub fn board_reopen(state: HostState<'_>, id: i64) -> Result<(), String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     reopen(&conn, uid, id)
 }
 
-#[tauri::command]
 pub fn board_store_image(state: HostState<'_>, data_base64: String) -> Result<StoredImage, String> {
     require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     Ok(StoredImage { file_key: store_image(&conn, &decode(&data_base64)?)? })
 }
 
-#[tauri::command]
 pub fn board_pdf(state: HostState<'_>, id: i64) -> Result<String, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     Ok(base64::engine::general_purpose::STANDARD.encode(pdf(&conn, id)?))
 }
 
-#[tauri::command]
 pub fn board_annexure_add(state: HostState<'_>, board_id: i64, filename: String, data_base64: String) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     add_annexure(&conn, uid, board_id, &filename, &decode(&data_base64)?)
 }
 
-#[tauri::command]
 pub fn board_annexure_open(state: HostState<'_>, id: i64) -> Result<AnnexureFile, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     annexure_file(&conn, id)
 }
 
-#[tauri::command]
 pub fn board_figure_open(state: HostState<'_>, id: i64) -> Result<ImageFile, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     figure_file(&conn, id)
 }
 
-#[tauri::command]
 pub fn material_list(state: HostState<'_>) -> Result<Vec<MaterialRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     materials(&conn)
 }
 
-#[tauri::command]
 pub fn material_add(state: HostState<'_>, name: String, category: String, data_base64: String) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     add_material(&conn, uid, &name, &category, &decode(&data_base64)?)
 }
 
-#[tauri::command]
 pub fn material_open(state: HostState<'_>, id: i64) -> Result<ImageFile, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     material_file(&conn, id)
 }
 
-#[tauri::command]
 pub fn material_remove(state: HostState<'_>, id: i64) -> Result<(), String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;

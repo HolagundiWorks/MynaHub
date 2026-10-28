@@ -11,42 +11,42 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 | Repository | `HolagundiWorks/O-STUDIO`, `master` | `HolagundiWorks/O-COREOP`, `main` |
 | Window | WinUI 3, `native/Adms.Desktop` | WinUI 3, `BBSDesktop/BBSApp` |
 | Engine | Rust, `src-tauri` and `office-core`, one `.osas` company file (earlier `.adms` files open) | C# and its own project file |
-| Shared design | `hcw-ui`, orange | `hcw-ui`, blue |
+| Shared design | `O-UI` (`Hcw.Ui`), orange | `O-UI` (`Hcw.Ui`), blue |
 | Tests | 159 engine tests, 40 office-core, UI by hand | Unit tests for import and sign-in; UI by hand |
-| CI | None | None |
+| CI | Yes (`.github/workflows/ci.yml`: rust crates + WinUI build) | Yes (`.github/workflows/ci.yml`) |
 | Accessibility | WCAG 2.2 AA audit done, see `wcag-audit.md` | Same |
 
 ## Phase 1: finish what is half done (now)
 
 | # | Item | App | Evidence |
 |---|---|---|---|
-| 1.1 | ~~Merge the O-CoreOp shell into `main`~~ Done 2026-10-19 (merge commit `a0aa37d`, with the AORMS sign-in and Online projects branch) | CoreOp | Checked |
-| 1.2 | Add continuous integration: build, `cargo test`, `dotnet test`, the static QA test | Both | Checked: neither repository has a workflow |
+| 1.1 | ~~Merge the O-CoreOp shell into `main`~~ Done 2026-10-19 (merge commit `a0aa37d`; AORMS Connect that landed with that merge was later removed from OSS apps) | CoreOp | Checked |
+| 1.2 | ~~Add continuous integration~~ Done for O-Studio (`rust`, `windows-app`). O-CoreOp has a workflow too | Both | Checked: workflows exist; keep them green |
 | 1.3 | Narrator and NVDA pass over sign-in, create a client, save a record, read a table. Confirms audit item O5 | Both | Not tested; automation cannot do this |
 | 1.4 | ~~Check every page at 520 px (O3)~~ Done 2026-10-19: all 31 pages, no loss of content. Cosmetic follow-up: narrow table columns break words (the header row misalignment is fixed) | Studio | Checked |
 | 1.5 | Field-level errors (O6): done for the record pages (including errors the engine returns, matched by field label), transmittals, time book and letters. The password boxes are marked too. Still open: engine errors on the pages that are not record pages | Studio | Checked |
 | 1.6 | Test at 200% text size, 400% zoom and Windows high contrast | Both | Not tested |
 | 1.7 | Run the installers end to end on a clean machine (O-Studio NSIS, O-CoreOp Inno) | Both | Checked: both scripts exist and were built; no clean-machine install was done |
-| 1.8 | Choose a licence for O-Studio and for the OSAS repository | Studio | Open decision, see the end of `suite-architecture.md` |
+| 1.8 | ~~Choose a licence for O-Studio and for the OSAS repository~~ Done: both dual-licensed AGPL-3.0 or commercial (mirror CoreOp `LICENSING.md`) | Studio + OSAS | Checked |
 
 ## Phase 2: join the apps up
 
 | # | Item | App | Evidence |
 |---|---|---|---|
-| 2.1 | Apply the AORMS migration `0113_aqc_sessions_aos_app.sql` and test the portal sign-in and project pull against the real portal | Studio, CoreOp | Checked: the change is on branch `claude/aos-suite-session` of the portal repository and is not applied; the portal client has only been tested against a fake |
-| 2.2 | ~~O-CoreOp reads the shared company file~~ Built 2026-10-19 (see `docs/shared-company-file.md`): both apps open the file at once, projects and clients exist once, O-CoreOp keeps a project's quantities as a revisioned document in the file. Branch `feat/shared-company-file` in the O-CoreOp repository, not merged. Live sync built too: each app polls every two seconds and updates what it shows (2026-10-19). Still to do: normalise the document into tables, `ProjectRef` on O-CoreOp outputs | Both | Checked: 5 tests in `office-core`, 1 in `office-ffi`, 5 against the real engine in `Office.Shared.Tests`; the app builds and starts; opening a file through the screens has not been clicked through |
-| 2.3 | `ProjectRef` and `ArtifactRef`: **written and implemented in `office-core`** (`docs/contracts/refs.md`, with a JSON schema and three operations on the office interface). Still to do: O-CoreOp and O-Draft producing and reading them, and apps computing checksums | Both | Checked: 6 tests in `office-core`, 1 in `office-ffi` |
-| 2.8 | **OSAS as the hub** (decision 2026-10-19): the suite app holds the company details and the sign-in and selects the company file; the apps follow it with a one-time ticket. Built for O-Studio and O-CoreOp (`docs/suite-hub.md`); O-Draft not yet | Both + OSAS | Checked: engine tests, and run end to end through OSAS |
-| 2.4 | Estimates and running bills: O-CoreOp calculates, O-Studio shows the result against the fee proposal | Both | Checked: O-Studio has fee proposals but no link to quantities |
+| 2.1 | ~~O-Studio AORMS portal sign-in and project pull~~ Removed; O-Studio uses the company file only | Studio | Checked: connector crate and portal page removed |
+| 2.2 | ~~O-CoreOp reads the shared company file~~ Built 2026-10-19 (see `docs/shared-company-file.md`): both apps open the file at once, projects and clients exist once, O-CoreOp keeps a project's quantities as a revisioned document in the file. Live sync polls every two seconds. Still to do: normalise the document into tables | Both | Checked: office-core / office-ffi / Office.Shared.Tests; screens not fully click-tested |
+| 2.3 | `ProjectRef` / `ArtifactRef` in `office-core`; O-CoreOp stamps `project_ref` and estimate `artifact_ref` on company-file saves; O-Draft stamps take-off `project_ref` when linked | Both | Checked: office-core refs tests; CoreOp ArtifactRefs unit tests; Draft take-off tests |
+| 2.8 | **Studio as the hub** (merge 2026-10-28): Studio holds company details, admin password, users and launcher cards; siblings follow with a one-time ticket (`docs/suite-hub.md`, `docs/studio-osas-merge.md`). Phase 1 restores create/open/People/cards in O-Studio; OSAS.exe chooser deprecated | Studio + siblings | Engine tickets checked; Studio Phase 1 UI landed |
+| 2.4 | Estimates ↔ fee proposals: `project_estimate_summary` + Fee proposals “Use O-CoreOp estimate as cost”; `project_ra_summary` shows O-CoreOp running-bill (RA) totals beside fee/invoices. Still to do: E2E click-through, optional invoice ArtifactRef column | Both | Checked: office-core estimate/RA summary + proposal link tests |
 | 2.5 | An MCP tool server for O-CoreOp, with the same descriptor shape as O-Studio's | CoreOp | Checked: only O-Studio has one (`office-agent`) |
 | 2.6 | Write tools for the agent, with approval and an audit trail | Studio | Checked: every tool is read-only today |
-| 2.7 | The OSAS launcher: an installer for the suite, update check, open a company file from the launcher | OSAS | Listed as not built in its README |
+| 2.7 | The OSAS launcher: an installer for the suite, update check, open a company file from the launcher | OSAS | Suite glue + update-check stub landed in OSAS (`install-suite.ps1`, channel JSON); signed single Setup.exe and open-company-from-launcher still open |
 
 ## Phase 3: depth
 
 | # | Item | App |
 |---|---|---|
-| 3.1 | Code signing for the installers, and an update path | Both |
+| 3.1 | Code signing for the installers, and an update path | Both | `installer/sign.ps1` hooks exist; need a real Authenticode / Azure Trusted Signing cert and a hosted channel URL |
 | 3.2 | Automated UI tests with UI Automation for the main flows, run in CI | Both |
 | 3.3 | Check O-CoreOp quantities and purchase-order output against a real project, and add the cases it exposes | CoreOp |
 | 3.4 | O-Studio: reports and presentations are records only; a printable pack per project | Studio |
@@ -56,7 +56,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 
 | # | Item | State |
 |---|---|---|
-| D1 | The earlier Carbon interface (`src/`, `index.html`, `vite.config.ts`, `package.json`, Tauri's web window) duplicates the WinUI app. Retire it, keep the Rust engine, and make `src-tauri` a library only | **Decision needed.** The engine and its tests do not depend on it, but `tauri.conf.json`, the Vitest tests and the NSIS bundle script do |
+| D1 | ~~Retire the Carbon + Tauri web shell~~ Done: React `src/`, npm/Vite/Carbon packages, `carbon-ui` CI, and Tauri window packaging removed. `src-tauri` is a library/cdylib for WinUI; folder name kept so engine paths stay stable | Done |
 | D2 | `README.md` says no installer has been built and tells you to build the debug engine | Fixed in this change |
 | D3 | The old amber and ink logo set (`brand/`, `tools/brand`) | Removed in this change |
 | D4 | Sample PDFs from the first template library (`docs/sample-pdfs`) | Removed in this change; they were not referenced |
@@ -66,7 +66,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 
 ## Order of work
 
-1. Phase 1.1 to 1.2 first: merge and CI, so everything after is checked on each push.
-2. 1.3 to 1.6 together, as one accessibility pass, then close the audit.
-3. D1 once the owner decides.
-4. Phase 2 in the order 2.1, 2.3, 2.2, 2.4. The rest of phase 2 needs 2.3.
+1. Phase 1.1 / 1.2 / 1.8 / D1 / most of Phase 2 SoR wiring are done. Keep CI green.
+2. **Next trust gates:** Windows GUI E2E (estimate → fee → invoice; Draft take-off → CoreOp); Authenticode / Azure Trusted Signing certs + hosted update channel; counsel review of dual AGPL+commercial; Draft interactive project-picker UI.
+3. 1.3 to 1.6 together as one accessibility pass, then close the audit.
+4. Remaining Phase 2 nice-to-haves: MCP on CoreOp (2.5), write tools (2.6), open-company-from-launcher.
