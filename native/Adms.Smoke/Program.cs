@@ -53,9 +53,6 @@ try
         if (session.Call("library_list", new { kind = (string?)null, search = "tanks" }).GetArrayLength() != 1)
             throw new InvalidOperationException("The library search should find the entry.");
 
-        // the portal link is off until someone signs in: an address that is not https is refused before any network call
-        try { session.Call("aorms_restore", new { base_url = "http://example.com" }); throw new InvalidOperationException("A plain http portal address should be refused."); }
-        catch (AdmsException ex) when (ex.Message.Contains("https")) { }
 
         var proposalId = session.Call("proposal_save", new { input = new { id = (long?)null, client_id = clientId, project_id = (long?)null, title = "Villa design", basis = "percent", cost_paise = 500000000L, rate_bp = 600L, area_milli = 0L, area_rate_paise = 0L, lump_paise = 0L, gst_bp = 1800L, issued_date = "2026-10-01", valid_until = "2026-10-31", notes = "" } }).GetInt64();
         session.Call("proposal_set_status", new { id = proposalId, status = "sent" });

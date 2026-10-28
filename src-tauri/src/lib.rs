@@ -1,6 +1,5 @@
 use office_core::{auth, store, vault};
 mod accounting;
-mod aorms;
 mod desk;
 mod admin;
 mod bank;
@@ -91,12 +90,6 @@ pub fn run() {
             desk::tds26as_import_csv,
             desk::tds26as_reconcile_report,
             desk::tds26as_list_entries,
-            aorms::aorms_restore,
-            aorms::aorms_sign_in,
-            aorms::aorms_connect,
-            aorms::aorms_sign_out,
-            aorms::aorms_projects,
-            aorms::aorms_pull,
             fieldwork::site_record_save,
             fieldwork::site_record_list,
             fieldwork::permit_save_record,

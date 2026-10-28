@@ -136,9 +136,15 @@ internal sealed class WorkspaceView : UserControl
         _nav.Content = sheet;
         // In the narrow layout the pane's menu button sits over the top left of the page, so the page starts below it.
         _nav.DisplayModeChanged += (nav, _) => sheet.Margin = new Thickness(0, nav.DisplayMode == NavigationViewDisplayMode.Minimal ? 44 : 0, 0, 0);
-        Content = _nav;
-        _shell.Navigate = Show;
         BuildMenu();
+        var root = new Grid();
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        root.Children.Add(BuildRibbon());
+        Grid.SetRow(_nav, 1);
+        root.Children.Add(_nav);
+        Content = root;
+        _shell.Navigate = Show;
         Show("dashboard");
     }
 
@@ -247,69 +253,142 @@ internal sealed class WorkspaceView : UserControl
         _shell.Page = page as IPageCommands;
         _host.Children.Add(page);
         var marked = id == "template-editor" ? "templates" : id;
+        var owner = _tabs.FirstOrDefault(t => t.Groups.Any(g => g.Items.Any(i => i.Id == marked)));
+        if (owner != null && owner != _tab)
+            SelectTab(owner);
         foreach (var item in _nav.MenuItems.OfType<NavigationViewItem>())
             item.IsSelected = item.Tag as string == marked;
     }
 
-    private void BuildMenu()
+    private sealed record NavEntry(string Id, string Label, string Glyph);
+
+    private sealed class NavGroup(string title)
     {
-        // Grouped by the job being done, not by the accounting ledger they belong to: what a practice does every day sits first.
-        AddGroup("01", "Practice",
-            ("dashboard", "01", "Pulse", "\uE9D2"),
-            ("clients", "02", "Clients", "\uE716"),
-            ("projects", "03", "Projects", "\uE8F1"),
-            ("time", "04", "Time", "\uE823"),
-            ("enquiries", "05", "Enquiries", "\uE77B"),
-            ("site", "06", "Site records", "\uE7C1"),
-            ("permits", "07", "Permits and approvals", "\uE8D7"),
-            ("proposals", "08", "Fee proposals", "\uE8A5"),
-            ("meetings", "09", "Meetings and decisions", "\uE787"));
-        AddGroup("02", "Documents",
-            ("documents", "01", "Letters and agreements", "\uE8A5"),
-            ("transmittals", "02", "Transmittals", "\uE724"),
-            ("templates", "03", "Templates", "\uE943"),
-            ("boards", "04", "Project reports and presentations", "\uE786"));
-        if (_shell.Role != "DocumentEditor")
-        {
-            AddGroup("03", "Billing",
-                ("invoices", "01", "Invoices and receipts", "\uE8A1"),
-                ("bank", "02", "Bank reconciliation", "\uE825"));
-            AddGroup("04", "Books",
-                ("acc-expenses", "01", "Expenses", "\uE8C7"),
-                ("acc-income", "02", "Income", "\uEAFD"),
-                ("acc-salaries", "03", "Salaries", "\uE77B"),
-                ("acc-assets", "04", "Assets", "\uE7C5"),
-                ("acc-journals", "05", "Journals", "\uE8A5"));
-            AddGroup("05", "Reports and tax",
-                ("acc-reports", "01", "Financial reports", "\uE9F9"),
-                ("acc-tax", "02", "Tax", "\uE9D9"),
-                ("tds26as", "03", "26AS check", "\uE9D9"),
-                ("acc-setup", "03", "Chart and financial years", "\uE9D2"));
-        }
-        AddGroup("06", "Office",
-            ("company", "01", "Firm", "\uE731"),
-            ("staff", "02", "Staff", "\uE716"),
-            ("leave", "03", "Leave", "\uE787"),
-            ("attendance", "03", "Attendance", "\uE823"),
-            ("library", "04", "Library", "\uE82D"),
-            ("aorms", "05", "AORMS portal", "\uE774"),
-            ("suite", "05", "Suite, users and AI", "\uE713"),
-            ("settings", "06", "Security and backup", "\uE713"));
+        public string Title { get; } = title;
+        public List<NavEntry> Items { get; } = [];
     }
 
-    private void AddTop(string id, string sheet, string label, string glyph)
+    private sealed class RibbonTab(string title, string glyph)
     {
-        _destinations.Add((id, label));
-        _nav.MenuItems.Add(Item(id, label, glyph));
+        public string Title { get; } = title;
+        public string Glyph { get; } = glyph;
+        public List<NavGroup> Groups { get; } = [];
     }
+
+    private readonly List<RibbonTab> _tabs = [];
+    private RibbonTab? _tab;
+    private readonly Dictionary<RibbonTab, Microsoft.UI.Xaml.Controls.Primitives.ToggleButton> _tabButtons = [];
+
+    private void BuildMenu()
+    {
+        // The ribbon along the top holds the main menu; the pane beside the page holds the choices under the tab that is open.
+        // Grouped by the job being done, not by the accounting ledger they belong to: what a practice does every day sits first.
+        AddTab("Practice", "");
+        AddGroup("01", "Practice",
+            ("dashboard", "01", "Pulse", ""),
+            ("clients", "02", "Clients", ""),
+            ("projects", "03", "Projects", ""),
+            ("time", "04", "Time", ""),
+            ("enquiries", "05", "Enquiries", ""),
+            ("site", "06", "Site records", ""),
+            ("permits", "07", "Permits and approvals", ""),
+            ("proposals", "08", "Fee proposals", ""),
+            ("meetings", "09", "Meetings and decisions", ""));
+        AddTab("Documents", "");
+        AddGroup("02", "Documents",
+            ("documents", "01", "Letters and agreements", ""),
+            ("transmittals", "02", "Transmittals", ""),
+            ("templates", "03", "Templates", ""),
+            ("boards", "04", "Project reports and presentations", ""));
+        if (_shell.Role != "DocumentEditor")
+        {
+            AddTab("Accounts", "");
+            AddGroup("03", "Billing",
+                ("invoices", "01", "Invoices and receipts", ""),
+                ("bank", "02", "Bank reconciliation", ""));
+            AddGroup("04", "Books",
+                ("acc-expenses", "01", "Expenses", ""),
+                ("acc-income", "02", "Income", ""),
+                ("acc-salaries", "03", "Salaries", ""),
+                ("acc-assets", "04", "Assets", ""),
+                ("acc-journals", "05", "Journals", ""));
+            AddGroup("05", "Reports and tax",
+                ("acc-reports", "01", "Financial reports", ""),
+                ("acc-tax", "02", "Tax", ""),
+                ("tds26as", "03", "26AS check", ""),
+                ("acc-setup", "03", "Chart and financial years", ""));
+        }
+        AddTab("Office", "");
+        AddGroup("06", "Office",
+            ("company", "01", "Firm", ""),
+            ("staff", "02", "Staff", ""),
+            ("leave", "03", "Leave", ""),
+            ("attendance", "03", "Attendance", ""),
+            ("library", "04", "Library", ""),
+            ("settings", "06", "Security and backup", ""));
+        AddTab("Suite", "");
+        AddGroup("07", "Suite", ("suite", "01", "Company, users and apps", ""));
+    }
+
+    private void AddTab(string title, string glyph) => _tabs.Add(new RibbonTab(title, glyph));
 
     private void AddGroup(string sheet, string title, params (string Id, string Item, string Label, string Glyph)[] items)
     {
-        _nav.MenuItems.Add(new NavigationViewItemHeader { Content = title, FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        var group = new NavGroup(title);
         foreach (var (id, _, label, glyph) in items)
         {
             _destinations.Add((id, label));
-            _nav.MenuItems.Add(Item(id, label, glyph));
+            group.Items.Add(new NavEntry(id, label, glyph));
+        }
+        _tabs[^1].Groups.Add(group);
+    }
+
+    private UIElement BuildRibbon()
+    {
+        var strip = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, Padding = new Thickness(8, 4, 8, 0) };
+        foreach (var tab in _tabs)
+        {
+            var label = new StackPanel { Spacing = 2, HorizontalAlignment = HorizontalAlignment.Center };
+            label.Children.Add(new FontIcon { Glyph = tab.Glyph, FontFamily = IconFont, FontSize = 20, HorizontalAlignment = HorizontalAlignment.Center });
+            label.Children.Add(new TextBlock { Text = tab.Title, FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center });
+            var button = new Microsoft.UI.Xaml.Controls.Primitives.ToggleButton { Content = label, MinWidth = 84, MinHeight = 56, Padding = new Thickness(10, 6, 10, 6), CornerRadius = new CornerRadius(6, 6, 0, 0) };
+            AutomationProperties.SetName(button, tab.Title);
+            var captured = tab;
+            button.Click += (_, _) =>
+            {
+                SelectTab(captured);
+                var first = captured.Groups.SelectMany(g => g.Items).FirstOrDefault();
+                if (first != null)
+                    Show(first.Id);
+            };
+            _tabButtons[tab] = button;
+            strip.Children.Add(button);
+        }
+        var ribbon = new Border
+        {
+            Child = new ScrollViewer { Content = strip, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollMode = ScrollMode.Auto },
+            BorderBrush = Flow.Ink("BorderSubtleBrush"),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Background = Flow.Ink("SurfaceBackgroundBrush"),
+        };
+        AutomationProperties.SetName(ribbon, "Main menu");
+        SelectTab(_tabs[0]);
+        return ribbon;
+    }
+
+    private void SelectTab(RibbonTab tab)
+    {
+        _tab = tab;
+        foreach (var (t, button) in _tabButtons)
+            button.IsChecked = t == tab;
+        _nav.MenuItems.Clear();
+        var headers = tab.Groups.Count > 1;
+        foreach (var group in tab.Groups)
+        {
+            if (headers)
+                _nav.MenuItems.Add(new NavigationViewItemHeader { Content = group.Title, FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+            foreach (var entry in group.Items)
+                _nav.MenuItems.Add(Item(entry.Id, entry.Label, entry.Glyph));
         }
     }
 
@@ -333,7 +412,6 @@ internal sealed class WorkspaceView : UserControl
         "staff" => RecordPages.Staff(_shell),
         "leave" => RecordPages.Leave(_shell),
         "library" => RecordPages.Library(_shell),
-        "aorms" => new AormsPage(_shell),
         "suite" => new SuitePage(_shell.Window),
         "proposals" => RecordPages.Proposals(_shell),
         "meetings" => RecordPages.Meetings(_shell),
