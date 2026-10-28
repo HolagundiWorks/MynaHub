@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Button, Content, ContainedList, ContainedListItem, GlobalTheme, Header, HeaderGlobalAction, HeaderGlobalBar, HeaderMenuButton, HeaderName, HeaderPanel, InlineNotification, Modal, Search,
-  SideNav, SideNavItems, SideNavMenu, SideNavMenuItem, SkipToContent, Switcher, SwitcherDivider, SwitcherItem,
+  SideNav, SideNavItems, SideNavMenu, SideNavMenuItem, SkipToContent,
 } from "@carbon/react";
 import { Calculator, Dashboard, Folder, Receipt, Search as SearchIcon, Settings } from "@carbon/icons-react";
 import { api, type AuthStatus } from "../api";
@@ -163,25 +163,34 @@ function ShellView({ status, refresh }: { status: AuthStatus; refresh: () => voi
         <Header aria-label={PRODUCT}>
           <SkipToContent />
           <HeaderMenuButton aria-label={navOpen ? "Close navigation" : "Open navigation"} isCollapsible onClick={() => setNavOpen(!navOpen)} isActive={navOpen} />
-          <HeaderName href="#" prefix={PRODUCT} onClick={(e: { preventDefault: () => void }) => e.preventDefault()}>{company || "Company not set up"} · FY {fyLabel}</HeaderName>
+          <HeaderName href={`#/${current.id}`} prefix={PRODUCT} onClick={(e: { preventDefault: () => void }) => e.preventDefault()}>{company || "Company not set up"} · FY {fyLabel}</HeaderName>
           <HeaderGlobalBar>
             <HeaderGlobalAction aria-label="Go to page or command (Ctrl+K)" tooltipAlignment="end" onClick={() => setPaletteOpen(true)}><SearchIcon size={20} /></HeaderGlobalAction>
             <HeaderGlobalAction aria-label="Preferences and session" tooltipAlignment="end" isActive={panelOpen} onClick={() => setPanelOpen(!panelOpen)}><Settings size={20} /></HeaderGlobalAction>
           </HeaderGlobalBar>
           <HeaderPanel aria-label="Preferences and session" expanded={panelOpen} onHeaderPanelFocus={() => undefined}>
-            <Switcher aria-label="Preferences and session">
-              <SwitcherItem aria-label={`Signed in as ${status.user?.username}`} href="#" onClick={(e: { preventDefault: () => void }) => e.preventDefault()}>{status.user?.username} · {role}</SwitcherItem>
-              <SwitcherDivider />
+            <div className="ao-pad">
+              <p className="ao-muted" aria-label={`Signed in as ${status.user?.username}`}>{status.user?.username} · {role}</p>
+            </div>
+            <div className="ao-pad ao-actions" role="group" aria-label="Table size">
               {(["compact", "comfortable", "expanded"] as Density[]).map((d) => (
-                <SwitcherItem key={d} aria-label={`Table size ${densityLabel[d]}`} href="#" isSelected={density === d} onClick={(e: { preventDefault: () => void }) => { e.preventDefault(); setDensity(d); }}>
+                <Button
+                  key={d}
+                  kind={density === d ? "primary" : "ghost"}
+                  size="sm"
+                  aria-pressed={density === d}
+                  aria-label={`Table size ${densityLabel[d]}`}
+                  onClick={() => setDensity(d)}
+                >
                   Table size: {densityLabel[d]}{density === d ? " (current)" : ""}
-                </SwitcherItem>
+                </Button>
               ))}
-              <SwitcherDivider />
-              <SwitcherItem aria-label="Lock the screen" href="#" onClick={(e: { preventDefault: () => void }) => { e.preventDefault(); lock(); }}>Lock the screen</SwitcherItem>
-              <SwitcherItem aria-label="Log out" href="#" onClick={(e: { preventDefault: () => void }) => { e.preventDefault(); logout(); }}>Log out</SwitcherItem>
-              <SwitcherItem aria-label="Close company" href="#" onClick={(e: { preventDefault: () => void }) => { e.preventDefault(); setPanelOpen(false); closeCompany(); }}>Close company</SwitcherItem>
-            </Switcher>
+            </div>
+            <div className="ao-pad ao-actions" role="group" aria-label="Session">
+              <Button kind="ghost" size="sm" onClick={() => { void lock(); }}>Lock the screen</Button>
+              <Button kind="ghost" size="sm" onClick={() => { void logout(); }}>Log out</Button>
+              <Button kind="ghost" size="sm" onClick={() => { setPanelOpen(false); void closeCompany(); }}>Close company</Button>
+            </div>
             <div className="ao-pad"><ProductCredit /></div>
           </HeaderPanel>
         </Header>
@@ -191,7 +200,7 @@ function ShellView({ status, refresh }: { status: AuthStatus; refresh: () => voi
             {groups.map((g) => (
               <SideNavMenu key={g} title={g} renderIcon={GROUP_ICON[g as keyof typeof GROUP_ICON]} defaultExpanded isActive={current.group === g}>
                 {NAV.filter((n) => n.group === g).map((n) => (
-                  <SideNavMenuItem key={n.id} href="#" isActive={n.id === current.id} aria-current={n.id === current.id ? "page" : undefined}
+                  <SideNavMenuItem key={n.id} href={`#/${n.id}`} isActive={n.id === current.id} aria-current={n.id === current.id ? "page" : undefined}
                     onClick={(e: { preventDefault: () => void }) => { e.preventDefault(); void go(n.id); }}>
                     {n.label}
                   </SideNavMenuItem>
