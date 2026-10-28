@@ -292,8 +292,7 @@ internal sealed class WorkspaceView : UserControl
             ("leave", "03", "Leave", "\uE787"),
             ("attendance", "03", "Attendance", "\uE823"),
             ("library", "04", "Library", "\uE82D"),
-            ("aorms", "05", "AORMS portal", "\uE774"),
-            ("settings", "06", "Security and backup", "\uE713"));
+            ("settings", "05", "Security and backup", "\uE713"));
     }
 
     private void AddTop(string id, string sheet, string label, string glyph)
@@ -332,7 +331,6 @@ internal sealed class WorkspaceView : UserControl
         "staff" => RecordPages.Staff(_shell),
         "leave" => RecordPages.Leave(_shell),
         "library" => RecordPages.Library(_shell),
-        "aorms" => new AormsPage(_shell),
         "proposals" => RecordPages.Proposals(_shell),
         "meetings" => RecordPages.Meetings(_shell),
         "attendance" => new AttendancePage(_shell),

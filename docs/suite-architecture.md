@@ -24,22 +24,22 @@ The shared design is the `hcw-ui` library (MIT licensed; the marks in its brand 
 | **ShilpiDB** | `HolagundiWorks/shilpidb` | A spatial vector store: a binary codec, a grid index over bounding boxes, a TCP server (`shilpid`), a shell, an HTTP gateway and a WinUI browser. The roadmap says no entity types beyond a bounding box, no metadata, no importers and no embeddings yet | Rust, dependency-free | Not checked |
 | **AORMS** | `HolagundiWorks/aorms` | The web portal. It already works as the hub of the suite: the sign-in, project list, project seed, rate books and drawing files that O-Draft and O-CoreOp use (contract `2026-10-aqc-1`) | Next.js, Supabase | Not checked |
 
-The product descriptions in the suite plan you shared are targets. Two differ from what exists: ShilpiDB is not yet a library of approved details and specifications (it stores bounding boxes), and O-Studio is not the owner of project identity today (AORMS is, for O-Draft and O-CoreOp).
+The product descriptions in the suite plan you shared are targets. Two differ from what exists: ShilpiDB is not yet a library of approved details and specifications (it stores bounding boxes), and O-Studio keeps project identity in the company file (`company_uuid` + `project_id`).
 
 ## 2. How the pieces connect today (verified)
 
 ```
-                AORMS portal (cloud): one login, projects, seeds, drawings, rate books
-                 |            |                       |
-        O-Draft (CAD)       O-CoreOp (quantities)        O-Studio (office, offline)
+                AORMS portal (cloud): login, projects, seeds, drawings, rate books
+                 |            |
+        O-Draft (CAD)       O-CoreOp (quantities)        O-Studio (office, offline company file)
            |   \__ hcw-aqc-bridge JSON file or portal version kind cad_bridge __/
            |
        .vdb store (embeds ShilpiDB codec and grid; can talk to shilpid)
 ```
 
-- **Sign-in:** one AORMS login. The refresh token is shared in one Windows credential (`AORMS/Connect`); each app keeps its own session (`aad`, `aqc`, and now `aos`). O-Studio joined in this work: the `aorms-connect` crate and the Office > AORMS portal page. The server change that lets O-Studio hold a session is on branch `claude/aos-suite-session` in the aorms repo and is not yet applied.
+- **Sign-in:** O-Draft and O-CoreOp can use an AORMS login (shared Windows credential `AORMS/Connect`, per-app sessions). O-Studio signs in only to the local company file; it has no portal connector.
 - **CAD to quantities:** O-Draft writes a `hcw-aqc-bridge` v1 JSON file (the O-CoreOp repository documents the contract in `docs/bridge/`), and O-CoreOp imports it. Through the portal this travels as a version of kind `cad_bridge`. O-Draft's `aqcexport` writer is described as the last unbuilt port item in the AORMS notes, and I did not check whether it has been finished since.
-- **Project details:** O-Draft and O-CoreOp pull title, parties and floors from the portal. O-Studio now pulls a project's client, name and site address.
+- **Project details:** O-Draft and O-CoreOp can pull title, parties and floors from the portal. O-Studio keeps clients, projects and site address in the company file.
 - **AI:** O-Draft has its own agent (`crates/agent`, a fixed tool registry with confirmation rules, audit log and an offline model) and an MCP server. O-CoreOp has an opt-in assistant. O-Studio now has `office-agent`, a read-only MCP server over the office records. Each is separate.
 
 ## 3. What was built in this repository for the suite (verified, with tests)
@@ -48,7 +48,6 @@ The product descriptions in the suite plan you shared are targets. Two differ fr
 |---|---|---|
 | `office-core/` | The company file, sign-in, roles, schema tracks, shared records (clients, projects, briefs, staff, leave, library, proposals, meetings, attendance, 26AS) | 40 |
 | `office-ffi/` and `native/Office.Interop` | A C interface and .NET wrapper so another native app can use the same file. Contract in `docs/office-abi.md` | 3, plus a console smoke test |
-| `aorms-connect/` | The AORMS shared sign-in and project pull | 9, against a stand-in server |
 | `office-agent/` | Governed read-only tools and an MCP server (`office-mcp`) | 8, including the real process |
 | Schema tracks (`office-core::track`) | Lets an app add its own tables to the shared file without touching the others' | 4 |
 
@@ -56,11 +55,10 @@ The product descriptions in the suite plan you shared are targets. Two differ fr
 
 ### 4.1 One project identity
 
-Today three identifiers exist for a project: AORMS `projectOfficeId` (used by O-Draft and O-CoreOp), the O-Studio `projects.id` inside one company file, and O-CoreOp's own project file. Proposed:
+Identifiers in play: the O-Studio `projects.id` inside one company file (`company_uuid` + `project_id`), O-CoreOp's own project file, and (in O-Draft / O-CoreOp) an optional portal `projectOfficeId`. Proposed for O-Studio:
 
-- `ProjectRef = { company_uuid, project_id, aorms_project_office_id? }`. The first two are the O-Studio company file's own id and the project's id in it; the third is filled when the project has been pulled from or linked to the portal (O-Studio stores it in `aorms_links` already).
-- When a project is linked to AORMS, `aorms_project_office_id` is the id O-Draft and O-CoreOp use. When it is not (an offline practice), the pair `company_uuid + project_id` is the id, and the bridge file carries it.
-- **Decision for the owner:** is AORMS or the O-Studio company file the system of record for a project? The plan you shared says O-Studio; the built suite sign-in says AORMS. Both can hold if the rule is "AORMS when linked, O-Studio when not", but that has to be chosen.
+- `ProjectRef = { company_uuid, project_id }`. That pair is the id for an offline practice, and the bridge file should carry it.
+- **Decision for the owner:** how O-Draft and O-CoreOp map a portal project to a company-file `ProjectRef` when both exist.
 
 ### 4.2 Contracts, not shared databases
 
@@ -68,7 +66,7 @@ Keep each app's data its own. Share through a small versioned contract package. 
 
 | Contract | State |
 |---|---|
-| Sign-in and session (`2026-10-aqc-1`) | Exists, in the aorms repo |
+| Sign-in and session (`2026-10-aqc-1`) | Exists for O-Draft / O-CoreOp portal clients, in the aorms repo. O-Studio does not use it |
 | CAD to quantities (`hcw-aqc-bridge` v1) | Exists, in the O-CoreOp repo |
 | Office records (`docs/office-abi.md`) | Exists, in this repo |
 | `ProjectRef` and `ArtifactRef` (a drawing, an estimate or a document with revision, checksum and the revisions it was made from) | **Written** (`docs/contracts/refs.md`, version 1) and implemented in `office-core`. No other app produces or reads them yet |
@@ -96,7 +94,6 @@ ShilpiDB is a spatial store, and `aad-vdb` already embeds it. The reusable-detai
 | O-Draft | Finish `aqcexport` if not done; add `ProjectRef` to the bridge file; a tool to list measurable elements | The bridge file, `aad-cli mcp` | A sample drawing exports a file O-CoreOp imports with the same project id |
 | O-CoreOp | An MCP server around its calculation engine (`aqc.calculate_boq`, `aqc.compare_estimates`); record drawing revision and rate schedule in each estimate | MCP over stdio; Office C interface for the shared records | The same take-off gives the same BOQ twice, and the estimate names its inputs |
 | ShilpiDB | The detail record and its search | `shilpid` TCP and the HTTP gateway | A detail is stored and found by a described phrase |
-| AORMS | Apply migration 0113 so O-Studio can hold a session; decide entitlement | Existing REST | O-Studio signs in against the real portal |
 | Suite host (new) | The MCP client, project selector, approval and audit | MCP | See section 7 |
 
 Licence boundary: O-CoreOp is AGPL-3.0, O-Draft is MIT or Apache-2.0, and O-Studio has no licence file. Share contracts and documents, not source, between O-CoreOp and the others. Decide O-Studio's licence before others build against it.
@@ -114,9 +111,9 @@ Licence boundary: O-CoreOp is AGPL-3.0, O-Draft is MIT or Apache-2.0, and O-Stud
 | Step | State |
 |---|---|
 | Create or open a project in O-Studio | Works |
-| Link it to the portal project | Works in O-Studio; the portal change is committed on a branch and not applied |
-| Open its drawing in O-Draft | O-Draft pulls the project from the portal; O-Studio-only projects are not reachable from O-Draft yet |
-| Resolve the same project in O-CoreOp | Through the portal only |
+| Share the project with O-Draft / O-CoreOp via `ProjectRef` | Contract exists in `office-core`; other apps do not produce or read it yet |
+| Open its drawing in O-Draft | O-Draft can pull a project from the portal; O-Studio-only projects are not reachable from O-Draft yet |
+| Resolve the same project in O-CoreOp | Through the portal or its own project file today; company-file `ProjectRef` not wired yet |
 | Search approved details in ShilpiDB | Not possible: ShilpiDB has no details store yet |
 | Ask an assistant to inspect the drawing and propose a take-off | O-Draft's agent can inspect a drawing; take-off tools are reserved but not in its registry |
 | Calculate quantities in O-CoreOp and draft the estimate in O-Studio | No O-CoreOp tool server, and no O-Studio draft-estimate tool |
@@ -124,8 +121,8 @@ Licence boundary: O-CoreOp is AGPL-3.0, O-Draft is MIT or Apache-2.0, and O-Stud
 
 ## 8. Decisions needed from the owner
 
-1. Which system of record for a project: AORMS when linked and O-Studio otherwise, or one of them always?
-2. Should O-Studio be able to run with no AORMS at all and still share projects with O-Draft and O-CoreOp? If yes, the bridge file must carry `ProjectRef`, and O-Studio needs an export.
+1. How should O-Draft and O-CoreOp map a portal project onto an O-Studio `ProjectRef` (`company_uuid` + `project_id`)?
+2. The bridge file must carry `ProjectRef` for offline sharing; does O-Studio also need a dedicated export?
 3. What licence does O-Studio carry? (Settled for the shared design: `hcw-ui` is MIT, and its marks are reserved. O-Studio itself is still undecided.)
 4. Is the suite host a separate small app, or part of O-Studio?
 5. What is a ShilpiDB "detail", precisely?
