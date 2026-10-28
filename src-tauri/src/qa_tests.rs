@@ -44,9 +44,8 @@ fn count(c: &Connection, table: &str) -> i64 {
 /// Every command that Tauri exposes must check the session. The only exceptions are the sign-in flow itself.
 #[test]
 fn every_tauri_command_checks_the_session_and_permission() {
-    let files: [(&str, &str); 25] = [
+    let files: [(&str, &str); 24] = [
         ("desk.rs", include_str!("desk.rs")),
-        ("aorms.rs", include_str!("aorms.rs")),
         ("office.rs", include_str!("office.rs")),
         ("fieldwork.rs", include_str!("fieldwork.rs")),
         ("taxabstract.rs", include_str!("taxabstract.rs")),

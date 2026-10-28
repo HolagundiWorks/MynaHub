@@ -34,6 +34,7 @@ pub const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0028_proposals_meetings_attendance_26as.sql"),
     include_str!("../migrations/0029_project_documents.sql"),
     include_str!("../migrations/0030_suite_tickets.sql"),
+    include_str!("../migrations/0031_drop_aorms_links.sql"),
 ];
 
 /// The schema version this build expects.
