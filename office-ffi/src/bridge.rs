@@ -4,7 +4,7 @@
 use office_core::auth::Permission;
 use office_core::host::{arg, json, CallError};
 use office_core::workspace::{self, require, AppState, INTERNAL};
-use office_core::{approvals, audit, clients, office, refs, share, track, users};
+use office_core::{approvals, audit, clients, office, refs, share, studio_drafts, track, users};
 use serde_json::Value;
 
 pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, CallError> {
@@ -35,9 +35,9 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
         return json(&result);
     }
     let permission = match op {
-        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_estimate_summary" | "project_ra_summary" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" | "approval_list" | "approval_get" => Permission::View,
+        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_estimate_summary" | "project_ra_summary" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" | "approval_list" | "approval_get" | "studio_draft_list" | "studio_draft_get" => Permission::View,
         "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" | "approval_submit" | "approval_withdraw" => Permission::Edit,
-        "approval_approve" => Permission::Issue,
+        "approval_approve" | "studio_draft_approve" | "studio_draft_mark_pending" | "studio_draft_mark_superseded" => Permission::Issue,
         "company_profile_save" => Permission::ManageSettings,
         "user_list" | "user_create" | "user_update" | "user_set_password" => Permission::ManageUsers,
         "" => return Err(CallError::BadRequest("The operation name was missing.".into())),
@@ -131,6 +131,33 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
             approvals::withdraw(conn, user, arg(args, "id")?)?;
             json(&Value::Null)
         }
+        "studio_draft_list" => {
+            let project_id: Option<i64> = arg(args, "project_id")?;
+            let state: Option<String> = arg(args, "state")?;
+            json(&studio_drafts::list(conn, project_id, state.as_deref())?)
+        }
+        "studio_draft_get" => json(&studio_drafts::get(conn, arg(args, "project_id")?, &arg::<String>(args, "kind")?)?),
+        "studio_draft_approve" => json(&studio_drafts::approve(
+            conn,
+            user,
+            arg(args, "project_id")?,
+            &arg::<String>(args, "kind")?,
+            arg(args, "expected_revision")?,
+        )?),
+        "studio_draft_mark_pending" => json(&studio_drafts::mark_pending(
+            conn,
+            user,
+            arg(args, "project_id")?,
+            &arg::<String>(args, "kind")?,
+            arg(args, "expected_revision")?,
+        )?),
+        "studio_draft_mark_superseded" => json(&studio_drafts::mark_superseded(
+            conn,
+            user,
+            arg(args, "project_id")?,
+            &arg::<String>(args, "kind")?,
+            arg(args, "expected_revision")?,
+        )?),
         "project_ref" => json(&refs::project_ref(conn, arg(args, "project_id")?)?),
         "project_resolve" => json(&refs::resolve_project(conn, &arg(args, "reference")?)?),
         "artifact_ref_check" => {
@@ -362,6 +389,49 @@ mod tests {
         .unwrap();
         call(&a, "approval_approve", json!({ "id": rev["id"] })).unwrap();
         assert_eq!(call(&a, "approval_get", json!({ "id": draft["id"] })).unwrap()["status"], "superseded");
+    }
+
+    #[test]
+    fn coreop_doc_put_draft_kinds_are_listed_and_locked_by_studio() {
+        let (_dir, a) = open("studio-drafts");
+        workspace::login(&a, "owner", "correct horse battery").unwrap();
+        let client = call(&a, "client_save", json!({ "client": { "id": null, "name": "Acme", "contact_person": "", "email": "", "phone": "", "address": "", "pan": "", "gstin": "" } })).unwrap();
+        let project = call(&a, "project_save", json!({ "project": { "id": null, "client_id": client, "code": "", "name": "Villa", "site_address": "", "status": "active" } })).unwrap();
+        let bill_id = "c".repeat(32);
+        let ra_kind = format!("aqc.ra.draft.{bill_id}");
+        let estimate = json!({
+            "v": 1, "state": "draft", "artifact_kind": "estimate",
+            "shared_at": "2026-10-28T12:00:00.0000000Z", "shared_by": "coreop",
+            "summary": { "title": "Villa est", "currency": "INR", "grand_total": 100 },
+            "body": { "grand_total": 100 }
+        });
+        let ra = json!({
+            "v": 1, "state": "draft", "artifact_kind": "ra_bill",
+            "shared_at": "2026-10-28T12:00:00.0000000Z", "shared_by": "coreop",
+            "summary": { "title": "RA-1", "bill_id": bill_id, "currency": "INR", "gross": 10, "net": 9 },
+            "body": { "id": bill_id }
+        });
+        call(&a, "doc_put", json!({ "project_id": project, "kind": "aqc.estimate.draft", "expected_revision": 0, "body": estimate.to_string() })).unwrap();
+        call(&a, "doc_put", json!({ "project_id": project, "kind": ra_kind, "expected_revision": 0, "body": ra.to_string() })).unwrap();
+        let listed = call(&a, "studio_draft_list", json!({ "state": "draft" })).unwrap();
+        assert_eq!(listed.as_array().unwrap().len(), 2);
+        let locked = call(
+            &a,
+            "studio_draft_approve",
+            json!({ "project_id": project, "kind": "aqc.estimate.draft", "expected_revision": 1 }),
+        )
+        .unwrap();
+        assert_eq!(locked["state"], "approved_locked");
+        assert_eq!(locked["revision"], 2);
+        // Revise = CoreOp re-shares a new draft revision over the kind.
+        let revised = json!({
+            "v": 1, "state": "draft", "artifact_kind": "estimate",
+            "shared_at": "2026-10-28T13:00:00.0000000Z", "shared_by": "coreop",
+            "summary": { "title": "Villa est v2", "currency": "INR", "grand_total": 110 },
+            "body": { "grand_total": 110 }
+        });
+        call(&a, "doc_put", json!({ "project_id": project, "kind": "aqc.estimate.draft", "expected_revision": 2, "body": revised.to_string() })).unwrap();
+        assert_eq!(call(&a, "studio_draft_list", json!({ "state": "draft" })).unwrap().as_array().unwrap().len(), 2);
     }
 
     #[test]
