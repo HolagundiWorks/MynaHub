@@ -302,49 +302,42 @@ pub fn enquiry_list(conn: &Connection) -> Result<Vec<Value>, String> {
     Ok(rows)
 }
 
-#[tauri::command]
 pub fn site_record_save(state: HostState<'_>, input: SiteInput) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     site_save(&conn, uid, &input)
 }
 
-#[tauri::command]
 pub fn site_record_list(state: HostState<'_>, project_id: Option<i64>, kind: Option<String>) -> Result<Vec<Value>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     site_list(&conn, project_id, kind.as_deref())
 }
 
-#[tauri::command]
 pub fn permit_save_record(state: HostState<'_>, input: PermitInput) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     permit_save(&conn, uid, &input)
 }
 
-#[tauri::command]
 pub fn permit_list_records(state: HostState<'_>, project_id: Option<i64>) -> Result<Vec<Value>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     permit_list(&conn, project_id)
 }
 
-#[tauri::command]
 pub fn enquiry_save_record(state: HostState<'_>, input: EnquiryInput) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     enquiry_save(&conn, uid, &input)
 }
 
-#[tauri::command]
 pub fn enquiry_list_records(state: HostState<'_>) -> Result<Vec<Value>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     enquiry_list(&conn)
 }
 
-#[tauri::command]
 pub fn enquiry_convert_to_client(state: HostState<'_>, id: i64) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;

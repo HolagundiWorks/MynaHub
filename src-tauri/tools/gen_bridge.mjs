@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from "node:fs";
+/** Regenerate bridge.rs match arms from HostState entry points. */
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,18 +18,6 @@ const files = [
   "clients.rs",
 ];
 
-for (const name of files) {
-  const path = join(root, name);
-  let text = readFileSync(path, "utf8");
-  text = text.replaceAll("state: State<AppState>", "state: HostState<'_>");
-  text = text.replaceAll("use tauri::State;\n", "");
-  if (name !== "commands.rs") {
-    text = text.replace("use crate::commands::{", "use crate::commands::{HostState, ");
-  }
-  writeFileSync(path, text);
-  console.log("updated", name);
-}
-
 function splitParams(source) {
   const parts = [];
   let buf = "";
@@ -45,19 +34,16 @@ function splitParams(source) {
   return parts;
 }
 
-const pattern = /#\[tauri::command\]\s+pub fn (\w+)\((.*?)\)\s*->/gs;
+const pattern = /pub fn (\w+)\(\s*state:\s*HostState<'_>(.*?)\)\s*->/gs;
 const arms = [];
 for (const name of files) {
   const module = name.slice(0, -3);
   const text = readFileSync(join(root, name), "utf8");
   for (const match of text.matchAll(pattern)) {
     const fn = match[1];
-    const callArgs = [];
+    const callArgs = ["HostState::new(state)"];
     for (const raw of splitParams(match[2])) {
-      if (raw.startsWith("state:")) {
-        callArgs.push("HostState::new(state)");
-        continue;
-      }
+      if (!raw) continue;
       const pname = raw.split(":")[0].trim();
       callArgs.push(`arg(args, "${pname}")?`);
     }
@@ -65,32 +51,5 @@ for (const name of files) {
   }
 }
 
-const body = `//! JSON entry points for every Tauri command. The WinUI host calls these by name.
-use crate::commands::{AppState, HostState};
-use serde::Serialize;
-use serde_json::Value;
-
-pub enum BridgeError {
-    Domain(String),
-    BadRequest(String),
-}
-
-fn arg<T: serde::de::DeserializeOwned>(args: &Value, key: &str) -> Result<T, BridgeError> {
-    let value = args.get(key).cloned().unwrap_or(Value::Null);
-    serde_json::from_value(value).map_err(|error| BridgeError::BadRequest(format!("{key} is invalid: {error}")))
-}
-
-fn run<T: Serialize>(result: Result<T, String>) -> Result<Option<Vec<u8>>, BridgeError> {
-    let value = result.map_err(BridgeError::Domain)?;
-    serde_json::to_vec(&value).map(Some).map_err(|error| BridgeError::Domain(error.to_string()))
-}
-
-pub fn invoke(state: &AppState, op: &str, args: &Value) -> Result<Option<Vec<u8>>, BridgeError> {
-    match op {
-${arms.join("\n")}
-        _ => Ok(None),
-    }
-}
-`;
-writeFileSync(join(root, "bridge.rs"), body);
-console.log("arms", arms.length);
+console.log(arms.join("\n"));
+console.error("arms", arms.length);

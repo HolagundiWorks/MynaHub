@@ -31,33 +31,29 @@ O-Studio is one of several apps that share an office's records. The pieces in th
 | `office-ffi/`, `native/Office.Interop/` | A C interface and .NET wrapper so another native app can use the same file. Contract: [docs/office-abi.md](docs/office-abi.md) |
 | `office-agent/` | Governed read-only tools and an MCP server for an AI assistant |
 
-The architecture and integration map for O-Studio, O-Draft, O-CoreOp and ShilpiDB is [docs/suite-architecture.md](docs/suite-architecture.md). Each folder is its own Cargo crate; run `cargo test` inside it.
+The architecture and integration map for O-Studio, O-Draft, O-CoreOp, ShilpiDB and AORMS is [docs/suite-architecture.md](docs/suite-architecture.md). Each folder is its own Cargo crate; run `cargo test` inside it.
 
 ## Develop
 
-The production window is the WinUI 3 app in `native/Adms.Desktop`. The Rust engine in `src-tauri` owns the company file, accounting, documents, and PDF output.
+The production window is the WinUI 3 app in `native/Adms.Desktop`. The Rust engine in `src-tauri` owns the company file, accounting, documents, and PDF output. WinUI loads `architect_office_desktop_lib.dll` over the C ABI — there is no web or Tauri window.
 
-Build the engine first. The WinUI project copies `architect_office_desktop_lib.dll` from `src-tauri/target/debug` when it exists (or from `target/release` with `-p:EngineProfile=release`), and without it the app starts with no engine.
+Build the engine first. The WinUI project copies the DLL from `src-tauri/target/debug` when it exists (or from `target/release` with `-p:EngineProfile=release`), and without it the app starts with no engine.
 
 ```bash
 cargo build --manifest-path src-tauri/Cargo.toml
 dotnet build native/Adms.Desktop/Adms.Desktop.csproj -c Debug -p:Platform=x64 -p:WindowsPackageType=None
 ```
 
-The logos come from the `O-UI` library (`brand/` there; assembly `Hcw.Ui`), in orange for O-Studio. Build output (`target/`, `bin/`, `obj/`, `dist/`, `installer/stage`) is ignored by git and can be deleted at any time.
+The logos come from the sibling `O-UI` library (`brand/` there), in orange for O-Studio. Build output (`target/`, `bin/`, `obj/`, `installer/stage`) is ignored by git and can be deleted at any time.
 
 Tests:
 
 ```bash
 cargo test --manifest-path src-tauri/Cargo.toml   # engine, accounting, company file, templates, PDF
 cargo test --manifest-path office-core/Cargo.toml
-npm run test:unit                                # Carbon interface (Vitest)
-npm run typecheck
 ```
 
 The installer is built with `installer/build.ps1` (release engine, self-contained publish, NSIS) and is named `O-Studio-Setup-<version>.exe`. It is not signed. What is open and planned is in [docs/roadmap.md](docs/roadmap.md).
-
-`npm run tauri dev` opens the earlier Carbon interface, which uses the same engine.
 
 ## Before live use
 

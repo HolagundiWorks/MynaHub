@@ -6,42 +6,36 @@ use serde_json::Value;
 
 pub use office_core::office::*;
 
-#[tauri::command]
 pub fn staff_save_record(state: HostState<'_>, input: StaffInput) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     staff_save(&conn, uid, &input)
 }
 
-#[tauri::command]
 pub fn staff_list_records(state: HostState<'_>) -> Result<Vec<Value>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     staff_list(&conn)
 }
 
-#[tauri::command]
 pub fn leave_save_record(state: HostState<'_>, input: LeaveInput) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     leave_save(&conn, uid, &input)
 }
 
-#[tauri::command]
 pub fn leave_list_records(state: HostState<'_>) -> Result<Vec<Value>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     leave_list(&conn)
 }
 
-#[tauri::command]
 pub fn library_save_record(state: HostState<'_>, input: LibraryInput) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     library_save(&conn, uid, &input)
 }
 
-#[tauri::command]
 pub fn library_list_records(state: HostState<'_>, kind: Option<String>, search: Option<String>) -> Result<Vec<Value>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
