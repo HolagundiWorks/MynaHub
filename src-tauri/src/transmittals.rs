@@ -183,7 +183,6 @@ fn optional(value: &str, max: usize, long: &str) -> Result<String, String> {
     Ok(text.to_string())
 }
 
-#[tauri::command]
 pub fn transmittal_record(
     state: HostState<'_>,
     project_id: i64,
@@ -199,21 +198,18 @@ pub fn transmittal_record(
     record(&conn, uid, project_id, &sent_date, &recipient, &purpose, &medium, &reference, &items)
 }
 
-#[tauri::command]
 pub fn transmittal_list(state: HostState<'_>, project_id: Option<i64>) -> Result<Vec<TransmittalRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list(&conn, project_id)
 }
 
-#[tauri::command]
 pub fn transmittal_acknowledge(state: HostState<'_>, id: i64) -> Result<(), String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     acknowledge(&conn, uid, id)
 }
 
-#[tauri::command]
 pub fn transmittal_cancel(state: HostState<'_>, id: i64) -> Result<(), String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;

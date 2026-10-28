@@ -336,35 +336,30 @@ pub fn list_writeoffs(conn: &Connection, invoice_id: i64) -> Result<Vec<WriteOff
     rows.collect::<Result<_, _>>().map_err(|e| e.to_string())
 }
 
-#[tauri::command]
 pub fn invoice_writeoff(state: HostState<'_>, input: WriteOffInput) -> Result<i64, String> {
     let uid = require(&state, Permission::Post)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     write_off(&mut conn, uid, &input)
 }
 
-#[tauri::command]
 pub fn invoice_writeoff_reverse(state: HostState<'_>, writeoff_id: i64, reason: String) -> Result<(), String> {
     let uid = require(&state, Permission::Post)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     reverse_writeoff(&mut conn, uid, writeoff_id, &reason)
 }
 
-#[tauri::command]
 pub fn invoice_writeoff_list(state: HostState<'_>, invoice_id: i64) -> Result<Vec<WriteOffRow>, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list_writeoffs(&conn, invoice_id)
 }
 
-#[tauri::command]
 pub fn receipt_reverse(state: HostState<'_>, receipt_id: i64, reason: String) -> Result<(), String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     reverse(&mut conn, uid, receipt_id, &reason)
 }
 
-#[tauri::command]
 pub fn receipt_pdf(state: HostState<'_>, receipt_id: i64) -> Result<String, String> {
     use base64::Engine;
     require(&state, Permission::Finance)?;
@@ -372,28 +367,24 @@ pub fn receipt_pdf(state: HostState<'_>, receipt_id: i64) -> Result<String, Stri
     Ok(base64::engine::general_purpose::STANDARD.encode(receipt_pdf_bytes(&conn, receipt_id)?))
 }
 
-#[tauri::command]
 pub fn receipt_balance(state: HostState<'_>, invoice_id: i64) -> Result<Balance, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     balance(&conn, invoice_id)
 }
 
-#[tauri::command]
 pub fn receipt_list(state: HostState<'_>, invoice_id: i64) -> Result<Vec<ReceiptRow>, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list(&conn, invoice_id)
 }
 
-#[tauri::command]
 pub fn receipt_suggest_tds(state: HostState<'_>, invoice_id: i64, rate: String) -> Result<String, String> {
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     suggest_tds(&conn, invoice_id, &rate)
 }
 
-#[tauri::command]
 pub fn receipt_record(state: HostState<'_>, input: ReceiptInput) -> Result<String, String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;

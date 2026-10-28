@@ -336,14 +336,12 @@ pub fn unmark(conn: &Connection, stage_id: i64) -> Result<StagePlan, String> {
     plan(conn, project_id)
 }
 
-#[tauri::command]
 pub fn project_stages(state: HostState<'_>, project_id: i64) -> Result<StagePlan, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     plan(&conn, project_id)
 }
 
-#[tauri::command]
 pub fn project_stages_apply(state: HostState<'_>, project_id: i64, consultancy: String, floors: i64) -> Result<StagePlan, String> {
     let uid = require(&state, Permission::Edit)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
@@ -352,7 +350,6 @@ pub fn project_stages_apply(state: HostState<'_>, project_id: i64, consultancy: 
     Ok(plan)
 }
 
-#[tauri::command]
 pub fn project_stage_mark(state: HostState<'_>, stage_id: i64, marked_on: String) -> Result<StagePlan, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
@@ -361,7 +358,6 @@ pub fn project_stage_mark(state: HostState<'_>, stage_id: i64, marked_on: String
     Ok(plan)
 }
 
-#[tauri::command]
 pub fn project_stage_unmark(state: HostState<'_>, stage_id: i64) -> Result<StagePlan, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;

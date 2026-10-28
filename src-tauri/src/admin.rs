@@ -22,7 +22,6 @@ pub(crate) fn reauth(state: &AppState, password: &str) -> Result<(), String> {
 
 // ---------- password change / recovery ----------
 
-#[tauri::command]
 pub fn auth_change_password(state: HostState<'_>, current: String, new: String, confirm: String) -> Result<(), String> {
     let uid = require(&state, Permission::View)?;
     if new != confirm {
@@ -83,7 +82,6 @@ pub fn recover(conn: &Connection, username: &str, code: &str, new: &str) -> Resu
     Ok(fresh)
 }
 
-#[tauri::command]
 pub fn auth_recover(state: HostState<'_>, username: String, code: String, new: String, confirm: String) -> Result<String, String> {
     if new != confirm {
         return Err("The new passwords do not match.".into());
@@ -98,13 +96,11 @@ pub fn auth_recover(state: HostState<'_>, username: String, code: String, new: S
 
 // ---------- security settings ----------
 
-#[tauri::command]
 pub fn security_get(state: HostState<'_>) -> Result<u64, String> {
     require(&state, Permission::View)?;
     Ok(state.idle().as_secs() / 60)
 }
 
-#[tauri::command]
 pub fn security_set_idle_minutes(state: HostState<'_>, minutes: u64, password: String) -> Result<(), String> {
     let uid = require(&state, Permission::ManageSettings)?;
     if ![1, 5, 10, 15, 30].contains(&minutes) {
@@ -136,14 +132,12 @@ pub fn update_user(conn: &Connection, actor: i64, id: i64, role: &str, disabled:
     office_core::users::update(conn, actor, id, role, disabled)
 }
 
-#[tauri::command]
 pub fn user_list(state: HostState<'_>) -> Result<Vec<UserRow>, String> {
     require(&state, Permission::ManageUsers)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list_users(&conn)
 }
 
-#[tauri::command]
 pub fn user_create(state: HostState<'_>, username: String, password: String, role: String, admin_password: String) -> Result<i64, String> {
     let uid = require(&state, Permission::ManageUsers)?;
     reauth(&state, &admin_password)?;
@@ -151,7 +145,6 @@ pub fn user_create(state: HostState<'_>, username: String, password: String, rol
     create_user(&conn, uid, &username, &password, &role)
 }
 
-#[tauri::command]
 pub fn user_update(state: HostState<'_>, id: i64, role: String, disabled: bool, admin_password: String) -> Result<(), String> {
     let uid = require(&state, Permission::ManageUsers)?;
     reauth(&state, &admin_password)?;
@@ -169,7 +162,6 @@ pub struct AuditRow {
     pub detail: String,
 }
 
-#[tauri::command]
 pub fn audit_list(state: HostState<'_>, limit: i64) -> Result<Vec<AuditRow>, String> {
     require(&state, Permission::ViewAudit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
@@ -314,14 +306,12 @@ fn restore_sealed(conn: &mut Connection, dir: &std::path::Path, actor: i64, file
     Ok(pre.filename)
 }
 
-#[tauri::command]
 pub fn backup_list(state: HostState<'_>) -> Result<Vec<BackupFile>, String> {
     require(&state, Permission::Backup)?;
     list_backups(&crate::company_file::backup_dir(&state)?)
 }
 
 /// Restores a backup and signs everyone out (the restored data has its own users).
-#[tauri::command]
 pub fn backup_restore(state: HostState<'_>, filename: String, password: String) -> Result<String, String> {
     let uid = require(&state, Permission::Backup)?;
     reauth(&state, &password)?;
@@ -334,7 +324,6 @@ pub fn backup_restore(state: HostState<'_>, filename: String, password: String) 
     Ok(pre)
 }
 
-#[tauri::command]
 pub fn backup_create(state: HostState<'_>, password: String) -> Result<BackupInfo, String> {
     let uid = require(&state, Permission::Backup)?;
     reauth(&state, &password)?;

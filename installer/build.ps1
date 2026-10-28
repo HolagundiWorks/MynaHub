@@ -6,10 +6,10 @@ Set-Location $root
 
 $version = "0.1.0"
 $stage = Join-Path $PSScriptRoot "stage"
-$makensis = @("$env:LOCALAPPDATA\tauri\NSIS\makensis.exe", "$env:ProgramFiles (x86)\NSIS\makensis.exe", "$env:ProgramFiles\NSIS\makensis.exe") |
+$makensis = @("$env:ProgramFiles (x86)\NSIS\makensis.exe", "$env:ProgramFiles\NSIS\makensis.exe") |
     Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $makensis) { $cmd = Get-Command makensis -ErrorAction SilentlyContinue; if ($cmd) { $makensis = $cmd.Source } }
-if (-not $makensis) { throw "makensis.exe was not found. Install NSIS, or build once with 'npm run tauri build' so Tauri downloads it." }
+if (-not $makensis) { throw "makensis.exe was not found. Install NSIS and ensure makensis.exe is on PATH." }
 
 # The engine is built into src-tauri\target unless CARGO_TARGET_DIR names another folder (useful when the repository drive is short of space).
 $engineDir = if ($env:CARGO_TARGET_DIR) { Join-Path $env:CARGO_TARGET_DIR "release" } else { Join-Path $root "src-tauri\target\release" }

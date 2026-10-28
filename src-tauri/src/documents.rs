@@ -1295,27 +1295,23 @@ pub fn preview_template(conn: &Connection, body: &str, layout: &str, kind: &str,
 
 // ---------- commands ----------
 
-#[tauri::command]
 pub fn doc_fields(state: HostState<'_>) -> Result<Vec<String>, String> {
     require(&state, Permission::View)?;
     Ok(FIELDS.iter().map(|s| s.to_string()).collect())
 }
 
-#[tauri::command]
 pub fn doc_list(state: HostState<'_>, kind: Option<String>, q: Option<String>) -> Result<Vec<DocRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list(&conn, kind.as_deref(), q.as_deref())
 }
 
-#[tauri::command]
 pub fn doc_get(state: HostState<'_>, id: i64) -> Result<DocDetail, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     get(&conn, id)
 }
 
-#[tauri::command]
 pub fn doc_save_draft(state: HostState<'_>, input: DocInput) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
@@ -1324,56 +1320,48 @@ pub fn doc_save_draft(state: HostState<'_>, input: DocInput) -> Result<i64, Stri
     Ok(id)
 }
 
-#[tauri::command]
 pub fn doc_issue(state: HostState<'_>, id: i64) -> Result<String, String> {
     let uid = require(&state, Permission::Issue)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     issue(&mut conn, uid, id)
 }
 
-#[tauri::command]
 pub fn doc_register_inward(state: HostState<'_>, input: InwardInput) -> Result<String, String> {
     let uid = require(&state, Permission::Edit)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     Ok(register_inward(&mut conn, uid, &input)?.1)
 }
 
-#[tauri::command]
 pub fn doc_pdf(state: HostState<'_>, id: i64) -> Result<String, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     Ok(base64::engine::general_purpose::STANDARD.encode(pdf_bytes(&conn, id)?))
 }
 
-#[tauri::command]
 pub fn doc_revise(state: HostState<'_>, id: i64) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     revise(&mut conn, uid, id)
 }
 
-#[tauri::command]
 pub fn doc_mark_signed(state: HostState<'_>, id: i64) -> Result<(), String> {
     let uid = require(&state, Permission::Issue)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     mark_signed(&conn, uid, id)
 }
 
-#[tauri::command]
 pub fn doc_cancel(state: HostState<'_>, id: i64, reason: String) -> Result<(), String> {
     let uid = require(&state, Permission::Issue)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     cancel(&conn, uid, id, &reason)
 }
 
-#[tauri::command]
 pub fn doc_bill_milestone(state: HostState<'_>, milestone_id: i64, invoice_date: String) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     bill_milestone(&mut conn, uid, milestone_id, &invoice_date)
 }
 
-#[tauri::command]
 pub fn doc_attach(state: HostState<'_>, doc_id: i64, kind: String, filename: String, base64_data: String) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
     let data = base64::engine::general_purpose::STANDARD.decode(base64_data.as_bytes()).map_err(|_| "The file could not be read.".to_string())?;
@@ -1381,7 +1369,6 @@ pub fn doc_attach(state: HostState<'_>, doc_id: i64, kind: String, filename: Str
     add_attachment(&conn, uid, doc_id, &kind, &filename, &data)
 }
 
-#[tauri::command]
 pub fn doc_attachments(state: HostState<'_>, doc_id: i64) -> Result<Vec<AttachmentRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
@@ -1394,7 +1381,6 @@ pub struct AttachmentData {
     pub base64_data: String,
 }
 
-#[tauri::command]
 pub fn doc_attachment_data(state: HostState<'_>, id: i64) -> Result<AttachmentData, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
@@ -1402,49 +1388,42 @@ pub fn doc_attachment_data(state: HostState<'_>, id: i64) -> Result<AttachmentDa
     Ok(AttachmentData { filename, base64_data: base64::engine::general_purpose::STANDARD.encode(bytes) })
 }
 
-#[tauri::command]
 pub fn template_list(state: HostState<'_>, kind: Option<String>, include_archived: Option<bool>) -> Result<Vec<TemplateRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     list_templates(&conn, kind.as_deref(), include_archived.unwrap_or(false))
 }
 
-#[tauri::command]
 pub fn template_versions_list(state: HostState<'_>, template_id: i64) -> Result<Vec<VersionRow>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     template_versions(&conn, template_id)
 }
 
-#[tauri::command]
 pub fn template_create(state: HostState<'_>, kind: String, family: String, layout: String, name: String, body: String) -> Result<i64, String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     create_template(&mut conn, uid, &kind, &family, &layout, &name, &body)
 }
 
-#[tauri::command]
 pub fn template_duplicate(state: HostState<'_>, template_id: i64, name: String) -> Result<i64, String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     duplicate_template(&mut conn, uid, template_id, &name)
 }
 
-#[tauri::command]
 pub fn template_set_archived(state: HostState<'_>, template_id: i64, archived: bool) -> Result<(), String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     set_template_archived(&conn, uid, template_id, archived)
 }
 
-#[tauri::command]
 pub fn template_publish(state: HostState<'_>, template_id: i64, body: String) -> Result<i64, String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let mut conn = state.db.lock().map_err(|_| INTERNAL)?;
     publish_template(&mut conn, uid, template_id, &body)
 }
 
-#[tauri::command]
 pub fn template_preview(state: HostState<'_>, body: String, layout: String, kind: String, name: String) -> Result<Preview, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
