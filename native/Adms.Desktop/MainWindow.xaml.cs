@@ -705,6 +705,33 @@ public sealed partial class MainWindow : Window
         Notice.IsOpen = false;
     }
 
+    private async void CheckForUpdates(object sender, RoutedEventArgs e)
+    {
+        var result = await UpdateCheck.CheckAsync();
+        var dialog = new ContentDialog
+        {
+            Title = result.UpdateAvailable ? "Update available" : "Check for updates",
+            Content = new StackPanel
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new TextBlock { Text = result.Message, TextWrapping = TextWrapping.WrapWholeWords },
+                    new TextBlock
+                    {
+                        Text = "Updates are not installed automatically. See docs/packaging.md for signing and the suite channel.",
+                        Opacity = 0.7,
+                        TextWrapping = TextWrapping.WrapWholeWords,
+                    },
+                },
+            },
+            CloseButtonText = "Close",
+            XamlRoot = Content.XamlRoot,
+            RequestedTheme = Root.ActualTheme,
+        };
+        await dialog.ShowAsync();
+    }
+
     private async void ShowAbout(object sender, RoutedEventArgs e)
     {
         uint version = 0;
@@ -725,7 +752,7 @@ public sealed partial class MainWindow : Window
                 {
                     new Image { Source = BrandArt.Wordmark(), MaxWidth = 360, HorizontalAlignment = HorizontalAlignment.Left, Stretch = Stretch.Uniform },
                     new TextBlock { Text = "Developed by Human Centric Works" },
-                    new TextBlock { Text = $"Version 0.1.0 · Engine ABI {version}", Opacity = 0.7 },
+                    new TextBlock { Text = $"Version {UpdateCheck.ProductVersion} · Engine ABI {version}", Opacity = 0.7 },
                     new TextBlock { Text = "Ctrl+N new record, Ctrl+S save draft, Ctrl+P print, Ctrl+F search, Ctrl+K go to a page.", TextWrapping = TextWrapping.WrapWholeWords },
                 },
             },

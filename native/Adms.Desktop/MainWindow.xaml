@@ -93,6 +93,11 @@
                         <FontIcon Glyph="&#xEA90;"/>
                     </MenuFlyoutItem.Icon>
                 </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Check for updates…" Click="CheckForUpdates" AccessKey="U">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE895;"/>
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
                 <MenuFlyoutItem Text="About" Click="ShowAbout">
                     <MenuFlyoutItem.Icon>
                         <FontIcon Glyph="&#xE946;"/>
