@@ -1,6 +1,6 @@
 # O-Studio
 
-O-Studio is the office app of **OSAS, the Open Source Architecture Suit**. The suite is O-Studio (office and project management, orange), O-CoreOp (quantities, estimates and billing, blue) and O-Draft (drafting, black). Some code identifiers keep older spellings, such as the `aos` portal session name and the `AOSENC1` file marker, because files and servers already use them.
+O-Studio is the office app of **OSAS, the Open Source Architecture Suit**. The suite is O-Studio (office and project management, orange), O-CoreOp (quantities, estimates and billing, blue) and O-Draft (drafting, black). Some code identifiers keep older spellings, such as the `aos` / `aqc` session strings and the `AOSENC1` file marker, because files already use them.
 
 Offline Windows desktop app for an architectural practice. Clients, projects, letters, invoices, and the accounts live in one company file. Developed by Human Centric Works.
 
@@ -33,7 +33,7 @@ O-Studio is one of several apps that share an office's records. The pieces in th
 | `office-ffi/`, `native/Office.Interop/` | A C interface and .NET wrapper so another native app can use the same file. Contract: [docs/office-abi.md](docs/office-abi.md) |
 | `office-agent/` | Governed read-only tools and an MCP server for an AI assistant |
 
-The architecture and integration map for O-Studio, O-Draft, O-CoreOp, ShilpiDB and AORMS is [docs/suite-architecture.md](docs/suite-architecture.md). Each folder is its own Cargo crate; run `cargo test` inside it.
+The architecture and integration map for O-Studio, O-Draft, O-CoreOp, ShilpiDB and O-UI is [docs/suite-architecture.md](docs/suite-architecture.md). Each folder is its own Cargo crate; run `cargo test` inside it.
 
 ## Develop
 
