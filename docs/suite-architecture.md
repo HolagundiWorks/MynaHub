@@ -21,7 +21,8 @@ The shared design is the public `HolagundiWorks/O-UI` library (assembly `Hcw.Ui`
 | **O-Studio** | `HolagundiWorks/O-STUDIO` | Offline office app: clients, projects, letters, invoices, accounts, bank import, tax, staff, library, proposals, meetings, attendance, site records, permits, 26AS check. One `.adms` company file | Rust engine (cdylib) + WinUI 3 shell over a C interface | AGPL-3.0, or commercial |
 | **O-Draft** | `HolagundiWorks/O-DRAFT` | 2D CAD in Rust: drafting, DXF and DWG, layouts, plotting, architecture tools, take-off commands, an offline local-model agent (Qwen3), an MCP server, a JSON control channel, a `.vdb` store | Rust, wgpu, WinUI 3 shell (`aad-host.dll`) | MIT or Apache-2.0 |
 | **O-CoreOp** | `HolagundiWorks/O-COREOP` | Quantity take-off, BOQ, rate books, DSR estimates, bar bending schedules, purchase orders, running-account billing, scheduling, correspondence, stores and HR, an opt-in AI assistant, a CAD bridge importer | C# WinUI 3, C++ `bbs_engine.dll` | AGPL-3.0, or commercial |
-| **ShilpiDB** | `HolagundiWorks/shilpidb` | A spatial vector store: a binary codec, a grid index over bounding boxes, a TCP server (`shilpid`), a shell, an HTTP gateway and a WinUI browser. The roadmap says no entity types beyond a bounding box, no metadata, no importers and no embeddings yet | Rust, dependency-free | Not checked |
+| **ShilpiDB** | `HolagundiWorks/shilpidb` | A spatial vector store: a binary codec, a grid index over bounding boxes, a TCP server (`shilpid`), a shell, an HTTP gateway and a WinUI browser. The roadmap says no entity types beyond a bounding box, no metadata, no importers and no embeddings yet | Rust, dependency-free | Apache-2.0 |
+| **O-UI** | `HolagundiWorks/O-UI` | Shared WinUI themes, marks, SuiteShell chrome (`Hcw.Ui`) | .NET 8 class library | MIT (marks reserved) |
 
 OSS suite apps do **not** ship a portal connector. A hosted practice portal (if any) will live in separate forks later — not in these open-source trees.
 
@@ -59,7 +60,7 @@ The product descriptions in the suite plan you shared are targets. Two differ fr
 
 **Decision (2026-10-28):** the company file is the system of record. `ProjectRef = { v, company_uuid, project_id }`. Portal connectors are out of the suite apps.
 
-O-CoreOp stamps `project_ref` and estimate `artifact_ref` on company-file documents; O-Studio fee proposals read `project_estimate_summary` and may store that ArtifactRef. The CAD bridge file should still gain a `ProjectRef` for offline import.
+O-CoreOp stamps `project_ref` and estimate `artifact_ref` on company-file documents; O-Studio fee proposals read `project_estimate_summary` (and may store that ArtifactRef) and surface RA totals via `project_ra_summary`. Offline bridge import parses `source.project_ref` when Draft writes it.
 
 ### 4.2 Contracts, not shared databases
 
@@ -117,7 +118,7 @@ Licence boundary: O-Studio and O-CoreOp are AGPL-3.0 or commercial; O-Draft is M
 | Resolve the same project in O-CoreOp | Company projects dialog + OSAS ticket; `.bbsproj` file remains for offline-only work |
 | Search approved details in ShilpiDB | Not possible: ShilpiDB has no details store yet |
 | Ask an assistant to inspect the drawing and propose a take-off | O-Draft's agent can inspect a drawing; take-off tools are reserved but not in its registry |
-| Calculate quantities in O-CoreOp and draft the estimate in O-Studio | Estimate totals surface on fee proposals / invoices via `project_estimate_summary`; full draft-estimate document tool still open |
+| Calculate quantities in O-CoreOp and draft the estimate in O-Studio | Estimate + RA totals surface on fee proposals / invoices via `project_estimate_summary` / `project_ra_summary`; full draft-estimate document tool and Windows GUI E2E still open |
 | Refuse unauthorised writes and keep an audit trail | Done for O-Studio reads: refusals and calls are audited. No write tools exist |
 
 ## 8. Decisions needed from the owner

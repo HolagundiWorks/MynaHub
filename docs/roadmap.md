@@ -20,7 +20,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 
 | # | Item | App | Evidence |
 |---|---|---|---|
-| 1.1 | ~~Merge the O-CoreOp shell into `main`~~ Done 2026-10-19 (merge commit `a0aa37d`, with the AORMS sign-in and Online projects branch) | CoreOp | Checked |
+| 1.1 | ~~Merge the O-CoreOp shell into `main`~~ Done 2026-10-19 (merge commit `a0aa37d`; AORMS Connect that landed with that merge was later removed from OSS apps) | CoreOp | Checked |
 | 1.2 | ~~Add continuous integration~~ Done for O-Studio (`rust`, `windows-app`). O-CoreOp has a workflow too | Both | Checked: workflows exist; keep them green |
 | 1.3 | Narrator and NVDA pass over sign-in, create a client, save a record, read a table. Confirms audit item O5 | Both | Not tested; automation cannot do this |
 | 1.4 | ~~Check every page at 520 px (O3)~~ Done 2026-10-19: all 31 pages, no loss of content. Cosmetic follow-up: narrow table columns break words (the header row misalignment is fixed) | Studio | Checked |
@@ -37,7 +37,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 | 2.2 | ~~O-CoreOp reads the shared company file~~ Built 2026-10-19 (see `docs/shared-company-file.md`): both apps open the file at once, projects and clients exist once, O-CoreOp keeps a project's quantities as a revisioned document in the file. Live sync polls every two seconds. Still to do: normalise the document into tables | Both | Checked: office-core / office-ffi / Office.Shared.Tests; screens not fully click-tested |
 | 2.3 | `ProjectRef` / `ArtifactRef` in `office-core`; O-CoreOp stamps `project_ref` and estimate `artifact_ref` on company-file saves; O-Draft stamps take-off `project_ref` when linked | Both | Checked: office-core refs tests; CoreOp ArtifactRefs unit tests; Draft take-off tests |
 | 2.8 | **OSAS as the hub** (decision 2026-10-19): the suite app holds the company details and the sign-in and selects the company file; the apps follow it with a one-time ticket. Built for O-Studio and O-CoreOp (`docs/suite-hub.md`); O-Draft not yet | Both + OSAS | Checked: engine tests, and run end to end through OSAS |
-| 2.4 | Estimates ↔ fee proposals: `project_estimate_summary` + Fee proposals “Use O-CoreOp estimate as cost”; invoices show the same total. Still to do: running bills, E2E click-through | Both | Checked: office-core estimate_summary + proposal link tests |
+| 2.4 | Estimates ↔ fee proposals: `project_estimate_summary` + Fee proposals “Use O-CoreOp estimate as cost”; `project_ra_summary` shows O-CoreOp running-bill (RA) totals beside fee/invoices. Still to do: E2E click-through, optional invoice ArtifactRef column | Both | Checked: office-core estimate/RA summary + proposal link tests |
 | 2.5 | An MCP tool server for O-CoreOp, with the same descriptor shape as O-Studio's | CoreOp | Checked: only O-Studio has one (`office-agent`) |
 | 2.6 | Write tools for the agent, with approval and an audit trail | Studio | Checked: every tool is read-only today |
 | 2.7 | The OSAS launcher: an installer for the suite, update check, open a company file from the launcher | OSAS | Suite glue + update-check stub landed in OSAS (`install-suite.ps1`, channel JSON); signed single Setup.exe and open-company-from-launcher still open |
@@ -66,7 +66,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 
 ## Order of work
 
-1. Phase 1.1 and 1.2 are done (merge and CI). Keep CI green on each push.
-2. 1.3 to 1.6 together, as one accessibility pass, then close the audit.
-3. D1 done (WinUI is the sole UI).
-4. Phase 2 in the order 2.1, 2.3, 2.2, 2.4. The rest of phase 2 needs 2.3.
+1. Phase 1.1 / 1.2 / 1.8 / D1 / most of Phase 2 SoR wiring are done. Keep CI green.
+2. **Next trust gates:** Windows GUI E2E (estimate → fee → invoice; Draft take-off → CoreOp); Authenticode / Azure Trusted Signing certs + hosted update channel; counsel review of dual AGPL+commercial; Draft interactive project-picker UI.
+3. 1.3 to 1.6 together as one accessibility pass, then close the audit.
+4. Remaining Phase 2 nice-to-haves: MCP on CoreOp (2.5), write tools (2.6), open-company-from-launcher.
