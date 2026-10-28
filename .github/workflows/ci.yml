@@ -40,8 +40,16 @@ jobs:
       - name: Build the engine
         working-directory: aos
         run: cargo build --release --manifest-path src-tauri/Cargo.toml
+      - name: Build the company-file engine (office.dll)
+        working-directory: aos
+        run: cargo build --release --manifest-path office-ffi/Cargo.toml
       - name: Build O-Studio
         working-directory: aos
         run: >
           dotnet build native/Adms.Desktop/Adms.Desktop.csproj -c Release
           -p:Platform=x64 -p:WindowsPackageType=None -p:EngineProfile=release
+      - name: Test Osas.Core (company, users, assistant, monitor)
+        working-directory: aos
+        env:
+          OFFICE_DLL_DIR: ${{ github.workspace }}/aos/office-ffi/target/release
+        run: dotnet test native/Osas.Core.Tests/Osas.Core.Tests.csproj
