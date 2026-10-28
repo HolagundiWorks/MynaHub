@@ -25,6 +25,13 @@ pub fn project_estimate_summary(state: HostState<'_>, project_id: i64) -> Result
     office_core::share::estimate_summary(&conn, project_id)
 }
 
+/// O-CoreOp running-bill (RA) totals saved on the company-file project.
+pub fn project_ra_summary(state: HostState<'_>, project_id: i64) -> Result<Value, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    office_core::share::ra_summary(&conn, project_id)
+}
+
 pub fn proposal_set_status_record(state: HostState<'_>, id: i64, status: String) -> Result<(), String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;

@@ -216,6 +216,83 @@ pub fn estimate_summary(conn: &Connection, project_id: i64) -> Result<serde_json
     }))
 }
 
+/// What O-Studio shows next to fee / invoice screens: running-account (RA) bills O-CoreOp saved on this project.
+///
+/// Reads `aqc.project` → `accounts.bills[]`. Gross/net are recomputed from lines + rates (CoreOp stores
+/// percentages, not totals). Money is returned in paise like [`estimate_summary`].
+pub fn ra_summary(conn: &Connection, project_id: i64) -> Result<serde_json::Value, String> {
+    project_exists(conn, project_id)?;
+    let Some(doc) = doc_get(conn, project_id, "aqc.project")? else {
+        return Ok(serde_json::json!({
+            "present": false,
+            "project_id": project_id,
+            "reason": "O-CoreOp has not saved a quantities document for this project yet."
+        }));
+    };
+    let body: serde_json::Value = serde_json::from_str(&doc.body).map_err(|_| "The O-CoreOp project document could not be read.".to_string())?;
+    let Some(bills) = body.pointer("/accounts/bills").and_then(|v| v.as_array()).filter(|a| !a.is_empty()) else {
+        return Ok(serde_json::json!({
+            "present": false,
+            "project_id": project_id,
+            "document_revision": doc.revision,
+            "updated_by": doc.updated_by,
+            "updated_at": doc.updated_at,
+            "reason": "O-CoreOp has not saved any running bills for this project yet."
+        }));
+    };
+    let mut certified = 0i64;
+    let mut last: Option<&serde_json::Value> = None;
+    let mut last_net = 0.0f64;
+    let mut last_gross = 0.0f64;
+    for bill in bills {
+        let certified_flag = bill.get("certified").and_then(|v| v.as_i64()).unwrap_or(0) != 0
+            || bill.get("certified").and_then(|v| v.as_bool()).unwrap_or(false);
+        if certified_flag {
+            certified += 1;
+        }
+        let gross: f64 = bill
+            .get("lines")
+            .and_then(|v| v.as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|l| l.get("amount").and_then(|a| a.as_f64()).or_else(|| {
+                let qty = l.get("qty").and_then(|q| q.as_f64())?;
+                let rate = l.get("rate").and_then(|r| r.as_f64())?;
+                Some(qty * rate)
+            }))
+            .sum();
+        let gst_pct = bill.get("gst_pct").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let retention_pct = bill.get("retention_pct").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let tds_pct = bill.get("tds_pct").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let cess_pct = bill.get("cess_pct").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let gst_tds_pct = bill.get("gst_tds_pct").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let other = bill.get("other_deductions").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let advance = bill.get("advance_recovery").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let invoice = gross + gross * gst_pct / 100.0;
+        let deductions = gross * (retention_pct + tds_pct + cess_pct + gst_tds_pct) / 100.0 + other + advance;
+        let net = invoice - deductions;
+        last = Some(bill);
+        last_gross = gross;
+        last_net = net;
+    }
+    let last_number = last.and_then(|b| b.get("number").and_then(|n| n.as_str())).unwrap_or("");
+    Ok(serde_json::json!({
+        "present": true,
+        "project_id": project_id,
+        "document_revision": doc.revision,
+        "updated_by": doc.updated_by,
+        "updated_at": doc.updated_at,
+        "bill_count": bills.len(),
+        "certified_count": certified,
+        "last_bill_number": last_number,
+        "last_gross_rupees": last_gross,
+        "last_gross_paise": (last_gross * 100.0).round() as i64,
+        "last_net_rupees": last_net,
+        "last_net_paise": (last_net * 100.0).round() as i64,
+        "project_ref": body.get("project_ref").cloned().unwrap_or(serde_json::Value::Null),
+    }))
+}
+
 /// An earlier revision of a document, from the history.
 pub fn doc_revision(conn: &Connection, project_id: i64, kind: &str, revision: i64) -> Result<Option<Document>, String> {
     check_kind(kind)?;
@@ -338,5 +415,37 @@ mod tests {
         assert_eq!(got["artifact_ref"]["id"], "last_estimate");
         assert_eq!(got["project_ref"]["project_id"], 7);
         assert_eq!(got["document_revision"], 1);
+    }
+
+    #[test]
+    fn ra_summary_reads_coreop_accounts_bills() {
+        let c = conn();
+        assert_eq!(ra_summary(&c, 7).unwrap()["present"], false);
+        let body = r#"{
+            "project_ref": { "v": 1, "company_uuid": "u-1", "project_id": 7 },
+            "accounts": {
+                "bills": [
+                    {
+                        "number": "RA-1", "certified": 1, "gst_pct": 0, "retention_pct": 5,
+                        "tds_pct": 0, "cess_pct": 0, "gst_tds_pct": 0, "other_deductions": 0, "advance_recovery": 0,
+                        "lines": [ { "amount": 10000.0 } ]
+                    },
+                    {
+                        "number": "RA-2", "certified": 0, "gst_pct": 18, "retention_pct": 5,
+                        "tds_pct": 1, "cess_pct": 1, "gst_tds_pct": 0, "other_deductions": 100.0, "advance_recovery": 0,
+                        "lines": [ { "qty": 10.0, "rate": 200.0 } ]
+                    }
+                ]
+            }
+        }"#;
+        doc_put(&c, 7, "aqc.project", 0, body, "coreop").unwrap();
+        let got = ra_summary(&c, 7).unwrap();
+        assert_eq!(got["present"], true);
+        assert_eq!(got["bill_count"], 2);
+        assert_eq!(got["certified_count"], 1);
+        assert_eq!(got["last_bill_number"], "RA-2");
+        // gross 2000; invoice 2360; deductions 5%+1%+1% of 2000 + 100 = 240; net 2120
+        assert_eq!(got["last_gross_paise"], 200000);
+        assert_eq!(got["last_net_paise"], 212000);
     }
 }

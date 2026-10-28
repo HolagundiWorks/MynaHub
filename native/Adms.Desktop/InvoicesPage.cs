@@ -439,18 +439,32 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         _ = _shell.Run("Reading the O-CoreOp estimate…", () =>
         {
             var summary = _shell.Call("project_estimate_summary", new { project_id = projectId });
+            JsonElement? ra = null;
+            try { ra = _shell.Call("project_ra_summary", new { project_id = projectId }); }
+            catch { /* older office.dll */ }
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
+                var parts = new List<string>();
                 if (summary.TryGetProperty("present", out var present) && present.ValueKind == JsonValueKind.True
                     && summary.TryGetProperty("grand_total_paise", out var paise) && paise.TryGetInt64(out var total))
                 {
                     var book = Kit.Str(summary, "rate_book_version_name");
-                    _estimateHint.Text = $"O-CoreOp estimate on this project: {Flow.Money(total)}{(book.Length == 0 ? "" : $" · {book}")}. Fee proposals can link that ArtifactRef; this invoice bills the practice fee for the same ProjectRef.";
+                    parts.Add($"O-CoreOp estimate: {Flow.Money(total)}{(book.Length == 0 ? "" : $" · {book}")}");
                 }
                 else
-                    _estimateHint.Text = Kit.Str(summary, "reason").Length > 0
+                    parts.Add(Kit.Str(summary, "reason").Length > 0
                         ? Kit.Str(summary, "reason")
-                        : "No O-CoreOp estimate is saved for this project yet.";
+                        : "No O-CoreOp estimate is saved for this project yet.");
+                if (ra is JsonElement raSummary && raSummary.TryGetProperty("present", out var raPresent) && raPresent.ValueKind == JsonValueKind.True
+                    && raSummary.TryGetProperty("last_net_paise", out var netNode) && netNode.TryGetInt64(out var net))
+                {
+                    var number = Kit.Str(raSummary, "last_bill_number");
+                    parts.Add($"Last RA {(number.Length == 0 ? "" : number + " ")}net {Flow.Money(net)} ({Kit.Str(raSummary, "certified_count")} certified of {Kit.Str(raSummary, "bill_count")})");
+                }
+                else if (ra is JsonElement raMissing && Kit.Str(raMissing, "reason").Length > 0)
+                    parts.Add(Kit.Str(raMissing, "reason"));
+                parts.Add("Fee proposals can link the estimate ArtifactRef; this invoice bills the practice fee for the same ProjectRef.");
+                _estimateHint.Text = string.Join(" · ", parts);
             });
         });
     }
