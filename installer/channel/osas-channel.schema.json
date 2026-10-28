@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://holagundi.works/osas/channel/v1",
+  "title": "OSAS suite update channel",
+  "description": "Shared check-only channel JSON for OSAS suite apps. Migrated into O-Studio as the surviving hub (Phase 1 merge). schemaVersion must be \"1\".",
+  "type": "object",
+  "required": ["schemaVersion", "packages"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1"
+    },
+    "publishedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "packages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "version"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Package id: o-studio, o-coreop, o-draft, o-form, osas"
+          },
+          "version": {
+            "type": "string",
+            "description": "SemVer-like string compared by Help → Check for updates"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Optional download URL; Studio does not auto-install yet"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

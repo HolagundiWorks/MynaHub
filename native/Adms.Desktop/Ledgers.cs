@@ -740,13 +740,60 @@ internal static class Ledgers
         return book;
     }
 
+    /// <summary>Launcher cards for sibling OSAS apps. Studio issues a one-time ticket; apps redeem it and read company via document_context.</summary>
+    public static UIElement Suite(AppShell shell)
+    {
+        var form = new DraftForm();
+        var page = form.Body;
+        page.Children.Add(Flow.SheetMark("06.01", "Office", "Suite apps"));
+        page.Children.Add(Flow.Heading("Suite apps"));
+        page.Children.Add(Flow.Secondary("Open CoreOp, Draft or Form already signed in to this company. Studio keeps the admin password; the other apps receive a one-time ticket and read company details."));
+        if (string.IsNullOrWhiteSpace(shell.CompanyPath))
+        {
+            page.Children.Add(Flow.Secondary("No company path is available in this session."));
+            return form;
+        }
+        page.Children.Add(Flow.Secondary("Company file: " + shell.CompanyPath));
+        foreach (var card in SuiteHub.Cards)
+        {
+            var installed = SuiteHub.FindExecutable(card) != null;
+            var open = new Button
+            {
+                Content = installed ? "Open " + card.Title : card.Title + " (not installed)",
+                MinHeight = 32,
+                IsEnabled = installed,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            };
+            if (installed)
+                open.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
+            var row = new StackPanel { Spacing = 4, Margin = new Thickness(0, 8, 0, 0) };
+            row.Children.Add(Flow.Section(card.Title));
+            row.Children.Add(Flow.Secondary(card.Blurb));
+            row.Children.Add(open);
+            var target = card;
+            open.Click += (_, _) =>
+            {
+                try
+                {
+                    SuiteHub.Launch(shell.Session, target, shell.CompanyPath);
+                }
+                catch (Exception ex)
+                {
+                    shell.Problem(ex.Message);
+                }
+            };
+            page.Children.Add(row);
+        }
+        return form;
+    }
+
     public static UIElement Company(AppShell shell)
     {
         var form = new DraftForm();
         var page = form.Body;
         page.Children.Add(Flow.SheetMark("05.01", "Admin", "Firm settings"));
         page.Children.Add(Flow.Heading("Firm settings"));
-        page.Children.Add(Flow.Secondary("The name, registration and tax scheme printed on letters and invoices."));
+        page.Children.Add(Flow.Secondary("The name, registration and tax scheme printed on letters and invoices. Studio owns these details for the suite; CoreOp, Draft and Form read them."));
         var fields = new Dictionary<string, TextBox>();
         foreach (var (key, label) in new[]
         {
@@ -937,9 +984,101 @@ internal static class Ledgers
         if (shell.CanManage)
         {
             var yours = new PasswordBox { Header = "Your password" };
-            // People are managed in OSAS, the suite app, so they are the same for every app.
             page.Children.Add(Flow.Section("People"));
-            page.Children.Add(Flow.Secondary("Who can sign in, their roles and their passwords are managed in OSAS, the suite app, so they are the same in every app. Open OSAS and choose Users."));
+            page.Children.Add(Flow.Secondary("Who can sign in to the suite. Your password confirms each change. CoreOp, Draft and Form never ask for the admin password."));
+            var person = Flow.Input("Username");
+            var personPassword = new PasswordBox { Header = "Password (12 or more characters)" };
+            var confirm = new PasswordBox { Header = "Confirm password" };
+            var role = new ComboBox { Header = "Role", HorizontalAlignment = HorizontalAlignment.Stretch };
+            foreach (var (label, key) in new[] { ("Accounts", "accounts"), ("Principal", "principal"), ("Document editor", "document_editor"), ("Auditor", "auditor") })
+                role.Items.Add(new ComboBoxItem { Content = label, Tag = key });
+            role.SelectedIndex = 0;
+            page.Children.Add(Flow.Pair(person, role));
+            page.Children.Add(Flow.Pair(personPassword, confirm));
+            var create = new Button { Content = "Create account", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+            create.Click += (_, _) =>
+            {
+                if (personPassword.Password != confirm.Password)
+                {
+                    shell.Problem("The new passwords do not match.");
+                    Flow.Mark(confirm, "The new passwords do not match.");
+                    return;
+                }
+                var chosen = (role.SelectedItem as ComboBoxItem)?.Tag as string ?? "accounts";
+                var user = new { username = person.Text.Trim(), password = personPassword.Password, role = chosen, admin_password = yours.Password };
+                _ = shell.Run("Creating account…", () => shell.Call("user_create", user)).ContinueWith(task =>
+                    shell.Window.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        if (!task.IsCompletedSuccessfully || !task.Result)
+                            return;
+                        person.Text = "";
+                        personPassword.Password = "";
+                        confirm.Password = "";
+                        yours.Password = "";
+                        shell.Run("Loading people…", () => Pages.Show(shell, output, "People", shell.Call("user_list"), ["Id", "Username", "Role", "Disabled"], ["id", "username", "role", "disabled"], [true, false, false, false]));
+                    }));
+            };
+            var people = new Button { Content = "Show people", MinHeight = 32 };
+            people.Click += (_, _) => shell.Run("Loading people…", () => Pages.Show(shell, output, "People", shell.Call("user_list"), ["Id", "Username", "Role", "Disabled"], ["id", "username", "role", "disabled"], [true, false, false, false]));
+            page.Children.Add(Flow.Bar(create, people));
+            page.Children.Add(Flow.Secondary("To reset someone's password: enter their user id from Show people, a new password (12+), and your password, then Reset password."));
+            var resetId = Flow.Input("User id");
+            var resetPassword = new PasswordBox { Header = "New password for that person" };
+            page.Children.Add(Flow.Pair(resetId, resetPassword));
+            var reset = new Button { Content = "Reset password", MinHeight = 32 };
+            reset.Click += (_, _) =>
+            {
+                if (!long.TryParse(resetId.Text.Trim(), out var id))
+                {
+                    shell.Problem("Enter the numeric user id from Show people.");
+                    return;
+                }
+                var args = new { id, password = resetPassword.Password, admin_password = yours.Password };
+                _ = shell.Run("Resetting password…", () => shell.Call("user_set_password", args)).ContinueWith(task =>
+                    shell.Window.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        if (!task.IsCompletedSuccessfully || !task.Result)
+                            return;
+                        resetPassword.Password = "";
+                        yours.Password = "";
+                        shell.Problem("Password updated.");
+                    }));
+            };
+            var stop = new Button { Content = "Stop sign-in for user id", MinHeight = 32 };
+            stop.Click += (_, _) =>
+            {
+                if (!long.TryParse(resetId.Text.Trim(), out var id))
+                {
+                    shell.Problem("Enter the numeric user id from Show people.");
+                    return;
+                }
+                var adminPassword = yours.Password;
+                _ = shell.Run("Updating person…", () =>
+                {
+                    var list = shell.Call("user_list");
+                    var roleName = "accounts";
+                    if (list.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var row in list.EnumerateArray())
+                        {
+                            if (Kit.Id(row) == id)
+                            {
+                                roleName = Kit.Str(row, "role");
+                                break;
+                            }
+                        }
+                    }
+                    shell.Call("user_update", new { id, role = roleName, disabled = true, admin_password = adminPassword });
+                }).ContinueWith(task =>
+                    shell.Window.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        if (!task.IsCompletedSuccessfully || !task.Result)
+                            return;
+                        yours.Password = "";
+                        shell.Run("Loading people…", () => Pages.Show(shell, output, "People", shell.Call("user_list"), ["Id", "Username", "Role", "Disabled"], ["id", "username", "role", "disabled"], [true, false, false, false]));
+                    }));
+            };
+            page.Children.Add(Flow.Bar(reset, stop));
             page.Children.Add(Flow.Section("Company file"));
             var protection = new TextBlock { TextWrapping = TextWrapping.Wrap };
             page.Children.Add(protection);
@@ -1040,7 +1179,7 @@ internal static class Ledgers
                 });
             });
             page.Children.Add(Flow.Section("Backup"));
-            page.Children.Add(Flow.Secondary("A backup of this company file needs your password."));
+            page.Children.Add(Flow.Secondary("Your password confirms people changes, file protection and backups."));
             page.Children.Add(yours);
             var backup = new Button { Content = "Create backup", MinHeight = 32 };
             backup.Click += (_, _) =>
@@ -1049,7 +1188,7 @@ internal static class Ledgers
                 shell.Run("Creating backup…", () => Pages.Show(shell, output, "Backup", shell.Call("backup_create", new { password = adminPassword }), ["File", "SHA-256", "Bytes", "Folder"], ["filename", "sha256", "bytes", "folder"], [false, false, true, false]));
             };
             page.Children.Add(backup);
-            form.Watch([yours]);
+            form.Watch([person, role, yours]);
             form.Arm();
         }
         var audit = new Button { Content = "Show audit", MinHeight = 32 };

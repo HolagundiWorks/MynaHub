@@ -35,6 +35,8 @@ internal sealed class AppShell
     public required AdmsSession Session { get; init; }
     public required MainWindow Window { get; init; }
     public string Role { get; set; } = "";
+    /// <summary>Path of the open company file; used when launching suite cards.</summary>
+    public string CompanyPath { get; set; } = "";
     public IPageCommands? Page { get; set; }
     public Action<string>? Navigate { get; set; }
     public string? PendingCreate { get; set; }
@@ -268,7 +270,8 @@ internal sealed class WorkspaceView : UserControl
             ("site", "06", "Site records", "\uE7C1"),
             ("permits", "07", "Permits and approvals", "\uE8D7"),
             ("proposals", "08", "Fee proposals", "\uE8A5"),
-            ("meetings", "09", "Meetings and decisions", "\uE787"));
+            ("meetings", "09", "Meetings and decisions", "\uE787"),
+            ("approvals", "10", "Approvals", "\uE73E"));
         AddGroup("02", "Documents",
             ("documents", "01", "Letters and agreements", "\uE8A5"),
             ("transmittals", "02", "Transmittals", "\uE724"),
@@ -292,12 +295,14 @@ internal sealed class WorkspaceView : UserControl
                 ("acc-setup", "03", "Chart and financial years", "\uE9D2"));
         }
         AddGroup("06", "Office",
-            ("company", "01", "Firm", "\uE731"),
-            ("staff", "02", "Staff", "\uE716"),
-            ("leave", "03", "Leave", "\uE787"),
-            ("attendance", "03", "Attendance", "\uE823"),
-            ("library", "04", "Library", "\uE82D"),
-            ("settings", "05", "Security and backup", "\uE713"));
+            ("suite", "01", "Suite apps", "\uE8F1"),
+            ("company", "02", "Firm", "\uE731"),
+            ("staff", "03", "Staff", "\uE716"),
+            ("leave", "04", "Leave", "\uE787"),
+            ("attendance", "05", "Attendance", "\uE823"),
+            ("library", "06", "Library", "\uE82D"),
+            ("assistant", "07", "Assistant", "\uE99A"),
+            ("settings", "08", "Security and backup", "\uE713"));
     }
 
     private void AddTop(string id, string sheet, string label, string glyph)
@@ -356,7 +361,10 @@ internal sealed class WorkspaceView : UserControl
         "boards" => new BoardsPage(_shell),
         "templates" => new TemplateListPage(_shell),
         "template-editor" => new StudioEditor(_shell),
+        "approvals" => ApprovalsPage.Build(_shell),
+        "suite" => Ledgers.Suite(_shell),
         "company" => Ledgers.Company(_shell),
+        "assistant" => AssistantPage.Build(_shell),
         "settings" => Ledgers.Settings(_shell),
         _ => new TextBlock { Text = id, Margin = new Thickness(16) },
     };

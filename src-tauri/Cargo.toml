@@ -12,6 +12,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
 office-core = { path = "../office-core" }
+office-agent = { path = "../office-agent" }
 rusqlite = { version = "0.32", features = ["bundled", "backup"] }
 argon2 = { version = "0.5", features = ["std"] }
 aes-gcm = "0.10"
