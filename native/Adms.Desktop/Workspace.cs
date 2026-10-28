@@ -67,25 +67,14 @@ internal sealed class WorkspaceView : UserControl
     private readonly AppShell _shell;
     private static readonly FontFamily IconFont = new("Segoe Fluent Icons, Segoe MDL2 Assets");
 
-    private readonly NavigationView _nav = new()
-    {
-        PaneDisplayMode = NavigationViewPaneDisplayMode.Auto,
-        IsBackButtonVisible = NavigationViewBackButtonVisible.Collapsed,
-        IsPaneToggleButtonVisible = true,
-        IsPaneOpen = true,
-        IsSettingsVisible = false,
-        OpenPaneLength = 232,
-        CompactModeThresholdWidth = 560,
-        ExpandedModeThresholdWidth = 900,
-    };
     private readonly Grid _host = new();
     private readonly Image _paneLogo = new()
     {
         Source = BrandArt.Mark(),
-        Width = 48,
-        Height = 48,
+        Width = 28,
+        Height = 28,
         Stretch = Stretch.Uniform,
-        HorizontalAlignment = HorizontalAlignment.Left,
+        VerticalAlignment = VerticalAlignment.Center,
     };
     private readonly List<(string Id, string Label)> _destinations = [];
 
@@ -106,47 +95,37 @@ internal sealed class WorkspaceView : UserControl
     {
         _shell = shell;
         StartLiveSync();
-        Hcw.Ui.SuiteNavigation.Apply(_nav, Hcw.Ui.SuiteApp.Studio);
         AutomationProperties.SetName(_paneLogo, "O-Studio");
-        _nav.ItemInvoked += (_, args) =>
-        {
-            if (args.InvokedItemContainer is NavigationViewItem item && item.Tag is string id)
-                Show(id);
-        };
-        _nav.PaneHeader = new StackPanel
-        {
-            Spacing = 2,
-            Margin = new Thickness(4, 8, 12, 8),
-            Children =
-            {
-                _paneLogo,
-            },
-        };
         _shell.RefreshPaneLogo = LoadPaneLogo;
         LoadPaneLogo();
         _host.Background = Flow.Ink("SurfaceBackgroundBrush");
-        var sheet = new Border
-        {
-            Margin = new Thickness(8),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            CornerRadius = new CornerRadius(8),
-            BorderBrush = Flow.Ink("BorderSubtleBrush"),
-            BorderThickness = new Thickness(1),
-            Background = Flow.Ink("SurfaceBackgroundBrush"),
-            Child = _host,
-        };
-        _nav.Content = sheet;
-        // In the narrow layout the pane's menu button sits over the top left of the page, so the page starts below it.
-        _nav.DisplayModeChanged += (nav, _) => sheet.Margin = new Thickness(0, nav.DisplayMode == NavigationViewDisplayMode.Minimal ? 44 : 0, 0, 0);
         BuildMenu();
-        var root = new Grid();
+        // Three rows that read as one sheet: the main tabs, the tabs under the open one, and the page. The open main tab, the second row and
+        // the page share one background and one outline, so a tab opens straight into its canvas with no line between them.
+        var root = new Grid { Background = Flow.Ink("AppBackgroundBrush") };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        root.Children.Add(BuildRibbon());
-        Grid.SetRow(_nav, 1);
-        root.Children.Add(_nav);
+        var main = BuildMainTabs();
+        root.Children.Add(main);
+        var body = new Grid
+        {
+            Margin = new Thickness(8, 0, 8, 8),
+            Background = Flow.Ink("SurfaceBackgroundBrush"),
+            BorderBrush = Flow.Ink("BorderSubtleBrush"),
+            BorderThickness = new Thickness(1, 0, 1, 1),
+        };
+        body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        var sub = new ScrollViewer { Content = _subRow, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollMode = ScrollMode.Auto, VerticalScrollMode = ScrollMode.Disabled };
+        Hcw.Ui.SuiteLandmarks.Navigation(sub, "Section menu");
+        body.Children.Add(sub);
+        Grid.SetRow(_host, 1);
+        Hcw.Ui.SuiteLandmarks.Main(_host, "Page");
+        body.Children.Add(_host);
+        Grid.SetRow(body, 1);
+        root.Children.Add(body);
         Content = root;
+        SelectTab(_tabs[0]);
         _shell.Navigate = Show;
         Show("dashboard");
     }
@@ -169,22 +148,22 @@ internal sealed class WorkspaceView : UserControl
         if (data.Length == 0)
         {
             _paneLogo.Source = BrandArt.Mark();
-            _paneLogo.Width = 48;
-            _paneLogo.Height = 48;
+            _paneLogo.Width = 28;
+            _paneLogo.Height = 28;
             return;
         }
         try
         {
             var source = await BrandArt.Decode(data);
             _paneLogo.Source = source ?? BrandArt.Mark();
-            _paneLogo.Width = source != null && wide ? 180 : 48;
-            _paneLogo.Height = 48;
+            _paneLogo.Width = source != null && wide ? 110 : 28;
+            _paneLogo.Height = 28;
         }
         catch
         {
             _paneLogo.Source = BrandArt.Mark();
-            _paneLogo.Width = 48;
-            _paneLogo.Height = 48;
+            _paneLogo.Width = 28;
+            _paneLogo.Height = 28;
         }
     }
 
@@ -259,8 +238,7 @@ internal sealed class WorkspaceView : UserControl
         var owner = _tabs.FirstOrDefault(t => t.Groups.Any(g => g.Items.Any(i => i.Id == marked)));
         if (owner != null && owner != _tab)
             SelectTab(owner);
-        foreach (var item in _nav.MenuItems.OfType<NavigationViewItem>())
-            item.IsSelected = item.Tag as string == marked;
+        MarkSub(marked);
     }
 
     private sealed record NavEntry(string Id, string Label, string Glyph);
@@ -350,15 +328,30 @@ internal sealed class WorkspaceView : UserControl
         _tabs[^1].Groups.Add(group);
     }
 
-    private UIElement BuildRibbon()
+    private readonly StackPanel _subRow = new() { Orientation = Orientation.Horizontal, Spacing = 2, Padding = new Thickness(8, 0, 8, 0) };
+    private readonly Dictionary<RibbonTab, (Border Box, Button Button)> _mainBoxes = [];
+    private readonly Dictionary<string, Border> _subBoxes = [];
+    private string _markedSub = "";
+
+    private static Button TabButton(string text, double size) => new()
     {
-        var strip = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, Padding = new Thickness(8, 4, 8, 0) };
+        Content = text,
+        Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+        BorderThickness = new Thickness(0),
+        Padding = new Thickness(14, 7, 14, 7),
+        FontSize = size,
+        MinHeight = 34,
+        CornerRadius = new CornerRadius(0),
+    };
+
+    /// <summary>The main menu: text only, one tab per area of work.</summary>
+    private UIElement BuildMainTabs()
+    {
+        var row = new Grid { Margin = new Thickness(8, 8, 8, 0) };
         foreach (var tab in _tabs)
         {
-            var label = new StackPanel { Spacing = 2, HorizontalAlignment = HorizontalAlignment.Center };
-            label.Children.Add(new FontIcon { Glyph = tab.Glyph, FontFamily = IconFont, FontSize = 20, HorizontalAlignment = HorizontalAlignment.Center });
-            label.Children.Add(new TextBlock { Text = tab.Title, FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center });
-            var button = new Microsoft.UI.Xaml.Controls.Primitives.ToggleButton { Content = label, MinWidth = 84, MinHeight = 56, Padding = new Thickness(10, 6, 10, 6), CornerRadius = new CornerRadius(6, 6, 0, 0) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var button = TabButton(tab.Title, 14);
             AutomationProperties.SetName(button, tab.Title);
             var captured = tab;
             button.Click += (_, _) =>
@@ -368,54 +361,78 @@ internal sealed class WorkspaceView : UserControl
                 if (first != null)
                     Show(first.Id);
             };
-            _tabButtons[tab] = button;
-            strip.Children.Add(button);
+            var box = new Border { Child = button };
+            Grid.SetColumn(box, row.ColumnDefinitions.Count - 1);
+            row.Children.Add(box);
+            _mainBoxes[tab] = (box, button);
         }
-        var theme = new Hcw.Ui.Controls.SuiteThemeSwitch { Margin = new Thickness(8, 12, 12, 0), VerticalAlignment = VerticalAlignment.Top };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var fill = new Border { BorderBrush = Flow.Ink("BorderSubtleBrush"), BorderThickness = new Thickness(0, 0, 0, 1) };
+        Grid.SetColumn(fill, row.ColumnDefinitions.Count - 1);
+        row.Children.Add(fill);
+        var theme = new Hcw.Ui.Controls.SuiteThemeSwitch { Margin = new Thickness(8, 0, 0, 2), VerticalAlignment = VerticalAlignment.Center };
         theme.Attach(_shell.Window);
-        var bar = new Grid();
-        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        bar.Children.Add(new ScrollViewer { Content = strip, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollMode = ScrollMode.Auto });
-        Grid.SetColumn(theme, 1);
-        bar.Children.Add(theme);
-        var ribbon = new Border
+        var tail = new Border
         {
-            Child = bar,
             BorderBrush = Flow.Ink("BorderSubtleBrush"),
             BorderThickness = new Thickness(0, 0, 0, 1),
-            Background = Flow.Ink("SurfaceBackgroundBrush"),
+            Padding = new Thickness(8, 0, 4, 0),
+            Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center, Children = { _paneLogo, theme } },
         };
-        Hcw.Ui.SuiteLandmarks.Navigation(ribbon, "Main menu");
-        Hcw.Ui.SuiteLandmarks.Main(_host, "Page");
-        SelectTab(_tabs[0]);
-        return ribbon;
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(tail, row.ColumnDefinitions.Count - 1);
+        row.Children.Add(tail);
+        Hcw.Ui.SuiteLandmarks.Navigation(row, "Main menu");
+        return row;
     }
 
     private void SelectTab(RibbonTab tab)
     {
         _tab = tab;
-        foreach (var (t, button) in _tabButtons)
-            button.IsChecked = t == tab;
-        _nav.MenuItems.Clear();
-        var headers = tab.Groups.Count > 1;
+        var line = Flow.Ink("BorderSubtleBrush");
+        foreach (var (t, (box, button)) in _mainBoxes)
+        {
+            var on = t == tab;
+            // The open tab takes the sheet's background and drops its bottom line, so it joins the second row and the page below it.
+            box.Background = on ? Flow.Ink("SurfaceBackgroundBrush") : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            box.BorderBrush = line;
+            box.BorderThickness = on ? new Thickness(1, 1, 1, 0) : new Thickness(0, 0, 0, 1);
+            box.CornerRadius = on ? new CornerRadius(6, 6, 0, 0) : new CornerRadius(0);
+            button.FontWeight = on ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal;
+            AutomationProperties.SetItemStatus(button, on ? "selected" : "");
+        }
+        _subRow.Children.Clear();
+        _subBoxes.Clear();
+        var labelled = tab.Groups.Count > 1;
         foreach (var group in tab.Groups)
         {
-            if (headers)
-                _nav.MenuItems.Add(new NavigationViewItemHeader { Content = group.Title, FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+            if (labelled)
+                _subRow.Children.Add(new TextBlock { Text = group.Title, FontSize = 11, Margin = new Thickness(10, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Flow.Ink("TextSecondaryBrush") });
             foreach (var entry in group.Items)
-                _nav.MenuItems.Add(Item(entry.Id, entry.Label, entry.Glyph));
+            {
+                var button = TabButton(entry.Label, 13);
+                AutomationProperties.SetName(button, entry.Label);
+                var id = entry.Id;
+                button.Click += (_, _) => Show(id);
+                var box = new Border { Child = button, BorderThickness = new Thickness(0, 0, 0, 2), BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent) };
+                _subBoxes[id] = box;
+                _subRow.Children.Add(box);
+            }
         }
+        MarkSub(_markedSub);
     }
 
-    private static NavigationViewItem Item(string id, string label, string glyph) => new()
+    private void MarkSub(string id)
     {
-        Content = label,
-        Tag = id,
-        MinHeight = 32,
-        FontSize = 13,
-        Icon = new FontIcon { Glyph = glyph, FontFamily = IconFont, FontSize = 16 },
-    };
+        _markedSub = id;
+        foreach (var (key, box) in _subBoxes)
+        {
+            var on = key == id;
+            box.BorderBrush = on ? Flow.Ink("BrandAccentBrush") : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            if (box.Child is Button button)
+                button.FontWeight = on ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal;
+        }
+    }
 
     private UIElement PageFor(string id) => id switch
     {

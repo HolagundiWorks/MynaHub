@@ -1,38 +1,35 @@
 # Getting started
 
-The company is chosen, created and signed in to in **OSAS**, the suite app. O-Studio follows it. This keeps one company and one set of users for every app of the suite.
+## Create a company
 
-## Create a company (in OSAS)
+1. Open O-Studio.
+2. Choose **Create a new company**.
+3. Enter the practice name, the owner's user name and a password of 12 or more characters, twice.
+4. Choose where to keep the file and name it. O-Studio adds `.osas` if you leave the extension off.
+5. Choose **Create company**.
 
-1. Open OSAS.
-2. In **Company**, choose **Create a company…**.
-3. Enter the company's name, the owner's user name (it starts as `owner`), and a password of 12 or more characters, twice.
-4. Choose **Choose where to keep it…** and name the file. OSAS adds `.osas` if you leave the extension off.
+O-Studio then shows a recovery code **once**. Store it somewhere you can find later. It is the way back in if the owner's password is forgotten.
 
-OSAS then shows a recovery code **once**. Store it somewhere you can find later. It is the way back into the owner's account if the password is forgotten.
+## Open a company
 
-## Choose a company and sign in (in OSAS)
+Choose **Open an existing company**, or pick a file under **Recent**. Files from earlier versions end in `.adms` or `.aorms` and open the same way. If a recent file has moved, **Remove** clears that entry. The file itself stays where it is.
 
-In **Company**, choose **Choose company file…** and pick the `.osas` file (files from earlier versions end in `.adms` and open the same way), then **Sign in…** with your user name and password. OSAS remembers which file you chose, and your user name, but never a password.
+A company file can be open in one window of each app. O-Studio and O-CoreOp can have the same file open at once.
 
-Then choose **Open** on the O-Studio card. O-Studio opens that company already signed in as you. You do not type the password again: OSAS gives O-Studio a one-time ticket that works once, for two minutes.
+## Sign in
 
-## Starting O-Studio on its own
+Enter your user name and password and choose **Sign in**. **Forgot password? Use recovery code** asks for the recovery code and a new password. The old recovery code stops working. A new code is shown once. Store that new code.
 
-O-Studio's start screen has no file picker. It offers **Open OSAS**, and, when OSAS has a company chosen, **Open the company OSAS chose**. That opens the file and shows the sign-in page, where you enter your user name and password.
+**Switch company** closes the open file and returns to the start screen.
 
-**File > Close company** closes the open file and returns to the start screen. To use another company, choose it in OSAS.
+## Finding your way around
 
-## People
+The **tabs along the top** are the main areas: Practice, Documents, Accounts, Drawings, Assistant, Office and Suite. The **second row of tabs** holds the pages under the open area, and the page opens straight below it. The **Theme** button at the right switches light and dark.
 
-Who can sign in, their roles and their passwords are managed in OSAS, in the **Users** section under **Company**. They are the same in every app.
-
-**Forgot password? Use recovery code** on the sign-in page asks for the recovery code and a new password. The old recovery code stops working, and a new one is shown once. An owner can also set a new password for anyone in OSAS.
-
-## Several apps, one file
-
-O-Studio and O-CoreOp can have the same company file open at the same time, and what one saves the other shows within a few seconds. A protected (encrypted) file can be open in one program at a time.
+- **Drawings** keeps vector drawings with each project. Choose a project, **Import DXF…** (text DXF), then scroll to zoom and drag to move.
+- **Assistant** answers questions about the practice, as you, using your own Anthropic API key. It only reads, and nothing is sent until you agree.
+- **Suite** manages the company's users, shows the company file monitor and ShilpiDB server, and opens O-CoreOp and O-Draft already signed in.
 
 ## What the file holds
 
-The `.osas` file holds the records, issued PDFs, attachments, and audit history. Copy that file to move or archive the practice. O-Studio keeps a copy before it upgrades the file. A plain file is not encrypted, so keep the folder as private as the practice records inside it.
+The `.osas` file holds the records, issued PDFs, attachments, drawings and audit history. Copy that file to move or archive the practice. O-Studio keeps a copy before it upgrades the file. A plain file is not encrypted, so keep the folder as private as the practice records inside it.

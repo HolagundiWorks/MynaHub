@@ -61,6 +61,7 @@ fn every_tauri_command_checks_the_session_and_permission() {
         ("transmittals.rs", include_str!("transmittals.rs")),
         ("boards.rs", include_str!("boards.rs")),
         ("stages.rs", include_str!("stages.rs")),
+        ("drawings.rs", include_str!("drawings.rs")),
     ];
     let open = ["company_active", "company_validate", "company_recent_list", "company_recent_remove", "company_open", "company_create", "company_close", "company_legacy_info", "company_convert_legacy", "auth_status", "auth_setup", "auth_login", "auth_unlock", "auth_lock", "auth_logout", "auth_recover"];
     let mut checked = 0;
