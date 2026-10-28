@@ -12,22 +12,17 @@ An app that follows this contract can say "this estimate was made from revision 
 ## ProjectRef
 
 ```json
-{ "v": 1, "company_uuid": "…", "project_id": 7, "aorms_project_office_id": "…" }
+{ "v": 1, "company_uuid": "…", "project_id": 7 }
 ```
 
 | Field | Meaning |
 |---|---|
 | `company_uuid` | The id of the O-Studio company file the project lives in (`company_file.company_uuid`). |
 | `project_id` | The project's id in that file. |
-| `aorms_project_office_id` | The portal's `projectOfficeId`. Present only when the project was pulled from, or linked to, AORMS. Left out otherwise. |
 
-**Finding a project again.** A reader looks in this order and stops at the first hit:
-1. `company_uuid` equals this file's, and `project_id` exists here.
-2. `aorms_project_office_id` is present and this file has a link for it (`aorms_links`).
+**Finding a project again.** A reader matches when `company_uuid` equals this file's and `project_id` exists here. If that fails, the project is not here and the reader says so. It does not guess from the project's name.
 
-If neither matches, the project is not here and the reader says so. It does not guess from the project's name.
-
-**Which id is the system of record** (the open question in the suite plan): the rule is *the portal id when there is one, otherwise the pair*. A project linked to AORMS keeps its identity when the file is copied or restored, because the portal id travels with it. An offline project is identified by the file it was made in.
+An offline project is identified by the company file it was made in (`company_uuid` + `project_id`).
 
 ## ArtifactRef
 
