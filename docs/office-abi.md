@@ -67,4 +67,5 @@ An app keeps its data in the same file on its own **schema track**, applied with
 
 ## Licensing
 
-O-CoreOp is AGPL-3.0. Do not copy source between O-CoreOp and this repository. The contract in this file is what the two share.
+O-Studio and O-CoreOp are each dual-licensed AGPL-3.0 or commercial. Do not copy
+source between them and permissive suite repos; this contract is what they share.

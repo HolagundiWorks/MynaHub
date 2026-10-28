@@ -18,7 +18,7 @@ The shared design is the public `HolagundiWorks/O-UI` library (assembly `Hcw.Ui`
 
 | Product | Repository | What it is now | Stack | Licence |
 |---|---|---|---|---|
-| **O-Studio** | `HolagundiWorks/O-STUDIO` | Offline office app: clients, projects, letters, invoices, accounts, bank import, tax, staff, library, proposals, meetings, attendance, site records, permits, 26AS check. One `.adms` company file | Rust engine (cdylib) + WinUI 3 shell over a C interface | Not stated |
+| **O-Studio** | `HolagundiWorks/O-STUDIO` | Offline office app: clients, projects, letters, invoices, accounts, bank import, tax, staff, library, proposals, meetings, attendance, site records, permits, 26AS check. One `.adms` company file | Rust engine (cdylib) + WinUI 3 shell over a C interface | AGPL-3.0, or commercial |
 | **O-Draft** | `HolagundiWorks/O-DRAFT` | 2D CAD in Rust: drafting, DXF and DWG, layouts, plotting, architecture tools, take-off commands, an offline local-model agent (Qwen3), an MCP server, a JSON control channel, a `.vdb` store | Rust, wgpu, WinUI 3 shell (`aad-host.dll`) | MIT or Apache-2.0 |
 | **O-CoreOp** | `HolagundiWorks/O-COREOP` | Quantity take-off, BOQ, rate books, DSR estimates, bar bending schedules, purchase orders, running-account billing, scheduling, correspondence, stores and HR, an opt-in AI assistant, a CAD bridge importer | C# WinUI 3, C++ `bbs_engine.dll` | AGPL-3.0, or commercial |
 | **ShilpiDB** | `HolagundiWorks/shilpidb` | A spatial vector store: a binary codec, a grid index over bounding boxes, a TCP server (`shilpid`), a shell, an HTTP gateway and a WinUI browser. The roadmap says no entity types beyond a bounding box, no metadata, no importers and no embeddings yet | Rust, dependency-free | Not checked |
@@ -97,7 +97,7 @@ ShilpiDB is a spatial store, and `aad-vdb` already embeds it. The reusable-detai
 | ShilpiDB | The detail record and its search | `shilpid` TCP and the HTTP gateway | A detail is stored and found by a described phrase |
 | Suite host (new) | The MCP client, project selector, approval and audit | MCP | See section 7 |
 
-Licence boundary: O-CoreOp is AGPL-3.0, O-Draft is MIT or Apache-2.0, and O-Studio has no licence file. Share contracts and documents, not source, between O-CoreOp and the others. Decide O-Studio's licence before others build against it.
+Licence boundary: O-Studio and O-CoreOp are AGPL-3.0 or commercial; O-Draft is MIT or Apache-2.0; O-UI is MIT (marks reserved). Share contracts and documents, not source, across the AGPL↔permissive line.
 
 ## 6. Phases (proposed, with exit criteria)
 
@@ -124,6 +124,6 @@ Licence boundary: O-CoreOp is AGPL-3.0, O-Draft is MIT or Apache-2.0, and O-Stud
 
 1. ~~Portal vs company-file SoR~~ — company file (2026-10-28).
 2. The bridge file must carry `ProjectRef` for offline sharing; does O-Studio also need a dedicated export?
-3. What licence does O-Studio carry? (Settled for the shared design: `O-UI` / `Hcw.Ui` is MIT, and its marks are reserved. O-Studio itself is still undecided.)
+3. ~~What licence does O-Studio carry?~~ **Settled:** O-Studio is AGPL-3.0 or commercial (same dual path as O-CoreOp; see `LICENSING.md`). Shared design `O-UI` / `Hcw.Ui` remains MIT; marks reserved.
 4. Is the suite host a separate small app, or part of O-Studio?
 5. What is a ShilpiDB "detail", precisely?
