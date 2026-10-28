@@ -18,13 +18,15 @@
 | Piece | State |
 |---|---|
 | Studio New / Open company (+ recent list) | **Implemented** (Phase 1) |
-| Studio writes `%LOCALAPPDATA%\OSAS\suite.json` when a company is open | **Implemented** (Phase 1) |
-| People (users) on Security page again | **Implemented** (Phase 1) |
+| Studio writes `%LOCALAPPDATA%\OSAS\suite.json` (path + username, never password) | **Implemented** (Phase 1) |
+| People: create / list / reset password / stop sign-in | **Implemented** (Phase 1; `user_set_password` on Studio bridge) |
 | Office → Suite apps cards (`auth.ticket` + `OSAS_COMPANY` / `OSAS_TICKET`) | **Implemented** scaffold (Phase 1); exe discovery best-effort |
+| Suite `install-suite.ps1` + channel schema in this repo | **Implemented** (migrated from documented OSAS hub) |
 | Firm profile edit in Studio | **Implemented** (already) |
 | Ticket redeem when launched with env | **Implemented** (already) |
+| AI assistant WinUI (model/key/consent) | **Proposed** — engine ops exist; OSAS UI not importable yet |
 | Bill/estimate approve-lock in Studio | **Proposed** (later phase) |
-| Import leftover OSAS WinUI source | **Blocked** until that repo is available |
+| Line-by-line OSAS WinUI import | **Blocked** — OSAS repo still 404 to this cloud agent |
 
 ## How siblings keep reading company
 

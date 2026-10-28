@@ -1117,10 +1117,14 @@ public sealed partial class MainWindow : Window
         {
             ClearWorkspace();
             ShowLogin(_companyName);
+            if (string.IsNullOrWhiteSpace(UsernameBox.Text) && SuiteHub.RememberedUsername() is { } remembered)
+                UsernameBox.Text = remembered;
             return;
         }
         var username = Text(user, "username");
         _role = Text(user, "role");
+        if (!string.IsNullOrWhiteSpace(_companyPath))
+            SuiteHub.RememberCompany(_companyPath, username);
         var locked = status.TryGetProperty("locked", out var lockedFlag) && lockedFlag.ValueKind == JsonValueKind.True;
         if (locked)
         {

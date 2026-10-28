@@ -43,17 +43,39 @@ internal static class SuiteHub
         }
     }
 
-    /// <summary>Records the company Studio has open so sibling apps can follow without a password.</summary>
-    internal static void RememberCompany(string path)
+    /// <summary>Last signed-in username remembered for the suite (never a password).</summary>
+    internal static string? RememberedUsername()
+    {
+        try
+        {
+            if (!File.Exists(SuiteFile))
+                return null;
+            using var doc = JsonDocument.Parse(File.ReadAllText(SuiteFile));
+            return doc.RootElement.TryGetProperty("username", out var u) && u.GetString() is { Length: > 0 } name
+                ? name
+                : null;
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Records the company Studio has open so sibling apps can follow without a password. Username is optional and never a secret.</summary>
+    internal static void RememberCompany(string path, string? username = null)
     {
         if (string.IsNullOrWhiteSpace(path))
             return;
         try
         {
             Directory.CreateDirectory(SuiteDirectory);
+            var priorUser = username;
+            if (string.IsNullOrWhiteSpace(priorUser))
+                priorUser = RememberedUsername();
             var payload = JsonSerializer.Serialize(new
             {
                 company_path = path,
+                username = string.IsNullOrWhiteSpace(priorUser) ? null : priorUser.Trim(),
                 chosen_by = "O-Studio",
                 chosen_at = DateTimeOffset.UtcNow.ToString("O"),
             });

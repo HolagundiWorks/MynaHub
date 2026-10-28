@@ -35,12 +35,13 @@ powershell -File installer\sign.ps1 installer\O-Studio-Setup-0.1.0.exe
 
 ## Suite glue
 
-OSAS `installer/install-suite.ps1 -ArtifactsDir …` picks up `O-Studio-Setup-*.exe`.
-The launcher also needs `office.dll` from this repo’s `office-ffi` release build.
+`installer/install-suite.ps1 -ArtifactsDir …` (in this repo; migrated from the OSAS hub)
+picks up `O-Studio-Setup-*.exe` and optional sibling Setup.exe files. Sibling apps still
+need `office.dll` from this repo’s `office-ffi` release build beside their install.
 
 ## Update channel (check-only)
 
-Shared schema: OSAS `installer/channel/osas-channel.schema.json`.  
+Shared schema: `installer/channel/osas-channel.schema.json` (also migrated here).  
 Package id: **`o-studio`**.
 
 Set `OSAS_UPDATE_CHANNEL_URL`. Help → **Check for updates…** compares versions and
