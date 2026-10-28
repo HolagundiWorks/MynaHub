@@ -82,6 +82,7 @@ mod tests {
             consultancy_type: "interior".into(),
             floors: 2,
             phase: String::new(),
+            summary: "Two-storey residence with courtyard.".into(),
             archived: false,
             client_name: String::new(),
         };
@@ -106,6 +107,7 @@ mod tests {
         let block = ctx.project.unwrap();
         assert_eq!(block.project.name, "Mehta residence");
         assert_eq!(block.project.site_address, "Plot 4, Hospet");
+        assert_eq!(block.project.summary, "Two-storey residence with courtyard.");
         assert_eq!(block.consultancy_label, "Interior architecture");
         assert_eq!(block.client.unwrap().name, "Mehta family");
         assert_eq!(block.project_ref.project_id, id);

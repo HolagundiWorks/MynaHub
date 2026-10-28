@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Hcw.Ui;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Windows.UI;
@@ -6,14 +7,15 @@ using Windows.UI.ViewManagement;
 
 namespace Adms.Desktop;
 
-/// <summary>O-Studio is a light application. Windows high contrast still supplies its own colours.</summary>
+/// <summary>Applies the suite light/dark preference (and Windows high contrast when active).</summary>
 internal static class AppTheme
 {
     public static bool InHighContrast => new AccessibilitySettings().HighContrast;
 
     public static ElementTheme Active { get; private set; } = ElementTheme.Light;
 
-    public static string ActiveDictionary => InHighContrast ? "HighContrast" : "Light";
+    public static string ActiveDictionary =>
+        InHighContrast ? "HighContrast" : SuiteAppearance.IsDark ? "Dark" : "Light";
 
     public static void Apply(FrameworkElement root, AppWindow window, nint hwnd)
     {
@@ -26,10 +28,10 @@ internal static class AppTheme
             ResetFrame(hwnd);
             return;
         }
-        Active = ElementTheme.Light;
-        root.RequestedTheme = ElementTheme.Light;
-        ApplyTitleBar(window);
-        ApplyFrame(hwnd);
+        Active = SuiteAppearance.Current;
+        root.RequestedTheme = Active;
+        ApplyTitleBar(window, Active == ElementTheme.Dark);
+        ApplyFrame(hwnd, Active == ElementTheme.Dark);
     }
 
     private static void ResetTitleBar(AppWindow window)
@@ -51,17 +53,17 @@ internal static class AppTheme
         titleBar.ButtonInactiveForegroundColor = null;
     }
 
-    private static void ApplyTitleBar(AppWindow window)
+    private static void ApplyTitleBar(AppWindow window, bool dark)
     {
         if (!AppWindowTitleBar.IsCustomizationSupported())
             return;
         var titleBar = window.TitleBar;
-        titleBar.PreferredTheme = TitleBarTheme.Light;
-        var background = Color(245, 245, 242);
-        var foreground = Color(37, 40, 43);
-        var inactiveForeground = Color(78, 85, 90);
-        var hover = Color(232, 232, 227);
-        var pressed = Color(213, 214, 208);
+        titleBar.PreferredTheme = dark ? TitleBarTheme.Dark : TitleBarTheme.Light;
+        var background = dark ? Color(27, 27, 27) : Color(228, 234, 242);
+        var foreground = dark ? Color(243, 243, 243) : Color(26, 35, 50);
+        var inactiveForeground = dark ? Color(154, 154, 154) : Color(74, 86, 104);
+        var hover = dark ? Color(47, 47, 47) : Color(241, 245, 250);
+        var pressed = dark ? Color(56, 56, 56) : Color(216, 222, 232);
         titleBar.BackgroundColor = background;
         titleBar.ForegroundColor = foreground;
         titleBar.InactiveBackgroundColor = background;
@@ -86,15 +88,15 @@ internal static class AppTheme
         _ = DwmSetWindowAttribute(hwnd, DwmBorderColor, ref color, sizeof(int));
     }
 
-    private static void ApplyFrame(nint hwnd)
+    private static void ApplyFrame(nint hwnd, bool dark)
     {
         if (hwnd == 0)
             return;
-        var immersive = 0;
+        var immersive = dark ? 1 : 0;
         _ = DwmSetWindowAttribute(hwnd, DwmUseImmersiveDarkMode, ref immersive, sizeof(int));
-        var caption = ColorRef(245, 245, 242);
-        var text = ColorRef(37, 40, 43);
-        var border = ColorRef(213, 214, 208);
+        var caption = dark ? ColorRef(27, 27, 27) : ColorRef(228, 234, 242);
+        var text = dark ? ColorRef(243, 243, 243) : ColorRef(26, 35, 50);
+        var border = dark ? ColorRef(120, 120, 120) : ColorRef(138, 147, 163);
         _ = DwmSetWindowAttribute(hwnd, DwmCaptionColor, ref caption, sizeof(int));
         _ = DwmSetWindowAttribute(hwnd, DwmTextColor, ref text, sizeof(int));
         _ = DwmSetWindowAttribute(hwnd, DwmBorderColor, ref border, sizeof(int));

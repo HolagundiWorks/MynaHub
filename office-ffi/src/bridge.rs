@@ -4,7 +4,7 @@
 use office_core::auth::Permission;
 use office_core::host::{arg, json, CallError};
 use office_core::workspace::{self, require, AppState, INTERNAL};
-use office_core::{audit, clients, office, refs, share, track, users};
+use office_core::{audit, clients, office, refs, share, subcontracts, tasks, track, users};
 use serde_json::Value;
 
 pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, CallError> {
@@ -35,8 +35,8 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
         return json(&result);
     }
     let permission = match op {
-        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "drawing_list" | "drawing_view" | "drawing_at" | "track.version" | "track.apply" => Permission::View,
-        "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" | "drawing_import" | "drawing_delete" => Permission::Edit,
+        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_ref" | "project_resolve" | "artifact_ref_check" | "project_workspace_get" | "staff_list" | "leave_list" | "library_list" | "drawing_list" | "drawing_view" | "drawing_at" | "task_list" | "subcontract_list" | "track.version" | "track.apply" => Permission::View,
+        "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_workspace_ensure" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" | "task_save" | "task_set_status" | "task_delete" | "subcontract_save" | "drawing_import" | "drawing_delete" => Permission::Edit,
         "company_profile_save" => Permission::ManageSettings,
         "user_list" | "user_create" | "user_update" | "user_set_password" => Permission::ManageUsers,
         "" => return Err(CallError::BadRequest("The operation name was missing.".into())),
@@ -74,9 +74,56 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
         "project_list" => json(&clients::list_projects(conn, arg(args, "client_id")?, arg(args, "include_archived")?)?),
         "project_save" => {
             let project: clients::Project = arg(args, "project")?;
+            let creating = project.id.is_none();
             let id = clients::save_project(conn, &project)?;
-            audit(conn, Some(user), if project.id.is_some() { "project_updated" } else { "project_created" }, &format!("project {id}"));
+            audit(conn, Some(user), if creating { "project_created" } else { "project_updated" }, &format!("project {id}"));
+            if creating {
+                if let Ok(guard) = state.company.lock() {
+                    if let Some(active) = guard.as_ref() {
+                        let company_path = std::path::PathBuf::from(&active.summary.path);
+                        let _ = office_core::project_workspace::scaffold(
+                            conn,
+                            office_core::project_workspace::ScaffoldInput {
+                                company_path: &company_path,
+                                project_id: id,
+                                code: &project.code,
+                                name: &project.name,
+                                floors: project.floors,
+                            },
+                        );
+                    }
+                }
+            }
             json(&id)
+        }
+        "project_workspace_get" => json(&office_core::project_workspace::get(conn, arg(args, "project_id")?)?),
+        "project_workspace_ensure" => {
+            let project_id: i64 = arg(args, "project_id")?;
+            let (code, name, floors): (String, String, i64) = conn
+                .query_row(
+                    "SELECT code, name, floors FROM projects WHERE id=?1",
+                    rusqlite::params![project_id],
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+                )
+                .map_err(|_| CallError::Domain("Project not found.".into()))?;
+            let company_path = {
+                let guard = state.company.lock().map_err(|_| CallError::Domain(INTERNAL.into()))?;
+                let active = guard.as_ref().ok_or_else(|| CallError::Domain("Open a company file first.".into()))?;
+                std::path::PathBuf::from(&active.summary.path)
+            };
+            let info = office_core::project_workspace::scaffold(
+                conn,
+                office_core::project_workspace::ScaffoldInput {
+                    company_path: &company_path,
+                    project_id,
+                    code: &code,
+                    name: &name,
+                    floors,
+                },
+            )
+            .map_err(CallError::Domain)?;
+            audit(conn, Some(user), "project_workspace_ensured", &format!("project {project_id}"));
+            json(&info)
         }
         "project_set_archived" => {
             let (id, archived): (i64, bool) = (arg(args, "id")?, arg(args, "archived")?);
@@ -140,6 +187,25 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
         "drawing_delete" => {
             office_core::drawings::delete(conn, user, arg(args, "id")?)?;
             json(&Value::Null)
+        }
+        "task_list" => json(&tasks::list(conn, arg(args, "project_id")?)?),
+        "task_save" => {
+            let input: tasks::TaskInput = arg(args, "input")?;
+            json(&tasks::save(conn, user, &input)?)
+        }
+        "task_set_status" => {
+            let (id, status, position): (i64, String, Option<i64>) = (arg(args, "id")?, arg(args, "status")?, arg(args, "position")?);
+            tasks::set_status(conn, user, id, &status, position)?;
+            json(&Value::Null)
+        }
+        "task_delete" => {
+            tasks::delete(conn, user, arg(args, "id")?)?;
+            json(&Value::Null)
+        }
+        "subcontract_list" => json(&subcontracts::list(conn, arg(args, "project_id")?)?),
+        "subcontract_save" => {
+            let input: subcontracts::SubcontractInput = arg(args, "input")?;
+            json(&subcontracts::save(conn, user, &input)?)
         }
         _ => Err(CallError::BadRequest("That operation is not part of the office interface.".into())),
     }

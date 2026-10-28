@@ -1,9 +1,11 @@
-//! Fee proposals, meetings, attendance and the 26AS check. The records are in Office Core; this file adds the session and permission checks.
-//! Proposals, meetings and attendance need View to read and Edit to change. The 26AS entries are tax records, so they need Finance.
+//! Fee proposals, meetings, attendance, solo tasks / subcontracts, and the 26AS check.
+//! The records are in Office Core; this file adds the session and permission checks.
+//! Proposals, meetings, attendance, tasks and subcontracts need View to read and Edit to change.
+//! The 26AS entries are tax records, so they need Finance.
 
 use crate::auth::Permission;
 use crate::commands::{HostState, require, INTERNAL};
-use office_core::{practice, tds26as};
+use office_core::{practice, subcontracts, tasks, tds26as};
 use serde_json::Value;
 
 #[tauri::command]
@@ -81,4 +83,46 @@ pub fn tds26as_list_entries(state: HostState<'_>) -> Result<Vec<Value>, String> 
     require(&state, Permission::Finance)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     tds26as::list(&conn)
+}
+
+#[tauri::command]
+pub fn task_list_records(state: HostState<'_>, project_id: Option<i64>) -> Result<Vec<Value>, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    tasks::list(&conn, project_id)
+}
+
+#[tauri::command]
+pub fn task_save_record(state: HostState<'_>, input: tasks::TaskInput) -> Result<i64, String> {
+    let uid = require(&state, Permission::Edit)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    tasks::save(&conn, uid, &input)
+}
+
+#[tauri::command]
+pub fn task_set_status_record(state: HostState<'_>, id: i64, status: String, position: Option<i64>) -> Result<(), String> {
+    let uid = require(&state, Permission::Edit)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    tasks::set_status(&conn, uid, id, &status, position)
+}
+
+#[tauri::command]
+pub fn task_delete_record(state: HostState<'_>, id: i64) -> Result<(), String> {
+    let uid = require(&state, Permission::Edit)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    tasks::delete(&conn, uid, id)
+}
+
+#[tauri::command]
+pub fn subcontract_list_records(state: HostState<'_>, project_id: Option<i64>) -> Result<Vec<Value>, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    subcontracts::list(&conn, project_id)
+}
+
+#[tauri::command]
+pub fn subcontract_save_record(state: HostState<'_>, input: subcontracts::SubcontractInput) -> Result<i64, String> {
+    let uid = require(&state, Permission::Edit)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    subcontracts::save(&conn, uid, &input)
 }

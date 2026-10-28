@@ -526,6 +526,16 @@ export const api = {
   projectList: (clientId: number | null, includeArchived: boolean) =>
     invoke<Project[]>("project_list", { clientId, includeArchived }),
   projectSave: (project: Project) => invoke<number>("project_save", { project }),
+  projectWorkspaceGet: (projectId: number) =>
+    invoke<{ root: string; drawing_id: string; draft: string; form: string; shilpi: string } | null>(
+      "project_workspace_get",
+      { projectId },
+    ),
+  projectWorkspaceEnsure: (projectId: number) =>
+    invoke<{ root: string; drawing_id: string; draft: string; form: string; shilpi: string }>(
+      "project_workspace_ensure",
+      { projectId },
+    ),
   projectSetArchived: (id: number, archived: boolean) =>
     invoke<void>("project_set_archived", { id, archived }),
   invoiceList: () => invoke<InvoiceRow[]>("invoice_list"),

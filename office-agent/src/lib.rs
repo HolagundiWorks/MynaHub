@@ -70,7 +70,7 @@ pub const TOOLS: &[Tool] = &[
     },
     Tool {
         name: "company.details",
-        description: "The company's own details (name, address, contacts, PAN, GSTIN, Council of Architecture registration) and, when a project is given, that project's name, site, client, service, stage and brief. Bank and UPI details are not included.",
+        description: "The company's own details (name, address, contacts, PAN, GSTIN, Council of Architecture registration) and, when a project is given, that project's name, site, shared description (summary), client, service, stage and brief. Bank and UPI details are not included.",
         input_schema: || object(json!({ "project_id": { "type": "integer", "minimum": 1 } }), &[]),
         permission: Permission::View,
         run: |conn, args| {
@@ -85,7 +85,7 @@ pub const TOOLS: &[Tool] = &[
     },
     Tool {
         name: "projects.list",
-        description: "List projects, optionally only those of one client. Each has its client's name, site address, status and the stage it has reached.",
+        description: "List projects, optionally only those of one client. Each has its client's name, site address, shared description (summary), status and the stage it has reached.",
         input_schema: || object(json!({ "client_id": { "type": "integer", "minimum": 1 } }), &[]),
         permission: Permission::View,
         run: |conn, args| to_value(&clients::list_projects(conn, int(args, "client_id"), false)?),

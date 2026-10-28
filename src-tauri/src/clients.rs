@@ -40,10 +40,66 @@ pub fn project_list(state: HostState<'_>, client_id: Option<i64>, include_archiv
 #[tauri::command]
 pub fn project_save(state: HostState<'_>, project: Project) -> Result<i64, String> {
     let uid = require(&state, Permission::Edit)?;
+    let creating = project.id.is_none();
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     let id = save_project(&conn, &project)?;
-    db::audit(&conn, Some(uid), if project.id.is_some() { "project_updated" } else { "project_created" }, &format!("project {id}"));
+    db::audit(&conn, Some(uid), if creating { "project_created" } else { "project_updated" }, &format!("project {id}"));
+    // New projects get a suite folder: draft + form + shilpi, linked by osas.project.json.
+    if creating {
+        if let Ok(guard) = state.company.lock() {
+            if let Some(active) = guard.as_ref() {
+                let company_path = std::path::PathBuf::from(&active.summary.path);
+                let _ = office_core::project_workspace::scaffold(
+                    &conn,
+                    office_core::project_workspace::ScaffoldInput {
+                        company_path: &company_path,
+                        project_id: id,
+                        code: &project.code,
+                        name: &project.name,
+                        floors: project.floors,
+                    },
+                );
+            }
+        }
+    }
     Ok(id)
+}
+
+#[tauri::command]
+pub fn project_workspace_get(state: HostState<'_>, project_id: i64) -> Result<Option<office_core::project_workspace::WorkspaceInfo>, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    office_core::project_workspace::get(&conn, project_id)
+}
+
+#[tauri::command]
+pub fn project_workspace_ensure(state: HostState<'_>, project_id: i64) -> Result<office_core::project_workspace::WorkspaceInfo, String> {
+    let uid = require(&state, Permission::Edit)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    let (code, name, floors): (String, String, i64) = conn
+        .query_row(
+            "SELECT code, name, floors FROM projects WHERE id=?1",
+            rusqlite::params![project_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .map_err(|_| "Project not found.".to_string())?;
+    let company_path = {
+        let guard = state.company.lock().map_err(|_| INTERNAL)?;
+        let active = guard.as_ref().ok_or("Open a company file first.")?;
+        std::path::PathBuf::from(&active.summary.path)
+    };
+    let info = office_core::project_workspace::scaffold(
+        &conn,
+        office_core::project_workspace::ScaffoldInput {
+            company_path: &company_path,
+            project_id,
+            code: &code,
+            name: &name,
+            floors,
+        },
+    )?;
+    db::audit(&conn, Some(uid), "project_workspace_ensured", &format!("project {project_id}"));
+    Ok(info)
 }
 
 #[tauri::command]

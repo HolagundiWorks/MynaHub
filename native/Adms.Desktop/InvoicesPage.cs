@@ -12,7 +12,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     private readonly List<JsonElement> _rows = [];
     private readonly ListView _list = new() { SelectionMode = ListViewSelectionMode.Single };
     private readonly ContentControl _header = new();
-    private readonly TextBlock _summary = Flow.Secondary("Loading invoicesâ€¦");
+    private readonly TextBlock _summary = Flow.Secondary("Loading invoices…");
     private readonly TextBlock _empty = Flow.Secondary("");
     private readonly TextBox _search = new() { PlaceholderText = "Number, client or project", Header = "Search", HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly ComboBox _status = new() { Header = "Status", HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -40,11 +40,11 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     private readonly TextBox _receiptReference = Flow.Input("Reference");
     private readonly TextBlock _receiptBalance = Flow.Secondary("");
     private readonly StackPanel _receiptRows = new() { Spacing = 8 };
-    private readonly Button _recordReceipt = new() { Content = "Record receipt", MinHeight = 32 };
+    private readonly Button _recordReceipt = new() { Content = "Record receipt" };
     private readonly TextBox _writeoffAmount = Flow.Input("Amount to write off");
     private readonly TextBox _writeoffDate = Flow.Input("Write-off date");
     private readonly TextBox _writeoffReason = Flow.Input("Reason");
-    private readonly Button _writeoff = new() { Content = "Write off", MinHeight = 32 };
+    private readonly Button _writeoff = new() { Content = "Write off" };
     private readonly StackPanel _writeoffs = new() { Spacing = 8 };
     private readonly StackPanel _receipt = new() { Spacing = 8 };
     private readonly InfoBar _error = new() { IsOpen = false, IsClosable = false, Severity = InfoBarSeverity.Error };
@@ -142,12 +142,12 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         _convert.Click += (_, _) => ConvertProforma();
         _cancelInvoice.Click += async (_, _) => await CancelInvoice();
         _cancelReason.Visibility = Visibility.Collapsed;
-        var addLine = new Button { Content = "Add line", MinHeight = 32 };
+        var addLine = new Button { Content = "Add line" };
         AutomationProperties.SetName(addLine, "Add invoice line");
         addLine.Click += (_, _) => AddLine("", "1", "0");
         _recordReceipt.Click += (_, _) => RecordReceipt();
-        var suggestTen = new Button { Content = "TDS at 10%", MinHeight = 32 };
-        var suggestTwo = new Button { Content = "TDS at 2%", MinHeight = 32 };
+        var suggestTen = new Button { Content = "TDS at 10%" };
+        var suggestTwo = new Button { Content = "TDS at 2%" };
         AutomationProperties.SetName(suggestTen, "Suggest TDS at 10 percent of the fee");
         AutomationProperties.SetName(suggestTwo, "Suggest TDS at 2 percent of the fee");
         suggestTen.Click += (_, _) => SuggestTds("10");
@@ -252,7 +252,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     /// <summary>Opens one invoice. From the project path "record payment", focus goes to the amount received.</summary>
     private void OpenById(long invoiceId, bool focusReceipt)
     {
-        _ = _shell.Run("Opening invoiceâ€¦", () =>
+        _ = _shell.Run("Opening invoice…", () =>
         {
             var detail = _shell.Call("invoice_get", new { id = invoiceId });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -398,7 +398,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         _empty.Visibility = count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void Reload() => _ = _shell.Run("Loading invoicesâ€¦", () =>
+    private void Reload() => _ = _shell.Run("Loading invoices…", () =>
     {
         var page = _shell.Call("invoice_page", new { query = Flow.PageQuery(pageSize: 200) });
         var projects = _shell.Call("project_list", new { client_id = (long?)null, include_archived = false });
@@ -412,7 +412,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             _project.Items.Add(Item("Select a project", 0L));
             if (projects.ValueKind == JsonValueKind.Array)
                 foreach (var row in projects.EnumerateArray())
-                    _project.Items.Add(Item($"{Kit.Str(row, "client_name")} â€” {Kit.Str(row, "name")}", Kit.Id(row) ?? 0));
+                    _project.Items.Add(Item($"{Kit.Str(row, "client_name")} — {Kit.Str(row, "name")}", Kit.Id(row) ?? 0));
             Paint();
             if (Flow.TakeCreate(_shell, "invoices"))
                 _ = BeginNew();
@@ -430,7 +430,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             return;
         _saving = true;
         _save.IsEnabled = false;
-        _ = _shell.Run(_id == null ? "Creating invoiceâ€¦" : "Saving draftâ€¦", () =>
+        _ = _shell.Run(_id == null ? "Creating invoice…" : "Saving draft…", () =>
         {
             var saved = _shell.Call("invoice_save_draft", new { input });
             if (saved.ValueKind == JsonValueKind.Number)
@@ -458,7 +458,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             return;
         _saving = true;
         _issueButton.IsEnabled = false;
-        _ = _shell.Run("Issuing invoiceâ€¦", () =>
+        _ = _shell.Run("Issuing invoice…", () =>
         {
             var saved = _shell.Call("invoice_save_draft", new { input });
             var id = saved.ValueKind == JsonValueKind.Number ? saved.GetInt64() : _id ?? throw new Adms.Interop.AdmsException(1, "Save the draft before issuing it.");
@@ -482,7 +482,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             Fail("Save the draft before previewing it.");
             return;
         }
-        _ = _shell.Run("Preparing PDFâ€¦", () =>
+        _ = _shell.Run("Preparing PDF…", () =>
         {
             var encoded = _shell.Call("invoice_pdf", new { id }).GetString() ?? "";
             _shell.Window.DispatcherQueue.TryEnqueue(async () => await Kit.PreviewPdf(_shell, encoded, "invoice"));
@@ -493,7 +493,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     {
         if (_id is not long id)
             return;
-        _ = _shell.Run("Converting pro formaâ€¦", () =>
+        _ = _shell.Run("Converting pro forma…", () =>
         {
             var created = _shell.Call("invoice_convert_proforma", new { id, today = Kit.Today() });
             var next = created.ValueKind == JsonValueKind.Number ? created.GetInt64() : id;
@@ -514,7 +514,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         }
         if (!await Flow.Confirm(this, "Cancel this invoice?", "The number stays used. Cancel only when nothing has been received against it.", "Cancel invoice"))
             return;
-        _ = _shell.Run("Cancelling invoiceâ€¦", () => _shell.Call("invoice_cancel", new { id, reason }))
+        _ = _shell.Run("Cancelling invoice…", () => _shell.Call("invoice_cancel", new { id, reason }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result)
@@ -529,7 +529,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     {
         if (_id is not long id)
             return;
-        _ = _shell.Run("Loading receiptsâ€¦", () =>
+        _ = _shell.Run("Loading receipts…", () =>
         {
             var list = _shell.Call("receipt_list", new { invoice_id = id });
             var balance = _shell.Call("receipt_balance", new { invoice_id = id });
@@ -545,7 +545,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     private void PaintReceipts(JsonElement list, JsonElement balance)
     {
         var written = Kit.Str(balance, "written_off_display");
-        _receiptBalance.Text = written.Length == 0 || written == "â‚¹0.00"
+        _receiptBalance.Text = written.Length == 0 || written == "?0.00"
             ? $"Outstanding {Kit.Str(balance, "balance_display")}. Received {Kit.Str(balance, "received_display")}. TDS {Kit.Str(balance, "tds_display")}."
             : $"Outstanding {Kit.Str(balance, "balance_display")}. Received {Kit.Str(balance, "received_display")}. TDS {Kit.Str(balance, "tds_display")}. Written off {written}.";
         _receiptRows.Children.Clear();
@@ -558,16 +558,16 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
                 continue;
             var tds = Kit.Str(row, "tds_display");
             var section = Kit.Str(row, "tds_section");
-            var label = $"{Kit.Str(row, "number")} Â· {Kit.Str(row, "received_date")} Â· {Kit.Str(row, "amount_display")}";
+            var label = $"{Kit.Str(row, "number")} · {Kit.Str(row, "received_date")} · {Kit.Str(row, "amount_display")}";
             if (section.Length > 0)
-                label += $" Â· TDS {tds} ({section})";
+                label += $" · TDS {tds} ({section})";
             if (row.TryGetProperty("reversed", out var reversed) && reversed.ValueKind == JsonValueKind.True)
-                label += " Â· Reversed";
-            var preview = new Button { Content = "Receipt PDF", MinHeight = 32 };
+                label += " · Reversed";
+            var preview = new Button { Content = "Receipt PDF" };
             var number = Kit.Str(row, "number");
             preview.Click += (_, _) =>
             {
-                _ = _shell.Run("Preparing receiptâ€¦", () =>
+                _ = _shell.Run("Preparing receipt…", () =>
                 {
                     var encoded = _shell.Call("receipt_pdf", new { receipt_id = receiptId }).GetString() ?? "";
                     _shell.Window.DispatcherQueue.TryEnqueue(async () => await Kit.PreviewPdf(_shell, encoded, number.Length == 0 ? "receipt" : number));
@@ -593,16 +593,16 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             if (Kit.Id(row) is not long writeoffId)
                 continue;
             var reversed = row.TryGetProperty("reversed", out var flag) && flag.ValueKind == JsonValueKind.True;
-            var label = $"Write-off Â· {Kit.Str(row, "date")} Â· {Kit.Str(row, "amount_display")} Â· {Kit.Str(row, "reason")}";
+            var label = $"Write-off · {Kit.Str(row, "date")} · {Kit.Str(row, "amount_display")} · {Kit.Str(row, "reason")}";
             if (reversed)
-                label += " Â· Reversed";
+                label += " · Reversed";
             var line = new Grid { ColumnSpacing = 12 };
             line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             line.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap });
             if (!reversed && _shell.CanPost)
             {
-                var reverse = new Button { Content = "Reverse", MinHeight = 32 };
+                var reverse = new Button { Content = "Reverse" };
                 reverse.Click += (_, _) => ReverseWriteoff(writeoffId);
                 Grid.SetColumn(reverse, 1);
                 line.Children.Add(reverse);
@@ -624,7 +624,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             return;
         }
         var input = new { invoice_id = id, writeoff_date = date, amount, reason };
-        _ = _shell.Run("Writing offâ€¦", () => _shell.Call("invoice_writeoff", new { input }))
+        _ = _shell.Run("Writing off…", () => _shell.Call("invoice_writeoff", new { input }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result)
@@ -644,7 +644,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             Fail("Enter the reason for reversing the write-off.");
             return;
         }
-        _ = _shell.Run("Reversing write-offâ€¦", () => _shell.Call("invoice_writeoff_reverse", new { writeoff_id = writeoffId, reason }))
+        _ = _shell.Run("Reversing write-off…", () => _shell.Call("invoice_writeoff_reverse", new { writeoff_id = writeoffId, reason }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result)
@@ -659,7 +659,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     {
         if (_id is not long id)
             return;
-        _ = _shell.Run("Suggesting TDSâ€¦", () =>
+        _ = _shell.Run("Suggesting TDS…", () =>
         {
             var value = _shell.Call("receipt_suggest_tds", new { invoice_id = id, rate }).GetString() ?? "";
             _shell.Window.DispatcherQueue.TryEnqueue(() => _receiptTds.Text = value);
@@ -687,7 +687,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             return;
         }
         var receipt = new { invoice_id = id, received_date = date, amount, tds, tds_section = section, mode, reference, notes = "", bank_account_id = (long?)null };
-        _ = _shell.Run("Recording receiptâ€¦", () => _shell.Call("receipt_record", new { input = receipt }))
+        _ = _shell.Run("Recording receipt…", () => _shell.Call("receipt_record", new { input = receipt }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result)

@@ -65,6 +65,8 @@ internal sealed class AppShell
 internal sealed class WorkspaceView : UserControl
 {
     private readonly AppShell _shell;
+
+    public AppShell Shell => _shell;
     private static readonly FontFamily IconFont = new("Segoe Fluent Icons, Segoe MDL2 Assets");
 
     private readonly Grid _host = new();
@@ -267,9 +269,11 @@ internal sealed class WorkspaceView : UserControl
         AddTab("Practice", "");
         AddGroup("01", "Practice",
             ("dashboard", "01", "Pulse", ""),
-            ("clients", "02", "Clients", ""),
-            ("projects", "03", "Projects", ""),
-            ("time", "04", "Time", ""),
+            ("tasks", "02", "Tasks", ""),
+            ("clients", "03", "Clients", ""),
+            ("projects", "04", "Projects", ""),
+            ("subcontracts", "05", "Consultancy payouts", ""),
+            ("time", "06", "Time", ""),
             ("enquiries", "05", "Enquiries", ""),
             ("site", "06", "Site records", ""),
             ("permits", "07", "Permits and approvals", ""),
@@ -290,7 +294,6 @@ internal sealed class WorkspaceView : UserControl
             AddGroup("04", "Books",
                 ("acc-expenses", "01", "Expenses", ""),
                 ("acc-income", "02", "Income", ""),
-                ("acc-salaries", "03", "Salaries", ""),
                 ("acc-assets", "04", "Assets", ""),
                 ("acc-journals", "05", "Journals", ""));
             AddGroup("05", "Reports and tax",
@@ -306,9 +309,6 @@ internal sealed class WorkspaceView : UserControl
         AddTab("Office", "");
         AddGroup("06", "Office",
             ("company", "01", "Firm", ""),
-            ("staff", "02", "Staff", ""),
-            ("leave", "03", "Leave", ""),
-            ("attendance", "03", "Attendance", ""),
             ("library", "04", "Library", ""),
             ("settings", "06", "Security and backup", ""));
         AddTab("Suite", "");
@@ -437,20 +437,19 @@ internal sealed class WorkspaceView : UserControl
     private UIElement PageFor(string id) => id switch
     {
         "dashboard" => new DashboardPage(_shell),
+        "tasks" => new TasksBoardPage(_shell),
+        "subcontracts" => new SubcontractsPage(_shell),
         "documents" => new LettersPage(_shell),
         "transmittals" => TransmittalLog.Page(_shell),
         "enquiries" => RecordPages.Enquiries(_shell),
         "site" => RecordPages.Site(_shell),
         "permits" => RecordPages.Permits(_shell),
-        "staff" => RecordPages.Staff(_shell),
-        "leave" => RecordPages.Leave(_shell),
         "library" => RecordPages.Library(_shell),
         "suite" => new SuitePage(_shell.Window),
         "drawings" => new DrawingsPage(_shell),
         "assistant" => new AssistantPage(_shell),
         "proposals" => RecordPages.Proposals(_shell),
         "meetings" => RecordPages.Meetings(_shell),
-        "attendance" => new AttendancePage(_shell),
         "tds26as" => new TdsReconPage(_shell),
         "clients" => new ClientsPage(_shell),
         "projects" => new ProjectsPage(_shell),
@@ -461,7 +460,6 @@ internal sealed class WorkspaceView : UserControl
         "acc-journals" => Ledgers.Journals(_shell),
         "acc-expenses" => Ledgers.Expenses(_shell),
         "acc-income" => Ledgers.Income(_shell),
-        "acc-salaries" => Ledgers.Salaries(_shell),
         "acc-assets" => Ledgers.Assets(_shell),
         "acc-tax" => Ledgers.Tax(_shell),
         "acc-setup" => Ledgers.Accounts(_shell),

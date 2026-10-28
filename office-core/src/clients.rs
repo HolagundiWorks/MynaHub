@@ -72,6 +72,9 @@ pub struct Project {
     /// The first stage that has not been marked, or Complete. Derived, not stored.
     #[serde(default)]
     pub phase: String,
+    /// Short description every suite app can print (title plate, estimate cover, O-Form sheet).
+    #[serde(default)]
+    pub summary: String,
     #[serde(default)]
     pub archived: bool,
     #[serde(default)]
@@ -310,7 +313,8 @@ pub fn list_projects(conn: &Connection, client_id: Option<i64>, include_archived
         .prepare(
             "SELECT p.id, p.client_id, p.code, p.name, p.site_address, p.status, p.consultancy_type, p.floors, p.archived, c.name,
                     COALESCE((SELECT s.name FROM project_stages s WHERE s.project_id = p.id AND s.marked_on = '' ORDER BY s.position LIMIT 1),
-                             CASE WHEN EXISTS (SELECT 1 FROM project_stages s WHERE s.project_id = p.id) THEN 'Complete' ELSE '' END)
+                             CASE WHEN EXISTS (SELECT 1 FROM project_stages s WHERE s.project_id = p.id) THEN 'Complete' ELSE '' END),
+                    COALESCE(p.summary, '')
              FROM projects p JOIN clients c ON c.id = p.client_id
              WHERE (p.archived = 0 OR ?1) AND (?2 IS NULL OR p.client_id = ?2)
              ORDER BY c.name, p.name",
@@ -330,6 +334,7 @@ pub fn list_projects(conn: &Connection, client_id: Option<i64>, include_archived
                 archived: r.get::<_, i64>(8)? != 0,
                 client_name: r.get(9)?,
                 phase: r.get(10)?,
+                summary: r.get(11)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -343,6 +348,10 @@ pub fn save_project(conn: &Connection, p: &Project) -> Result<i64, String> {
     }
     let consultancy_type = consultancy(&p.consultancy_type)?;
     let floors = if (1..=40).contains(&p.floors) { p.floors } else { return Err("Enter the number of floors from 1 to 40.".into()) };
+    let summary = p.summary.trim();
+    if summary.chars().count() > 2000 {
+        return Err("Keep the project description under 2,000 characters.".into());
+    }
     let client_archived: Option<i64> = conn
         .query_row("SELECT archived FROM clients WHERE id=?1", params![p.client_id], |r| r.get(0))
         .ok();
@@ -355,8 +364,8 @@ pub fn save_project(conn: &Connection, p: &Project) -> Result<i64, String> {
         Some(id) => {
             let n = conn
                 .execute(
-                    "UPDATE projects SET client_id=?1, code=?2, name=?3, site_address=?4, status=?5, consultancy_type=?6, floors=?7, updated_at=datetime('now') WHERE id=?8",
-                    params![p.client_id, p.code.trim(), name, p.site_address.trim(), p.status, consultancy_type, floors, id],
+                    "UPDATE projects SET client_id=?1, code=?2, name=?3, site_address=?4, status=?5, consultancy_type=?6, floors=?7, summary=?8, updated_at=datetime('now') WHERE id=?9",
+                    params![p.client_id, p.code.trim(), name, p.site_address.trim(), p.status, consultancy_type, floors, summary, id],
                 )
                 .map_err(|e| map_unique(e, "This client already has a project with this name; it"))?;
             if n == 0 {
@@ -366,8 +375,8 @@ pub fn save_project(conn: &Connection, p: &Project) -> Result<i64, String> {
         }
         None => {
             conn.execute(
-                "INSERT INTO projects (client_id, code, name, site_address, status, consultancy_type, floors) VALUES (?1,?2,?3,?4,?5,?6,?7)",
-                params![p.client_id, p.code.trim(), name, p.site_address.trim(), p.status, consultancy_type, floors],
+                "INSERT INTO projects (client_id, code, name, site_address, status, consultancy_type, floors, summary) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
+                params![p.client_id, p.code.trim(), name, p.site_address.trim(), p.status, consultancy_type, floors, summary],
             )
             .map_err(|e| map_unique(e, "This client already has a project with this name; it"))?;
             Ok(conn.last_insert_rowid())
@@ -481,7 +490,7 @@ mod tests {
     }
 
     fn project(client_id: i64, name: &str) -> Project {
-        Project { id: None, client_id, code: "".into(), name: name.into(), site_address: "".into(), status: "active".into(), consultancy_type: "comprehensive".into(), floors: 1, phase: String::new(), archived: false, client_name: "".into() }
+        Project { id: None, client_id, code: "".into(), name: name.into(), site_address: "".into(), status: "active".into(), consultancy_type: "comprehensive".into(), floors: 1, phase: String::new(), summary: String::new(), archived: false, client_name: "".into() }
     }
 
     #[test]

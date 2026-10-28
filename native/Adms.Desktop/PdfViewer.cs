@@ -31,7 +31,7 @@ internal sealed class PdfViewer : UserControl
     public PdfViewer(Action close)
     {
         _close = close;
-        _status = Flow.Secondary("Preparing the previewâ€¦");
+        _status = Flow.Secondary("Preparing the preview…");
         AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
         var bar = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Padding = new Thickness(16, 12, 16, 8) };
         bar.Children.Add(ActionButton("Close", "Close preview", () => _close()));
@@ -73,7 +73,7 @@ internal sealed class PdfViewer : UserControl
         _zoom = 1;
         UpdateZoomLabel();
         ClearDocument();
-        _status.Text = "Opening the PDFâ€¦";
+        _status.Text = "Opening the PDF…";
         if (pdf.Length < 5 || pdf[0] != (byte)'%' || pdf[1] != (byte)'P')
         {
             _status.Text = "This file is not a PDF.";
@@ -135,7 +135,7 @@ internal sealed class PdfViewer : UserControl
         _rendering = true;
         _pages.Children.Clear();
         var count = _document.PageCount;
-        _status.Text = "Renderingâ€¦";
+        _status.Text = "Rendering…";
         try
         {
             for (uint i = 0; i < count; i++)
@@ -217,7 +217,7 @@ internal sealed class PdfViewer : UserControl
 
     private static Button ActionButton(string label, string name, Action action)
     {
-        var button = new Button { Content = label, MinHeight = 32 };
+        var button = new Button { Content = label };
         AutomationProperties.SetName(button, name);
         button.Click += (_, _) => action();
         return button;

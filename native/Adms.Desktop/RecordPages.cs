@@ -31,7 +31,7 @@ internal sealed class RecordPage : UserControl, ILiveRefresh
     private readonly Dictionary<string, FrameworkElement> _inputs = new();
     private readonly StackPanel _list = new() { Spacing = 0 };
     private readonly InfoBar _notice = Flow.Notice();
-    private readonly Button _save = new() { Content = "Save", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+    private readonly Button _save = new() { Content = "Save", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
     private readonly TextBlock _mode = new() { TextWrapping = TextWrapping.Wrap };
     private readonly Func<RecordPage, JsonElement, Button?>? _extra;
     private long? _editing;
@@ -69,7 +69,7 @@ internal sealed class RecordPage : UserControl, ILiveRefresh
             }
             if (pending.Count == 1)
                 page.Children.Add(pending[0]);
-            var clear = new Button { Content = "New record", MinHeight = 32 };
+            var clear = new Button { Content = "New record" };
             clear.Click += (_, _) => Reset();
             _save.Click += (_, _) => Save();
             page.Children.Add(Flow.Bar(_save, clear));
@@ -115,7 +115,7 @@ internal sealed class RecordPage : UserControl, ILiveRefresh
 
     private void LoadProjects()
     {
-        _ = _shell.Run("Loading projectsâ€¦", () =>
+        _ = _shell.Run("Loading projects…", () =>
         {
             var rows = _shell.Call("project_list", new { client_id = (long?)null, include_archived = false });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -135,7 +135,7 @@ internal sealed class RecordPage : UserControl, ILiveRefresh
                             continue;
                         var client = Kit.Str(row, "client_name");
                         var name = Kit.Str(row, "name");
-                        box.Items.Add(new ComboBoxItem { Content = client.Length == 0 ? name : $"{client} â€” {name}", Tag = id });
+                        box.Items.Add(new ComboBoxItem { Content = client.Length == 0 ? name : $"{client} — {name}", Tag = id });
                     }
                     if (box.SelectedItem == null && box.Items.Count > 0)
                         box.SelectedIndex = 0;
@@ -146,7 +146,7 @@ internal sealed class RecordPage : UserControl, ILiveRefresh
 
     private void LoadClients()
     {
-        _ = _shell.Run("Loading clientsâ€¦", () =>
+        _ = _shell.Run("Loading clients…", () =>
         {
             var rows = _shell.Call("client_list", new { include_archived = false });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -172,7 +172,7 @@ internal sealed class RecordPage : UserControl, ILiveRefresh
 
     private void LoadStaff()
     {
-        _ = _shell.Run("Loading the rosterâ€¦", () =>
+        _ = _shell.Run("Loading the roster…", () =>
         {
             var rows = _shell.Call("staff_list", new { });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -283,7 +283,7 @@ internal sealed class RecordPage : UserControl, ILiveRefresh
                     input[field.Key] = typed;
             }
         }
-        _ = _shell.Run("Savingâ€¦", () => _shell.Call(_saveOp, new { input })).ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
+        _ = _shell.Run("Saving…", () => _shell.Call(_saveOp, new { input })).ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
         {
             if (!task.Result)
             {
@@ -302,7 +302,7 @@ internal sealed class RecordPage : UserControl, ILiveRefresh
 
     private void Load()
     {
-        _ = _shell.Run("Loadingâ€¦", () =>
+        _ = _shell.Run("Loading…", () =>
         {
             var rows = _listOp switch
             {
@@ -455,27 +455,27 @@ internal static class RecordPages
             new("project_id", "Project", RecordKind.OptionalProject),
             new("title", "Title"),
             new("basis", "Fee is", RecordKind.Choice, ProposalBasis),
-            new("cost_paise", "Estimated cost of the work (â‚¹)", RecordKind.Money),
+            new("cost_paise", "Estimated cost of the work (?)", RecordKind.Money),
             new("rate_bp", "Fee percentage", RecordKind.Percent),
             new("area_milli", "Built-up area", RecordKind.Quantity),
-            new("area_rate_paise", "Rate per unit of area (â‚¹)", RecordKind.Money),
-            new("lump_paise", "Lump-sum fee (â‚¹)", RecordKind.Money),
+            new("area_rate_paise", "Rate per unit of area (?)", RecordKind.Money),
+            new("lump_paise", "Lump-sum fee (?)", RecordKind.Money),
             new("gst_bp", "GST (%)", RecordKind.Percent, null, "18"),
             new("issued_date", "Issued on", RecordKind.Date, null, "today"),
             new("valid_until", "Valid until", RecordKind.Date),
             new("notes", "Notes"),
         ],
-        ["Number", "Client", "Title", "Fee with GST (â‚¹)", "Status"],
+        ["Number", "Client", "Title", "Fee with GST (?)", "Status"],
         [new(80), new(1.2, GridUnitType.Star), new(1.6, GridUnitType.Star), new(130), new(110)],
-        r => [Kit.Str(r, "number"), Kit.Str(r, "client"), Kit.Str(r, "title"), Flow.Money(long.TryParse(Kit.Str(r, "total_paise"), out var total) ? total : 0).Replace("â‚¹", "").Trim(),
+        r => [Kit.Str(r, "number"), Kit.Str(r, "client"), Kit.Str(r, "title"), Flow.Money(long.TryParse(Kit.Str(r, "total_paise"), out var total) ? total : 0).Replace("?", "").Trim(),
               Kit.Str(r, "lapsed") is "true" or "True" ? "Sent (lapsed)" : Label(ProposalStatus, Kit.Str(r, "status"))],
         (page, r) =>
         {
             var status = Kit.Str(r, "status");
             if (Kit.Id(r) is not long id || status is "accepted" or "declined")
                 return null;
-            var next = new Button { Content = status == "draft" ? "Mark sent" : "Client decidedâ€¦", MinHeight = 28 };
-            void Move(string to) => _ = page.Shell.Run("Updating the proposalâ€¦", () => page.Shell.Call("proposal_set_status", new { id, status = to }))
+            var next = new Button { Content = status == "draft" ? "Mark sent" : "Client decided…", MinHeight = 28 };
+            void Move(string to) => _ = page.Shell.Run("Updating the proposal…", () => page.Shell.Call("proposal_set_status", new { id, status = to }))
                 .ContinueWith(task => page.Shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) page.Reload(); }));
             if (status == "draft")
                 next.Click += (_, _) => Move("sent");
@@ -536,7 +536,7 @@ internal static class RecordPages
             if (Kit.Str(r, "client_id").Length > 0 || Kit.Id(r) is not long id)
                 return null;
             var make = new Button { Content = "Make client", MinHeight = 28 };
-            make.Click += (_, _) => _ = page.Shell.Run("Adding the clientâ€¦", () => page.Shell.Call("enquiry_convert", new { id }))
+            make.Click += (_, _) => _ = page.Shell.Run("Adding the client…", () => page.Shell.Call("enquiry_convert", new { id }))
                 .ContinueWith(task => page.Shell.Window.DispatcherQueue.TryEnqueue(() =>
                 {
                     if (!task.Result)

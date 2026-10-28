@@ -9,6 +9,7 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+        RequestedTheme = Hcw.Ui.SuiteAppearance.IsDark ? ApplicationTheme.Dark : ApplicationTheme.Light;
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)

@@ -295,16 +295,16 @@ internal static class Ledgers
         var to = Flow.Input("To");
         to.Text = Kit.Today();
         object Period() => new { from = from.Text.Trim(), to = to.Text.Trim(), limit = 200 };
-        var show = new Button { Content = "Show journals", MinHeight = 32 };
-        show.Click += (_, _) => book.Reload(shell, "Loading journalsâ€¦", "journal_list", Period(), JournalHeaders, JournalKeys, JournalMoney);
+        var show = new Button { Content = "Show journals" };
+        show.Click += (_, _) => book.Reload(shell, "Loading journals…", "journal_list", Period(), JournalHeaders, JournalKeys, JournalMoney);
         book.Form.Children.Add(Flow.Section("Period"));
         book.Form.Children.Add(Flow.Pair(from, to));
         book.Form.Children.Add(show);
         var date = Flow.Input("Date");
         date.Text = Kit.Today();
         var narration = Flow.Input("Narration");
-        ComboBox debit = Book.Choices("Debit account", ("Loading accountsâ€¦", ""));
-        ComboBox credit = Book.Choices("Credit account", ("Loading accountsâ€¦", ""));
+        ComboBox debit = Book.Choices("Debit account", ("Loading accounts…", ""));
+        ComboBox credit = Book.Choices("Credit account", ("Loading accounts…", ""));
         var amount = Flow.Input("Amount");
         amount.Text = "0";
         if (shell.CanPost)
@@ -315,7 +315,7 @@ internal static class Ledgers
             book.Form.Children.Add(debit);
             book.Form.Children.Add(credit);
             book.Form.Children.Add(amount);
-            var post = new Button { Content = "Post journal", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+            var post = new Button { Content = "Post journal", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
             post.Click += async (_, _) =>
             {
                 if (!await Flow.Confirm(book, "Post this journal?", "A posted journal cannot be edited. A correction is a new reversal journal.", "Post"))
@@ -333,8 +333,8 @@ internal static class Ledgers
                         new { account_id = creditId, debit = "0", credit = amount.Text.Trim(), memo = "" },
                     },
                 };
-                _ = shell.Run("Posting journalâ€¦", () => shell.Call("journal_post", posted)).ContinueWith(task =>
-                    shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) book.Reload(shell, "Loading journalsâ€¦", "journal_list", Period(), JournalHeaders, JournalKeys, JournalMoney); }));
+                _ = shell.Run("Posting journal…", () => shell.Call("journal_post", posted)).ContinueWith(task =>
+                    shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) book.Reload(shell, "Loading journals…", "journal_list", Period(), JournalHeaders, JournalKeys, JournalMoney); }));
             };
             book.Form.Children.Add(post);
             book.Watch(date, narration, debit, credit, amount);
@@ -343,7 +343,7 @@ internal static class Ledgers
         {
             var id = Kit.Id(row);
             if (id is not long journalId) return;
-            shell.Run("Loading journalâ€¦", () =>
+            shell.Run("Loading journal…", () =>
             {
                 var lines = shell.Call("journal_lines", new { id = journalId });
                 shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -362,7 +362,7 @@ internal static class Ledgers
                 debit = Find(book.Form, "Debit account");
                 credit = Find(book.Form, "Credit account");
             });
-        book.Reload(shell, "Loading journalsâ€¦", "journal_list", Period(), JournalHeaders, JournalKeys, JournalMoney);
+        book.Reload(shell, "Loading journals…", "journal_list", Period(), JournalHeaders, JournalKeys, JournalMoney);
         return book;
     }
 
@@ -395,7 +395,7 @@ internal static class Ledgers
                 var id = Book.SelectedId(account);
                 if (id == 0) { shell.Problem("Choose an expense account."); return null; }
                 return new { expense = new { date = date.Text.Trim(), vendor_id = (long?)null, bill_ref = bill.Text.Trim(), description = description.Text.Trim(), expense_account_id = id, amount = amount.Text.Trim(), gst = gst.Text.Trim(), tds = tds.Text.Trim(), paid_via = Book.Selected(via, "bank") } };
-            }, "expense_record", "Recording expenseâ€¦");
+            }, "expense_record", "Recording expense…");
             book.Watch(date, description, bill, account, amount, gst, tds, via);
         });
         if (page is Book register)
@@ -427,14 +427,14 @@ internal static class Ledgers
             var date = Flow.Input("Payment date");
             date.Text = Kit.Today();
             var via = Book.Choices("Pay from", ("Bank", "bank"), ("Cash", "cash"));
-            var settle = new Button { Content = "Pay this expense", MinHeight = 32 };
+            var settle = new Button { Content = "Pay this expense" };
             settle.Click += async (_, _) =>
             {
                 if (!await Flow.Confirm(book, "Pay this expense?", "This posts the payment in the company file. A paid expense cannot be voided.", "Pay"))
                     return;
                 var when = date.Text.Trim();
                 var how = Book.Selected(via, "bank");
-                _ = shell.Run("Paying expenseâ€¦", () => shell.Call("expense_settle", new { id = expenseId, date = when, paid_via = how })).ContinueWith(task =>
+                _ = shell.Run("Paying expense…", () => shell.Call("expense_settle", new { id = expenseId, date = when, paid_via = how })).ContinueWith(task =>
                     shell.Window.DispatcherQueue.TryEnqueue(() =>
                     {
                         if (!task.Result)
@@ -450,7 +450,7 @@ internal static class Ledgers
         if (settled)
             return;
         var reason = Flow.Input("Reason for voiding");
-        var voidButton = new Button { Content = "Void this expense", MinHeight = 32 };
+        var voidButton = new Button { Content = "Void this expense" };
         voidButton.Click += async (_, _) =>
         {
             var why = reason.Text.Trim();
@@ -461,7 +461,7 @@ internal static class Ledgers
             }
             if (!await Flow.Confirm(book, "Void this expense?", "Voiding posts a reversal. The reason is stored in the audit log.", "Void"))
                 return;
-            _ = shell.Run("Voiding expenseâ€¦", () => shell.Call("expense_void", new { id = expenseId, reason = why })).ContinueWith(task =>
+            _ = shell.Run("Voiding expense…", () => shell.Call("expense_void", new { id = expenseId, reason = why })).ContinueWith(task =>
                 shell.Window.DispatcherQueue.TryEnqueue(() =>
                 {
                     if (!task.Result)
@@ -503,18 +503,18 @@ internal static class Ledgers
             {
                 long? propertyId = Book.SelectedId(property) is long id && id > 0 ? id : null;
                 return new { income = new { date = date.Text.Trim(), kind = Book.Selected(kind, "other"), property_id = propertyId, payer = payer.Text.Trim(), description = description.Text.Trim(), amount = amount.Text.Trim(), gst = gst.Text.Trim(), gst_mode = Book.Selected(mode, "intra"), tds = tds.Text.Trim(), received_via = Book.Selected(via, "bank") } };
-            }, "income_record", "Recording incomeâ€¦");
+            }, "income_record", "Recording income…");
             var propertyName = Flow.Input("New property name");
             var propertyKind = Book.Choices("Property kind", ("Residential", "residential"), ("Commercial", "commercial"));
-            var saveProperty = new Button { Content = "Save property", MinHeight = 32 };
+            var saveProperty = new Button { Content = "Save property" };
             saveProperty.Click += (_, _) =>
             {
                 var saved = new { property = new { id = (long?)null, name = propertyName.Text.Trim(), kind = Book.Selected(propertyKind, "residential"), address = "", active = true } };
-                _ = shell.Run("Saving propertyâ€¦", () => shell.Call("property_save", saved)).ContinueWith(task => shell.Window.DispatcherQueue.TryEnqueue(() =>
+                _ = shell.Run("Saving property…", () => shell.Call("property_save", saved)).ContinueWith(task => shell.Window.DispatcherQueue.TryEnqueue(() =>
                 {
                     if (!task.Result)
                         return;
-                    _ = shell.Run("Loading propertiesâ€¦", () =>
+                    _ = shell.Run("Loading properties…", () =>
                     {
                         var list = shell.Call("property_list");
                         shell.Window.DispatcherQueue.TryEnqueue(() => FillProperties(property, list));
@@ -525,13 +525,13 @@ internal static class Ledgers
             book.Form.Children.Add(propertyKind);
             book.Form.Children.Add(saveProperty);
             book.Watch(date, kind, property, payer, description, amount, gst, mode, tds, via, propertyName);
-            _ = shell.Run("Loading propertiesâ€¦", () =>
+            _ = shell.Run("Loading properties…", () =>
             {
                 properties = shell.Call("property_list");
                 shell.Window.DispatcherQueue.TryEnqueue(() => FillProperties(property, properties));
             });
         }
-        book.Reload(shell, "Loading incomeâ€¦", "income_list", null, ["Date", "Kind", "Payer", "Amount"], ["date", "kind", "payer", "amount_display"], [false, false, false, true]);
+        book.Reload(shell, "Loading income…", "income_list", null, ["Date", "Kind", "Payer", "Amount"], ["date", "kind", "payer", "amount_display"], [false, false, false, true]);
         return book;
     }
 
@@ -576,7 +576,7 @@ internal static class Ledgers
                     esi_employer = esiEmployer.Text.Trim(),
                     professional_tax = professional.Text.Trim(),
                 }
-            }, "payroll_record", "Recording salaryâ€¦");
+            }, "payroll_record", "Recording salary…");
             book.Watch(date, employee, period, gross, tds, pfEmployee, pfEmployer, esiEmployee, esiEmployer, professional, via);
         });
 
@@ -598,20 +598,20 @@ internal static class Ledgers
             AddPost(shell, book, "Add asset", "Add this asset?", "This posts the purchase in the company file.", () => new
             {
                 asset = new { name = name.Text.Trim(), purchase_date = date.Text.Trim(), cost = cost.Text.Trim(), rate_percent = rate.Text.Trim(), paid_via = Book.Selected(via, "bank") }
-            }, "asset_add", "Adding assetâ€¦");
-            var depreciate = new Button { Content = "Depreciate this year", MinHeight = 32 };
+            }, "asset_add", "Adding asset…");
+            var depreciate = new Button { Content = "Depreciate this year" };
             depreciate.Click += async (_, _) =>
             {
                 if (!await Flow.Confirm(book, "Post this year's depreciation?", "Each asset is depreciated once for the financial year. The company file calculates the amounts.", "Post depreciation"))
                     return;
                 var fy = Kit.FinancialYear();
-                _ = shell.Run("Posting depreciationâ€¦", () => shell.Call("asset_depreciate", new { fy })).ContinueWith(task =>
+                _ = shell.Run("Posting depreciation…", () => shell.Call("asset_depreciate", new { fy })).ContinueWith(task =>
                     shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) book.Refresh(); }));
             };
             book.Form.Children.Add(depreciate);
             book.Watch(name, date, cost, rate, via);
         }
-        book.Reload(shell, "Loading assetsâ€¦", "asset_list", null, ["Name", "Purchased", "Cost", "Book value"], ["name", "purchase_date", "cost_display", "book_value_display"], [false, false, true, true]);
+        book.Reload(shell, "Loading assets…", "asset_list", null, ["Name", "Purchased", "Cost", "Book value"], ["name", "purchase_date", "cost_display", "book_value_display"], [false, false, true, true]);
         return book;
     }
 
@@ -629,13 +629,13 @@ internal static class Ledgers
             book.Form.Children.Add(Flow.Section("Record a payment"));
             foreach (var control in new Control[] { kind, date, amount, narration, via })
                 book.Form.Children.Add(control);
-            var pay = new Button { Content = "Record payment", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+            var pay = new Button { Content = "Record payment", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
             pay.Click += async (_, _) =>
             {
                 if (!await Flow.Confirm(book, "Record this tax payment?", "This posts a journal in the company file.", "Record payment"))
                     return;
                 var payment = new { kind = Book.Selected(kind, "tds"), date = date.Text.Trim(), amount = amount.Text.Trim(), paid_via = Book.Selected(via, "bank"), narration = narration.Text.Trim() };
-                _ = shell.Run("Recording tax paymentâ€¦", () => shell.Call("tax_payment", payment)).ContinueWith(task =>
+                _ = shell.Run("Recording tax payment…", () => shell.Call("tax_payment", payment)).ContinueWith(task =>
                     shell.Window.DispatcherQueue.TryEnqueue(() =>
                     {
                         if (!task.Result)
@@ -653,7 +653,7 @@ internal static class Ledgers
     }
 
     private static void LoadTax(AppShell shell, Book book) =>
-        _ = shell.Run("Loading tax paymentsâ€¦", () =>
+        _ = shell.Run("Loading tax payments…", () =>
         {
             var page = shell.Call("journal_page", new
             {
@@ -681,11 +681,11 @@ internal static class Ledgers
             book.Form.Children.Add(code);
             book.Form.Children.Add(name);
             book.Form.Children.Add(kind);
-            var create = new Button { Content = "Create account", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+            var create = new Button { Content = "Create account", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
             create.Click += (_, _) =>
             {
                 var created = new { code = code.Text.Trim(), name = name.Text.Trim(), kind = Book.Selected(kind, "expense") };
-                _ = shell.Run("Creating accountâ€¦", () => shell.Call("account_create", created)).ContinueWith(task =>
+                _ = shell.Run("Creating account…", () => shell.Call("account_create", created)).ContinueWith(task =>
                     shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) ReloadAccounts(shell, book); }));
             };
             book.Form.Children.Add(create);
@@ -699,7 +699,7 @@ internal static class Ledgers
         if (shell.CanManage)
         {
             var password = new PasswordBox { Header = "Your password" };
-            var close = new Button { Content = "Close selected year", MinHeight = 32 };
+            var close = new Button { Content = "Close selected year" };
             close.Click += async (_, _) =>
             {
                 var fy = yearBox.SelectedItem is ComboBoxItem item && item.Tag is string tag ? tag : "";
@@ -711,13 +711,13 @@ internal static class Ledgers
                 if (!await Flow.Confirm(book, "Close this financial year?", "Closing a year blocks new postings in that year. Your password confirms it.", "Close year"))
                     return;
                 var secret = password.Password;
-                _ = shell.Run("Updating the yearâ€¦", () => shell.Call("period_set", new { fy, closed = true, password = secret }));
+                _ = shell.Run("Updating the year…", () => shell.Call("period_set", new { fy, closed = true, password = secret }));
             };
             book.Form.Children.Add(password);
             book.Form.Children.Add(close);
         }
         ReloadAccounts(shell, book);
-        _ = shell.Run("Loading yearsâ€¦", () =>
+        _ = shell.Run("Loading years…", () =>
         {
             var list = shell.Call("period_list");
             shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -729,7 +729,7 @@ internal static class Ledgers
                     foreach (var row in list.EnumerateArray())
                     {
                         var fy = Kit.Str(row, "fy");
-                        yearBox.Items.Add(new ComboBoxItem { Content = $"{fy} Â· {Kit.Str(row, "status")}", Tag = fy });
+                        yearBox.Items.Add(new ComboBoxItem { Content = $"{fy} · {Kit.Str(row, "status")}", Tag = fy });
                     }
                 }
                 if (yearBox.Items.Count > 0)
@@ -785,7 +785,7 @@ internal static class Ledgers
         page.Children.Add(LogoSlot(shell, "wide", "Rectangle logo", wideImage, wideClear));
         void LoadLogos()
         {
-            _ = shell.Run("Loading logosâ€¦", () =>
+            _ = shell.Run("Loading logos…", () =>
             {
                 var stored = shell.Call("company_logo");
                 shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -801,7 +801,7 @@ internal static class Ledgers
         {
             if (!shell.CanManage)
                 return;
-            _ = shell.Run("Removing logoâ€¦", () => shell.Call("company_logo_clear", new { shape })).ContinueWith(task =>
+            _ = shell.Run("Removing logo…", () => shell.Call("company_logo_clear", new { shape })).ContinueWith(task =>
                 shell.Window.DispatcherQueue.TryEnqueue(() =>
                 {
                     if (!task.Result)
@@ -810,7 +810,7 @@ internal static class Ledgers
                     shell.RefreshPaneLogo?.Invoke();
                 }));
         }
-        var save = new Button { Content = "Save profile", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+        var save = new Button { Content = "Save profile", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
         save.Visibility = shell.CanManage ? Visibility.Visible : Visibility.Collapsed;
         void SaveProfile()
         {
@@ -819,7 +819,7 @@ internal static class Ledgers
             var profile = fields.ToDictionary(pair => pair.Key, pair => pair.Value.Text);
             profile["gst_scheme"] = Book.Selected(scheme, "none");
             profile["letterhead_style"] = Book.Selected(letterhead, "classic");
-            _ = shell.Run("Saving profileâ€¦", () => shell.Call("company_save_profile", new { profile })).ContinueWith(task =>
+            _ = shell.Run("Saving profile…", () => shell.Call("company_save_profile", new { profile })).ContinueWith(task =>
                 shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) form.ClearDirty(); }));
         }
         save.Click += (_, _) => SaveProfile();
@@ -827,7 +827,7 @@ internal static class Ledgers
         form.SaveAction = SaveProfile;
         if (shell.CanManage)
             form.Watch([.. fields.Values, scheme, letterhead]);
-        _ = shell.Run("Loading profileâ€¦", () =>
+        _ = shell.Run("Loading profile…", () =>
         {
             var profile = shell.Call("company_get_profile");
             shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -865,7 +865,7 @@ internal static class Ledgers
                 return;
             }
             var data = Convert.ToBase64String(bytes);
-            _ = shell.Run("Saving logoâ€¦", () => shell.Call("company_logo_set", new { shape, data_base64 = data })).ContinueWith(task =>
+            _ = shell.Run("Saving logo…", () => shell.Call("company_logo_set", new { shape, data_base64 = data })).ContinueWith(task =>
                 shell.Window.DispatcherQueue.TryEnqueue(() =>
                 {
                     if (!task.Result)
@@ -927,7 +927,7 @@ internal static class Ledgers
             page.Children.Add(Flow.Section("Recent activity"));
             page.Children.Add(Flow.Secondary("Latest events recorded in this company file."));
             page.Children.Add(activity);
-            var refreshActivity = new Button { Content = "Refresh activity", MinHeight = 32 };
+            var refreshActivity = new Button { Content = "Refresh activity" };
             refreshActivity.Click += (_, _) => LoadActivity(shell, activity);
             page.Children.Add(refreshActivity);
             LoadActivity(shell, activity);
@@ -946,8 +946,8 @@ internal static class Ledgers
             page.Children.Add(Flow.Section("Company file"));
             var protection = new TextBlock { TextWrapping = TextWrapping.Wrap };
             page.Children.Add(protection);
-            var protect = new Button { Content = "Protect this company file", MinHeight = 32 };
-            var rotate = new Button { Content = "New recovery code", MinHeight = 32 };
+            var protect = new Button { Content = "Protect this company file" };
+            var rotate = new Button { Content = "New recovery code" };
             protect.Click += async (_, _) =>
             {
                 if (yours.Password.Length == 0)
@@ -973,7 +973,7 @@ internal static class Ledgers
                     return;
                 var adminPassword = yours.Password;
                 string? code = null;
-                var saved = await shell.Run("Protecting the company fileâ€¦", () =>
+                var saved = await shell.Run("Protecting the company file…", () =>
                 {
                     code = shell.Call("company_protect", new { password = adminPassword }).GetString();
                 });
@@ -1007,7 +1007,7 @@ internal static class Ledgers
                 }
                 var adminPassword = yours.Password;
                 string? code = null;
-                var saved = await shell.Run("Writing a new recovery codeâ€¦", () =>
+                var saved = await shell.Run("Writing a new recovery code…", () =>
                 {
                     code = shell.Call("company_rotate_recovery", new { password = adminPassword }).GetString();
                 });
@@ -1029,7 +1029,7 @@ internal static class Ledgers
                 await shown.ShowAsync();
             };
             page.Children.Add(Flow.Bar(protect, rotate));
-            shell.Run("Loading file protectionâ€¦", () =>
+            shell.Run("Loading file protection…", () =>
             {
                 var status = shell.Call("company_protection");
                 var on = Kit.Str(status, "protected") is "true" or "True";
@@ -1045,20 +1045,20 @@ internal static class Ledgers
             page.Children.Add(Flow.Section("Backup"));
             page.Children.Add(Flow.Secondary("A backup of this company file needs your password."));
             page.Children.Add(yours);
-            var backup = new Button { Content = "Create backup", MinHeight = 32 };
+            var backup = new Button { Content = "Create backup" };
             backup.Click += (_, _) =>
             {
                 var adminPassword = yours.Password;
-                shell.Run("Creating backupâ€¦", () => Pages.Show(shell, output, "Backup", shell.Call("backup_create", new { password = adminPassword }), ["File", "SHA-256", "Bytes", "Folder"], ["filename", "sha256", "bytes", "folder"], [false, false, true, false]));
+                shell.Run("Creating backup…", () => Pages.Show(shell, output, "Backup", shell.Call("backup_create", new { password = adminPassword }), ["File", "SHA-256", "Bytes", "Folder"], ["filename", "sha256", "bytes", "folder"], [false, false, true, false]));
             };
             page.Children.Add(backup);
             form.Watch([yours]);
             form.Arm();
         }
-        var audit = new Button { Content = "Show audit", MinHeight = 32 };
-        audit.Click += (_, _) => shell.Run("Loading auditâ€¦", () => Pages.Show(shell, output, "Audit", shell.Call("audit_list", new { limit = 100 }), ["When", "Person", "Event", "Detail"], ["at", "user", "event", "detail"], [false, false, false, false]));
-        var backups = new Button { Content = "Show backups", MinHeight = 32 };
-        backups.Click += (_, _) => shell.Run("Loading backupsâ€¦", () => Pages.Show(shell, output, "Backups", shell.Call("backup_list"), ["File", "Bytes"], ["filename", "bytes"], [false, true]));
+        var audit = new Button { Content = "Show audit" };
+        audit.Click += (_, _) => shell.Run("Loading audit…", () => Pages.Show(shell, output, "Audit", shell.Call("audit_list", new { limit = 100 }), ["When", "Person", "Event", "Detail"], ["at", "user", "event", "detail"], [false, false, false, false]));
+        var backups = new Button { Content = "Show backups" };
+        backups.Click += (_, _) => shell.Run("Loading backups…", () => Pages.Show(shell, output, "Backups", shell.Call("backup_list"), ["File", "Bytes"], ["filename", "bytes"], [false, true]));
         var commands = new StackPanel { Spacing = 8 };
         if (shell.CanAudit)
             commands.Children.Add(audit);
@@ -1072,7 +1072,7 @@ internal static class Ledgers
 
     private static void LoadActivity(AppShell shell, StackPanel activity)
     {
-        _ = shell.Run("Loading recent activityâ€¦", () =>
+        _ = shell.Run("Loading recent activity…", () =>
         {
             var audit = Flow.Try(shell, "audit_page", new { query = Flow.PageQuery(pageSize: 20) });
             shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -1087,7 +1087,7 @@ internal static class Ledgers
                         var who = Kit.Str(row, "user");
                         var ev = EventLabel(Kit.Str(row, "event"));
                         var detail = Kit.Str(row, "detail");
-                        var line = Flow.Columns([when, who.Length == 0 ? "â€”" : who, ev, detail.Length == 0 ? "â€”" : detail], ActivityWidths);
+                        var line = Flow.Columns([when, who.Length == 0 ? "—" : who, ev, detail.Length == 0 ? "—" : detail], ActivityWidths);
                         AutomationProperties.SetName(line, $"{when}, {who}, {ev}. {detail}");
                         activity.Children.Add(line);
                     }
@@ -1164,19 +1164,19 @@ internal static class Ledgers
         var book = new Book(sheet, "Accounts", title, result);
         if (shell.CanPost)
         {
-            _ = shell.Run("Loading accountsâ€¦", () =>
+            _ = shell.Run("Loading accounts…", () =>
             {
                 var accounts = shell.Call("account_list", new { as_of = Kit.Today() });
                 shell.Window.DispatcherQueue.TryEnqueue(() => build(book, accounts));
             });
         }
-        book.Reload(shell, "Loadingâ€¦", operation, operation == "journal_list" ? new { from = Kit.YearStart(), to = Kit.Today(), limit = 200 } : null, headers, keys, money);
+        book.Reload(shell, "Loading…", operation, operation == "journal_list" ? new { from = Kit.YearStart(), to = Kit.Today(), limit = 200 } : null, headers, keys, money);
         return book;
     }
 
     private static void AddPost(AppShell shell, Book book, string label, string title, string message, Func<object?> capture, string operation, string status)
     {
-        var button = new Button { Content = label, MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+        var button = new Button { Content = label, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
         button.Click += async (_, _) =>
         {
             if (!await Flow.Confirm(book, title, message, label))
@@ -1197,14 +1197,14 @@ internal static class Ledgers
     }
 
     private static void LoadAccounts(AppShell shell, Action<JsonElement> apply) =>
-        _ = shell.Run("Loading accountsâ€¦", () =>
+        _ = shell.Run("Loading accounts…", () =>
         {
             var rows = shell.Call("account_list", new { as_of = Kit.Today() });
             shell.Window.DispatcherQueue.TryEnqueue(() => apply(rows));
         });
 
     private static void ReloadAccounts(AppShell shell, Book book) =>
-        book.Reload(shell, "Loading accountsâ€¦", "account_list", new { as_of = Kit.Today() }, ["Code", "Name", "Kind", "Balance"], ["code", "name", "kind", "balance_display"], [false, false, false, true]);
+        book.Reload(shell, "Loading accounts…", "account_list", new { as_of = Kit.Today() }, ["Code", "Name", "Kind", "Balance"], ["code", "name", "kind", "balance_display"], [false, false, false, true]);
 
     private static void FillProperties(ComboBox box, JsonElement rows)
     {

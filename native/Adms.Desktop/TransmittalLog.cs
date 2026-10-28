@@ -42,10 +42,10 @@ internal sealed class TransmittalLog : UserControl
         page.Children.Add(Flow.Section("Drawings in this transmittal"));
         page.Children.Add(Flow.Pair(_number, _title));
         page.Children.Add(Flow.Pair(_revision, _copies));
-        var add = new Button { Content = "Add drawing", MinHeight = 32 };
+        var add = new Button { Content = "Add drawing" };
         add.Visibility = shell.CanEdit ? Visibility.Visible : Visibility.Collapsed;
         add.Click += (_, _) => AddDrawing();
-        var record = new Button { Content = "Record transmittal", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+        var record = new Button { Content = "Record transmittal", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
         record.Visibility = shell.CanEdit ? Visibility.Visible : Visibility.Collapsed;
         record.Click += (_, _) => Record();
         page.Children.Add(Flow.Bar(add, record));
@@ -61,7 +61,7 @@ internal sealed class TransmittalLog : UserControl
 
     private void LoadProjects()
     {
-        _ = _shell.Run("Loading projectsâ€¦", () =>
+        _ = _shell.Run("Loading projects…", () =>
         {
             var rows = _shell.Call("project_list", new { client_id = (long?)null, include_archived = false });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -75,7 +75,7 @@ internal sealed class TransmittalLog : UserControl
                         continue;
                     var client = Kit.Str(row, "client_name");
                     var name = Kit.Str(row, "name");
-                    _project.Items.Add(new ComboBoxItem { Content = client.Length == 0 ? name : $"{client} â€” {name}", Tag = id });
+                    _project.Items.Add(new ComboBoxItem { Content = client.Length == 0 ? name : $"{client} — {name}", Tag = id });
                 }
                 if (_project.Items.Count > 0)
                     _project.SelectedIndex = 0;
@@ -151,7 +151,7 @@ internal sealed class TransmittalLog : UserControl
         var medium = (_medium.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
         var reference = _reference.Text.Trim();
         var items = _items.Select(row => new { drawing_number = row.Number, title = row.Title, revision = row.Revision, copies = row.Copies }).ToArray();
-        _ = _shell.Run("Recording the transmittalâ€¦", () => _shell.Call("transmittal_record", new { project_id = projectId, sent_date = sentDate, recipient, purpose, medium, reference, items }))
+        _ = _shell.Run("Recording the transmittal…", () => _shell.Call("transmittal_record", new { project_id = projectId, sent_date = sentDate, recipient, purpose, medium, reference, items }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result)
@@ -169,7 +169,7 @@ internal sealed class TransmittalLog : UserControl
 
     private void LoadLog()
     {
-        _ = _shell.Run("Loading transmittalsâ€¦", () =>
+        _ = _shell.Run("Loading transmittals…", () =>
         {
             var rows = _shell.Call("transmittal_list", new { project_id = (long?)null });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -187,21 +187,21 @@ internal sealed class TransmittalLog : UserControl
                     var block = new StackPanel { Spacing = 4, Margin = new Thickness(0, 0, 0, 12) };
                     block.Children.Add(new TextBlock
                     {
-                        Text = $"{Kit.Str(row, "sent_date")}  {Kit.Str(row, "client")} â€” {Kit.Str(row, "project")}  {Kit.Str(row, "reference")}",
+                        Text = $"{Kit.Str(row, "sent_date")}  {Kit.Str(row, "client")} — {Kit.Str(row, "project")}  {Kit.Str(row, "reference")}",
                         TextWrapping = TextWrapping.Wrap,
                     });
-                    block.Children.Add(Flow.Secondary($"{Kit.Str(row, "recipient")} Â· {Kit.Str(row, "purpose")} Â· {Kit.Str(row, "medium")} Â· {(acknowledged ? "Acknowledged" : "Waiting for acknowledgement")}"));
+                    block.Children.Add(Flow.Secondary($"{Kit.Str(row, "recipient")} · {Kit.Str(row, "purpose")} · {Kit.Str(row, "medium")} · {(acknowledged ? "Acknowledged" : "Waiting for acknowledgement")}"));
                     block.Children.Add(new TextBlock { Text = drawings, TextWrapping = TextWrapping.Wrap });
                     if (_shell.CanEdit && Kit.Id(row) is long id)
                     {
                         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
                         if (!acknowledged)
                         {
-                            var ack = new Button { Content = "Mark acknowledged", MinHeight = 32 };
+                            var ack = new Button { Content = "Mark acknowledged" };
                             ack.Click += (_, _) => Acknowledge(id);
                             buttons.Children.Add(ack);
                         }
-                        var remove = new Button { Content = "Remove", MinHeight = 32 };
+                        var remove = new Button { Content = "Remove" };
                         remove.Click += (_, _) => Remove(id);
                         buttons.Children.Add(remove);
                         block.Children.Add(buttons);
@@ -226,7 +226,7 @@ internal sealed class TransmittalLog : UserControl
             var name = number.Length == 0 ? title : $"{number} {title}";
             if (revision.Length > 0)
                 name += $" rev {revision}";
-            name += $" Â· {copies} copies";
+            name += $" · {copies} copies";
             lines.Add(name);
         }
         return string.Join("\n", lines);
@@ -234,13 +234,13 @@ internal sealed class TransmittalLog : UserControl
 
     private void Acknowledge(long id)
     {
-        _ = _shell.Run("Recording the acknowledgementâ€¦", () => _shell.Call("transmittal_acknowledge", new { id }))
+        _ = _shell.Run("Recording the acknowledgement…", () => _shell.Call("transmittal_acknowledge", new { id }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) LoadLog(); }));
     }
 
     private void Remove(long id)
     {
-        _ = _shell.Run("Removing the transmittalâ€¦", () => _shell.Call("transmittal_cancel", new { id }))
+        _ = _shell.Run("Removing the transmittal…", () => _shell.Call("transmittal_cancel", new { id }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) LoadLog(); }));
     }
 
