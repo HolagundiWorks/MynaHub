@@ -106,7 +106,7 @@ internal sealed class WorkspaceView : UserControl
         StartLiveSync();
         Hcw.Ui.SuiteNavigation.Apply(_nav, Hcw.Ui.SuiteApp.Studio);
         AutomationProperties.SetName(_nav, "Sections");
-        AutomationProperties.SetLandmarkType(_nav, AutomationLandmarkType.Navigation);
+        Hcw.Ui.SuiteLandmarks.Navigation(_nav, "Sections");
         AutomationProperties.SetName(_paneLogo, "O-Studio");
         _nav.ItemInvoked += (_, args) =>
         {
@@ -126,7 +126,7 @@ internal sealed class WorkspaceView : UserControl
         LoadPaneLogo();
         _host.Background = Flow.Ink("SurfaceBackgroundBrush");
         AutomationProperties.SetName(_host, "Main content");
-        AutomationProperties.SetLandmarkType(_host, AutomationLandmarkType.Main);
+        Hcw.Ui.SuiteLandmarks.Main(_host, "Main content");
         var sheet = new Border
         {
             Margin = new Thickness(8),
