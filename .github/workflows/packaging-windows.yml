@@ -1,0 +1,66 @@
+# Build O-Studio-Setup.exe (NSIS). Authenticode runs when the shared suite signing
+# secrets are present; otherwise uploads -unsigned. Do not invent certificates.
+name: packaging-windows
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  package:
+    runs-on: windows-latest
+    env:
+      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_SIGNING_ENDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+      AZURE_SIGNING_REGION: ${{ secrets.AZURE_SIGNING_REGION }}
+      AZURE_SIGNING_ACCOUNT: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+      AZURE_CERT_PROFILE: ${{ secrets.AZURE_CERT_PROFILE }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: aos
+      - uses: actions/checkout@v4
+        with:
+          repository: HolagundiWorks/O-UI
+          path: o-ui
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: aos/src-tauri
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis -y --no-progress
+      - name: Build and optionally sign Setup.exe
+        working-directory: aos
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File installer\build.ps1
+          $setup = Get-ChildItem installer\O-Studio-Setup-*.exe |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $setup) { throw "O-Studio-Setup-*.exe not found" }
+          $ver = if ($setup.BaseName -match 'O-Studio-Setup-(.+)$') { $Matches[1] } else { "unknown" }
+          $sig = Get-AuthenticodeSignature -FilePath $setup.FullName
+          $outDir = "dist"
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          if ($sig.SignerCertificate) {
+            Copy-Item $setup.FullName (Join-Path $outDir "O-Studio-Setup-$ver.exe")
+            Write-Host "Signed: $($sig.SignerCertificate.Subject)"
+          } else {
+            Copy-Item $setup.FullName (Join-Path $outDir "O-Studio-Setup-$ver-unsigned.exe")
+            Write-Host "::warning::No signing secrets — uploaded unsigned Setup.exe"
+          }
+          Get-FileHash (Get-ChildItem $outDir\*.exe) -Algorithm SHA256 | Format-List
+      - uses: actions/upload-artifact@v4
+        with:
+          name: o-studio-setup
+          path: aos/dist/*
+          if-no-files-found: error
