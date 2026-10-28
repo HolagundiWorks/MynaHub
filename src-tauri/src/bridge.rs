@@ -230,6 +230,7 @@ pub fn invoke(state: &AppState, op: &str, args: &Value) -> Result<Option<Vec<u8>
         "proposal_save" => run(crate::desk::proposal_save_record(HostState::new(state), arg(args, "input")?)),
         "proposal_list" => run(crate::desk::proposal_list_records(HostState::new(state), arg(args, "client_id")?)),
         "proposal_set_status" => run(crate::desk::proposal_set_status_record(HostState::new(state), arg(args, "id")?, arg(args, "status")?)),
+        "project_estimate_summary" => run(crate::desk::project_estimate_summary(HostState::new(state), arg(args, "project_id")?)),
         "meeting_save" => run(crate::desk::meeting_save_record(HostState::new(state), arg(args, "input")?)),
         "meeting_list" => run(crate::desk::meeting_list_records(HostState::new(state), arg(args, "project_id")?)),
         "attendance_mark" => run(crate::desk::attendance_mark_record(HostState::new(state), arg(args, "staff_id")?, arg(args, "day")?, arg(args, "status")?, arg(args, "note")?)),

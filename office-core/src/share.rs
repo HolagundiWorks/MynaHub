@@ -170,6 +170,52 @@ pub fn doc_put(conn: &Connection, project_id: i64, kind: &str, expected_revision
     Ok((revision, checksum))
 }
 
+/// What O-Studio shows against a fee proposal: the last estimate O-CoreOp saved on this project in the company file.
+///
+/// Reads `project_documents` kind `aqc.project` and picks `last_estimate.grand_total` (rupees) plus any `artifact_ref` /
+/// top-level `project_ref`. Returns a JSON object with `present: false` when there is no document or no estimate yet.
+pub fn estimate_summary(conn: &Connection, project_id: i64) -> Result<serde_json::Value, String> {
+    project_exists(conn, project_id)?;
+    let Some(doc) = doc_get(conn, project_id, "aqc.project")? else {
+        return Ok(serde_json::json!({
+            "present": false,
+            "project_id": project_id,
+            "reason": "O-CoreOp has not saved a quantities document for this project yet."
+        }));
+    };
+    let body: serde_json::Value = serde_json::from_str(&doc.body).map_err(|_| "The O-CoreOp project document could not be read.".to_string())?;
+    let Some(estimate) = body.get("last_estimate").filter(|v| !v.is_null()) else {
+        return Ok(serde_json::json!({
+            "present": false,
+            "project_id": project_id,
+            "document_revision": doc.revision,
+            "updated_by": doc.updated_by,
+            "updated_at": doc.updated_at,
+            "reason": "O-CoreOp has not calculated an estimate for this project yet."
+        }));
+    };
+    let grand = estimate.get("grand_total").and_then(|v| v.as_f64()).unwrap_or(0.0);
+    let base = estimate.get("base_total").and_then(|v| v.as_f64()).unwrap_or(0.0);
+    // Fee proposals store money in paise; round half-up from rupees.
+    let grand_paise = (grand * 100.0).round() as i64;
+    let base_paise = (base * 100.0).round() as i64;
+    Ok(serde_json::json!({
+        "present": true,
+        "project_id": project_id,
+        "document_revision": doc.revision,
+        "updated_by": doc.updated_by,
+        "updated_at": doc.updated_at,
+        "grand_total_rupees": grand,
+        "grand_total_paise": grand_paise,
+        "base_total_rupees": base,
+        "base_total_paise": base_paise,
+        "rate_book_version_id": estimate.get("rate_book_version_id").and_then(|v| v.as_str()).unwrap_or(""),
+        "rate_book_version_name": estimate.get("rate_book_version_name").and_then(|v| v.as_str()).unwrap_or(""),
+        "artifact_ref": estimate.get("artifact_ref").cloned().unwrap_or(serde_json::Value::Null),
+        "project_ref": body.get("project_ref").cloned().unwrap_or(serde_json::Value::Null),
+    }))
+}
+
 /// An earlier revision of a document, from the history.
 pub fn doc_revision(conn: &Connection, project_id: i64, kind: &str, revision: i64) -> Result<Option<Document>, String> {
     check_kind(kind)?;
@@ -266,5 +312,31 @@ mod tests {
     fn the_data_version_and_schema_check_report_on_the_file() {
         let c = conn();
         assert!(data_version(&c).unwrap().schema_ok);
+    }
+
+    #[test]
+    fn estimate_summary_reads_coreop_last_estimate_totals_and_refs() {
+        let c = conn();
+        let missing = estimate_summary(&c, 7).unwrap();
+        assert_eq!(missing["present"], false);
+        let body = r#"{
+            "project_ref": { "v": 1, "company_uuid": "u-1", "project_id": 7 },
+            "last_estimate": {
+                "grand_total": 1234.56,
+                "base_total": 1000.0,
+                "rate_book_version_name": "DSR 2024",
+                "artifact_ref": { "v": 1, "kind": "estimate", "id": "last_estimate", "revision": 2,
+                    "checksum_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "project": { "v": 1, "company_uuid": "u-1", "project_id": 7 }, "made_from": [] }
+            }
+        }"#;
+        doc_put(&c, 7, "aqc.project", 0, body, "coreop").unwrap();
+        let got = estimate_summary(&c, 7).unwrap();
+        assert_eq!(got["present"], true);
+        assert_eq!(got["grand_total_paise"], 123456);
+        assert_eq!(got["rate_book_version_name"], "DSR 2024");
+        assert_eq!(got["artifact_ref"]["id"], "last_estimate");
+        assert_eq!(got["project_ref"]["project_id"], 7);
+        assert_eq!(got["document_revision"], 1);
     }
 }

@@ -57,9 +57,9 @@ The product descriptions in the suite plan you shared are targets. Two differ fr
 
 ### 4.1 One project identity
 
-Identifiers in play: the O-Studio `projects.id` inside one company file (`company_uuid` + `project_id`) and O-CoreOp's own project file. Proposed for O-Studio:
+**Decision (2026-10-28):** the company file is the system of record. `ProjectRef = { v, company_uuid, project_id }`. Portal connectors are out of the suite apps.
 
-- `ProjectRef = { company_uuid, project_id }`. That pair is the id for an offline practice, and the bridge file should carry it.
+O-CoreOp stamps `project_ref` and estimate `artifact_ref` on company-file documents; O-Studio fee proposals read `project_estimate_summary` and may store that ArtifactRef. The CAD bridge file should still gain a `ProjectRef` for offline import.
 
 ### 4.2 Contracts, not shared databases
 
@@ -70,7 +70,7 @@ Keep each app's data its own. Share through a small versioned contract package. 
 | Company-file auth / tickets | Exists via `office.dll` / OSAS launcher; shared by suite apps offline |
 | CAD to quantities (`hcw-aqc-bridge` v1) | Exists, in the O-CoreOp repo |
 | Office records (`docs/office-abi.md`) | Exists, in this repo |
-| `ProjectRef` and `ArtifactRef` (a drawing, an estimate or a document with revision, checksum and the revisions it was made from) | **Written** (`docs/contracts/refs.md`, version 1) and implemented in `office-core`. No other app produces or reads them yet |
+| `ProjectRef` and `ArtifactRef` (a drawing, an estimate or a document with revision, checksum and the revisions it was made from) | **Written** (`docs/contracts/refs.md`) in `office-core`; produced by CoreOp estimates / Draft take-off when company-linked; consumed by Studio fee proposals |
 | Tool schema (below) | Partly exists: O-Draft's registry, `office-agent`. No common definition |
 
 ### 4.3 One AI platform, built on MCP
@@ -112,17 +112,17 @@ Licence boundary: O-CoreOp is AGPL-3.0, O-Draft is MIT or Apache-2.0, and O-Stud
 | Step | State |
 |---|---|
 | Create or open a project in O-Studio | Works |
-| Share the project with O-Draft / O-CoreOp via `ProjectRef` | Contract exists in `office-core`; other apps do not produce or read it yet |
-| Open its drawing in O-Draft | O-Draft can pull a project from the portal; O-Studio-only projects are not reachable from O-Draft yet |
-| Resolve the same project in O-CoreOp | Through the portal or its own project file today; company-file `ProjectRef` not wired yet |
+| Share the project with O-Draft / O-CoreOp via `ProjectRef` | Company-file `ProjectRef` wired for CoreOp saves and Draft take-off; Draft project-picker UI still open |
+| Open its drawing in O-Draft | Company-file link via `companyfile` / OSAS ticket; interactive project picker UI still open |
+| Resolve the same project in O-CoreOp | Company projects dialog + OSAS ticket; `.bbsproj` file remains for offline-only work |
 | Search approved details in ShilpiDB | Not possible: ShilpiDB has no details store yet |
 | Ask an assistant to inspect the drawing and propose a take-off | O-Draft's agent can inspect a drawing; take-off tools are reserved but not in its registry |
-| Calculate quantities in O-CoreOp and draft the estimate in O-Studio | No O-CoreOp tool server, and no O-Studio draft-estimate tool |
+| Calculate quantities in O-CoreOp and draft the estimate in O-Studio | Estimate totals surface on fee proposals / invoices via `project_estimate_summary`; full draft-estimate document tool still open |
 | Refuse unauthorised writes and keep an audit trail | Done for O-Studio reads: refusals and calls are audited. No write tools exist |
 
 ## 8. Decisions needed from the owner
 
-1. How should O-Draft and O-CoreOp map a portal project onto an O-Studio `ProjectRef` (`company_uuid` + `project_id`)?
+1. ~~Portal vs company-file SoR~~ — company file (2026-10-28).
 2. The bridge file must carry `ProjectRef` for offline sharing; does O-Studio also need a dedicated export?
 3. What licence does O-Studio carry? (Settled for the shared design: `O-UI` / `Hcw.Ui` is MIT, and its marks are reserved. O-Studio itself is still undecided.)
 4. Is the suite host a separate small app, or part of O-Studio?

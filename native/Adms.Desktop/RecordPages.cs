@@ -34,10 +34,19 @@ internal sealed class RecordPage : UserControl, ILiveRefresh
     private readonly Button _save = new() { Content = "Save", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
     private readonly TextBlock _mode = new() { TextWrapping = TextWrapping.Wrap };
     private readonly Func<RecordPage, JsonElement, Button?>? _extra;
+    private readonly Action<RecordPage>? _ready;
     private long? _editing;
+    private readonly StackPanel _linkPanel = new() { Spacing = 8 };
+
+    /// <summary>Values merged into the save payload that are not form fields (for example an estimate ArtifactRef).</summary>
+    public Dictionary<string, object?> ExtraInput { get; } = new();
+
+    /// <summary>Optional strip under the form (estimate totals, link actions).</summary>
+    public StackPanel LinkPanel => _linkPanel;
 
     public RecordPage(AppShell shell, string sheet, string group, string title, string intro, string listOp, string saveOp, RecordField[] fields,
-        string[] columns, GridLength[] widths, Func<JsonElement, string[]> cells, Func<RecordPage, JsonElement, Button?>? extra = null)
+        string[] columns, GridLength[] widths, Func<JsonElement, string[]> cells, Func<RecordPage, JsonElement, Button?>? extra = null,
+        Action<RecordPage>? ready = null)
     {
         _shell = shell;
         _listOp = listOp;
@@ -47,6 +56,7 @@ internal sealed class RecordPage : UserControl, ILiveRefresh
         _widths = widths;
         _cells = cells;
         _extra = extra;
+        _ready = ready;
         var page = new StackPanel { Spacing = 12, Margin = new Thickness(8) };
         page.Children.Add(Flow.SheetMark(sheet, group, title));
         page.Children.Add(Flow.Heading(title));
@@ -69,6 +79,7 @@ internal sealed class RecordPage : UserControl, ILiveRefresh
             }
             if (pending.Count == 1)
                 page.Children.Add(pending[0]);
+            page.Children.Add(_linkPanel);
             var clear = new Button { Content = "New record", MinHeight = 32 };
             clear.Click += (_, _) => Reset();
             _save.Click += (_, _) => Save();
@@ -85,6 +96,15 @@ internal sealed class RecordPage : UserControl, ILiveRefresh
         if (fields.Any(f => f.Kind == RecordKind.Staff))
             LoadStaff();
         Load();
+        _ready?.Invoke(this);
+    }
+
+    public bool TryGetInput(string key, out FrameworkElement element) => _inputs.TryGetValue(key, out element!);
+
+    public void SetMoneyField(string key, long paise)
+    {
+        if (_inputs.TryGetValue(key, out var element) && element is TextBox box)
+            box.Text = (paise / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
     }
 
     private FrameworkElement Make(RecordField field)
@@ -209,6 +229,7 @@ internal sealed class RecordPage : UserControl, ILiveRefresh
     {
         _editing = null;
         _mode.Text = "New record";
+        ExtraInput.Clear();
         foreach (var field in _fields)
         {
             if (!_inputs.TryGetValue(field.Key, out var element))
@@ -225,6 +246,11 @@ internal sealed class RecordPage : UserControl, ILiveRefresh
     {
         _editing = Kit.Id(row);
         _mode.Text = "Editing a record. Save to keep the changes, or choose New record to start again.";
+        ExtraInput.Clear();
+        if (row.TryGetProperty("estimate_artifact_json", out var artifact) && artifact.ValueKind == JsonValueKind.String)
+            ExtraInput["estimate_artifact_json"] = artifact.GetString() ?? "";
+        if (row.TryGetProperty("estimate_total_paise", out var total) && total.TryGetInt64(out var paise))
+            ExtraInput["estimate_total_paise"] = paise;
         foreach (var field in _fields)
         {
             if (!_inputs.TryGetValue(field.Key, out var element))
@@ -251,6 +277,8 @@ internal sealed class RecordPage : UserControl, ILiveRefresh
     private void Save()
     {
         var input = new Dictionary<string, object?> { ["id"] = _editing };
+        foreach (var kv in ExtraInput)
+            input[kv.Key] = kv.Value;
         foreach (var field in _fields)
         {
             var element = _inputs[field.Key];
@@ -448,7 +476,7 @@ internal static class RecordPages
 
     public static UIElement Proposals(AppShell shell) => new RecordPage(
         shell, "01.08", "Practice", "Fee proposals",
-        "What the practice proposes to charge a client. Choose how the fee is worked out and fill in only the figures for that basis. A proposal is drafted, sent, then accepted or declined; once the client has decided it cannot change.",
+        "What the practice proposes to charge a client. Choose how the fee is worked out and fill in only the figures for that basis. When the project has an O-CoreOp estimate saved in this company file, you can use that total as the cost of the work. A proposal is drafted, sent, then accepted or declined; once the client has decided it cannot change.",
         "proposal_list", "proposal_save",
         [
             new("client_id", "Client", RecordKind.Client),
@@ -467,8 +495,13 @@ internal static class RecordPages
         ],
         ["Number", "Client", "Title", "Fee with GST (₹)", "Status"],
         [new(80), new(1.2, GridUnitType.Star), new(1.6, GridUnitType.Star), new(130), new(110)],
-        r => [Kit.Str(r, "number"), Kit.Str(r, "client"), Kit.Str(r, "title"), Flow.Money(long.TryParse(Kit.Str(r, "total_paise"), out var total) ? total : 0).Replace("₹", "").Trim(),
-              Kit.Str(r, "lapsed") is "true" or "True" ? "Sent (lapsed)" : Label(ProposalStatus, Kit.Str(r, "status"))],
+        r =>
+        {
+            var status = Kit.Str(r, "lapsed") is "true" or "True" ? "Sent (lapsed)" : Label(ProposalStatus, Kit.Str(r, "status"));
+            if (Kit.Str(r, "estimate_linked") is "true" or "True")
+                status += " · estimate linked";
+            return [Kit.Str(r, "number"), Kit.Str(r, "client"), Kit.Str(r, "title"), Flow.Money(long.TryParse(Kit.Str(r, "total_paise"), out var total) ? total : 0).Replace("₹", "").Trim(), status];
+        },
         (page, r) =>
         {
             var status = Kit.Str(r, "status");
@@ -491,7 +524,8 @@ internal static class RecordPages
                 next.Flyout = menu;
             }
             return next;
-        });
+        },
+        WireEstimateLink);
 
     public static UIElement Meetings(AppShell shell) => new RecordPage(
         shell, "01.09", "Practice", "Meetings and decisions",
@@ -546,4 +580,81 @@ internal static class RecordPages
                 }));
             return make;
         });
+
+    /// <summary>
+    /// Shows the O-CoreOp estimate saved on the chosen company-file project and offers to use its grand total as the fee cost basis.
+    /// </summary>
+    private static void WireEstimateLink(RecordPage page)
+    {
+        if (!page.Shell.CanEdit)
+            return;
+        var caption = new TextBlock { TextWrapping = TextWrapping.Wrap, Opacity = 0.85 };
+        var use = new Button { Content = "Use O-CoreOp estimate as cost", MinHeight = 32, IsEnabled = false };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(use, "Use O-CoreOp estimate as cost of the work");
+        page.LinkPanel.Children.Add(Flow.Section("O-CoreOp estimate"));
+        page.LinkPanel.Children.Add(caption);
+        page.LinkPanel.Children.Add(use);
+
+        JsonElement? latest = null;
+        void Refresh()
+        {
+            caption.Text = "Choose a project to see any estimate O-CoreOp has saved in this company file.";
+            use.IsEnabled = false;
+            latest = null;
+            if (!page.TryGetInput("project_id", out var element) || element is not ComboBox box || box.SelectedItem is not ComboBoxItem { Tag: long projectId })
+                return;
+            _ = page.Shell.Run("Reading the O-CoreOp estimate…", () =>
+            {
+                var summary = page.Shell.Call("project_estimate_summary", new { project_id = projectId });
+                page.Shell.Window.DispatcherQueue.TryEnqueue(() =>
+                {
+                    latest = summary;
+                    if (summary.TryGetProperty("present", out var present) && present.ValueKind == JsonValueKind.True)
+                    {
+                        var rupees = summary.TryGetProperty("grand_total_rupees", out var g) && g.TryGetDouble(out var r) ? r : 0;
+                        var book = Kit.Str(summary, "rate_book_version_name");
+                        var rev = Kit.Str(summary, "document_revision");
+                        caption.Text = $"Saved estimate grand total {Flow.Money((long)Math.Round(rupees * 100))}{(book.Length == 0 ? "" : $" · {book}")} · company document revision {rev}. This is the figure O-CoreOp calculated; using it fills Estimated cost of the work for a percentage fee.";
+                        use.IsEnabled = true;
+                    }
+                    else
+                    {
+                        caption.Text = Kit.Str(summary, "reason").Length > 0
+                            ? Kit.Str(summary, "reason")
+                            : "No O-CoreOp estimate is saved for this project yet.";
+                        use.IsEnabled = false;
+                    }
+                });
+            });
+        }
+
+        use.Click += (_, _) =>
+        {
+            if (latest is not JsonElement summary || !summary.TryGetProperty("present", out var present) || present.ValueKind != JsonValueKind.True)
+                return;
+            if (!summary.TryGetProperty("grand_total_paise", out var paiseNode) || !paiseNode.TryGetInt64(out var paise) || paise <= 0)
+            {
+                page.Notice("That estimate has no usable grand total.");
+                return;
+            }
+            page.SetMoneyField("cost_paise", paise);
+            page.ExtraInput["estimate_total_paise"] = paise;
+            page.ExtraInput["estimate_artifact_json"] = summary.TryGetProperty("artifact_ref", out var artifact) && artifact.ValueKind == JsonValueKind.Object
+                ? artifact.GetRawText()
+                : "";
+            if (page.TryGetInput("basis", out var basisEl) && basisEl is ComboBox basis)
+            {
+                foreach (var item in basis.Items.OfType<ComboBoxItem>())
+                    if (string.Equals(item.Tag as string, "percent", StringComparison.Ordinal))
+                        basis.SelectedItem = item;
+            }
+            page.Notice("Cost of the work set from the O-CoreOp estimate. Save the proposal to keep the link.");
+        };
+
+        if (page.TryGetInput("project_id", out var projectEl) && projectEl is ComboBox projectBox)
+        {
+            projectBox.SelectionChanged += (_, _) => Refresh();
+            Refresh();
+        }
+    }
 }
