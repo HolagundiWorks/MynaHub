@@ -937,9 +937,12 @@ internal static class Ledgers
         if (shell.CanManage)
         {
             var yours = new PasswordBox { Header = "Your password" };
-            // People are managed in OSAS, the suite app, so they are the same for every app.
+            // People are managed on the Suite page of this app, so they are the same for every app that shares the company file.
             page.Children.Add(Flow.Section("People"));
-            page.Children.Add(Flow.Secondary("Who can sign in, their roles and their passwords are managed in OSAS, the suite app, so they are the same in every app. Open OSAS and choose Users."));
+            page.Children.Add(Flow.Secondary("Who can sign in, their roles and their passwords are managed on the Suite page, so they are the same in every app."));
+            var people = new Button { Content = "Manage users", MinHeight = 32 };
+            people.Click += (_, _) => shell.Navigate?.Invoke("suite");
+            page.Children.Add(people);
             page.Children.Add(Flow.Section("Company file"));
             var protection = new TextBlock { TextWrapping = TextWrapping.Wrap };
             page.Children.Add(protection);

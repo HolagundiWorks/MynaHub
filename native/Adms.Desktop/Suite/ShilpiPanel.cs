@@ -33,7 +33,7 @@ public sealed class ShilpiPanel : StackPanel
         Children.Add(heading);
         Children.Add(new TextBlock
         {
-            Text = "The spatial store for drawings: shapes kept as boxes with data, found by place. O-Draft and the assistant use it. Clients, projects and money stay in the company file; ShilpiDB records point at them. OSAS starts it only on this computer.",
+            Text = "The spatial store for drawings: shapes kept as boxes with data, found by place. O-Draft and the assistant use it. Clients, projects and money stay in the company file; ShilpiDB records point at them. O-Studio starts it only on this computer.",
             Style = Resource<Style>("SecondaryStyle"),
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 760,
@@ -60,7 +60,7 @@ public sealed class ShilpiPanel : StackPanel
 
     private static T Resource<T>(string key) => (T)Microsoft.UI.Xaml.Application.Current.Resources[key];
 
-    /// <summary>OSAS closes only a server it started itself.</summary>
+    /// <summary>O-Studio closes only a server it started itself.</summary>
     public void Shutdown() => _link.Stop();
 
     private async Task Start()

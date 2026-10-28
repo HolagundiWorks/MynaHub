@@ -11,7 +11,7 @@ namespace Adms.Desktop;
 
 /// <summary>
 /// The company the whole suite works in: where its file is, who is signed in, and the company's details. The apps follow what is chosen
-/// here, and OSAS signs them in as the same person with a one-time ticket, so the password is typed once and never passed on.
+/// here, and O-Studio signs them in as the same person with a one-time ticket, so the password is typed once and never passed on.
 /// </summary>
 public sealed partial class CompanyPanel : StackPanel
 {
@@ -113,7 +113,7 @@ public sealed partial class CompanyPanel : StackPanel
         var path = _settings.CompanyPath;
         if (path == null || !Engine.IsAvailable())
         {
-            Say(InfoBarSeverity.Warning, path == null ? "Choose a company file first." : "The company-file engine (office.dll) is not installed beside OSAS, so OSAS cannot sign in. The apps can still be opened and sign in themselves.");
+            Say(InfoBarSeverity.Warning, path == null ? "Choose a company file first." : "The company-file engine (office.dll) is missing beside O-Studio, so it cannot sign in here. The other apps can still be opened and sign in themselves.");
             return;
         }
         var user = new TextBox { Header = "User name", Text = _settings.LastUser ?? "owner" };
