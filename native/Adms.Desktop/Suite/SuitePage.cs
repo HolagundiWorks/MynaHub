@@ -11,103 +11,59 @@ using Osas.Core.Suite;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 
-namespace Osas.Launcher;
+namespace Adms.Desktop;
 
 /// <summary>
-/// OSAS, the Open Source Architecture Suit: one window that shows which of O-Studio, O-CoreOp and O-Draft are installed on this
-/// computer and opens them. It starts the apps and changes nothing in them.
+/// What OSAS used to do as a separate program, now a page of O-Studio: the company and its users, the company file monitor, ShilpiDB, the
+/// AI assistant, and opening the other apps of the suite (O-CoreOp, O-Draft).
 /// </summary>
-public sealed class MainWindow : Window
+internal sealed class SuitePage : UserControl
 {
     private sealed record Look(string Mark, string Fill, string Hover, string Pressed, string On);
 
-    private static readonly Dictionary<SuiteApp, Look> Looks = new()
+    private static readonly Dictionary<Osas.Core.SuiteApp, Look> Looks = new()
     {
-        [SuiteApp.Studio] = new("mark-studio.png", "#FF6B00", "#F26400", "#E65F00", "#17181B"),
-        [SuiteApp.Metra] = new("mark-metra.png", "#1F5FD1", "#1A52B8", "#15449A", "#FFFFFF"),
-        [SuiteApp.Draft] = new("mark-draft.png", "#1B1C20", "#34363C", "#4B4E56", "#FFFFFF"),
+        [Osas.Core.SuiteApp.Metra] = new("mark-metra.png", "#1F5FD1", "#1A52B8", "#15449A", "#FFFFFF"),
+        [Osas.Core.SuiteApp.Draft] = new("mark-draft.png", "#1B1C20", "#34363C", "#4B4E56", "#FFFFFF"),
     };
 
+    private readonly Window _window;
     private readonly SavedPaths _saved = new(SavedPaths.DefaultFile);
     private readonly FlexBar _cards = new();
     private readonly CompanyPanel _company;
-    private readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true, Margin = new Thickness(32, 0, 32, 8) };
+    private readonly ShilpiPanel _shilpi;
+    private readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true };
 
-    public MainWindow()
+    public SuitePage(Window window)
     {
-        Title = "OSAS — Open Source Architecture Suit";
-        var root = new Grid { Background = Brush("AppBackgroundBrush") };
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-        var header = new Grid { Margin = new Thickness(32, 28, 32, 12), ColumnSpacing = 16 };
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var mark = new Image { Width = 64, Height = 64, Source = Asset("mark-osas.png") };
-        AutomationProperties.SetAccessibilityView(mark, AccessibilityView.Raw);
-        header.Children.Add(mark);
-        var titles = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Spacing = 2 };
-        var title = new TextBlock { Text = "OSAS", Style = Style("PageTitleStyle"), FontSize = 28 };
+        _window = window;
+        var page = new StackPanel { Padding = new Thickness(32, 24, 32, 24), Spacing = 24 };
+        var title = new TextBlock { Text = "Suite", Style = Style("PageTitleStyle") };
         AutomationProperties.SetHeadingLevel(title, AutomationHeadingLevel.Level1);
-        titles.Children.Add(title);
-        titles.Children.Add(new TextBlock { Text = "Open Source Architecture Suit", Style = Style("SecondaryStyle") });
-        Grid.SetColumn(titles, 1);
-        header.Children.Add(titles);
-        var about = new Button { Content = "About", VerticalAlignment = VerticalAlignment.Center };
-        about.Click += async (_, _) => await About();
-        Grid.SetColumn(about, 2);
-        header.Children.Add(about);
-        root.Children.Add(header);
+        page.Children.Add(title);
+        page.Children.Add(_notice);
 
-        var intro = new TextBlock
-        {
-            Text = "Open an app. Each one keeps its own window. O-Studio and O-CoreOp can have the same company file open at the same time, and they share its clients and projects.",
-            Style = Style("SecondaryStyle"),
-            Margin = new Thickness(32, 0, 32, 12),
-            MaxWidth = 760,
-            HorizontalAlignment = HorizontalAlignment.Left,
-        };
-        var introRow = new StackPanel();
-        introRow.Children.Add(intro);
-        introRow.Children.Add(_notice);
-        Grid.SetRow(introRow, 1);
-        root.Children.Add(introRow);
-
-        var page = new StackPanel { Padding = new Thickness(32, 8, 32, 24), Spacing = 24 };
         var settings = new SuiteSettings();
-        _company = new CompanyPanel(this, settings);
-        var monitor = new MonitorPanel(this);
+        _company = new CompanyPanel(window, settings);
+        var monitor = new MonitorPanel(window);
         _company.Changed += () => monitor.Follow(_company.CompanyPath);
         monitor.Follow(_company.CompanyPath);
-        page.Children.Add(_company);
-        page.Children.Add(_cards);
-        page.Children.Add(monitor);
-        var shilpi = new ShilpiPanel(settings, () => _company.CompanyPath);
+        _shilpi = new ShilpiPanel(settings, () => _company.CompanyPath);
         var agent = new AgentPanel(settings, () => _company.Company, () => _company.CompanyPath);
         _company.Changed += agent.Refresh;
-        page.Children.Add(shilpi);
+
+        page.Children.Add(_company);
+        var apps = new TextBlock { Text = "Other apps", Style = Style("SectionTitleStyle") };
+        AutomationProperties.SetHeadingLevel(apps, AutomationHeadingLevel.Level2);
+        page.Children.Add(apps);
+        page.Children.Add(_cards);
+        page.Children.Add(monitor);
+        page.Children.Add(_shilpi);
         page.Children.Add(agent);
-        Closed += (_, _) => shilpi.Shutdown();
-        var scroll = new ScrollViewer { Content = page };
-        Grid.SetRow(scroll, 2);
-        root.Children.Add(scroll);
-
-        var footer = new TextBlock { Text = "Human Centric Works", Style = Style("CaptionStyle"), Margin = new Thickness(32, 0, 32, 12) };
-        Grid.SetRow(footer, 3);
-        root.Children.Add(footer);
-
-        Content = root;
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 640));
-        var icon = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
-        if (File.Exists(icon))
-            AppWindow.SetIcon(icon);
+        Content = new ScrollViewer { Content = page };
+        Unloaded += (_, _) => _shilpi.Shutdown();
         Refresh();
     }
-
-    private static Brush Brush(string key) => (Brush)Application.Current.Resources[key];
 
     private static Style Style(string key) => (Style)Application.Current.Resources[key];
 
@@ -126,7 +82,8 @@ public sealed class MainWindow : Window
     {
         _cards.Children.Clear();
         foreach (var app in new AppCatalog(new WindowsProbe(_saved)).Detect())
-            _cards.Children.Add(Card(app));
+            if (Looks.ContainsKey(app.App))
+                _cards.Children.Add(Card(app));
     }
 
     private UIElement Card(AppInfo app)
@@ -144,8 +101,7 @@ public sealed class MainWindow : Window
         AutomationProperties.SetAccessibilityView(mark, AccessibilityView.Raw);
         top.Children.Add(mark);
         var names = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        var name = new TextBlock { Text = app.Name, Style = Style("SectionTitleStyle"), Margin = new Thickness(0) };
-        names.Children.Add(name);
+        names.Children.Add(new TextBlock { Text = app.Name, Style = Style("SectionTitleStyle"), Margin = new Thickness(0) });
         names.Children.Add(new TextBlock { Text = app.Purpose, Style = Style("SecondaryStyle") });
         Grid.SetColumn(names, 1);
         top.Children.Add(names);
@@ -183,8 +139,8 @@ public sealed class MainWindow : Window
     {
         try
         {
-            // The app is started on the suite's company file and, when someone is signed in here, with a one-time ticket that signs it in
-            // as the same person. Environment variables, not the command line, because other programs can read a command line.
+            // Started on the suite's company file and, when someone is signed in, with a one-time ticket that signs the app in as the same
+            // person. Environment variables, not the command line, because other programs can read a command line.
             var info = new ProcessStartInfo(app.ExePath!) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(app.ExePath)! };
             foreach (var (key, value) in _company.EnvironmentFor(app.Name))
                 info.Environment[key] = value;
@@ -201,7 +157,7 @@ public sealed class MainWindow : Window
     {
         var picker = new FileOpenPicker { SuggestedStartLocation = PickerLocationId.ComputerFolder };
         picker.FileTypeFilter.Add(".exe");
-        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(_window));
         var file = await picker.PickSingleFileAsync();
         if (file == null)
             return;
@@ -212,16 +168,5 @@ public sealed class MainWindow : Window
         }
         Refresh();
         Say(InfoBarSeverity.Success, $"{app.Name} will be opened from {file.Path}.");
-    }
-
-    private async Task About()
-    {
-        var text = new StackPanel { Spacing = 8, MaxWidth = 440 };
-        text.Children.Add(new TextBlock { Text = "OSAS is the Open Source Architecture Suit: three apps for an architecture practice.", TextWrapping = TextWrapping.Wrap });
-        text.Children.Add(new TextBlock { Text = "O-Studio — office and project management", TextWrapping = TextWrapping.Wrap });
-        text.Children.Add(new TextBlock { Text = "O-CoreOp — quantities, estimates and billing", TextWrapping = TextWrapping.Wrap });
-        text.Children.Add(new TextBlock { Text = "O-Draft — drafting", TextWrapping = TextWrapping.Wrap });
-        text.Children.Add(new TextBlock { Text = "Developed by Human Centric Works. This launcher is version 0.3.0.", Style = Style("CaptionStyle"), TextWrapping = TextWrapping.Wrap });
-        await new ContentDialog { Title = "About OSAS", Content = text, CloseButtonText = "Close", XamlRoot = Content.XamlRoot }.ShowAsync();
     }
 }

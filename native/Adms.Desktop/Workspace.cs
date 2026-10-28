@@ -293,6 +293,7 @@ internal sealed class WorkspaceView : UserControl
             ("attendance", "03", "Attendance", "\uE823"),
             ("library", "04", "Library", "\uE82D"),
             ("aorms", "05", "AORMS portal", "\uE774"),
+            ("suite", "05", "Suite, users and AI", "\uE713"),
             ("settings", "06", "Security and backup", "\uE713"));
     }
 
@@ -333,6 +334,7 @@ internal sealed class WorkspaceView : UserControl
         "leave" => RecordPages.Leave(_shell),
         "library" => RecordPages.Library(_shell),
         "aorms" => new AormsPage(_shell),
+        "suite" => new SuitePage(_shell.Window),
         "proposals" => RecordPages.Proposals(_shell),
         "meetings" => RecordPages.Meetings(_shell),
         "attendance" => new AttendancePage(_shell),

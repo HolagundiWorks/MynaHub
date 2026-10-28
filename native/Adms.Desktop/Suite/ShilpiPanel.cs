@@ -5,7 +5,7 @@ using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using Osas.Core.Suite;
 
-namespace Osas.Launcher;
+namespace Adms.Desktop;
 
 /// <summary>
 /// ShilpiDB, the suite's spatial store for drawing geometry. Shows whether the server is running and how many records it holds, and starts

@@ -29,6 +29,7 @@
     <Content Include="Assets\app.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\mark.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\wordmark.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\mark-*.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
@@ -39,6 +40,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Adms.Interop\Adms.Interop.csproj" />
+    <ProjectReference Include="..\Osas.Core\Osas.Core.csproj" />
     <ProjectReference Include="..\..\..\hcw-ui\Hcw.Ui\Hcw.Ui.csproj" />
   </ItemGroup>
 </Project>

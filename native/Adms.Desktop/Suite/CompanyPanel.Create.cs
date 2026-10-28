@@ -5,7 +5,7 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 
-namespace Osas.Launcher;
+namespace Adms.Desktop;
 
 /// <summary>
 /// Making a new company. The apps cannot make or choose one themselves, so it is done here: the company's name, its first user (the owner),

@@ -5,7 +5,7 @@ using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using Osas.Core.Monitor;
 
-namespace Osas.Launcher;
+namespace Adms.Desktop;
 
 /// <summary>
 /// Watches the company file that O-Studio and O-CoreOp share: space used, what is free inside it, who has it open and how busy they are,

@@ -7,7 +7,7 @@ using Osas.Core.Agent;
 using Osas.Core.Suite;
 using Windows.ApplicationModel.DataTransfer;
 
-namespace Osas.Launcher;
+namespace Adms.Desktop;
 
 /// <summary>
 /// The suite's AI assistant. It asks the chosen model a question and lets it look things up in the company through the engine's

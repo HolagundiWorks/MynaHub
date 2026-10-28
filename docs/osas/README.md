@@ -91,3 +91,6 @@ An installer that puts the launcher and the apps in place, a check for newer ver
 
 ## Licence
 The launcher is Human Centric Works software. It uses `hcw-ui`, which is MIT licensed; the marks in that repository have a separate notice (`hcw-ui/brand/LICENSE.md`). The licence of this repository has not been chosen.
+
+---
+**Moved into O-Studio.** OSAS is no longer a separate program or repository. Its library is `native/Osas.Core` (tests in `native/Osas.Core.Tests`) and its screens are the **Suite, users and AI** page of O-Studio (`native/Adms.Desktop/Suite/`). The installer files kept here are for reference until O-Studio's installer takes them over.

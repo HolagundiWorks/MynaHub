@@ -5,7 +5,7 @@ using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using Osas.Core.Suite;
 
-namespace Osas.Launcher;
+namespace Adms.Desktop;
 
 /// <summary>
 /// The company's users. They belong to the company file, so they are the same in every app; this is the one place they are managed.

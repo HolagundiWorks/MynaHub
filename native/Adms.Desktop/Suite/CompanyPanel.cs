@@ -7,7 +7,7 @@ using Osas.Core.Suite;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 
-namespace Osas.Launcher;
+namespace Adms.Desktop;
 
 /// <summary>
 /// The company the whole suite works in: where its file is, who is signed in, and the company's details. The apps follow what is chosen
