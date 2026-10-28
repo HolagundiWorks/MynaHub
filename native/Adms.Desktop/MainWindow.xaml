@@ -20,7 +20,9 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <MenuBar VerticalAlignment="Center" Background="{ThemeResource SidebarBackgroundBrush}" FontSize="13">
+        <MenuBar VerticalAlignment="Center" Background="{ThemeResource SidebarBackgroundBrush}" FontSize="13"
+                 AutomationProperties.Name="Menu bar"
+                 AutomationProperties.LandmarkType="Navigation">
             <MenuBarItem Title="File" AccessKey="F">
                 <MenuFlyoutItem x:Name="ChooseItem" Text="Choose the company in OSAS" AccessKey="O" Click="OpenOsas"/>
                 <MenuFlyoutItem x:Name="CloseItem" Text="Close company" AccessKey="C" Click="CloseCompany">
@@ -154,7 +156,9 @@
             <Grid x:Name="PdfHost" Visibility="Collapsed" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"/>
         </Grid>
 
-        <Border Grid.Row="3" BorderBrush="{ThemeResource BorderSubtleBrush}" BorderThickness="0,1,0,0" Background="{ThemeResource SidebarBackgroundBrush}">
+        <Border Grid.Row="3" BorderBrush="{ThemeResource BorderSubtleBrush}" BorderThickness="0,1,0,0" Background="{ThemeResource SidebarBackgroundBrush}"
+                AutomationProperties.Name="Status"
+                AutomationProperties.LandmarkType="Custom">
         <Grid Padding="20,6,20,8" ColumnSpacing="12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
@@ -163,6 +167,7 @@
             </Grid.ColumnDefinitions>
             <ProgressRing x:Name="BusyRing" Width="20" Height="20" IsActive="False"/>
             <TextBlock x:Name="StatusText" Grid.Column="1" VerticalAlignment="Center" Style="{ThemeResource CaptionStyle}"
+                       AutomationProperties.Name="Status message"
                        AutomationProperties.LiveSetting="Polite"/>
             <TextBlock Grid.Column="2" VerticalAlignment="Center" Style="{ThemeResource CaptionStyle}" Text="Human Centric Works"/>
         </Grid>
