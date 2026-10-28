@@ -114,6 +114,7 @@ if ($azureReady) {
         $endpoint = "https://$region.codesigning.azure.net"
     }
     $dlib = $env:AZURE_SIGNING_DLIB
+    $dlibTmp = $null
     if (-not $dlib) {
         $pkg = Get-ChildItem "$env:USERPROFILE\.nuget\packages\microsoft.trusted.signing.client" -ErrorAction SilentlyContinue |
             Sort-Object Name -Descending | Select-Object -First 1
@@ -123,7 +124,16 @@ if ($azureReady) {
         }
     }
     if (-not $dlib -or -not (Test-Path $dlib)) {
-        throw "Azure Trusted Signing dlib not found. Install Microsoft.Trusted.Signing.Client or set AZURE_SIGNING_DLIB."
+        $dlibTmp = Join-Path ([IO.Path]::GetTempPath()) ("studio-tsclient-" + [guid]::NewGuid().ToString("N"))
+        New-Item -ItemType Directory -Force -Path $dlibTmp | Out-Null
+        $zip = Join-Path $dlibTmp "trusted-signing.zip"
+        Write-Output "Downloading Microsoft.Trusted.Signing.Client from NuGet…"
+        Invoke-WebRequest -Uri "https://www.nuget.org/api/v2/package/Microsoft.Trusted.Signing.Client" -OutFile $zip
+        Expand-Archive -Path $zip -DestinationPath (Join-Path $dlibTmp "pkg") -Force
+        $found = Get-ChildItem -Path (Join-Path $dlibTmp "pkg") -Recurse -Filter Azure.CodeSigning.Dlib.dll |
+            Where-Object { $_.FullName -match '\\x64\\' } | Select-Object -First 1
+        if (-not $found) { throw "Azure.CodeSigning.Dlib.dll not found in Microsoft.Trusted.Signing.Client" }
+        $dlib = $found.FullName
     }
     $meta = Join-Path ([IO.Path]::GetTempPath()) ("studio-azsign-" + [guid]::NewGuid().ToString("N") + ".json")
     try {
@@ -137,6 +147,7 @@ if ($azureReady) {
         Assert-HasSignature $Files
     } finally {
         Remove-Item -LiteralPath $meta -Force -ErrorAction SilentlyContinue
+        if ($dlibTmp) { Remove-Item -Recurse -Force $dlibTmp -ErrorAction SilentlyContinue }
     }
     return
 }
