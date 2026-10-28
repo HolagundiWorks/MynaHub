@@ -45,10 +45,12 @@ Every other operation needs a signed-in, unlocked session. Reading needs View. A
 | `watch` | [project_id] | `{version, schema_ok, revision}`; the version goes up when another app writes. Needs a session but no permission, and does not count as activity (an idle session still locks) |
 | `data_version` | | `{version, schema_ok}`; the version goes up when another app writes |
 | `doc_get` / `doc_list` / `doc_revision` | project_id, kind [, revision] | a project's document, its documents without bodies, or one revision |
-| `doc_put` | project_id, kind, expected_revision, body | `{revision, checksum_sha256}`, or a refusal if the revision is stale |
+| `doc_put` | project_id, kind, expected_revision, body | `{revision, checksum_sha256}`, or a refusal if the revision is stale. Kind ≤ 80 chars (fits CoreOp `aqc.ra.draft.<guid>`) |
 | `project_estimate_summary` | project_id | O-CoreOp `last_estimate` totals and refs from kind `aqc.project`, or `{ present: false, reason }` |
 | `project_ra_summary` | project_id | O-CoreOp running-bill (RA) totals from project documents, or `{ present: false, reason }` |
-| `approval_submit` | project_id, kind (`estimate`\|`running_bill`), title, body [, supersedes_id] | draft Approval (Edit). Parallel ABI — see [contracts/approvals.md](contracts/approvals.md) |
+| `studio_draft_list` / `studio_draft_get` | filters / project_id+kind | CoreOp draft envelopes (`aqc.estimate.draft`, `aqc.ra.draft.*`). See [contracts/approvals.md](contracts/approvals.md) |
+| `studio_draft_approve` / `studio_draft_mark_pending` / `studio_draft_mark_superseded` | project_id, kind, expected_revision | envelope state transitions (Issue). Product Approvals path |
+| `approval_submit` | project_id, kind (`estimate`\|`running_bill`), title, body [, supersedes_id] | draft row in `suite_approvals` (Edit). Parallel ABI — CoreOp product share uses `doc_put` kinds instead |
 | `approval_list` / `approval_get` | filters / id | list without bodies / full row (View) |
 | `approval_approve` | id | locks a `suite_approvals` draft (Issue) |
 | `approval_withdraw` | id | deletes a draft (Edit) |

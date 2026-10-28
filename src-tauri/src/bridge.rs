@@ -259,6 +259,26 @@ pub fn invoke(state: &AppState, op: &str, args: &Value) -> Result<Option<Vec<u8>
         )),
         "approval_approve" => run(crate::approvals_cmd::approval_approve(HostState::new(state), arg(args, "id")?)),
         "approval_withdraw" => run(crate::approvals_cmd::approval_withdraw(HostState::new(state), arg(args, "id")?)),
+        "studio_draft_list" => run(crate::studio_drafts_cmd::studio_draft_list(HostState::new(state), arg(args, "project_id")?, arg(args, "state")?)),
+        "studio_draft_get" => run(crate::studio_drafts_cmd::studio_draft_get(HostState::new(state), arg(args, "project_id")?, arg(args, "kind")?)),
+        "studio_draft_approve" => run(crate::studio_drafts_cmd::studio_draft_approve(
+            HostState::new(state),
+            arg(args, "project_id")?,
+            arg(args, "kind")?,
+            arg(args, "expected_revision")?,
+        )),
+        "studio_draft_mark_pending" => run(crate::studio_drafts_cmd::studio_draft_mark_pending(
+            HostState::new(state),
+            arg(args, "project_id")?,
+            arg(args, "kind")?,
+            arg(args, "expected_revision")?,
+        )),
+        "studio_draft_mark_superseded" => run(crate::studio_drafts_cmd::studio_draft_mark_superseded(
+            HostState::new(state),
+            arg(args, "project_id")?,
+            arg(args, "kind")?,
+            arg(args, "expected_revision")?,
+        )),
         "agent_tools" => run(crate::approvals_cmd::agent_tools(HostState::new(state))),
         "agent_call" => {
             let name: String = arg(args, "name")?;
