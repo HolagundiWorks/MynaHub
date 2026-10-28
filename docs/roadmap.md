@@ -66,7 +66,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 
 ## Order of work
 
-1. Phase 1.1 to 1.2 first: merge and CI, so everything after is checked on each push.
+1. Phase 1.1 and 1.2 are done (merge and CI). Keep CI green on each push.
 2. 1.3 to 1.6 together, as one accessibility pass, then close the audit.
-3. D1 once the owner decides.
+3. D1 once the owner decides (retire Carbon web; keep WinUI + Rust engine).
 4. Phase 2 in the order 2.1, 2.3, 2.2, 2.4. The rest of phase 2 needs 2.3.
