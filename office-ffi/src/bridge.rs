@@ -35,7 +35,7 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
         return json(&result);
     }
     let permission = match op {
-        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_estimate_summary" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" => Permission::View,
+        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_estimate_summary" | "project_ra_summary" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" => Permission::View,
         "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" => Permission::Edit,
         "company_profile_save" => Permission::ManageSettings,
         "user_list" | "user_create" | "user_update" | "user_set_password" => Permission::ManageUsers,
@@ -105,6 +105,7 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
         "doc_list" => json(&share::doc_list(conn, arg(args, "project_id")?)?),
         "doc_revision" => json(&share::doc_revision(conn, arg(args, "project_id")?, &arg::<String>(args, "kind")?, arg(args, "revision")?)?),
         "project_estimate_summary" => json(&share::estimate_summary(conn, arg(args, "project_id")?)?),
+        "project_ra_summary" => json(&share::ra_summary(conn, arg(args, "project_id")?)?),
         "doc_put" => {
             let (project_id, kind, expected, body): (i64, String, i64, String) = (arg(args, "project_id")?, arg(args, "kind")?, arg(args, "expected_revision")?, arg(args, "body")?);
             let by: String = conn.query_row("SELECT username FROM users WHERE id = ?1", [user], |r| r.get(0)).unwrap_or_default();

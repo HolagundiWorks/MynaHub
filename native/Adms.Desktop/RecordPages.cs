@@ -591,14 +591,18 @@ internal static class RecordPages
         var caption = new TextBlock { TextWrapping = TextWrapping.Wrap, Opacity = 0.85 };
         var use = new Button { Content = "Use O-CoreOp estimate as cost", MinHeight = 32, IsEnabled = false };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(use, "Use O-CoreOp estimate as cost of the work");
+        var raCaption = new TextBlock { TextWrapping = TextWrapping.Wrap, Opacity = 0.85 };
         page.LinkPanel.Children.Add(Flow.Section("O-CoreOp estimate"));
         page.LinkPanel.Children.Add(caption);
         page.LinkPanel.Children.Add(use);
+        page.LinkPanel.Children.Add(Flow.Section("O-CoreOp running bills"));
+        page.LinkPanel.Children.Add(raCaption);
 
         JsonElement? latest = null;
         void Refresh()
         {
             caption.Text = "Choose a project to see any estimate O-CoreOp has saved in this company file.";
+            raCaption.Text = "Choose a project to see any running bills (RA) O-CoreOp has saved in this company file.";
             use.IsEnabled = false;
             latest = null;
             if (!page.TryGetInput("project_id", out var element) || element is not ComboBox box || box.SelectedItem is not ComboBoxItem { Tag: long projectId })
@@ -606,6 +610,9 @@ internal static class RecordPages
             _ = page.Shell.Run("Reading the O-CoreOp estimate…", () =>
             {
                 var summary = page.Shell.Call("project_estimate_summary", new { project_id = projectId });
+                JsonElement? ra = null;
+                try { ra = page.Shell.Call("project_ra_summary", new { project_id = projectId }); }
+                catch { /* older office.dll without project_ra_summary */ }
                 page.Shell.Window.DispatcherQueue.TryEnqueue(() =>
                 {
                     latest = summary;
@@ -624,6 +631,18 @@ internal static class RecordPages
                             : "No O-CoreOp estimate is saved for this project yet.";
                         use.IsEnabled = false;
                     }
+                    if (ra is JsonElement raSummary && raSummary.TryGetProperty("present", out var raPresent) && raPresent.ValueKind == JsonValueKind.True)
+                    {
+                        var net = raSummary.TryGetProperty("last_net_paise", out var n) && n.TryGetInt64(out var np) ? np : 0;
+                        var number = Kit.Str(raSummary, "last_bill_number");
+                        var certified = Kit.Str(raSummary, "certified_count");
+                        var count = Kit.Str(raSummary, "bill_count");
+                        raCaption.Text = $"Last RA {(number.Length == 0 ? "(unnumbered)" : number)} net {Flow.Money(net)} · {count} bill(s), {certified} certified. Shown for the same ProjectRef as the estimate; fee proposals still use the estimate total.";
+                    }
+                    else if (ra is JsonElement raMissing)
+                        raCaption.Text = Kit.Str(raMissing, "reason").Length > 0
+                            ? Kit.Str(raMissing, "reason")
+                            : "No O-CoreOp running bills are saved for this project yet.";
                 });
             });
         }
