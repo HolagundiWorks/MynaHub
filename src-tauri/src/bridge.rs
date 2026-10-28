@@ -247,6 +247,24 @@ pub fn invoke(state: &AppState, op: &str, args: &Value) -> Result<Option<Vec<u8>
         "project_stage_mark" => run(crate::stages::project_stage_mark(HostState::new(state), arg(args, "stage_id")?, arg(args, "marked_on")?)),
         "project_stage_unmark" => run(crate::stages::project_stage_unmark(HostState::new(state), arg(args, "stage_id")?)),
         "grammar_check" => run(crate::grammar::grammar_check(HostState::new(state), serde_json::from_value(args.clone()).map_err(|error| BridgeError::BadRequest(format!("The language check request is invalid: {error}")))?)),
+        "approval_list" => run(crate::approvals_cmd::approval_list(HostState::new(state), arg(args, "project_id")?, arg(args, "kind")?, arg(args, "status")?)),
+        "approval_get" => run(crate::approvals_cmd::approval_get(HostState::new(state), arg(args, "id")?)),
+        "approval_submit" => run(crate::approvals_cmd::approval_submit(
+            HostState::new(state),
+            arg(args, "project_id")?,
+            arg(args, "kind")?,
+            arg(args, "title")?,
+            arg(args, "body")?,
+            arg(args, "supersedes_id")?,
+        )),
+        "approval_approve" => run(crate::approvals_cmd::approval_approve(HostState::new(state), arg(args, "id")?)),
+        "approval_withdraw" => run(crate::approvals_cmd::approval_withdraw(HostState::new(state), arg(args, "id")?)),
+        "agent_tools" => run(crate::approvals_cmd::agent_tools(HostState::new(state))),
+        "agent_call" => {
+            let name: String = arg(args, "name")?;
+            let arguments: Value = args.get("arguments").cloned().unwrap_or(Value::Null);
+            run(crate::approvals_cmd::agent_call_state(state, &name, &arguments))
+        }
         _ => Ok(None),
     }
 }
