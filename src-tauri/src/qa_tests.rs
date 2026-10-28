@@ -41,9 +41,9 @@ fn count(c: &Connection, table: &str) -> i64 {
 
 // ---------------------------------------------------------------- security boundary
 
-/// Every command that Tauri exposes must check the session. The only exceptions are the sign-in flow itself.
+/// Every HostState entry point the WinUI bridge can call must check the session. The only exceptions are the sign-in flow itself.
 #[test]
-fn every_tauri_command_checks_the_session_and_permission() {
+fn every_host_command_checks_the_session_and_permission() {
     let files: [(&str, &str); 24] = [
         ("desk.rs", include_str!("desk.rs")),
         ("office.rs", include_str!("office.rs")),
@@ -65,9 +65,16 @@ fn every_tauri_command_checks_the_session_and_permission() {
     let open = ["company_active", "company_validate", "company_recent_list", "company_recent_remove", "company_open", "company_create", "company_close", "company_legacy_info", "company_convert_legacy", "auth_status", "auth_setup", "auth_login", "auth_unlock", "auth_lock", "auth_logout", "auth_recover"];
     let mut checked = 0;
     for (name, text) in files {
-        for segment in text.split("#[tauri::command]").skip(1) {
-            let body = segment.split("\n}\n").next().unwrap();
-            let fn_name = body.split("fn ").nth(1).unwrap().split('(').next().unwrap().trim();
+        // Host commands are `pub fn name(state: HostState<'_>, ...)`.
+        let mut rest = text;
+        while let Some(idx) = rest.find("pub fn ") {
+            rest = &rest[idx + "pub fn ".len()..];
+            let fn_name = rest.split('(').next().unwrap_or("").trim();
+            let after_name = rest.get(fn_name.len()..).unwrap_or("");
+            if !after_name.trim_start().starts_with("(state: HostState") {
+                continue;
+            }
+            let body = after_name.split("\n}\n").next().unwrap_or(after_name);
             checked += 1;
             if open.contains(&fn_name) {
                 continue;

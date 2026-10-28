@@ -1,4 +1,4 @@
-//! JSON entry points for every Tauri command. The WinUI host calls these by name.
+//! JSON entry points for every engine command. The WinUI host calls these by name.
 use crate::commands::{AppState, HostState};
 use serde::Serialize;
 use serde_json::Value;

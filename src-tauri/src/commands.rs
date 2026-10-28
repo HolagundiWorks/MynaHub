@@ -6,7 +6,7 @@ use serde::Serialize;
 
 pub use office_core::workspace::*;
 
-/// Borrowed application session shared by Tauri commands and the C ABI.
+/// Borrowed application session shared by bridge/FFI entry points.
 pub struct HostState<'a>(&'a AppState);
 
 impl std::ops::Deref for HostState<'_> {
@@ -22,24 +22,11 @@ impl<'a> HostState<'a> {
     }
 }
 
-impl<'a, R: tauri::Runtime> tauri::ipc::CommandArg<'a, R> for HostState<'a> {
-    fn from_command(command: tauri::ipc::CommandItem<'a, R>) -> Result<Self, tauri::ipc::InvokeError> {
-        let state = tauri::State::<'a, AppState>::from_command(command)?;
-        // `State` is a reference-sized wrapper around the managed session. Take the inner address
-        // before the wrapper is dropped; the session itself lives for `'a`.
-        let inner: &AppState = std::ops::Deref::deref(&state);
-        let extended: &'a AppState = unsafe { &*std::ptr::from_ref(inner) };
-        Ok(HostState(extended))
-    }
-}
-
-#[tauri::command]
 pub fn auth_status(state: HostState<'_>) -> Result<AuthStatus, String> {
     read_auth_status(&state)
 }
 
 /// Creates the first (owner) account. Returns the one-time recovery code.
-#[tauri::command]
 pub fn auth_setup(state: HostState<'_>, username: String, password: String, confirm: String) -> Result<String, String> {
     if crate::company_file::active_summary(&state).is_none() {
         return Err("Open or create a company first.".into());
@@ -48,23 +35,19 @@ pub fn auth_setup(state: HostState<'_>, username: String, password: String, conf
     create_owner(&conn, &username, &password, &confirm)
 }
 
-#[tauri::command]
 pub fn auth_login(state: HostState<'_>, username: String, password: String) -> Result<SessionInfo, String> {
     login(&state, &username, &password)
 }
 
 /// Unlocks the current locked session; the password must belong to the same user.
-#[tauri::command]
 pub fn auth_unlock(state: HostState<'_>, password: String) -> Result<(), String> {
     unlock(&state, &password)
 }
 
-#[tauri::command]
 pub fn auth_lock(state: HostState<'_>) -> Result<(), String> {
     lock(&state)
 }
 
-#[tauri::command]
 pub fn auth_logout(state: HostState<'_>) -> Result<(), String> {
     logout(&state)
 }
@@ -81,13 +64,11 @@ fn read_profile_row(conn: &Connection) -> Result<CompanyProfile, String> {
     office_core::profile::read(conn)
 }
 
-#[tauri::command]
 pub fn company_get_profile(state: HostState<'_>) -> Result<CompanyProfile, String> {
     require(&state, Permission::View)?;
     read_profile(&state)
 }
 
-#[tauri::command]
 pub fn company_save_profile(state: HostState<'_>, profile: CompanyProfile) -> Result<(), String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
@@ -168,7 +149,6 @@ fn logo_shape(shape: &str) -> Result<&'static str, String> {
     }
 }
 
-#[tauri::command]
 pub fn company_logo(state: HostState<'_>) -> Result<CompanyLogos, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
@@ -176,7 +156,6 @@ pub fn company_logo(state: HostState<'_>) -> Result<CompanyLogos, String> {
     Ok(CompanyLogos { square: mark_of(&logos.square), wide: mark_of(&logos.wide) })
 }
 
-#[tauri::command]
 pub fn company_logo_set(state: HostState<'_>, shape: String, data_base64: String) -> Result<(), String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let shape = logo_shape(&shape)?;
@@ -198,7 +177,6 @@ pub fn company_logo_set(state: HostState<'_>, shape: String, data_base64: String
     Ok(())
 }
 
-#[tauri::command]
 pub fn company_logo_clear(state: HostState<'_>, shape: String) -> Result<(), String> {
     let uid = require(&state, Permission::ManageSettings)?;
     let shape = logo_shape(&shape)?;
