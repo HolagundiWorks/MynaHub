@@ -1,10 +1,15 @@
 # Licensing
 
-**O-Studio** is **dual-licensed** by
+**O-Studio** is **open source** and **dual-licensed** by
 **Human Centric Works, Hospet**. You may use it under **either**:
 
 1. the open-source **GNU AGPL v3** (Community Edition), **or**
-2. a **commercial license** from Human Centric Works.
+2. an optional **commercial license** from Human Centric Works that provides
+   **AGPL relief** for customers who cannot comply with the AGPL.
+
+The Community Edition is the open-source path. The commercial license is not a
+closed-source product fork and does not add proprietary modules — it only lifts
+AGPL copyleft and network-source obligations for that customer.
 
 Pick whichever fits how you use the software.
 
@@ -27,9 +32,9 @@ Under the AGPL you must, among other things:
 
 The full, authoritative terms are in [LICENSE](LICENSE).
 
-## 2. Commercial License
+## 2. Commercial License (optional AGPL relief)
 
-A separate **commercial license is required** if you do **not** want to comply with the
+A separate **commercial license** is available if you do **not** want to comply with the
 AGPL — in particular if you:
 
 - **resell** O-Studio or a derivative of it,
@@ -43,9 +48,9 @@ include branding, redistribution and support terms tailored to your needs.
 
 ### Obtaining a commercial license
 
-**Human Centric Works**
+**Developed by Human Centric Works**
 Web: <https://hcworks.in>
-Email: <office@hcworks.in>
+Email: <support@hcworks.in>
 
 ## Contributions
 
