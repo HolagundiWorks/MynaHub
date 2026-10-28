@@ -152,6 +152,14 @@ pub fn user_update(state: HostState<'_>, id: i64, role: String, disabled: bool, 
     update_user(&conn, uid, id, &role, disabled)
 }
 
+/// Administrator reset of another user's password (suite hub). Needs ManageUsers + the signed-in person's own password.
+pub fn user_set_password(state: HostState<'_>, id: i64, password: String, admin_password: String) -> Result<(), String> {
+    let uid = require(&state, Permission::ManageUsers)?;
+    reauth(&state, &admin_password)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    office_core::users::set_password(&conn, uid, id, &password)
+}
+
 // ---------- audit ----------
 
 #[derive(Serialize)]

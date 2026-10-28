@@ -72,15 +72,21 @@ pub struct DocumentInfo {
     pub bytes: i64,
 }
 
+/// Max kind length. Must fit CoreOp `aqc.ra.draft.<bill_id>` where bill_id is up to 64 hex chars
+/// (`Guid.ToString("N")` is 32 → kind length 45).
+pub const MAX_KIND_LEN: usize = 80;
+
 fn check_kind(kind: &str) -> Result<(), String> {
     let ok = !kind.is_empty()
-        && kind.len() <= 40
+        && kind.len() <= MAX_KIND_LEN
         && kind.starts_with(|c: char| c.is_ascii_lowercase())
         && kind.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '.' || c == '_');
     if ok {
         Ok(())
     } else {
-        Err("A document kind is lower-case letters, digits, dots and underscores, starting with a letter (up to 40 characters).".into())
+        Err(format!(
+            "A document kind is lower-case letters, digits, dots and underscores, starting with a letter (up to {MAX_KIND_LEN} characters)."
+        ))
     }
 }
 
@@ -365,13 +371,18 @@ mod tests {
     #[test]
     fn kinds_and_projects_are_checked() {
         let c = conn();
-        for bad in ["", "Aqc", "1abc", "a b", &"a".repeat(41)] {
+        for bad in ["", "Aqc", "1abc", "a b", &"a".repeat(MAX_KIND_LEN + 1)] {
             assert!(doc_put(&c, 7, bad, 0, "x", "a").is_err(), "{bad:?}");
         }
         assert_eq!(doc_put(&c, 99, "aqc.project", 0, "x", "a").unwrap_err(), "Project not found.");
         doc_put(&c, 7, "aqc.rates", 0, "r", "a").unwrap();
         doc_put(&c, 7, "aqc.project", 0, "p", "a").unwrap();
         assert_eq!(doc_list(&c, 7).unwrap().iter().map(|d| d.kind.as_str()).collect::<Vec<_>>(), ["aqc.project", "aqc.rates"]);
+        // CoreOp RA draft kinds: prefix + 32-char Guid "N" form (exceeds the old 40-char limit).
+        let ra = format!("aqc.ra.draft.{}", "b".repeat(32));
+        assert!(ra.len() > 40 && ra.len() <= MAX_KIND_LEN);
+        doc_put(&c, 7, &ra, 0, "bill", "a").unwrap();
+        assert!(doc_list(&c, 7).unwrap().iter().any(|d| d.kind == ra));
     }
 
     #[test]
