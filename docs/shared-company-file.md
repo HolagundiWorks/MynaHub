@@ -64,7 +64,7 @@ A kind is lower-case letters, digits, dots and underscores, starting with a lett
 
 ## System of record
 
-The company file is the system of record for clients and projects. O-CoreOp and O-Draft identify a project by `ProjectRef` (`company_uuid` + `project_id`). Fee proposals can copy the O-CoreOp estimate grand total (`project_estimate_summary`) and store its `ArtifactRef`.
+The company file is the system of record for clients and projects. O-CoreOp and O-Draft identify a project by `ProjectRef` (`company_uuid` + `project_id`). Fee proposals can copy the O-CoreOp estimate grand total (`project_estimate_summary`) and store its `ArtifactRef`; fee and invoice screens also show O-CoreOp running-bill (RA) totals via `project_ra_summary`.
 
 ## What is not done
 
