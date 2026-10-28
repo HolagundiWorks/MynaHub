@@ -13,7 +13,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 | Engine | Rust, `src-tauri` and `office-core`, one `.osas` company file (earlier `.adms` files open) | C# and its own project file |
 | Shared design | `O-UI` (`Hcw.Ui`), orange | `O-UI` (`Hcw.Ui`), blue |
 | Tests | 159 engine tests, 40 office-core, UI by hand | Unit tests for import and sign-in; UI by hand |
-| CI | None | None |
+| CI | Yes (`.github/workflows/ci.yml`: rust crates, WinUI build, Carbon web Vitest) | Yes (`.github/workflows/ci.yml`) |
 | Accessibility | WCAG 2.2 AA audit done, see `wcag-audit.md` | Same |
 
 ## Phase 1: finish what is half done (now)
@@ -21,7 +21,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 | # | Item | App | Evidence |
 |---|---|---|---|
 | 1.1 | ~~Merge the O-CoreOp shell into `main`~~ Done 2026-10-19 (merge commit `a0aa37d`, with the AORMS sign-in and Online projects branch) | CoreOp | Checked |
-| 1.2 | Add continuous integration: build, `cargo test`, `dotnet test`, the static QA test | Both | Checked: neither repository has a workflow |
+| 1.2 | ~~Add continuous integration~~ Done for O-Studio (`rust`, `windows-app`, `carbon-ui` jobs). O-CoreOp has a workflow too | Both | Checked: workflows exist; keep them green |
 | 1.3 | Narrator and NVDA pass over sign-in, create a client, save a record, read a table. Confirms audit item O5 | Both | Not tested; automation cannot do this |
 | 1.4 | ~~Check every page at 520 px (O3)~~ Done 2026-10-19: all 31 pages, no loss of content. Cosmetic follow-up: narrow table columns break words (the header row misalignment is fixed) | Studio | Checked |
 | 1.5 | Field-level errors (O6): done for the record pages (including errors the engine returns, matched by field label), transmittals, time book and letters. The password boxes are marked too. Still open: engine errors on the pages that are not record pages | Studio | Checked |
@@ -56,7 +56,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 
 | # | Item | State |
 |---|---|---|
-| D1 | The earlier Carbon interface (`src/`, `index.html`, `vite.config.ts`, `package.json`, Tauri's web window) duplicates the WinUI app. Retire it, keep the Rust engine, and make `src-tauri` a library only | **Decision needed.** The engine and its tests do not depend on it, but `tauri.conf.json`, the Vitest tests and the NSIS bundle script do |
+| D1 | The earlier Carbon interface (`src/`, `index.html`, `vite.config.ts`, `package.json`, Tauri's web window) duplicates the WinUI app. Retire it, keep the Rust engine, and make `src-tauri` a library only | **Decision needed.** Production UI and the NSIS installer are WinUI (`installer/build.ps1` / `aos.nsi`). The Carbon stack is still wired through `tauri.conf.json`, Vitest (`carbon-ui` CI), and npm; the installer only optionally finds `makensis` under Tauri's download folder |
 | D2 | `README.md` says no installer has been built and tells you to build the debug engine | Fixed in this change |
 | D3 | The old amber and ink logo set (`brand/`, `tools/brand`) | Removed in this change |
 | D4 | Sample PDFs from the first template library (`docs/sample-pdfs`) | Removed in this change; they were not referenced |
@@ -66,7 +66,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 
 ## Order of work
 
-1. Phase 1.1 to 1.2 first: merge and CI, so everything after is checked on each push.
+1. Phase 1.1 and 1.2 are done (merge and CI). Keep CI green on each push.
 2. 1.3 to 1.6 together, as one accessibility pass, then close the audit.
-3. D1 once the owner decides.
+3. D1 once the owner decides (retire Carbon web; keep WinUI + Rust engine).
 4. Phase 2 in the order 2.1, 2.3, 2.2, 2.4. The rest of phase 2 needs 2.3.
