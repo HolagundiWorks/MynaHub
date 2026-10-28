@@ -1,21 +1,23 @@
-# OSAS as the hub: one company file, one sign-in
+# Studio as the hub: one company file, one sign-in
 
-Written 2026-10-19. Decision from the owner: the suite app (OSAS) holds the company's details and the sign-in, and the company file is chosen there, not in O-Studio. O-Studio is one app among the suite's apps; the company file is core and is linked to all of them.
+Written 2026-10-19; **updated 2026-10-28** for the Studio↔OSAS merge ([studio-osas-merge.md](studio-osas-merge.md)).
+
+**Decision (2026-10-28):** **O-Studio** is the user-facing suite shell. It holds the company details, the admin password, users, and the launcher cards. The suite brand remains **OSAS**; env vars and `suite.json` keep the `OSAS_*` names so CoreOp, Draft and Form do not need a rename. A separate OSAS.exe hub is deprecated once Studio ships these duties.
 
 ## The model
 
 ```
-OSAS  ── chooses the company file ── signs in once ── shows and edits the company details
+O-Studio  ── chooses/creates the company file ── signs in once ── edits company details + users
   │
-  ├─ launches O-Studio  ─┐  each gets: the company file path + a one-time sign-in ticket
-  ├─ launches O-CoreOp  ─┤  and opens that company already signed in as the same person
-  └─ launches O-Draft   ─┘
+  ├─ card: O-CoreOp  ─┐  each gets: the company file path + a one-time sign-in ticket
+  ├─ card: O-Draft   ─┤  and opens that company already signed in as the same person
+  └─ card: O-Form    ─┘
 ```
 
-- **The company file** is the `.osas` file (earlier `.adms` files open too). It is **chosen and created only in OSAS** (decision 2026-10-19): O-Studio and O-CoreOp have no "new company" or "open company" of their own. An app started on its own offers "Open OSAS" and, when OSAS has a company chosen, "Open the company OSAS chose", which opens that file and shows the sign-in page. OSAS remembers the choice (`%LOCALAPPDATA%\OSAS\suite.json`) and the apps follow it. An app started on its own, without OSAS, still works as before: it asks for a file and a sign-in.
-- **The company details** (name, address, contact, PAN, GSTIN, registration, bank details, letterhead style and accent) live in the company file's profile. OSAS shows and edits them through the shared office interface, so every app sees the same details.
-- **The sign-in** is the company file's own users (owner, principal, accounts, document editor, auditor). OSAS asks for the user name and password once.
-- **The users** are created and managed in OSAS (decision 2026-10-19): add a user, change a role, set a password for someone who forgot theirs, stop or allow sign-in. Each change asks for the signed-in person's own password again, and the last active owner can never be removed. O-Studio's Security page no longer has a People section; it points here.
+- **The company file** is the `.osas` file (earlier `.adms` files open too). It is **chosen and created in Studio** (merge decision 2026-10-28). Studio remembers the choice (`%LOCALAPPDATA%\OSAS\suite.json`) so sibling apps can follow it. CoreOp/Draft started alone still redeem `OSAS_COMPANY` / `OSAS_TICKET` or offer to open the remembered company.
+- **The company details** (name, address, contact, PAN, GSTIN, registration, bank details, letterhead style and accent) live in the company file's profile. Studio shows and edits them; every app reads the same details.
+- **The sign-in** is the company file's own users (owner, principal, accounts, document editor, auditor). Studio asks for the user name and password once (admin password stays here only).
+- **The users** are created and managed in Studio: add a user, change a role, set a password for someone who forgot theirs, stop or allow sign-in. Each change asks for the signed-in person's own password again, and the last active owner can never be removed.
 
 ## Single sign-in without storing passwords
 
@@ -50,12 +52,12 @@ When an app is started by OSAS without a valid ticket (it expired, or the person
 
 | Data | Owned and edited in | Read by |
 |---|---|---|
-| **Company details**: name, address, registrations, bank, letterhead, accent | **OSAS** | every app, for reports, title plates, letters, invoices |
-| **Users and sign-in** | **OSAS** | every app |
+| **Company details**: name, address, registrations, bank, letterhead, accent | **O-Studio** | every app, for reports, title plates, letters, invoices |
+| **Users and sign-in** | **O-Studio** | every app |
 | **Project details**: code, name, site, client, service, floors, brief | **O-Studio** | O-CoreOp and O-Draft, for reports, title plates and other documents |
-| Quantities, estimates, billing | O-CoreOp | O-Studio shows the results against the fee proposal |
+| Quantities, estimates, billing | O-CoreOp | O-Studio shows the results against the fee proposal (approval/lock in Studio is planned) |
 | Drawings and take-off geometry | O-Draft (ShilpiDB for the spatial records) | O-CoreOp reads the take-off |
-| **The AI assistant** | **OSAS runs it** | it reads the other three through the suite's own connection |
+| **The AI assistant** | **Studio hosts it** (was OSAS) | it reads the other apps through the suite's own connection |
 
 The apps keep no copy of the company or project details. A document is made from one read of the company file, `document_context { project_id? }` (permission: view). It returns the company profile, today's date in the file's clock, and, when a project is named, the project, its client, its brief, the Council of Architecture service in words, and its `ProjectRef`. A change in OSAS or O-Studio shows in the next document any app makes. Apps must not edit what they only read: O-CoreOp and O-Draft do not save company or project details.
 
@@ -68,10 +70,10 @@ The apps keep no copy of the company or project details. A document is made from
 | Piece | State |
 |---|---|
 | Engine: company details in `office-core` (`profile.rs`), tickets (`suite.rs`, migration 0030), operations on the office interface and on O-Studio's own interface | Built. 62 tests in `office-core`, 7 in `office-ffi`, and a ticket round trip in O-Studio's interface test |
-| OSAS: choose the company file, sign in once, edit the company details, hand the file and a ticket to each app it starts | Built (OSAS 0.3.0) |
-| O-Studio opens `OSAS_COMPANY` and redeems `OSAS_TICKET` at start | Built. Run end to end: OSAS signed in, O-Studio opened on Pulse for the company with no password typed |
-| O-CoreOp does the same, then shows its company projects | Built. Run end to end the same way |
-| O-Draft | Not done. It is not changed yet (see the hand-off in the OSAS repository) |
+| Studio: choose/create the company file, sign in once, edit company details and users, write `suite.json`, launch sibling apps with tickets | **Phase 1 (2026-10-28):** create/open/recent, People, suite cards, `suite.json` writer in O-Studio. Separate OSAS.exe hub deprecated as the chooser |
+| O-Studio opens `OSAS_COMPANY` and redeems `OSAS_TICKET` at start | Built (also used when an older launcher starts Studio) |
+| O-CoreOp does the same, then shows its company projects | Built |
+| O-Draft | Ticket/companyfile path in progress in Draft; not blocked by this merge |
 
 ## Not done
 - **Protected (encrypted) files.** A protected file opens through a decrypted working copy that only one program can hold. While OSAS is signed in to one, the apps cannot open it (they say it is already open); sign out of OSAS first, and each app then asks for the file password itself. Plain files, which most offices use, are shared by all of them.

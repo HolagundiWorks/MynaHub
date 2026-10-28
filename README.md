@@ -1,12 +1,20 @@
 # O-Studio
 
+<<<<<<< HEAD
 O-Studio is the office app of **OSAS, the Open Source Architecture Suit**. The suite is O-Studio (office and project management, orange), O-CoreOp (quantities, estimates and billing, blue) and O-Draft (drafting, black). Some code identifiers keep older spellings, such as the `aos` / `aqc` session strings and the `AOSENC1` file marker, because files already use them.
+=======
+O-Studio is the office app and suite hub of **OSAS, the Open Source Architecture Suit**. The suite is O-Studio (office, company file and launcher cards, orange), O-CoreOp (quantities, estimates and billing, blue) and O-Draft (drafting, black). Some code identifiers keep older spellings, such as the `aos` portal session name and the `AOSENC1` file marker, because files and servers already use them.
+>>>>>>> 0169a51 (Make O-Studio the OSAS suite hub (Phase 1))
 
-Offline Windows desktop app for an architectural practice. Clients, projects, letters, invoices, and the accounts live in one company file. Developed by Human Centric Works.
+Offline Windows desktop app for an architectural practice. Clients, projects, letters, invoices, and the accounts live in one company file. Studio also chooses that company file, holds the admin password, and launches sibling apps with one-time tickets. Developed by Human Centric Works.
 
+<<<<<<< HEAD
 **License:** [AGPL-3.0](LICENSE) (Community) or [Commercial](LICENSING.md) · see also [NOTICE](NOTICE)
 
 Help for daily work is in [docs/help](docs/help/Home.md).
+=======
+Help for daily work is in [docs/help](docs/help/Home.md). Merge decision: [docs/studio-osas-merge.md](docs/studio-osas-merge.md).
+>>>>>>> 0169a51 (Make O-Studio the OSAS suite hub (Phase 1))
 
 ## Company file
 
