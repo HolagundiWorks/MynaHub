@@ -1,6 +1,6 @@
 /** Product identity. Company files use .osas; earlier .adms files still open. */
-export const PRODUCT = "Architecture Office Suit";
-export const PRODUCT_FULL = "Architecture Office Suit";
+export const PRODUCT = "O-Studio";
+export const PRODUCT_FULL = "O-Studio — Open Source Architecture Suit";
 export const DEVELOPER = "Human Centric Works";
 
 export function ProductCredit() {

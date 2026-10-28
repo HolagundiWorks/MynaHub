@@ -57,11 +57,12 @@ internal static class AppTheme
             return;
         var titleBar = window.TitleBar;
         titleBar.PreferredTheme = TitleBarTheme.Light;
-        var background = Color(245, 245, 242);
-        var foreground = Color(37, 40, 43);
-        var inactiveForeground = Color(78, 85, 90);
-        var hover = Color(232, 232, 227);
-        var pressed = Color(213, 214, 208);
+        // Cool soft-UI title bar — matches O-Draft / SuiteColors (#E4EAF2 / #1A2332).
+        var background = Color(228, 234, 242);
+        var foreground = Color(26, 35, 50);
+        var inactiveForeground = Color(74, 86, 104);
+        var hover = Color(241, 245, 250);
+        var pressed = Color(216, 222, 232);
         titleBar.BackgroundColor = background;
         titleBar.ForegroundColor = foreground;
         titleBar.InactiveBackgroundColor = background;
