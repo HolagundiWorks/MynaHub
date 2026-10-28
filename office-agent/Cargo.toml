@@ -3,6 +3,7 @@ name = "office-agent"
 version = "0.1.0"
 description = "A governed tool registry over the office records, and an MCP server so an AI assistant can use them"
 authors = ["Human Centric Works"]
+license = "AGPL-3.0-only"
 edition = "2024"
 
 [lib]

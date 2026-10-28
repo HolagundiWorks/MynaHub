@@ -27,7 +27,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 | 1.5 | Field-level errors (O6): done for the record pages (including errors the engine returns, matched by field label), transmittals, time book and letters. The password boxes are marked too. Still open: engine errors on the pages that are not record pages | Studio | Checked |
 | 1.6 | Test at 200% text size, 400% zoom and Windows high contrast | Both | Not tested |
 | 1.7 | Run the installers end to end on a clean machine (O-Studio NSIS, O-CoreOp Inno) | Both | Checked: both scripts exist and were built; no clean-machine install was done |
-| 1.8 | Choose a licence for O-Studio and for the OSAS repository | Studio | Open decision, see the end of `suite-architecture.md` |
+| 1.8 | ~~Choose a licence for O-Studio and for the OSAS repository~~ Done: both dual-licensed AGPL-3.0 or commercial (mirror CoreOp `LICENSING.md`) | Studio + OSAS | Checked |
 
 ## Phase 2: join the apps up
 
