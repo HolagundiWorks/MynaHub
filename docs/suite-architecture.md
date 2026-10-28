@@ -19,27 +19,29 @@ The shared design is the `hcw-ui` library (MIT licensed; the marks in its brand 
 | Product | Repository | What it is now | Stack | Licence |
 |---|---|---|---|---|
 | **O-Studio** | `HolagundiWorks/O-STUDIO` | Offline office app: clients, projects, letters, invoices, accounts, bank import, tax, staff, library, proposals, meetings, attendance, site records, permits, 26AS check. One `.adms` company file | Rust engine, WinUI 3 shell over a C interface | Not stated |
-| **O-Draft** | `HolagundiWorks/O-DRAFT` | 2D CAD in Rust: drafting, DXF and DWG, layouts, plotting, architecture tools, take-off commands, an offline local-model agent (Qwen3), an MCP server, a JSON control channel, an AORMS sign-in, a `.vdb` store | Rust, wgpu, WinUI 3 shell (`aad-host.dll`) | MIT or Apache-2.0 |
-| **O-CoreOp** | `HolagundiWorks/O-COREOP` | Quantity take-off, BOQ, rate books, DSR estimates, bar bending schedules, purchase orders, running-account billing, scheduling, correspondence, stores and HR, an opt-in AI assistant, a CAD bridge importer, an AORMS connection | C# WinUI 3, C++ `bbs_engine.dll` | AGPL-3.0, or commercial |
+| **O-Draft** | `HolagundiWorks/O-DRAFT` | 2D CAD in Rust: drafting, DXF and DWG, layouts, plotting, architecture tools, take-off commands, an offline local-model agent (Qwen3), an MCP server, a JSON control channel, a `.vdb` store | Rust, wgpu, WinUI 3 shell (`aad-host.dll`) | MIT or Apache-2.0 |
+| **O-CoreOp** | `HolagundiWorks/O-COREOP` | Quantity take-off, BOQ, rate books, DSR estimates, bar bending schedules, purchase orders, running-account billing, scheduling, correspondence, stores and HR, an opt-in AI assistant, a CAD bridge importer | C# WinUI 3, C++ `bbs_engine.dll` | AGPL-3.0, or commercial |
 | **ShilpiDB** | `HolagundiWorks/shilpidb` | A spatial vector store: a binary codec, a grid index over bounding boxes, a TCP server (`shilpid`), a shell, an HTTP gateway and a WinUI browser. The roadmap says no entity types beyond a bounding box, no metadata, no importers and no embeddings yet | Rust, dependency-free | Not checked |
-| **AORMS** | `HolagundiWorks/aorms` | The web portal. It already works as the hub of the suite: the sign-in, project list, project seed, rate books and drawing files that O-Draft and O-CoreOp use (contract `2026-10-aqc-1`) | Next.js, Supabase | Not checked |
+
+OSS suite apps do **not** ship a portal connector. A hosted practice portal (if any) will live in separate forks later — not in these open-source trees.
 
 The product descriptions in the suite plan you shared are targets. Two differ from what exists: ShilpiDB is not yet a library of approved details and specifications (it stores bounding boxes), and O-Studio keeps project identity in the company file (`company_uuid` + `project_id`).
 
 ## 2. How the pieces connect today (verified)
 
 ```
-                AORMS portal (cloud): login, projects, seeds, drawings, rate books
-                 |            |
-        O-Draft (CAD)       O-CoreOp (quantities)        O-Studio (office, offline company file)
-           |   \__ hcw-aqc-bridge JSON file or portal version kind cad_bridge __/
+        O-Draft (CAD)  ---- hcw-aqc-bridge JSON / ShilpiDB ----  O-CoreOp (quantities)
+           |                                                      |
+           \____________ offline company file (office.dll) _______/
+                                    |
+                              O-Studio (office)
            |
        .vdb store (embeds ShilpiDB codec and grid; can talk to shilpid)
 ```
 
-- **Sign-in:** O-Draft and O-CoreOp can use an AORMS login (shared Windows credential `AORMS/Connect`, per-app sessions). O-Studio signs in only to the local company file; it has no portal connector.
-- **CAD to quantities:** O-Draft writes a `hcw-aqc-bridge` v1 JSON file (the O-CoreOp repository documents the contract in `docs/bridge/`), and O-CoreOp imports it. Through the portal this travels as a version of kind `cad_bridge`. O-Draft's `aqcexport` writer is described as the last unbuilt port item in the AORMS notes, and I did not check whether it has been finished since.
-- **Project details:** O-Draft and O-CoreOp can pull title, parties and floors from the portal. O-Studio keeps clients, projects and site address in the company file.
+- **Sign-in:** Each app signs in to the local company file (OSAS ticket / `office.dll`). There is no shared portal credential store in the OSS trees.
+- **CAD to quantities:** O-Draft writes a `hcw-aqc-bridge` v1 JSON file (the O-CoreOp repository documents the contract in `docs/bridge/`), and O-CoreOp imports it. Take-off can also go through a shared ShilpiDB server.
+- **Project details:** O-Studio keeps clients, projects and site address in the company file; Draft/CoreOp can consume company-file `ProjectRef` / details offline.
 - **AI:** O-Draft has its own agent (`crates/agent`, a fixed tool registry with confirmation rules, audit log and an offline model) and an MCP server. O-CoreOp has an opt-in assistant. O-Studio now has `office-agent`, a read-only MCP server over the office records. Each is separate.
 
 ## 3. What was built in this repository for the suite (verified, with tests)
@@ -55,10 +57,9 @@ The product descriptions in the suite plan you shared are targets. Two differ fr
 
 ### 4.1 One project identity
 
-Identifiers in play: the O-Studio `projects.id` inside one company file (`company_uuid` + `project_id`), O-CoreOp's own project file, and (in O-Draft / O-CoreOp) an optional portal `projectOfficeId`. Proposed for O-Studio:
+Identifiers in play: the O-Studio `projects.id` inside one company file (`company_uuid` + `project_id`) and O-CoreOp's own project file. Proposed for O-Studio:
 
 - `ProjectRef = { company_uuid, project_id }`. That pair is the id for an offline practice, and the bridge file should carry it.
-- **Decision for the owner:** how O-Draft and O-CoreOp map a portal project to a company-file `ProjectRef` when both exist.
 
 ### 4.2 Contracts, not shared databases
 
@@ -66,7 +67,7 @@ Keep each app's data its own. Share through a small versioned contract package. 
 
 | Contract | State |
 |---|---|
-| Sign-in and session (`2026-10-aqc-1`) | Exists for O-Draft / O-CoreOp portal clients, in the aorms repo. O-Studio does not use it |
+| Company-file auth / tickets | Exists via `office.dll` / OSAS launcher; shared by suite apps offline |
 | CAD to quantities (`hcw-aqc-bridge` v1) | Exists, in the O-CoreOp repo |
 | Office records (`docs/office-abi.md`) | Exists, in this repo |
 | `ProjectRef` and `ArtifactRef` (a drawing, an estimate or a document with revision, checksum and the revisions it was made from) | **Written** (`docs/contracts/refs.md`, version 1) and implemented in `office-core`. No other app produces or reads them yet |
