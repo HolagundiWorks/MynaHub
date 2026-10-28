@@ -3,6 +3,7 @@ using Adms.Interop;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.Storage;
@@ -104,6 +105,8 @@ internal sealed class WorkspaceView : UserControl
         _shell = shell;
         StartLiveSync();
         Hcw.Ui.SuiteNavigation.Apply(_nav, Hcw.Ui.SuiteApp.Studio);
+        AutomationProperties.SetName(_nav, "Sections");
+        AutomationProperties.SetLandmarkType(_nav, AutomationLandmarkType.Navigation);
         AutomationProperties.SetName(_paneLogo, "O-Studio");
         _nav.ItemInvoked += (_, args) =>
         {
@@ -122,6 +125,8 @@ internal sealed class WorkspaceView : UserControl
         _shell.RefreshPaneLogo = LoadPaneLogo;
         LoadPaneLogo();
         _host.Background = Flow.Ink("SurfaceBackgroundBrush");
+        AutomationProperties.SetName(_host, "Main content");
+        AutomationProperties.SetLandmarkType(_host, AutomationLandmarkType.Main);
         var sheet = new Border
         {
             Margin = new Thickness(8),

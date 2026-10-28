@@ -79,7 +79,11 @@ export default function DashboardPage({
       {metrics && metrics.length > 0 && (
         <div className="ao-cols-4">
           {metrics.map((m) => (
-            <ClickableTile key={m.label} onClick={() => { void onOpen(m.page); }}>
+            <ClickableTile
+              key={m.label}
+              onClick={() => { void onOpen(m.page); }}
+              aria-label={`${m.label}, ${m.value}. ${m.hint}. Open ${m.label}`}
+            >
               <p className="ao-muted">{m.label}</p>
               <Heading>{m.value}</Heading>
               <p className="ao-muted">{m.hint}</p>
