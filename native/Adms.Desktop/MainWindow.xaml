@@ -53,6 +53,8 @@
             </MenuBarItem>
             <MenuBarItem Title="View" AccessKey="V">
                 <MenuFlyoutItem Text="Pulse" Click="GoDashboard"/>
+                <MenuFlyoutSeparator/>
+                <MenuFlyoutItem Text="Tasks widget…" AccessKey="T" Click="OpenTasksWidget"/>
             </MenuBarItem>
             <MenuBarItem Title="Company" AccessKey="M">
                 <MenuFlyoutItem Text="Company profile" Click="GoCompany"/>

@@ -66,7 +66,7 @@ internal sealed class ReportsPage : UserControl, IPageCommands
 
     private void LoadClients()
     {
-        _ = _shell.Run("Loading clientsâ€¦", () =>
+        _ = _shell.Run("Loading clients…", () =>
         {
             var rows = _shell.Call("client_list", new { include_archived = false });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -96,7 +96,7 @@ internal sealed class ReportsPage : UserControl, IPageCommands
             _project.SelectedIndex = 0;
             return;
         }
-        _ = _shell.Run("Loading projectsâ€¦", () =>
+        _ = _shell.Run("Loading projects…", () =>
         {
             var rows = _shell.Call("project_list", new { client_id = clientId, include_archived = false });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -178,7 +178,7 @@ internal sealed class ReportsPage : UserControl, IPageCommands
     private Button ReportButton(string label, Action action)
     {
         var button = Flow.Command(label, action);
-        button.MinHeight = 32;
+        button.MinHeight = Hcw.Ui.SuiteScale.ControlMinHeight;
         button.HorizontalAlignment = HorizontalAlignment.Stretch;
         AutomationProperties.SetName(button, label);
         return button;
@@ -221,8 +221,8 @@ internal sealed class ReportsPage : UserControl, IPageCommands
         _heading.Text = title;
         _period.Text = period;
         _body.Children.Clear();
-        _body.Children.Add(Flow.Secondary("Preparing the reportâ€¦"));
-        _ = _shell.Run("Preparing reportâ€¦", () =>
+        _body.Children.Add(Flow.Secondary("Preparing the report…"));
+        _ = _shell.Run("Preparing report…", () =>
         {
             var result = _shell.Call(operation, args);
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -299,7 +299,7 @@ internal sealed class ReportsPage : UserControl, IPageCommands
     private void ShowClientStatement(JsonElement result)
     {
         var client = Kit.Str(result, "client_name");
-        _heading.Text = client.Length == 0 ? "Client statement" : $"Statement Â· {client}";
+        _heading.Text = client.Length == 0 ? "Client statement" : $"Statement · {client}";
         _body.Children.Add(Flow.Secondary($"Balance due {Kit.Str(result, "balance_display")}"));
         var invoices = Rows(result, "invoices", row =>
         [
@@ -329,9 +329,9 @@ internal sealed class ReportsPage : UserControl, IPageCommands
     {
         var client = Kit.Str(result, "client_name");
         var project = Kit.Str(result, "project_name");
-        _heading.Text = project.Length == 0 || project == "All projects" ? $"Ledger Â· {client}" : $"Ledger Â· {client} Â· {project}";
+        _heading.Text = project.Length == 0 || project == "All projects" ? $"Ledger · {client}" : $"Ledger · {client} · {project}";
         _body.Children.Add(Flow.Secondary(Kit.Str(result, "note")));
-        _body.Children.Add(Flow.Secondary($"Opening {Kit.Str(result, "opening_display")} Â· Closing {Kit.Str(result, "closing_display")}"));
+        _body.Children.Add(Flow.Secondary($"Opening {Kit.Str(result, "opening_display")} · Closing {Kit.Str(result, "closing_display")}"));
         var rows = Rows(result, "lines", row =>
         [
             Kit.Str(row, "date"), Kit.Str(row, "particular"), Kit.Str(row, "project"),

@@ -27,7 +27,7 @@ internal sealed class TimeSheet : UserControl
         page.Children.Add(Flow.Pair(_project, _person));
         page.Children.Add(Flow.Pair(_date, _hours));
         page.Children.Add(_note);
-        var record = new Button { Content = "Record time", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+        var record = new Button { Content = "Record time", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
         record.Visibility = shell.CanEdit ? Visibility.Visible : Visibility.Collapsed;
         record.Click += (_, _) => Record();
         page.Children.Add(record);
@@ -45,7 +45,7 @@ internal sealed class TimeSheet : UserControl
 
     private void LoadProjects()
     {
-        _ = _shell.Run("Loading projectsâ€¦", () =>
+        _ = _shell.Run("Loading projects…", () =>
         {
             var rows = _shell.Call("project_list", new { client_id = (long?)null, include_archived = false });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -59,7 +59,7 @@ internal sealed class TimeSheet : UserControl
                         continue;
                     var client = Kit.Str(row, "client_name");
                     var name = Kit.Str(row, "name");
-                    _project.Items.Add(new ComboBoxItem { Content = client.Length == 0 ? name : $"{client} â€” {name}", Tag = id });
+                    _project.Items.Add(new ComboBoxItem { Content = client.Length == 0 ? name : $"{client} — {name}", Tag = id });
                 }
                 if (_project.Items.Count > 0)
                     _project.SelectedIndex = 0;
@@ -69,7 +69,7 @@ internal sealed class TimeSheet : UserControl
 
     private void LoadLines()
     {
-        _ = _shell.Run("Loading timeâ€¦", () =>
+        _ = _shell.Run("Loading time…", () =>
         {
             var rows = _shell.Call("time_entry_list", new { project_id = (long?)null });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -85,7 +85,7 @@ internal sealed class TimeSheet : UserControl
                 foreach (var row in rows.EnumerateArray())
                 {
                     var line = Flow.Columns(
-                        [Kit.Str(row, "work_date"), $"{Kit.Str(row, "client")} â€” {Kit.Str(row, "project")}", Kit.Str(row, "person"), Kit.Str(row, "hours_display"), Kit.Str(row, "note"), ""],
+                        [Kit.Str(row, "work_date"), $"{Kit.Str(row, "client")} — {Kit.Str(row, "project")}", Kit.Str(row, "person"), Kit.Str(row, "hours_display"), Kit.Str(row, "note"), ""],
                         widths);
                     if (_shell.CanEdit && Kit.Id(row) is long id && line.Children.Count > 0 && line.Children[line.Children.Count - 1] is Border cell)
                     {
@@ -110,7 +110,7 @@ internal sealed class TimeSheet : UserControl
         var workDate = _date.Text.Trim();
         var hours = _hours.Text.Trim();
         var note = _note.Text;
-        _ = _shell.Run("Recording timeâ€¦", () => _shell.Call("time_entry_record", new { project_id = projectId, person, work_date = workDate, hours, note }))
+        _ = _shell.Run("Recording time…", () => _shell.Call("time_entry_record", new { project_id = projectId, person, work_date = workDate, hours, note }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result)
@@ -127,7 +127,7 @@ internal sealed class TimeSheet : UserControl
 
     private void Remove(long id)
     {
-        _ = _shell.Run("Removing the time lineâ€¦", () => _shell.Call("time_entry_cancel", new { id }))
+        _ = _shell.Run("Removing the time line…", () => _shell.Call("time_entry_cancel", new { id }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result)
@@ -139,7 +139,7 @@ internal sealed class TimeSheet : UserControl
 
     private void LoadUse()
     {
-        _ = _shell.Run("Loading hours against the feeâ€¦", () =>
+        _ = _shell.Run("Loading hours against the fee…", () =>
         {
             var result = _shell.Call("time_utilization");
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -157,8 +157,8 @@ internal sealed class TimeSheet : UserControl
                     if (row.TryGetProperty("share_bp", out var shareValue) && shareValue.TryGetInt64(out var parsed))
                         share = parsed;
                     var block = new StackPanel { Spacing = 4 };
-                    block.Children.Add(new TextBlock { Text = $"{Kit.Str(row, "client")} â€” {Kit.Str(row, "project")}" });
-                    block.Children.Add(new TextBlock { Text = $"{Kit.Str(row, "hours_display")} hours Â· fee {Kit.Str(row, "fee_display")} Â· {Kit.Str(row, "per_hour_display")} per hour" });
+                    block.Children.Add(new TextBlock { Text = $"{Kit.Str(row, "client")} — {Kit.Str(row, "project")}" });
+                    block.Children.Add(new TextBlock { Text = $"{Kit.Str(row, "hours_display")} hours · fee {Kit.Str(row, "fee_display")} · {Kit.Str(row, "per_hour_display")} per hour" });
                     block.Children.Add(HourBar(share));
                     _use.Children.Add(block);
                 }

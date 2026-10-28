@@ -28,8 +28,8 @@ internal static class TaxAbstractView
         to.Text = Kit.Today();
         var result = new StackPanel { Spacing = 8 };
         var note = Flow.Secondary("Choose a period, then show the abstract. It reads posted journals and receipts and changes nothing.");
-        var show = new Button { Content = "Show abstract", MinHeight = 32 };
-        var export = new Button { Content = "Export CSV", MinHeight = 32 };
+        var show = new Button { Content = "Show abstract" };
+        var export = new Button { Content = "Export CSV" };
         AutomationProperties.SetName(show, "Show GST and TDS abstract");
         AutomationProperties.SetName(export, "Export GST and TDS abstract as CSV");
         show.Click += (_, _) => Show(shell, from.Text.Trim(), to.Text.Trim(), result);
@@ -57,7 +57,7 @@ internal static class TaxAbstractView
             shell.Problem(problem);
             return;
         }
-        _ = shell.Run("Preparing the abstractâ€¦", () =>
+        _ = shell.Run("Preparing the abstract…", () =>
         {
             var abstractRows = shell.Call("report_tax_abstract", new { from, to });
             shell.Window.DispatcherQueue.TryEnqueue(() => Paint(host, abstractRows));
@@ -72,7 +72,7 @@ internal static class TaxAbstractView
             return;
         }
         var csv = "";
-        var ok = await shell.Run("Preparing the CSVâ€¦", () =>
+        var ok = await shell.Run("Preparing the CSV…", () =>
         {
             var text = shell.Call("report_tax_abstract_csv", new { from, to });
             csv = text.ValueKind == JsonValueKind.String ? text.GetString() ?? "" : "";
@@ -96,7 +96,7 @@ internal static class TaxAbstractView
     private static long Paise(JsonElement row, string key) =>
         row.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : 0;
 
-    private static string Money(long paise) => paise == 0 ? "0.00" : Flow.Money(paise).Replace("â‚¹", "").Trim();
+    private static string Money(long paise) => paise == 0 ? "0.00" : Flow.Money(paise).Replace("?", "").Trim();
 
     private static IEnumerable<JsonElement> List(JsonElement parent, string key) =>
         parent.TryGetProperty(key, out var list) && list.ValueKind == JsonValueKind.Array ? list.EnumerateArray().Select(r => r.Clone()) : [];

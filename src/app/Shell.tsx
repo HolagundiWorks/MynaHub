@@ -31,22 +31,23 @@ const GROUP_ICON = { Overview: Dashboard, Work: Folder, Billing: Receipt, Accoun
 
 const NAV: NavItem[] = [
   { id: "dashboard", label: "Dashboard", group: "Overview", keywords: "home overview attention" },
+  { id: "tasks", label: "Tasks", group: "Work", keywords: "kanban todo board" },
   { id: "documents", label: "Letters and agreements", group: "Work", keywords: "letters agreements inward outward register" },
   { id: "clients", label: "Clients", group: "Work" },
   { id: "projects", label: "Projects", group: "Work" },
+  { id: "subcontracts", label: "Consultancy payouts", group: "Billing", keywords: "subcontract consultant payout" },
   { id: "invoices", label: "Invoices and receipts", group: "Billing", keywords: "invoice pro forma credit note receipt payment tds" },
   { id: "bank", label: "Bank reconciliation", group: "Billing", keywords: "bank statement csv match" },
   { id: "acc-reports", label: "Reports", group: "Accounting", keywords: "trial balance profit loss balance sheet gst tds ledger" },
   { id: "acc-journals", label: "Journals", group: "Accounting", keywords: "ledger journal voucher" },
   { id: "acc-expenses", label: "Expenses", group: "Accounting", keywords: "vendor bill" },
   { id: "acc-income", label: "Rent and interest", group: "Accounting", keywords: "income rent interest" },
-  { id: "acc-salaries", label: "Salaries", group: "Accounting", keywords: "payroll pf esi" },
   { id: "acc-assets", label: "Fixed assets", group: "Accounting", keywords: "depreciation" },
   { id: "acc-tax", label: "Tax payments", group: "Accounting", keywords: "tds gst challan" },
   { id: "acc-setup", label: "Chart and financial years", group: "Accounting", keywords: "accounts periods close" },
   { id: "templates", label: "Templates", group: "Settings" },
   { id: "company", label: "Company profile", group: "Settings", keywords: "gst upi bank logo" },
-  { id: "settings", label: "Security, users and backup", group: "Settings", keywords: "password users audit backup restore lock" },
+  { id: "settings", label: "Security and backup", group: "Settings", keywords: "password audit backup restore lock" },
 ];
 
 type PaletteItem = { label: string; hint: string; run: () => void };

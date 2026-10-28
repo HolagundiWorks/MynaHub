@@ -50,6 +50,7 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Hcw.Ui.SuiteMotion.RespectSystemPreference();
         WelcomeLogo.Source = BrandArt.Wordmark();
         LoginLogo.Source = BrandArt.Mark();
         SetupLogo.Source = BrandArt.Mark();
@@ -99,6 +100,17 @@ public sealed partial class MainWindow : Window
         RestoreTheme();
         _ = LoadWelcomeAsync();
         _ = StartFromSuiteAsync();
+    }
+
+    private void OpenTasksWidget(object sender, RoutedEventArgs e)
+    {
+        if (!_signedIn || _workspace?.Shell is not AppShell shell)
+        {
+            Notice.Title = "Sign in first, then open the tasks widget.";
+            Notice.IsOpen = true;
+            return;
+        }
+        TasksWidget.ShowOrFocus(shell);
     }
 
     private void RestoreTheme() => AppTheme.Apply(Root, AppWindow, Hwnd);

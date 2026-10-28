@@ -115,7 +115,7 @@ internal static class Flow
     {
         var mark = new TextBlock
         {
-            Text = $"O-Studio {sheet}  Â·  {section}",
+            Text = $"O-Studio {sheet}  ·  {section}",
             Style = Look("CaptionStyle"),
         };
         var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 2) };
@@ -172,10 +172,12 @@ internal static class Flow
             Style = (Style)Application.Current.Resources["AccentButtonStyle"],
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Bottom,
-            Margin = new Thickness(0, 0, 12, 12),
-            MinHeight = 36,
-            Padding = new Thickness(16, 4, 16, 4),
-            CornerRadius = new CornerRadius(8),
+            Margin = new Thickness(0, 0, Hcw.Ui.SuiteScale.FieldGap, Hcw.Ui.SuiteScale.FieldGap),
+            MinHeight = Hcw.Ui.SuiteScale.ControlMinHeight,
+            Padding = Hcw.Ui.SuiteScale.ControlPadding,
+            CornerRadius = Hcw.Ui.SuiteScale.CornerButton,
+            BorderBrush = null,
+            BorderThickness = new Thickness(0),
         };
         AutomationProperties.SetName(button, actions.Length == 1 ? actions[0].Label : "Create");
         if (actions.Length == 1)
@@ -211,7 +213,7 @@ internal static class Flow
 
     public static Grid Pair(UIElement left, UIElement right)
     {
-        var grid = new Grid { ColumnSpacing = 12, RowSpacing = 8 };
+        var grid = new Grid { ColumnSpacing = Hcw.Ui.SuiteScale.FieldGap, RowSpacing = Hcw.Ui.SuiteScale.StackGap };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -487,7 +489,7 @@ internal sealed class DashboardPage : UserControl, IPageCommands, ILiveRefresh
     private readonly StackPanel _projectList = new() { Spacing = 4 };
     private readonly StackPanel _next = new() { Spacing = 4 };
     private readonly TextBlock _nextHeading = Flow.Section("Next on your projects");
-    private readonly TextBlock _context = Flow.Secondary("Loading the company overviewâ€¦");
+    private readonly TextBlock _context = Flow.Secondary("Loading the company overview…");
     private readonly List<UIElement> _metricItems = [];
     private readonly List<(string Label, Action Run)> _creates = [];
 
@@ -543,8 +545,8 @@ internal sealed class DashboardPage : UserControl, IPageCommands, ILiveRefresh
 
     private void Load()
     {
-        _context.Text = "Loading the company overviewâ€¦";
-        _ = _shell.Run("Loading overviewâ€¦", () =>
+        _context.Text = "Loading the company overview…";
+        _ = _shell.Run("Loading overview…", () =>
         {
             var profile = Flow.Try(_shell, "company_get_profile");
             var company = profile is JsonElement p ? Kit.Str(p, "name") : "";
@@ -658,7 +660,7 @@ internal sealed class DashboardPage : UserControl, IPageCommands, ILiveRefresh
                     continue;
                 var id = row.TryGetProperty("project_id", out var pid) && pid.ValueKind == JsonValueKind.Number ? pid.GetInt64() : 0;
                 var captured = action.Clone();
-                var text = $"{Kit.Str(row, "project")}  Â·  {Kit.Str(row, "client")}  Â·  {Kit.Str(captured, "label")}";
+                var text = $"{Kit.Str(row, "project")}  ·  {Kit.Str(row, "client")}  ·  {Kit.Str(captured, "label")}";
                 var button = new Button { HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Left, Content = text };
                 AutomationProperties.SetName(button, text);
                 button.Click += (_, _) => ProjectPathView.Go(_shell, id, captured);
@@ -695,7 +697,7 @@ internal sealed class DashboardPage : UserControl, IPageCommands, ILiveRefresh
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Left,
-                Content = $"{name}  Â·  {client}  Â·  {service}",
+                Content = $"{name}  ·  {client}  ·  {service}",
             };
             AutomationProperties.SetName(button, $"{name}, {client}, {service}");
             var projectId = Kit.Id(row) ?? 0;
@@ -751,9 +753,9 @@ internal sealed class DashboardPage : UserControl, IPageCommands, ILiveRefresh
             Padding = new Thickness(0),
             MinHeight = 88,
             Background = Flow.Ink("SurfaceBackgroundBrush"),
-            BorderBrush = Flow.Ink("BorderSubtleBrush"),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(4),
+            BorderBrush = null,
+            BorderThickness = new Thickness(0),
+            CornerRadius = Hcw.Ui.SuiteScale.CornerButton,
             Content = body,
         };
         AutomationProperties.SetName(button, $"{label}, {value}. {hint}");
@@ -763,7 +765,7 @@ internal sealed class DashboardPage : UserControl, IPageCommands, ILiveRefresh
 
     private void Attention(string text, string page)
     {
-        var button = new Button { Content = text, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Left, MinHeight = 32 };
+        var button = new Button { Content = text, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Left };
         AutomationProperties.SetName(button, text);
         button.Click += (_, _) => _shell.Navigate?.Invoke(page);
         _attention.Children.Add(button);
@@ -780,7 +782,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
     public bool CanRefreshLive => !_dirty && ListPane.Visibility == Visibility.Visible;
 
     /// <summary>Reloads the list and the client choices after another app changed them. The editor is hidden when this runs.</summary>
-    public void RefreshLive() => _ = _shell.Run("Updating from another appâ€¦", () =>
+    public void RefreshLive() => _ = _shell.Run("Updating from another app…", () =>
     {
         var projects = _shell.Call("project_list", new { client_id = (long?)null, include_archived = false });
         var clients = _shell.Call("client_list", new { include_archived = false });
@@ -803,7 +805,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
     private readonly List<JsonElement> _rows = [];
     private readonly ListView _list = new() { SelectionMode = ListViewSelectionMode.Single };
     private readonly ContentControl _header = new();
-    private readonly TextBlock _summary = Flow.Secondary("Loading projectsâ€¦");
+    private readonly TextBlock _summary = Flow.Secondary("Loading projects…");
     private readonly TextBlock _empty = Flow.Secondary("No projects match.");
     private readonly TextBox _search = new() { PlaceholderText = "Code, name, client or site", Header = "Search" };
     private readonly ComboBox _status = new() { Header = "Status" };
@@ -821,6 +823,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
     private readonly Button _assignStages = new() { Content = "Assign standard stages" };
     private readonly InfoBar _notice = Flow.Notice();
     private readonly TextBox _site = Flow.Input("Site address", true);
+    private readonly TextBox _description = Flow.Input("Description for all suite apps", true);
     private readonly TextBlock _title = Flow.Heading("Projects");
     private readonly Button _save = new();
     private Button _archive = new() { Content = "Archive", Visibility = Visibility.Collapsed };
@@ -861,7 +864,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
             if (_list.SelectedItem is ListViewItem item && item.Tag is JsonElement row)
                 Open(row);
         };
-        foreach (var box in new[] { _code, _name, _site })
+        foreach (var box in new[] { _code, _name, _site, _description })
             box.TextChanged += (_, _) => { if (!_filling) _dirty = true; };
         _client.SelectionChanged += (_, _) => { if (!_filling) _dirty = true; };
         _state.SelectionChanged += (_, _) => { if (!_filling) _dirty = true; };
@@ -945,6 +948,9 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         _editor.Children.Add(_notice);
         _editor.Children.Add(Flow.Section("Site"));
         _editor.Children.Add(_site);
+        _editor.Children.Add(Flow.Section("Description"));
+        _editor.Children.Add(Flow.Secondary("Shown on title plates, estimates and forms across the suite. Keep it short and the same wording everywhere."));
+        _editor.Children.Add(_description);
         BuildBrief();
         _editor.Children.Add(_brief);
         _editor.Children.Add(_error);
@@ -958,7 +964,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         if (_shell.CanEdit)
             Flow.Pin(host, ("New project", () => _ = BeginNew()));
         Content = host;
-        _ = _shell.Run("Loading projectsâ€¦", () =>
+        _ = _shell.Run("Loading projects…", () =>
         {
             var projects = _shell.Call("project_list", new { client_id = (long?)null, include_archived = false });
             var clients = _shell.Call("client_list", new { include_archived = false });
@@ -1013,6 +1019,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         _code.Text = "";
         _name.Text = "";
         _site.Text = "";
+        _description.Text = "";
         _client.SelectedIndex = 0;
         _client.IsEnabled = true;
         _state.SelectedIndex = 0;
@@ -1044,6 +1051,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         _code.Text = Kit.Str(row, "code");
         _name.Text = Kit.Str(row, "name");
         _site.Text = Kit.Str(row, "site_address");
+        _description.Text = Kit.Str(row, "summary");
         Select(_client, Kit.Long(Kit.Str(row, "client_id")));
         _client.IsEnabled = false;
         Select(_state, Kit.Str(row, "status"));
@@ -1134,7 +1142,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
 
     private void LoadBrief(long id)
     {
-        _ = _shell.Run("Loading the project briefâ€¦", () =>
+        _ = _shell.Run("Loading the project brief…", () =>
         {
             var payload = _shell.Call("project_brief_get", new { project_id = id });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -1163,7 +1171,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
             var service = Consultancy.Label(Kit.Str(row, "consultancy_type"));
             var phase = Kit.Str(row, "phase");
             if (phase.Length > 0)
-                service = $"{service} Â· {phase}";
+                service = $"{service} · {phase}";
             var blob = $"{Kit.Str(row, "code")} {Kit.Str(row, "name")} {Kit.Str(row, "client_name")} {Kit.Str(row, "site_address")} {service}".ToLowerInvariant();
             if (needle.Length > 0 && !blob.Contains(needle))
                 continue;
@@ -1208,6 +1216,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
             code = _code.Text.Trim(),
             name = _name.Text.Trim(),
             site_address = _site.Text.Trim(),
+            summary = _description.Text.Trim(),
             consultancy_type = ((ComboBoxItem?)_consultancy.SelectedItem)?.Tag as string ?? "comprehensive",
             floors = Floors(),
             status = ((ComboBoxItem?)_state.SelectedItem)?.Tag as string ?? "active",
@@ -1218,7 +1227,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         _save.IsEnabled = false;
         var briefId = _id;
         var brief = BriefPayload();
-        _ = _shell.Run(_id == null ? "Creating projectâ€¦" : "Saving projectâ€¦", () =>
+        _ = _shell.Run(_id == null ? "Creating project…" : "Saving project…", () =>
         {
             _shell.Call("project_save", new { project });
             if (briefId is long id)
@@ -1240,7 +1249,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
     private void ReloadAfterSave()
     {
         ShowList();
-        _ = _shell.Run("Loading projectsâ€¦", () =>
+        _ = _shell.Run("Loading projects…", () =>
         {
             var projects = _shell.Call("project_list", new { client_id = (long?)null, include_archived = false });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -1260,7 +1269,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
             return;
         if (!await Flow.Confirm(this, "Archive this project?", "The project leaves the active list. Its letters and invoices stay in the company file.", "Archive"))
             return;
-        _ = _shell.Run("Archiving projectâ€¦", () => _shell.Call("project_set_archived", new { id, archived = true }))
+        _ = _shell.Run("Archiving project…", () => _shell.Call("project_set_archived", new { id, archived = true }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result)
@@ -1277,7 +1286,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
 
     private void LoadStages(long id)
     {
-        _ = _shell.Run("Loading stagesâ€¦", () =>
+        _ = _shell.Run("Loading stages…", () =>
         {
             var plan = _shell.Call("project_stages", new { project_id = id });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -1292,7 +1301,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
     /// <summary>Reloads where the project stands and what to do next. Called whenever the stages change.</summary>
     private void LoadPath(long id)
     {
-        _ = _shell.Run("Checking the project pathâ€¦", () =>
+        _ = _shell.Run("Checking the project path…", () =>
         {
             var path = _shell.Call("project_path", new { project_id = id });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -1333,20 +1342,20 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         {
             var name = Kit.Str(stage, "name");
             var marked = Kit.Str(stage, "marked_on");
-            var line = $"{name} Â· {Kit.Str(stage, "share")}% Â· {(marked.Length == 0 ? "Open" : marked)} Â· {Kit.Str(stage, "payment")}";
+            var line = $"{name} · {Kit.Str(stage, "share")}% · {(marked.Length == 0 ? "Open" : marked)} · {Kit.Str(stage, "payment")}";
             var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
             row.Children.Add(new TextBlock { Text = line, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center });
             if (_shell.CanEdit && stage.TryGetProperty("id", out var stageId) && stageId.TryGetInt64(out var id))
             {
                 if (marked.Length == 0)
                 {
-                    var mark = new Button { Content = "Mark", MinHeight = 32 };
+                    var mark = new Button { Content = "Mark" };
                     mark.Click += (_, _) => MarkStage(id);
                     row.Children.Add(mark);
                 }
                 else
                 {
-                    var clear = new Button { Content = "Clear", MinHeight = 32 };
+                    var clear = new Button { Content = "Clear" };
                     clear.Click += (_, _) => UnmarkStage(id);
                     row.Children.Add(clear);
                 }
@@ -1362,7 +1371,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         var floors = Floors();
         if (floors == 0) { Fail("Enter the number of floors from 1 to 40."); return; }
         var consultancy = ((ComboBoxItem?)_consultancy.SelectedItem)?.Tag as string ?? "comprehensive";
-        _ = _shell.Run("Assigning stagesâ€¦", () =>
+        _ = _shell.Run("Assigning stages…", () =>
         {
             var plan = _shell.Call("project_stages_apply", new { project_id = id, consultancy, floors });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -1380,7 +1389,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
     {
         if (_id is not long id)
             return;
-        _ = _shell.Run("Marking stageâ€¦", () =>
+        _ = _shell.Run("Marking stage…", () =>
         {
             var plan = _shell.Call("project_stage_mark", new { stage_id = stageId, marked_on = Kit.Today() });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -1397,7 +1406,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
     {
         if (_id is not long id)
             return;
-        _ = _shell.Run("Clearing stageâ€¦", () =>
+        _ = _shell.Run("Clearing stage…", () =>
         {
             var plan = _shell.Call("project_stage_unmark", new { stage_id = stageId });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -1438,7 +1447,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
             return;
         }
         var name = string.IsNullOrWhiteSpace(_code.Text) ? _name.Text : _code.Text;
-        _ = _shell.Run("Preparing the project reportâ€¦", () =>
+        _ = _shell.Run("Preparing the project report…", () =>
         {
             var encoded = _shell.Call("project_report", new { project_id = id }).GetString() ?? "";
             _shell.Window.DispatcherQueue.TryEnqueue(async () => await Kit.PreviewPdf(_shell, encoded, string.IsNullOrWhiteSpace(name) ? "project-report" : name));
@@ -1472,7 +1481,7 @@ internal sealed class ClientsPage : UserControl, IPageCommands, ILiveRefresh
     private readonly List<JsonElement> _rows = [];
     private readonly ListView _list = new() { SelectionMode = ListViewSelectionMode.Single };
     private readonly ContentControl _header = new();
-    private readonly TextBlock _summary = Flow.Secondary("Loading clientsâ€¦");
+    private readonly TextBlock _summary = Flow.Secondary("Loading clients…");
     private readonly TextBlock _empty = Flow.Secondary("");
     private readonly TextBox _search = new() { PlaceholderText = "Name, contact, phone or email", Header = "Search", HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly TextBox _name = Flow.Input("Name");
@@ -1757,9 +1766,9 @@ internal sealed class ClientsPage : UserControl, IPageCommands, ILiveRefresh
         foreach (var panel in new[] { _invoicesTab, _paymentsTab, _lettersTab, _reportsTab })
         {
             panel.Children.Clear();
-            panel.Children.Add(Flow.Secondary("Loadingâ€¦"));
+            panel.Children.Add(Flow.Secondary("Loading…"));
         }
-        _ = _shell.Run("Loading the client's recordsâ€¦", () =>
+        _ = _shell.Run("Loading the client's records…", () =>
         {
             var activity = _shell.Call("client_activity", new { client_id = id });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -1819,7 +1828,7 @@ internal sealed class ClientsPage : UserControl, IPageCommands, ILiveRefresh
         }
         else
         {
-            _invoicesTab.Children.Add(Flow.Secondary($"Billed {Kit.Str(activity, "billed_display")}  Â·  received {Kit.Str(activity, "received_display")}  Â·  outstanding {Kit.Str(activity, "outstanding_display")}. Totals count issued tax invoices only."));
+            _invoicesTab.Children.Add(Flow.Secondary($"Billed {Kit.Str(activity, "billed_display")}  ·  received {Kit.Str(activity, "received_display")}  ·  outstanding {Kit.Str(activity, "outstanding_display")}. Totals count issued tax invoices only."));
             Table(_invoicesTab, ["Invoice", "Project", "Status", "Issued", "Total", "Balance"], [new(1.3, GridUnitType.Star), new(1.5, GridUnitType.Star), new(90), new(100), new(1, GridUnitType.Star), new(1, GridUnitType.Star)],
                 Rows(activity, "invoices").Select<JsonElement, (string[] Cells, Action? Open)>(row =>
                 {
@@ -1894,7 +1903,7 @@ internal sealed class ClientsPage : UserControl, IPageCommands, ILiveRefresh
         _empty.Visibility = count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void Reload(Action? after = null) => _ = _shell.Run("Loading clientsâ€¦", () =>
+    private void Reload(Action? after = null) => _ = _shell.Run("Loading clients…", () =>
     {
         var rows = _shell.Call("client_list", new { include_archived = false });
         _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -1942,7 +1951,7 @@ internal sealed class ClientsPage : UserControl, IPageCommands, ILiveRefresh
         _saving = true;
         _save.IsEnabled = false;
         _savedId = null;
-        _ = _shell.Run(_id == null ? "Creating clientâ€¦" : "Saving clientâ€¦", () =>
+        _ = _shell.Run(_id == null ? "Creating client…" : "Saving client…", () =>
             {
                 var saved = _shell.Call("client_save", new { client });
                 if (saved.ValueKind == JsonValueKind.Number)
@@ -1975,7 +1984,7 @@ internal sealed class ClientsPage : UserControl, IPageCommands, ILiveRefresh
             return;
         if (!await Flow.Confirm(this, "Archive this client?", "The client leaves the active list. Projects already recorded stay.", "Archive"))
             return;
-        _ = _shell.Run("Archiving clientâ€¦", () => _shell.Call("client_set_archived", new { id, archived = true }))
+        _ = _shell.Run("Archiving client…", () => _shell.Call("client_set_archived", new { id, archived = true }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result)
@@ -2014,7 +2023,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
     private readonly List<JsonElement> _rows = [];
     private readonly ListView _list = new() { SelectionMode = ListViewSelectionMode.Single };
     private readonly ContentControl _header = new();
-    private readonly TextBlock _summary = Flow.Secondary("Loading lettersâ€¦");
+    private readonly TextBlock _summary = Flow.Secondary("Loading letters…");
     private readonly TextBlock _empty = Flow.Secondary("");
     private readonly TextBox _search = new() { PlaceholderText = "Number, subject, party or reference", Header = "Search", HorizontalAlignment = HorizontalAlignment.Stretch };
     private static readonly GridLength[] LetterWidths = [new(140), new(2, GridUnitType.Star), new(1.4, GridUnitType.Star), new(120)];
@@ -2182,7 +2191,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
 
     private void OpenById(long documentId)
     {
-        _ = _shell.Run("Opening documentâ€¦", () =>
+        _ = _shell.Run("Opening document…", () =>
         {
             var detail = _shell.Call("doc_get", new { id = documentId });
             _shell.Window.DispatcherQueue.TryEnqueue(() => Apply(detail));
@@ -2220,7 +2229,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
     {
         var id = Kit.Id(row);
         if (id is not long docId) return;
-        _ = _shell.Run("Opening documentâ€¦", () =>
+        _ = _shell.Run("Opening document…", () =>
         {
             var detail = _shell.Call("doc_get", new { id = docId });
             _shell.Window.DispatcherQueue.TryEnqueue(() => Apply(detail));
@@ -2321,8 +2330,8 @@ internal sealed class LettersPage : UserControl, IPageCommands
                 foreach (var suggestion in suggestions.EnumerateArray())
                 {
                     var replacement = suggestion.GetString() ?? "";
-                    var label = replacement.Length == 0 ? "Remove" : replacement.Length > 48 ? replacement[..48] + "â€¦" : replacement;
-                    var accept = new Button { Content = label, MinHeight = 32 };
+                    var label = replacement.Length == 0 ? "Remove" : replacement.Length > 48 ? replacement[..48] + "…" : replacement;
+                    var accept = new Button { Content = label };
                     var capturedStart = start;
                     var capturedLength = length;
                     var capturedOriginal = original;
@@ -2331,7 +2340,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
                     actions.Children.Add(accept);
                 }
             }
-            var ignore = new Button { Content = "Ignore", MinHeight = 32 };
+            var ignore = new Button { Content = "Ignore" };
             ignore.Click += (_, _) => row.Visibility = Visibility.Collapsed;
             actions.Children.Add(ignore);
             row.Children.Add(actions);
@@ -2384,7 +2393,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
             return;
         if (!await Flow.Confirm(this, "Revise this document?", "A new draft is created. The issued document stays as it was.", "Revise"))
             return;
-        _ = _shell.Run("Creating a revisionâ€¦", () =>
+        _ = _shell.Run("Creating a revision…", () =>
         {
             var created = _shell.Call("doc_revise", new { id });
             var next = created.ValueKind == JsonValueKind.Number ? created.GetInt64() : id;
@@ -2404,7 +2413,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
             return;
         var filename = Path.GetFileName(path);
         var data = Convert.ToBase64String(await File.ReadAllBytesAsync(path));
-        _ = _shell.Run("Attaching the signed copyâ€¦", () => _shell.Call("doc_attach", new { doc_id = id, kind = "signed_copy", filename, base64_data = data }));
+        _ = _shell.Run("Attaching the signed copy…", () => _shell.Call("doc_attach", new { doc_id = id, kind = "signed_copy", filename, base64_data = data }));
     }
 
     private async Task MarkSigned()
@@ -2413,7 +2422,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
             return;
         if (!await Flow.Confirm(this, "Mark this agreement as signed?", "The signed copy must already be attached. The agreement then stays on record.", "Mark signed"))
             return;
-        _ = _shell.Run("Marking signedâ€¦", () => _shell.Call("doc_mark_signed", new { id }))
+        _ = _shell.Run("Marking signed…", () => _shell.Call("doc_mark_signed", new { id }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result)
@@ -2436,7 +2445,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
         }
         if (!await Flow.Confirm(this, "Cancel this document?", "The number stays used. A signed agreement stays on record.", "Cancel document"))
             return;
-        _ = _shell.Run("Cancelling documentâ€¦", () => _shell.Call("doc_cancel", new { id, reason }))
+        _ = _shell.Run("Cancelling document…", () => _shell.Call("doc_cancel", new { id, reason }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result)
@@ -2454,7 +2463,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
         _project.Items.Add(Item("No project", 0L));
         if (rows is JsonElement list && list.ValueKind == JsonValueKind.Array)
             foreach (var row in list.EnumerateArray())
-                _project.Items.Add(Item($"{Kit.Str(row, "client_name")} â€” {Kit.Str(row, "name")}", Kit.Id(row) ?? 0));
+                _project.Items.Add(Item($"{Kit.Str(row, "client_name")} — {Kit.Str(row, "name")}", Kit.Id(row) ?? 0));
         Select(_project, selected ?? 0);
     }
 
@@ -2494,7 +2503,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
         _empty.Visibility = count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void Reload() => _ = _shell.Run("Loading documentsâ€¦", () =>
+    private void Reload() => _ = _shell.Run("Loading documents…", () =>
     {
         var rows = _shell.Call("doc_list", new { kind = (string?)null, q = (string?)null });
         _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -2532,7 +2541,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
         if (_subject.Text.Trim().Length == 0) { Flow.Fault(_subject, _error, "Subject is required."); return; }
         var input = Input();
         _saving = true;
-        _ = _shell.Run("Saving draftâ€¦", () =>
+        _ = _shell.Run("Saving draft…", () =>
         {
             var saved = _shell.Call("doc_save_draft", new { input });
             if (saved.ValueKind == JsonValueKind.Number) _id = saved.GetInt64();
@@ -2546,7 +2555,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
     private void Preview()
     {
         if (_id is not long id) { _error.Message = "Save the draft before previewing it."; _error.IsOpen = true; return; }
-        _ = _shell.Run("Preparing PDFâ€¦", () =>
+        _ = _shell.Run("Preparing PDF…", () =>
         {
             var encoded = _shell.Call("doc_pdf", new { id }).GetString() ?? "";
             _shell.Window.DispatcherQueue.TryEnqueue(async () => await Kit.PreviewPdf(_shell, encoded, "document"));
@@ -2562,7 +2571,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
         var input = Input();
         _saving = true;
         _issue.IsEnabled = false;
-        _ = _shell.Run("Issuing documentâ€¦", () =>
+        _ = _shell.Run("Issuing document…", () =>
         {
             var saved = _shell.Call("doc_save_draft", new { input });
             var id = saved.ValueKind == JsonValueKind.Number ? saved.GetInt64() : _id ?? throw new AdmsException(1, "Save the draft before issuing it.");
@@ -2752,11 +2761,11 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
     private void SaveAccount()
     {
         var account = new { id = _accountId, name = _accountName.Text.Trim(), bank_name = _bank.Text.Trim(), account_holder = "", account_number = _number.Text.Trim(), ifsc = _ifsc.Text.Trim(), is_primary = false, active = true };
-        _ = _shell.Run(_accountId == null ? "Creating accountâ€¦" : "Saving accountâ€¦", () => _shell.Call("bank_account_save", new { account }))
+        _ = _shell.Run(_accountId == null ? "Creating account…" : "Saving account…", () => _shell.Call("bank_account_save", new { account }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) { _dirty = false; LoadAccounts(); } }));
     }
 
-    private void LoadAccounts() => _ = _shell.Run("Loading accountsâ€¦", () =>
+    private void LoadAccounts() => _ = _shell.Run("Loading accounts…", () =>
     {
         var rows = _shell.Call("bank_account_list");
         _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -2878,7 +2887,7 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
         var text = _csv;
         var mapping = Mapping();
         _previewClean = false;
-        _ = _shell.Run("Reading statementâ€¦", () =>
+        _ = _shell.Run("Reading statement…", () =>
         {
             var parsed = _shell.Call("bank_csv_preview", new { text, mapping });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -2910,7 +2919,7 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
             if (error.Length > 0) errors++;
             var particulars = Kit.Str(row, "narration");
             if (error.Length > 0)
-                particulars = particulars.Length == 0 ? error : $"{particulars} â€” {error}";
+                particulars = particulars.Length == 0 ? error : $"{particulars} — {error}";
             _preview.Items.Add(Flow.Columns([Kit.Str(row, "txn_date"), particulars, Paise(row, "credit_paise"), Paise(row, "debit_paise")], widths, money));
         }
         _previewClean = errors == 0 && parsed.GetArrayLength() > 0;
@@ -2934,7 +2943,7 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
         var text = _csv;
         var filename = _csvName;
         var mapping = Mapping();
-        _ = _shell.Run("Importing statementâ€¦", () => _shell.Call("bank_import_commit", new { account_id = accountId, filename, text, mapping }))
+        _ = _shell.Run("Importing statement…", () => _shell.Call("bank_import_commit", new { account_id = accountId, filename, text, mapping }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result) return;
@@ -2948,13 +2957,13 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
             }));
     }
 
-    private void LoadSummary() => _ = _shell.Run("Loading reconciliationâ€¦", () =>
+    private void LoadSummary() => _ = _shell.Run("Loading reconciliation…", () =>
     {
         var summary = _shell.Call("bank_summary", new { account_id = (long?)null });
         var txns = _shell.Call("bank_txn_list", new { status = (string?)null, account_id = (long?)null });
         _shell.Window.DispatcherQueue.TryEnqueue(() =>
         {
-            _summary.Text = $"{Kit.Str(summary, "unmatched")} unmatched Â· {Kit.Str(summary, "partial")} partly matched Â· {Kit.Str(summary, "matched")} matched Â· {Kit.Str(summary, "rejected_rows")} rejected rows";
+            _summary.Text = $"{Kit.Str(summary, "unmatched")} unmatched · {Kit.Str(summary, "partial")} partly matched · {Kit.Str(summary, "matched")} matched · {Kit.Str(summary, "rejected_rows")} rejected rows";
             _transactions.Items.Clear();
             var widths = new GridLength[] { new(120), new(2, GridUnitType.Star), new(140), new(120), new(130) };
             var money = new[] { false, false, true, false, false };
@@ -2984,7 +2993,7 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
 
     private void ReviewMatch(long txnId, long credit, long unallocated, string narration)
     {
-        _ = _shell.Run("Looking for invoicesâ€¦", () =>
+        _ = _shell.Run("Looking for invoices…", () =>
         {
             var suggestions = _shell.Call("bank_txn_suggest", new { txn_id = txnId });
             _shell.Window.DispatcherQueue.TryEnqueue(() => _ = ConfirmMatch(txnId, credit, unallocated, narration, suggestions));
@@ -3008,7 +3017,7 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
             if (outstanding <= 0)
                 continue;
             var match = new MatchRow(invoiceId, outstanding, Kit.Str(row, "tds_amount"), Kit.Str(row, "tds_section"));
-            var title = $"{Kit.Str(row, "number")} Â· {Kit.Str(row, "client_name")} Â· outstanding {Kit.Str(row, "balance_display")}";
+            var title = $"{Kit.Str(row, "number")} · {Kit.Str(row, "client_name")} · outstanding {Kit.Str(row, "balance_display")}";
             match.Check.Content = title;
             match.Amount.PlaceholderText = "Amount from this credit";
             match.Amount.IsEnabled = false;
@@ -3058,7 +3067,7 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
         }
         var note = new TextBlock
         {
-            Text = $"Unmatched on this credit: {Rupees(unallocated)} of {Rupees(credit)}. Tick one bill and enter a smaller amount when the bill is paid in instalments. Tick two or more bills when this one credit pays them together. Anything you leave unmatched stays open for the next credit. A bill that will not be collected is written off on the invoice, not here. â€œ{narration}â€",
+            Text = $"Unmatched on this credit: {Rupees(unallocated)} of {Rupees(credit)}. Tick one bill and enter a smaller amount when the bill is paid in instalments. Tick two or more bills when this one credit pays them together. Anything you leave unmatched stays open for the next credit. A bill that will not be collected is written off on the invoice, not here. “{narration}”",
             TextWrapping = TextWrapping.WrapWholeWords,
         };
         var body = new ScrollViewer
@@ -3104,7 +3113,7 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
             _shell.Problem("Select at least one bill.");
             return;
         }
-        _ = _shell.Run("Recording the receiptâ€¦", () => _shell.Call("bank_reconcile", new { txn_id = txnId, allocations }))
+        _ = _shell.Run("Recording the receipt…", () => _shell.Call("bank_reconcile", new { txn_id = txnId, allocations }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (task.Result)

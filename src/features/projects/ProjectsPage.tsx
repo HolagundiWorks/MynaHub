@@ -21,6 +21,7 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
+  const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(() => {
@@ -49,7 +50,7 @@ export default function ProjectsPage() {
   if (editing) {
     return (
       <>
-        <PageHeader title={editing.id ? "Edit project" : "New project"} description="A client can have many projects; each project holds its own agreements, letters and invoices." />
+        <PageHeader title={editing.id ? "Edit project" : "New project"} description="Creating a project also makes a suite folder (O-Draft drawing, O-Form model, ShilpiDB) linked for live sync." />
         <Form className="ao-form"
           onSubmit={async (e) => {
             e.preventDefault();
@@ -91,6 +92,7 @@ export default function ProjectsPage() {
         actions={<Button size="sm" disabled={clients.length === 0} onClick={() => setEditing({ id: null, client_id: 0, code: "", name: "", site_address: "", status: "active", archived: false, client_name: "" })}>New project</Button>}
       />
       {error && <InlineNotification kind="error" title={error} hideCloseButton lowContrast />}
+      {note && <InlineNotification kind="success" title={note} hideCloseButton lowContrast onClose={() => setNote("")} />}
       <DataTable
         id="projects" rows={shown} columns={columns} rowKey={(p) => p.id!} loading={loading} error={loadError} onRetry={load}
         searchLabel="Search projects by code, name, client or site" exportName="projects"
@@ -110,7 +112,32 @@ export default function ProjectsPage() {
         rowActions={(p) => (
           <>
             <Button renderIcon={Edit} kind="ghost" size="sm" onClick={() => setEditing(p)}>Edit</Button>{" "}
-            <RowMenu items={[{ label: p.archived ? "Restore" : "Archive", onClick: async () => { try { await api.projectSetArchived(p.id!, !p.archived); load(); } catch (e) { setError(errorText(e)); } } }]} />
+            <RowMenu items={[
+              {
+                label: "Ensure suite folder",
+                onClick: async () => {
+                  try {
+                    const ws = await api.projectWorkspaceEnsure(p.id!);
+                    setError("");
+                    setNote(ws?.root ? `Suite folder ready: ${ws.root}` : "No folder path returned.");
+                  } catch (e) {
+                    setNote("");
+                    setError(errorText(e));
+                  }
+                },
+              },
+              {
+                label: p.archived ? "Restore" : "Archive",
+                onClick: async () => {
+                  try {
+                    await api.projectSetArchived(p.id!, !p.archived);
+                    load();
+                  } catch (e) {
+                    setError(errorText(e));
+                  }
+                },
+              },
+            ]} />
           </>
         )}
       />

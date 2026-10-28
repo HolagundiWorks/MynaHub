@@ -63,7 +63,7 @@ internal sealed class WordRibbon : UserControl
             Icon("\uE8E4", "Align left", alignLeft, _character),
             Icon("\uE8E3", "Centre", alignCenter, _character),
             Icon("\uE8E2", "Align right", alignRight, _character),
-            TextCommand("≡", "Justify", justify, _character),
+            TextCommand("=", "Justify", justify, _character),
             Icon("\uE8FD", "Bullets", bullets, _character),
             TextCommand("1.", "Numbering", numbering, _character));
         var styles = Row(
@@ -210,7 +210,7 @@ internal sealed class WordRibbon : UserControl
 
     private static Button Icon(string glyph, string name, Action action, List<Control> bucket)
     {
-        var button = Command(new FontIcon { Glyph = glyph, FontSize = 16, FontFamily = new FontFamily("Segoe MDL2 Assets") }, name, action, bucket);
+        var button = Command(new FontIcon { Glyph = glyph, FontSize = Hcw.Ui.SuiteIconSize.Nav, FontFamily = new FontFamily("Segoe MDL2 Assets") }, name, action, bucket);
         button.Width = 32;
         button.Height = 32;
         return button;
@@ -242,7 +242,7 @@ internal sealed class WordRibbon : UserControl
 
     private static ComboBox Choice(double width, string name)
     {
-        var box = new ComboBox { Width = width, MinHeight = 32, VerticalAlignment = VerticalAlignment.Center };
+        var box = new ComboBox { Width = width, VerticalAlignment = VerticalAlignment.Center };
         AutomationProperties.SetName(box, name);
         return box;
     }
