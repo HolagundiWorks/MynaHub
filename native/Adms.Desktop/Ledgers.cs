@@ -1015,12 +1015,70 @@ internal static class Ledgers
                         personPassword.Password = "";
                         confirm.Password = "";
                         yours.Password = "";
-                        shell.Run("Loading people…", () => Pages.Show(shell, output, "People", shell.Call("user_list"), ["Username", "Role", "Disabled"], ["username", "role", "disabled"], [false, false, false]));
+                        shell.Run("Loading people…", () => Pages.Show(shell, output, "People", shell.Call("user_list"), ["Id", "Username", "Role", "Disabled"], ["id", "username", "role", "disabled"], [true, false, false, false]));
                     }));
             };
             var people = new Button { Content = "Show people", MinHeight = 32 };
-            people.Click += (_, _) => shell.Run("Loading people…", () => Pages.Show(shell, output, "People", shell.Call("user_list"), ["Username", "Role", "Disabled"], ["username", "role", "disabled"], [false, false, false]));
+            people.Click += (_, _) => shell.Run("Loading people…", () => Pages.Show(shell, output, "People", shell.Call("user_list"), ["Id", "Username", "Role", "Disabled"], ["id", "username", "role", "disabled"], [true, false, false, false]));
             page.Children.Add(Flow.Bar(create, people));
+            page.Children.Add(Flow.Secondary("To reset someone's password: enter their user id from Show people, a new password (12+), and your password, then Reset password."));
+            var resetId = Flow.Input("User id");
+            var resetPassword = new PasswordBox { Header = "New password for that person" };
+            page.Children.Add(Flow.Pair(resetId, resetPassword));
+            var reset = new Button { Content = "Reset password", MinHeight = 32 };
+            reset.Click += (_, _) =>
+            {
+                if (!long.TryParse(resetId.Text.Trim(), out var id))
+                {
+                    shell.Problem("Enter the numeric user id from Show people.");
+                    return;
+                }
+                var args = new { id, password = resetPassword.Password, admin_password = yours.Password };
+                _ = shell.Run("Resetting password…", () => shell.Call("user_set_password", args)).ContinueWith(task =>
+                    shell.Window.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        if (!task.IsCompletedSuccessfully || !task.Result)
+                            return;
+                        resetPassword.Password = "";
+                        yours.Password = "";
+                        shell.Problem("Password updated.");
+                    }));
+            };
+            var stop = new Button { Content = "Stop sign-in for user id", MinHeight = 32 };
+            stop.Click += (_, _) =>
+            {
+                if (!long.TryParse(resetId.Text.Trim(), out var id))
+                {
+                    shell.Problem("Enter the numeric user id from Show people.");
+                    return;
+                }
+                var adminPassword = yours.Password;
+                _ = shell.Run("Updating person…", () =>
+                {
+                    var list = shell.Call("user_list");
+                    var roleName = "accounts";
+                    if (list.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var row in list.EnumerateArray())
+                        {
+                            if (Kit.Id(row) == id)
+                            {
+                                roleName = Kit.Str(row, "role");
+                                break;
+                            }
+                        }
+                    }
+                    shell.Call("user_update", new { id, role = roleName, disabled = true, admin_password = adminPassword });
+                }).ContinueWith(task =>
+                    shell.Window.DispatcherQueue.TryEnqueue(() =>
+                    {
+                        if (!task.IsCompletedSuccessfully || !task.Result)
+                            return;
+                        yours.Password = "";
+                        shell.Run("Loading people…", () => Pages.Show(shell, output, "People", shell.Call("user_list"), ["Id", "Username", "Role", "Disabled"], ["id", "username", "role", "disabled"], [true, false, false, false]));
+                    }));
+            };
+            page.Children.Add(Flow.Bar(reset, stop));
             page.Children.Add(Flow.Section("Company file"));
             var protection = new TextBlock { TextWrapping = TextWrapping.Wrap };
             page.Children.Add(protection);

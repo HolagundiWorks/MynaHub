@@ -114,6 +114,7 @@ pub fn invoke(state: &AppState, op: &str, args: &Value) -> Result<Option<Vec<u8>
         "user_list" => run(crate::admin::user_list(HostState::new(state))),
         "user_create" => run(crate::admin::user_create(HostState::new(state), arg(args, "username")?, arg(args, "password")?, arg(args, "role")?, arg(args, "admin_password")?)),
         "user_update" => run(crate::admin::user_update(HostState::new(state), arg(args, "id")?, arg(args, "role")?, arg(args, "disabled")?, arg(args, "admin_password")?)),
+        "user_set_password" => run(crate::admin::user_set_password(HostState::new(state), arg(args, "id")?, arg(args, "password")?, arg(args, "admin_password")?)),
         "audit_list" => run(crate::admin::audit_list(HostState::new(state), arg(args, "limit")?)),
         "backup_list" => run(crate::admin::backup_list(HostState::new(state))),
         "backup_restore" => run(crate::admin::backup_restore(HostState::new(state), arg(args, "filename")?, arg(args, "password")?)),
