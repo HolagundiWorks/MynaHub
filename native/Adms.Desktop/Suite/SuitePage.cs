@@ -49,7 +49,7 @@ internal sealed class SuitePage : UserControl
         _company.Changed += () => monitor.Follow(_company.CompanyPath);
         monitor.Follow(_company.CompanyPath);
         _shilpi = new ShilpiPanel(settings, () => _company.CompanyPath);
-        var agent = new AgentPanel(settings, () => _company.Company, () => _company.CompanyPath);
+        var agent = new AgentPanel(settings, () => _company.Company is { } c ? new AssistantContext(c.Path, c.Name, c.User, c.Role, new Osas.Core.Agent.CompanyTools(c)) : null, () => _company.CompanyPath);
         _company.Changed += agent.Refresh;
 
         page.Children.Add(_company);
