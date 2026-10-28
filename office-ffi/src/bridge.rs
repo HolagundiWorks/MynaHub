@@ -35,8 +35,8 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
         return json(&result);
     }
     let permission = match op {
-        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" => Permission::View,
-        "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" => Permission::Edit,
+        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "drawing_list" | "drawing_view" | "drawing_at" | "track.version" | "track.apply" => Permission::View,
+        "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" | "drawing_import" | "drawing_delete" => Permission::Edit,
         "company_profile_save" => Permission::ManageSettings,
         "user_list" | "user_create" | "user_update" | "user_set_password" => Permission::ManageUsers,
         "" => return Err(CallError::BadRequest("The operation name was missing.".into())),
@@ -133,6 +133,14 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
             json(&office::library_list(conn, kind.as_deref(), search.as_deref().unwrap_or(""))?)
         }
         "library_save" => json(&office::library_save(conn, user, &arg(args, "input")?)?),
+        "drawing_list" => json(&office_core::drawings::list(conn, arg(args, "project_id")?)?),
+        "drawing_view" => json(&office_core::drawings::view(conn, arg(args, "id")?, arg(args, "window")?)?),
+        "drawing_at" => json(&office_core::drawings::at_point(conn, arg(args, "id")?, arg(args, "x")?, arg(args, "y")?, arg(args, "tolerance")?)?),
+        "drawing_import" => json(&office_core::drawings::import_dxf(conn, user, arg(args, "project_id")?, &arg::<String>(args, "name")?, &arg::<String>(args, "path")?)?),
+        "drawing_delete" => {
+            office_core::drawings::delete(conn, user, arg(args, "id")?)?;
+            json(&Value::Null)
+        }
         _ => Err(CallError::BadRequest("That operation is not part of the office interface.".into())),
     }
 }

@@ -1,6 +1,6 @@
 # Builds OSAS-Setup-<version>.exe: the launcher published self-contained, then NSIS.
 # Run from the repository root:  powershell -ExecutionPolicy Bypass -File installer\build.ps1 [-OfficeDllDir <folder with office.dll>]
-# hcw-ui (the shared design) must be checked out beside this repository; office.dll comes from the O-Studio repository (office-ffi, release).
+# o-ui (the shared design) must be checked out beside this repository; office.dll comes from the O-Studio repository (office-ffi, release).
 param([string]$Version = "0.3.0", [string]$OfficeDllDir = "")
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot

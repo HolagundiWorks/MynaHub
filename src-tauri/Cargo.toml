@@ -19,6 +19,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 office-core = { path = "../office-core" }
+office-agent = { path = "../office-agent" }
 tauri = { version = "2", features = [] }
 rusqlite = { version = "0.32", features = ["bundled", "backup"] }
 argon2 = { version = "0.5", features = ["std"] }

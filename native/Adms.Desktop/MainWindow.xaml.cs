@@ -1148,7 +1148,7 @@ public sealed partial class MainWindow : Window
         _role = CanonicalRole(role);
         ClearWorkspace();
         _signedIn = true;
-        _workspace = new WorkspaceView(new AppShell { Session = _session!, Window = this, Role = _role });
+        _workspace = new WorkspaceView(new AppShell { Session = _session!, Window = this, Role = _role, User = username, CompanyName = _companyName, CompanyPath = _companyPath });
         WorkspaceHost.Children.Add(_workspace);
         ShowOnly(WorkspaceHost);
         Notice.IsOpen = false;

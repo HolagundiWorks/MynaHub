@@ -15,6 +15,7 @@ mod company_file;
 mod db;
 mod docx;
 mod documents;
+mod drawings;
 mod entries;
 mod ffi;
 mod grammar;

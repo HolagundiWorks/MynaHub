@@ -7,7 +7,7 @@
   Nothing outside the current user's folders is changed and no administrator rights are needed.
   Run from the repository root:   powershell -ExecutionPolicy Bypass -File installer\install.ps1
   Remove it:                      powershell -ExecutionPolicy Bypass -File installer\install.ps1 -Uninstall
-  The sibling folder hcw-ui (the shared design) must be checked out beside this repository. office.dll (the company-file engine) comes from
+  The sibling folder o-ui (the shared design) must be checked out beside this repository. office.dll (the company-file engine) comes from
   the O-Studio repository: build office-ffi there in release mode; it is found beside this repository, or give -OfficeDllDir <folder>.
 #>
 param([switch]$Uninstall, [string]$Version = "0.3.0", [string]$OfficeDllDir = "", [switch]$WithoutEngine)

@@ -49,6 +49,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Adms.Interop\Adms.Interop.csproj" />
     <ProjectReference Include="..\Osas.Core\Osas.Core.csproj" />
-    <ProjectReference Include="..\..\..\hcw-ui\Hcw.Ui\Hcw.Ui.csproj" />
+    <ProjectReference Include="..\..\..\o-ui\Hcw.Ui\Hcw.Ui.csproj" />
   </ItemGroup>
 </Project>

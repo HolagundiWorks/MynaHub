@@ -34,6 +34,9 @@ internal sealed class AppShell
     public required AdmsSession Session { get; init; }
     public required MainWindow Window { get; init; }
     public string Role { get; set; } = "";
+    public string User { get; init; } = "";
+    public string CompanyName { get; init; } = "";
+    public string CompanyPath { get; init; } = "";
     public IPageCommands? Page { get; set; }
     public Action<string>? Navigate { get; set; }
     public string? PendingCreate { get; set; }
@@ -318,6 +321,10 @@ internal sealed class WorkspaceView : UserControl
                 ("tds26as", "03", "26AS check", ""),
                 ("acc-setup", "03", "Chart and financial years", ""));
         }
+        AddTab("Drawings", "");
+        AddGroup("08", "Drawings", ("drawings", "01", "Drawings (ShilpiDB)", ""));
+        AddTab("Assistant", "");
+        AddGroup("09", "Assistant", ("assistant", "01", "Ask the assistant", ""));
         AddTab("Office", "");
         AddGroup("06", "Office",
             ("company", "01", "Firm", ""),
@@ -364,14 +371,23 @@ internal sealed class WorkspaceView : UserControl
             _tabButtons[tab] = button;
             strip.Children.Add(button);
         }
+        var theme = new Hcw.Ui.Controls.SuiteThemeSwitch { Margin = new Thickness(8, 12, 12, 0), VerticalAlignment = VerticalAlignment.Top };
+        theme.Attach(_shell.Window);
+        var bar = new Grid();
+        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        bar.Children.Add(new ScrollViewer { Content = strip, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollMode = ScrollMode.Auto });
+        Grid.SetColumn(theme, 1);
+        bar.Children.Add(theme);
         var ribbon = new Border
         {
-            Child = new ScrollViewer { Content = strip, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollMode = ScrollMode.Auto },
+            Child = bar,
             BorderBrush = Flow.Ink("BorderSubtleBrush"),
             BorderThickness = new Thickness(0, 0, 0, 1),
             Background = Flow.Ink("SurfaceBackgroundBrush"),
         };
-        AutomationProperties.SetName(ribbon, "Main menu");
+        Hcw.Ui.SuiteLandmarks.Navigation(ribbon, "Main menu");
+        Hcw.Ui.SuiteLandmarks.Main(_host, "Page");
         SelectTab(_tabs[0]);
         return ribbon;
     }
@@ -413,6 +429,8 @@ internal sealed class WorkspaceView : UserControl
         "leave" => RecordPages.Leave(_shell),
         "library" => RecordPages.Library(_shell),
         "suite" => new SuitePage(_shell.Window),
+        "drawings" => new DrawingsPage(_shell),
+        "assistant" => new AssistantPage(_shell),
         "proposals" => RecordPages.Proposals(_shell),
         "meetings" => RecordPages.Meetings(_shell),
         "attendance" => new AttendancePage(_shell),

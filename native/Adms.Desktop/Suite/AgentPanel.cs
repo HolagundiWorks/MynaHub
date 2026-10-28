@@ -14,11 +14,14 @@ namespace Adms.Desktop;
 /// read-only tools, as the person signed in here, so it sees only what their role allows. It cannot change anything. The person's
 /// own API key is kept encrypted for their Windows account, and nothing is sent until they have agreed to it.
 /// </summary>
+/// <summary>The company and person the assistant works as, and the read-only tools of that person's own session.</summary>
+public sealed record AssistantContext(string Path, string Name, string User, string Role, IToolHost Tools);
+
 public sealed class AgentPanel : StackPanel
 {
     private readonly SuiteSettings _settings;
     private readonly ApiKeyStore _keys = new();
-    private readonly Func<SuiteCompany?> _company;
+    private readonly Func<AssistantContext?> _company;
     private readonly Func<string?> _companyPath;
 
     private readonly TextBlock _state = new() { Style = Resource<Style>("BodyStyle"), TextWrapping = TextWrapping.Wrap };
@@ -53,7 +56,7 @@ public sealed class AgentPanel : StackPanel
     private bool _busy;
     private CancellationTokenSource? _cancel;
 
-    public AgentPanel(SuiteSettings settings, Func<SuiteCompany?> company, Func<string?> companyPath)
+    public AgentPanel(SuiteSettings settings, Func<AssistantContext?> company, Func<string?> companyPath)
     {
         _settings = settings;
         _company = company;
@@ -180,7 +183,7 @@ public sealed class AgentPanel : StackPanel
         _keyState.Text = _keys.IsSaved ? "A key is saved for this Windows account. It is not shown again." : _keys.HasKey ? "Using the ANTHROPIC_API_KEY set on this computer." : "No key yet. Create one in the Anthropic console and paste it here.";
         var consent = _consent.IsChecked == true;
         if (company == null)
-            _state.Text = "Sign in under Company first. The assistant works as the person signed in.";
+            _state.Text = "Sign in to a company first. The assistant works as the person signed in.";
         else if (!_keys.HasKey)
             _state.Text = "Add your API key to start.";
         else if (!consent)
@@ -227,7 +230,7 @@ public sealed class AgentPanel : StackPanel
             var identity = $"{company.Path}|{company.User}|{model.Id}";
             if (_assistant == null || _assistantFor != identity)
             {
-                _assistant = new Assistant(new AnthropicApi(key), new CompanyTools(company), model.Id, company.Name, company.User, company.Role, _consent.IsChecked == true);
+                _assistant = new Assistant(new AnthropicApi(key), company.Tools, model.Id, company.Name, company.User, company.Role, _consent.IsChecked == true);
                 _assistantFor = identity;
             }
             var assistant = _assistant;
