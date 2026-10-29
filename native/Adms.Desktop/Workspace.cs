@@ -323,7 +323,7 @@ internal sealed class WorkspaceView : UserControl
             ("library", "04", "Library", ""),
             ("settings", "06", "Security and backup", ""));
         AddTab("Suite", "");
-        AddGroup("07", "Suite", ("suite", "01", "Suite apps", ""), ("suitetools", "02", "Company, users and tools", ""));
+        AddGroup("07", "Suite", ("suitetools", "01", "Dashboard", ""));
     }
 
     /// <summary>The bar along the bottom: one button for each of the suite's other apps, opened on this company, signed in.</summary>
