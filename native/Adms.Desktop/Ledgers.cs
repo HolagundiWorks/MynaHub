@@ -740,53 +740,6 @@ internal static class Ledgers
         return book;
     }
 
-    /// <summary>Launcher cards for sibling OSAS apps. Studio issues a one-time ticket; apps redeem it and read company via document_context.</summary>
-    public static UIElement Suite(AppShell shell)
-    {
-        var form = new DraftForm();
-        var page = form.Body;
-        page.Children.Add(Flow.SheetMark("06.01", "Office", "Suite apps"));
-        page.Children.Add(Flow.Heading("Suite apps"));
-        page.Children.Add(Flow.Secondary("Open CoreOp, Draft or Form already signed in to this company. Studio keeps the admin password; the other apps receive a one-time ticket and read company details."));
-        if (string.IsNullOrWhiteSpace(shell.CompanyPath))
-        {
-            page.Children.Add(Flow.Secondary("No company path is available in this session."));
-            return form;
-        }
-        page.Children.Add(Flow.Secondary("Company file: " + shell.CompanyPath));
-        foreach (var card in SuiteHub.Cards)
-        {
-            var installed = SuiteHub.FindExecutable(card) != null;
-            var open = new Button
-            {
-                Content = installed ? "Open " + card.Title : card.Title + " (not installed)",
-                MinHeight = 32,
-                IsEnabled = installed,
-                HorizontalAlignment = HorizontalAlignment.Left,
-            };
-            if (installed)
-                open.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
-            var row = new StackPanel { Spacing = 4, Margin = new Thickness(0, 8, 0, 0) };
-            row.Children.Add(Flow.Section(card.Title));
-            row.Children.Add(Flow.Secondary(card.Blurb));
-            row.Children.Add(open);
-            var target = card;
-            open.Click += (_, _) =>
-            {
-                try
-                {
-                    SuiteHub.Launch(shell.Session, target, shell.CompanyPath);
-                }
-                catch (Exception ex)
-                {
-                    shell.Problem(ex.Message);
-                }
-            };
-            page.Children.Add(row);
-        }
-        return form;
-    }
-
     public static UIElement Company(AppShell shell)
     {
         var form = new DraftForm();
@@ -828,8 +781,9 @@ internal static class Ledgers
         var wideImage = new Image { Width = 200, Height = 56, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left };
         var squareClear = new Button { Content = "Remove", MinWidth = 88, Visibility = Visibility.Collapsed };
         var wideClear = new Button { Content = "Remove", MinWidth = 88, Visibility = Visibility.Collapsed };
-        page.Children.Add(LogoSlot(shell, "square", "Square logo", squareImage, squareClear));
-        page.Children.Add(LogoSlot(shell, "wide", "Rectangle logo", wideImage, wideClear));
+        var logoButtons = new List<Button>();
+        page.Children.Add(LogoSlot(shell, "square", "Square logo", squareImage, squareClear, logoButtons));
+        page.Children.Add(LogoSlot(shell, "wide", "Rectangle logo", wideImage, wideClear, logoButtons));
         void LoadLogos()
         {
             _ = shell.Run("Loading logos…", () =>
@@ -857,43 +811,73 @@ internal static class Ledgers
                     shell.RefreshPaneLogo?.Invoke();
                 }));
         }
-        var save = new Button { Content = "Save profile", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
-        save.Visibility = shell.CanManage ? Visibility.Visible : Visibility.Collapsed;
+        var save = new Button { Content = "Save profile", MinHeight = 32, Style = (Style)Application.Current.Resources["AccentButtonStyle"], Visibility = Visibility.Collapsed };
+        var cancel = new Button { Content = "Cancel", MinHeight = 32, Visibility = Visibility.Collapsed };
+        var edit = new Button { Content = "Edit", MinHeight = 32, MinWidth = 88, HorizontalAlignment = HorizontalAlignment.Left, Visibility = shell.CanManage ? Visibility.Visible : Visibility.Collapsed };
+        var editing = false;
+        // The profile is read-only until Edit is pressed: text cannot be typed, choices are locked, and the logo buttons are hidden.
+        void SetEditing(bool on)
+        {
+            editing = on;
+            foreach (var box in fields.Values)
+                box.IsReadOnly = !on;
+            scheme.IsEnabled = on;
+            letterhead.IsEnabled = on;
+            edit.Visibility = !on && shell.CanManage ? Visibility.Visible : Visibility.Collapsed;
+            save.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+            cancel.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+            squareClear.IsEnabled = wideClear.IsEnabled = on;
+            foreach (var button in logoButtons)
+                button.Visibility = on && shell.CanManage ? Visibility.Visible : Visibility.Collapsed;
+        }
         void SaveProfile()
         {
-            if (!shell.CanManage)
+            if (!shell.CanManage || !editing)
                 return;
             var profile = fields.ToDictionary(pair => pair.Key, pair => pair.Value.Text);
             profile["gst_scheme"] = Book.Selected(scheme, "none");
             profile["letterhead_style"] = Book.Selected(letterhead, "classic");
             _ = shell.Run("Saving profile…", () => shell.Call("company_save_profile", new { profile })).ContinueWith(task =>
-                shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) form.ClearDirty(); }));
+                shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) { form.ClearDirty(); SetEditing(false); } }));
         }
         save.Click += (_, _) => SaveProfile();
-        page.Children.Add(save);
+        void LoadProfile()
+        {
+            _ = shell.Run("Loading profile…", () =>
+            {
+                var profile = shell.Call("company_get_profile");
+                shell.Window.DispatcherQueue.TryEnqueue(() =>
+                {
+                    foreach (var (key, box) in fields)
+                        box.Text = Kit.Str(profile, key);
+                    Select(scheme, Kit.Str(profile, "gst_scheme"));
+                    Select(letterhead, Kit.Str(profile, "letterhead_style"));
+                    form.Arm();
+                });
+            });
+        }
+        edit.Click += (_, _) => SetEditing(true);
+        cancel.Click += (_, _) =>
+        {
+            SetEditing(false);
+            form.ClearDirty();
+            LoadProfile();
+        };
+        page.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { edit, save, cancel } });
         form.SaveAction = SaveProfile;
         if (shell.CanManage)
             form.Watch([.. fields.Values, scheme, letterhead]);
-        _ = shell.Run("Loading profile…", () =>
-        {
-            var profile = shell.Call("company_get_profile");
-            shell.Window.DispatcherQueue.TryEnqueue(() =>
-            {
-                foreach (var (key, box) in fields)
-                    box.Text = Kit.Str(profile, key);
-                Select(scheme, Kit.Str(profile, "gst_scheme"));
-                Select(letterhead, Kit.Str(profile, "letterhead_style"));
-                form.Arm();
-            });
-        });
+        SetEditing(false);
+        LoadProfile();
         LoadLogos();
         return form;
     }
 
-    private static UIElement LogoSlot(AppShell shell, string shape, string title, Image preview, Button clear)
+    private static UIElement LogoSlot(AppShell shell, string shape, string title, Image preview, Button clear, List<Button> editOnly)
     {
         var choose = new Button { Content = "Choose", MinWidth = 88 };
-        choose.Visibility = shell.CanManage ? Visibility.Visible : Visibility.Collapsed;
+        choose.Visibility = Visibility.Collapsed;
+        editOnly.Add(choose);
         choose.Click += async (_, _) =>
         {
             if (!shell.CanManage)

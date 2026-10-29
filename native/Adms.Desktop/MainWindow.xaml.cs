@@ -221,46 +221,99 @@ public sealed partial class MainWindow : Window
                 folderText.Text = folder;
             }
         };
-        var error = new TextBlock { TextWrapping = TextWrapping.Wrap };
-        var form = new StackPanel { Spacing = 8 };
-        form.Children.Add(nameBox);
-        form.Children.Add(fileBox);
-        form.Children.Add(choose);
-        form.Children.Add(folderText);
+        var error = new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = Flow.Ink("TextSecondaryBrush") };
         var password = new PasswordBox { Header = "Admin password (12 or more characters)" };
         var confirm = new PasswordBox { Header = "Confirm password" };
-        form.Children.Add(password);
-        form.Children.Add(confirm);
+        var review = new TextBlock { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
+
+        // Three steps in one dialog: the company and where it is kept, the administrator's password, then a review before anything is made.
+        var step = 0;
+        var titles = new[] { "Step 1 of 3: the company", "Step 2 of 3: the administrator", "Step 3 of 3: review and create" };
+        var pages = new StackPanel[]
+        {
+            new() { Spacing = 8, Children = { new TextBlock { Text = "Name the company and choose the folder that will hold its file.", TextWrapping = TextWrapping.Wrap }, nameBox, fileBox, choose, folderText } },
+            new() { Spacing = 8, Children = { new TextBlock { Text = "The administrator signs in first and manages the other users. Choose a strong password; you will get a recovery code next.", TextWrapping = TextWrapping.Wrap }, password, confirm } },
+            new() { Spacing = 8, Children = { review, new TextBlock { Text = "After the company is created a recovery code is shown once. Save it: it is the only way back in if the password is forgotten.", TextWrapping = TextWrapping.Wrap } } },
+        };
+        var form = new StackPanel { Spacing = 12, MinWidth = 420 };
+        var heading = new TextBlock { Style = (Style)Application.Current.Resources["SectionTitleStyle"] };
+        form.Children.Add(heading);
+        foreach (var page in pages)
+            form.Children.Add(page);
         form.Children.Add(error);
         var dialog = new ContentDialog
         {
             Title = "Create a new company",
             Content = form,
-            PrimaryButtonText = "Create company",
+            PrimaryButtonText = "Next",
+            SecondaryButtonText = "Back",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = Content.XamlRoot,
             RequestedTheme = Root.ActualTheme,
         };
+        string FullName()
+        {
+            var fileName = fileBox.Text.Trim();
+            if (!fileName.EndsWith(".osas", StringComparison.OrdinalIgnoreCase) && !fileName.EndsWith(".adms", StringComparison.OrdinalIgnoreCase))
+                fileName += ".osas";
+            return fileName;
+        }
+        void Show()
+        {
+            for (var n = 0; n < pages.Length; n++)
+                pages[n].Visibility = n == step ? Visibility.Visible : Visibility.Collapsed;
+            heading.Text = titles[step];
+            dialog.PrimaryButtonText = step == pages.Length - 1 ? "Create company" : "Next";
+            dialog.IsSecondaryButtonEnabled = step > 0;
+            error.Text = "";
+            if (step == pages.Length - 1)
+                review.Text = string.Join(Environment.NewLine, $"Company: {nameBox.Text.Trim()}", $"File: {(folder == null ? "" : Path.Combine(folder, FullName()))}", "Administrator: admin");
+        }
+        Show();
         string? recovery = null;
+        dialog.SecondaryButtonClick += (_, args) =>
+        {
+            args.Cancel = true;
+            if (step > 0)
+                step--;
+            Show();
+        };
         dialog.PrimaryButtonClick += async (_, args) =>
         {
             var deferral = args.GetDeferral();
             error.Text = "";
             try
             {
-                var fileName = fileBox.Text.Trim();
-                if (nameBox.Text.Trim().Length == 0 || password.Password.Length == 0 || folder == null || fileName.Length == 0)
+                if (step == 0)
                 {
                     args.Cancel = true;
-                    error.Text = "Enter the company, a folder, and the admin password.";
+                    if (nameBox.Text.Trim().Length == 0 || fileBox.Text.Trim().Length == 0 || folder == null)
+                        error.Text = "Enter the company's name, a file name, and choose a folder.";
+                    else
+                    {
+                        step = 1;
+                        Show();
+                    }
                     return;
                 }
-                if (!fileName.EndsWith(".osas", StringComparison.OrdinalIgnoreCase)
-                    && !fileName.EndsWith(".adms", StringComparison.OrdinalIgnoreCase))
-                    fileName += ".osas";
-                var path = Path.Combine(folder, fileName);
+                if (step == 1)
+                {
+                    args.Cancel = true;
+                    if (password.Password.Length < 12)
+                        error.Text = "The password needs 12 or more characters.";
+                    else if (password.Password != confirm.Password)
+                        error.Text = "The two passwords do not match.";
+                    else
+                    {
+                        step = 2;
+                        Show();
+                    }
+                    return;
+                }
+                var path = Path.Combine(folder!, FullName());
                 dialog.IsPrimaryButtonEnabled = false;
+                dialog.IsSecondaryButtonEnabled = false;
                 var created = await Task.Run(() => _session.CreateCompany(path, nameBox.Text.Trim(), "admin", password.Password, confirm.Password));
                 recovery = created.Recovery;
                 password.Password = "";
@@ -271,6 +324,7 @@ public sealed partial class MainWindow : Window
                 args.Cancel = true;
                 error.Text = ex.Message;
                 dialog.IsPrimaryButtonEnabled = true;
+                dialog.IsSecondaryButtonEnabled = step > 0;
             }
             finally
             {
