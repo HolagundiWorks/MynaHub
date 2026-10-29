@@ -66,6 +66,26 @@ pub fn project_workspace_get(state: HostState<'_>, project_id: i64) -> Result<Op
     office_core::project_workspace::get(&conn, project_id)
 }
 
+pub fn project_shilpi_get(state: HostState<'_>, project_id: i64) -> Result<serde_json::Value, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    Ok(serde_json::json!({ "path": office_core::project_shilpi::path(&conn, project_id)? }))
+}
+
+pub fn project_shilpi_read(state: HostState<'_>, project_id: i64) -> Result<serde_json::Value, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    office_core::project_shilpi::read(&conn, project_id)
+}
+
+pub fn project_shilpi_set(state: HostState<'_>, project_id: i64, path: String) -> Result<serde_json::Value, String> {
+    let uid = require(&state, Permission::Edit)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    let stored = office_core::project_shilpi::set(&conn, project_id, &path)?;
+    db::audit(&conn, Some(uid), "project_shilpi_linked", &format!("project {project_id}"));
+    Ok(serde_json::json!({ "path": stored }))
+}
+
 pub fn project_workspace_ensure(state: HostState<'_>, project_id: i64) -> Result<office_core::project_workspace::WorkspaceInfo, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;

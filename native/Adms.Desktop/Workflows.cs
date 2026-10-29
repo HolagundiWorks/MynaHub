@@ -824,6 +824,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
     private readonly TextBlock _phase = Flow.Secondary("");
     private readonly StackPanel _stageList = new() { Spacing = 8 };
     private readonly StackPanel _path = new() { Spacing = 8 };
+    private ShilpiProjectPanel _shilpi = null!;
     private readonly Button _assignStages = new() { Content = "Assign standard stages" };
     private readonly InfoBar _notice = Flow.Notice();
     private readonly TextBox _site = Flow.Input("Site address", true);
@@ -934,6 +935,9 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         _editor.Children.Add(_title);
         _editor.Children.Add(Flow.Secondary("A client can have many projects. Each project keeps its own agreements, letters and invoices."));
         _editor.Children.Add(_path);
+        _shilpi = new ShilpiProjectPanel(_shell);
+        _shilpi.Show(null);
+        _editor.Children.Add(_shilpi);
         _editor.Children.Add(Flow.Section("Project details"));
         _editor.Children.Add(Flow.Pair(_name, _code));
         _editor.Children.Add(Flow.Pair(_client, _state));
@@ -1030,6 +1034,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         _phase.Text = "";
         _stageList.Children.Clear();
         _path.Children.Clear();
+        _shilpi.Show(null);
         _assignStages.Visibility = Visibility.Collapsed;
         _notice.IsOpen = false;
         _title.Text = "New project";
@@ -1072,6 +1077,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         _dirty = false;
         ListPane.Visibility = Visibility.Collapsed;
         EditorPane.Visibility = Visibility.Visible;
+        _shilpi.Show(_id);
         if (_id is long id)
         {
             LoadBrief(id);

@@ -4,7 +4,7 @@
 use office_core::auth::Permission;
 use office_core::host::{arg, json, CallError};
 use office_core::workspace::{self, require, AppState, INTERNAL};
-use office_core::{approvals, audit, clients, office, refs, share, studio_drafts, subcontracts, tasks, track, users};
+use office_core::{approvals, audit, project_shilpi, clients, office, refs, share, studio_drafts, subcontracts, tasks, track, users};
 use serde_json::Value;
 
 pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, CallError> {
@@ -35,8 +35,8 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
         return json(&result);
     }
     let permission = match op {
-        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_estimate_summary" | "project_ra_summary" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" | "approval_list" | "approval_get" | "studio_draft_list" | "studio_draft_get" | "project_workspace_get" | "task_list" | "subcontract_list" => Permission::View,
-        "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" | "approval_submit" | "approval_withdraw" | "project_workspace_ensure" | "task_save" | "task_set_status" | "task_delete" | "subcontract_save" => Permission::Edit,
+        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_estimate_summary" | "project_ra_summary" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" | "approval_list" | "approval_get" | "studio_draft_list" | "studio_draft_get" | "project_workspace_get" | "project_shilpi_get" | "project_shilpi_read" | "task_list" | "subcontract_list" => Permission::View,
+        "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" | "approval_submit" | "approval_withdraw" | "project_workspace_ensure" | "project_shilpi_set" | "task_save" | "task_set_status" | "task_delete" | "subcontract_save" => Permission::Edit,
         "approval_approve" | "studio_draft_approve" | "studio_draft_mark_pending" | "studio_draft_mark_superseded" => Permission::Issue,
         "company_profile_save" => Permission::ManageSettings,
         "user_list" | "user_create" | "user_update" | "user_set_password" => Permission::ManageUsers,
@@ -246,6 +246,14 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
             let input: subcontracts::SubcontractInput = arg(args, "input")?;
             json(&subcontracts::save(conn, user, &input)?)
         }
+        "project_shilpi_get" => json(&serde_json::json!({ "path": project_shilpi::path(conn, arg(args, "project_id")?)? })),
+        "project_shilpi_set" => {
+            let project_id: i64 = arg(args, "project_id")?;
+            let path = project_shilpi::set(conn, project_id, &arg::<String>(args, "path")?)?;
+            audit(conn, Some(user), "project_shilpi_linked", &format!("project {project_id}"));
+            json(&serde_json::json!({ "path": path }))
+        }
+        "project_shilpi_read" => json(&project_shilpi::read(conn, arg(args, "project_id")?)?),
         _ => Err(CallError::BadRequest("That operation is not part of the office interface.".into())),
     }
 }
