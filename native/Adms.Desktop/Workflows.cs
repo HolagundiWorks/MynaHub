@@ -946,14 +946,21 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         _floors.Text = "1";
         _floors.TextChanged += (_, _) => { if (!_filling) _dirty = true; };
         _editor.Children.Add(Flow.Pair(_consultancy, _floors));
-        _editor.Children.Add(Flow.Section("Stages"));
-        _editor.Children.Add(Flow.Secondary("Save the consultancy and the floors, then assign the standard stages. Marking a stage records the phase and reminds you of the payment. It does not raise an invoice."));
-        _editor.Children.Add(_phase);
+        // The company file's stages are for a project without a ShilpiDB file; with one, the billing comes from that file.
+        var stages = new StackPanel { Spacing = 8 };
+        stages.Children.Add(Flow.Section("Stages"));
+        stages.Children.Add(Flow.Secondary("Save the consultancy and the floors, then assign the standard stages. Marking a stage records the phase and reminds you of the payment. It does not raise an invoice."));
+        stages.Children.Add(_phase);
         AutomationProperties.SetName(_assignStages, "Assign standard stages");
         _assignStages.Click += (_, _) => AssignStages();
-        _editor.Children.Add(_assignStages);
-        _editor.Children.Add(_stageList);
-        _editor.Children.Add(_notice);
+        stages.Children.Add(_assignStages);
+        stages.Children.Add(_stageList);
+        stages.Children.Add(_notice);
+        _editor.Children.Add(stages);
+        _shilpi.LinkedChanged += linked =>
+        {
+            stages.Visibility = _path.Visibility = linked ? Visibility.Collapsed : Visibility.Visible;
+        };
         _editor.Children.Add(Flow.Section("Site"));
         _editor.Children.Add(_site);
         _editor.Children.Add(Flow.Section("Description"));

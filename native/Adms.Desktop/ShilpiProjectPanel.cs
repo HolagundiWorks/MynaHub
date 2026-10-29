@@ -22,6 +22,9 @@ internal sealed class ShilpiProjectPanel : StackPanel
     private readonly StackPanel _figures = new() { Spacing = 8 };
     private long? _project;
 
+    /// <summary>Raised when a project gains or loses a readable ShilpiDB file, so the page can hide what the file replaces.</summary>
+    public event Action<bool>? LinkedChanged;
+
     public ShilpiProjectPanel(AppShell shell)
     {
         _shell = shell;
@@ -56,6 +59,7 @@ internal sealed class ShilpiProjectPanel : StackPanel
         _problem.IsOpen = false;
         _file.Text = "No ShilpiDB file chosen for this project.";
         _reload.Visibility = _clear.Visibility = Visibility.Collapsed;
+        LinkedChanged?.Invoke(false);
         if (project != null)
             Load();
     }
@@ -125,6 +129,7 @@ internal sealed class ShilpiProjectPanel : StackPanel
         {
             _file.Text = "No ShilpiDB file chosen for this project.";
             _reload.Visibility = _clear.Visibility = Visibility.Collapsed;
+            LinkedChanged?.Invoke(false);
             return;
         }
         _file.Text = Kit.Str(data, "path");
@@ -133,8 +138,10 @@ internal sealed class ShilpiProjectPanel : StackPanel
         if (data.TryGetProperty("problem", out var problem) && problem.ValueKind == JsonValueKind.String)
         {
             Problem(problem.GetString() ?? "");
+            LinkedChanged?.Invoke(false);
             return;
         }
+        LinkedChanged?.Invoke(true);
         var t = data.GetProperty("totals");
         _figures.Children.Add(Flow.Secondary(
             $"Estimate {Rupees(t, "estimate")} · Billing {Rupees(t, "billing")} · Billed {Rupees(t, "billed")} · Paid {Rupees(t, "paid")} · Purchase orders {Rupees(t, "orders")} · {Number(t, "open_tasks")} open tasks"));
