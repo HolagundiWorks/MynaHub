@@ -449,7 +449,9 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
                     && summary.TryGetProperty("grand_total_paise", out var paise) && paise.TryGetInt64(out var total))
                 {
                     var book = Kit.Str(summary, "rate_book_version_name");
-                    parts.Add($"O-CoreOp estimate: {Flow.Money(total)}{(book.Length == 0 ? "" : $" · {book}")}");
+                    parts.Add(Kit.Str(summary, "source") == "shilpidb"
+                        ? $"Estimate from the project's ShilpiDB file: {Flow.Money(total)}"
+                        : $"O-CoreOp estimate: {Flow.Money(total)}{(book.Length == 0 ? "" : $" · {book}")}");
                 }
                 else
                     parts.Add(Kit.Str(summary, "reason").Length > 0
