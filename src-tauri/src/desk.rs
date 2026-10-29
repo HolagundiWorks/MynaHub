@@ -24,6 +24,10 @@ pub fn proposal_list_records(state: HostState<'_>, client_id: Option<i64>) -> Re
 pub fn project_estimate_summary(state: HostState<'_>, project_id: i64) -> Result<Value, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    // A project with a ShilpiDB file takes its estimate from that file.
+    if let Some(from_file) = office_core::project_shilpi::estimate_summary(&conn, project_id) {
+        return Ok(from_file);
+    }
     office_core::share::estimate_summary(&conn, project_id)
 }
 
@@ -91,7 +95,8 @@ pub fn tds26as_list_entries(state: HostState<'_>) -> Result<Vec<Value>, String> 
 pub fn task_list_records(state: HostState<'_>, project_id: Option<i64>) -> Result<Vec<Value>, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
-    tasks::list(&conn, project_id)
+    let rows = tasks::list(&conn, project_id)?;
+    Ok(office_core::project_shilpi::merge_tasks(&conn, project_id, rows))
 }
 
 pub fn task_save_record(state: HostState<'_>, input: tasks::TaskInput) -> Result<i64, String> {
