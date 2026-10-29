@@ -26,8 +26,12 @@ Strings are length-prefixed UTF-8 and numbers are little-endian, as in the `shil
 - `office-core/src/project_shilpi.rs`: the link, the read and the totals. Engine operations `project_shilpi_get`, `project_shilpi_set` (needs edit permission) and `project_shilpi_read`.
 - `native/Adms.Desktop/ShilpiProjectPanel.cs`: the section on the project page.
 
+## When a file is linked
+
+On the project page the company-file **Stages** section and the "Where this project stands" path are hidden, because the billing comes from the file. Unlink the file to see them again. They are hidden, not deleted: nothing is removed from the company file.
+
 ## Not done
 
 - Whatever writes these records into a project's file (O-Draft, a takeoff tool) is not built here; the layout above is what it must write.
-- The company file's own stages, estimates and tasks still exist and are still shown on their pages; they are not yet removed for projects that have a ShilpiDB file.
-- The file chooser button could not be driven by the test harness, so it was checked only through the paste-the-path route.
+- The Tasks page (Practice, Tasks) and the fee-proposal estimates still read the company file. Only the project page uses the ShilpiDB file so far.
+- The file chooser button could not be checked: in the test session no file dialog opened for it, or for the existing logo chooser on the Firm page, so this looks like the test setup and not the button. The paste-the-path route was checked and works, and a link survives a restart.
