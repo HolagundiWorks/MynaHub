@@ -249,6 +249,43 @@ public class AssistantTests : IDisposable
         Assert.Equal("clients_search", messages[3]!["tool_name"]!.GetValue<string>());
     }
 
+    private sealed class Sequence(params (HttpStatusCode Status, string Body)[] replies) : HttpMessageHandler
+    {
+        private int _next;
+        public List<string> Sent { get; } = new();
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancel)
+        {
+            Sent.Add(request.Content == null ? "" : await request.Content.ReadAsStringAsync(cancel));
+            var (status, body) = replies[Math.Min(_next++, replies.Length - 1)];
+            return new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+        }
+    }
+
+    [Fact]
+    public async Task A_model_without_tool_calling_is_given_the_tools_in_its_prompt_and_answers_with_json()
+    {
+        var handler = new Sequence(
+            (HttpStatusCode.BadRequest, "{\"error\":\"registry.ollama.ai/library/tulu3:latest does not support tools\"}"),
+            (HttpStatusCode.OK, "{\"message\":{\"role\":\"assistant\",\"content\":\"```json\\n{\\\"tool\\\": \\\"projects_list\\\", \\\"arguments\\\": {\\\"limit\\\": 2}}\\n```\"}}"));
+        using var api = new OllamaApi(handler: handler);
+        var reply = await api.CreateAsync(new JsonObject
+        {
+            ["model"] = "tulu3",
+            ["system"] = "be brief",
+            ["messages"] = new JsonArray(new JsonObject { ["role"] = "user", ["content"] = "hi" }),
+            ["tools"] = new JsonArray(new JsonObject { ["name"] = "projects_list", ["description"] = "Lists projects.", ["input_schema"] = new JsonObject { ["type"] = "object" } }),
+        }, default);
+        Assert.Equal(2, handler.Sent.Count);
+        Assert.NotNull(JsonNode.Parse(handler.Sent[0])!["tools"]);
+        var second = JsonNode.Parse(handler.Sent[1])!;
+        Assert.Null(second["tools"]);
+        Assert.Contains("projects_list", second["messages"]![0]!["content"]!.GetValue<string>());
+        Assert.Equal("tool_use", reply["stop_reason"]!.GetValue<string>());
+        Assert.Equal("projects_list", reply["content"]![0]!["name"]!.GetValue<string>());
+        Assert.Equal(2, reply["content"]![0]!["input"]!["limit"]!.GetValue<int>());
+    }
+
     [Fact]
     public async Task When_the_local_model_is_not_running_the_person_is_told_to_start_it()
     {
