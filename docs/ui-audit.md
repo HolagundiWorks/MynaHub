@@ -72,8 +72,10 @@ Fixed:
 - **Oversized section tabs on Bank reconciliation** (24 px type) now follow the scale (14 px). The setting is in o-ui.
 - **A sub-tab off the edge of the row** (for example Approvals in a narrow window) is scrolled into view when chosen.
 
-Still open:
+Closed afterwards:
 
-- The Bank reconciliation page sits 4 px further in than the others (the Pivot control adds its own margin).
-- The Practice tab has 12 pages, so in a window narrower than about 1,250 px the last one is reached by scrolling the row; there is no visible cue.
-- Pages with long forms need scrolling to reach the last button, with the assistant bar overlapping the lower edge; there is no scroll indicator until the pointer is over the page.
+- **Bank reconciliation inset.** The page uses the shared page margin and pulls its section tabs back by the Pivot's own header padding, so its heading and tabs start at the same edge as the other pages (within 3 px of the heading text).
+- **Practice sub-tab overflow.** When the second row is wider than the window, a "more" arrow appears at the right (and an "earlier" arrow at the left once scrolled), each moving the row by most of a screen. Built and checked to compile; not yet seen on screen in a narrow window.
+- **Long forms.** Pages built on `Flow.Scroll` always draw their vertical scrollbar, so a longer page shows that there is more below. The page still keeps 64 px clear for the assistant bar.
+
+Still open: the dark theme switch is a bright blue pill (in o-ui); Pulse keeps its Create menu.
