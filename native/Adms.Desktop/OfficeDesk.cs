@@ -23,7 +23,7 @@ internal sealed class AttendancePage : UserControl
     public AttendancePage(AppShell shell)
     {
         _shell = shell;
-        var page = new StackPanel { Spacing = 12, Margin = new Thickness(8) };
+        var page = new StackPanel { Spacing = 12, Margin = (Thickness)Application.Current.Resources["PageMargin"] };
         page.Children.Add(Flow.SheetMark("06.06", "Office", "Attendance"));
         page.Children.Add(Flow.Heading("Attendance"));
         page.Children.Add(Flow.Secondary("Mark who was in on a day. A day that has not come cannot be marked. Marking a day again replaces the earlier mark."));
@@ -153,7 +153,7 @@ internal sealed class TdsReconPage : UserControl
     public TdsReconPage(AppShell shell)
     {
         _shell = shell;
-        var page = new StackPanel { Spacing = 12, Margin = new Thickness(8) };
+        var page = new StackPanel { Spacing = 12, Margin = (Thickness)Application.Current.Resources["PageMargin"] };
         page.Children.Add(Flow.SheetMark("05.04", "Reports and tax", "26AS check"));
         page.Children.Add(Flow.Heading("26AS check"));
         page.Children.Add(Flow.Secondary("Import the statement you saved from TRACES as a CSV. It needs columns for the deductor's name and TAN, the date, the amount paid and the tax deducted. Entries already imported are skipped, so importing again is safe. A deduction is matched when the client's TAN and the tax amount agree and the dates are within 120 days."));

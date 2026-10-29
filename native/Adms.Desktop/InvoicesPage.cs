@@ -11,7 +11,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     private readonly AppShell _shell;
     private readonly List<JsonElement> _rows = [];
     private readonly ListView _list = new() { SelectionMode = ListViewSelectionMode.Single };
-    private readonly ContentControl _header = new();
+    private readonly ContentControl _header = new() { HorizontalContentAlignment = HorizontalAlignment.Stretch };
     private readonly TextBlock _summary = Flow.Secondary("Loading invoices…");
     private readonly TextBlock _empty = Flow.Secondary("");
     private readonly TextBox _search = new() { PlaceholderText = "Number, client or project", Header = "Search", HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -367,6 +367,8 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         var status = ((ComboBoxItem?)_status.SelectedItem)?.Tag as string ?? "";
         _list.Items.Clear();
         _header.Content = Flow.Header(["Number", "Project", "Client", "Status", "Total", "Balance"], Widths, Money);
+        // The rows end in an Edit button; the heading leaves the same room so its columns line up with theirs.
+        _header.Padding = new Thickness(0, 0, Hcw.Ui.SuiteScale.StackGap + 72, 0);
         var count = 0;
         foreach (var row in _rows)
         {
