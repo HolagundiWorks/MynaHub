@@ -19,7 +19,7 @@ public sealed partial class CompanyPanel
     {
         if (!Osas.Core.Suite.Engine.IsAvailable())
         {
-            Say(InfoBarSeverity.Warning, "The company-file engine (office.dll) is missing beside O-Studio, so a company cannot be created here.");
+            Say(InfoBarSeverity.Warning, "The company-file engine is missing beside O-Studio, so a company cannot be created here.");
             return;
         }
         var name = new TextBox { Header = "Company name" };

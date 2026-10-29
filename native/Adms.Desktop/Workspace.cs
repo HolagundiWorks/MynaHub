@@ -304,8 +304,6 @@ internal sealed class WorkspaceView : UserControl
                 ("tds26as", "03", "26AS check", ""),
                 ("acc-setup", "03", "Chart and financial years", ""));
         }
-        AddTab("Drawings", "");
-        AddGroup("08", "Drawings", ("drawings", "01", "Drawings (ShilpiDB)", ""));
         AddTab("Assistant", "");
         AddGroup("09", "Assistant", ("assistant", "01", "Ask the assistant", ""));
         AddTab("Office", "");
@@ -450,7 +448,6 @@ internal sealed class WorkspaceView : UserControl
         "suite" => Ledgers.Suite(_shell),
         "suitetools" => new SuitePage(_shell.Window),
         "approvals" => ApprovalsPage.Build(_shell),
-        "drawings" => new DrawingsPage(_shell),
         "assistant" => new AssistantHostPage(_shell),
         "proposals" => RecordPages.Proposals(_shell),
         "meetings" => RecordPages.Meetings(_shell),

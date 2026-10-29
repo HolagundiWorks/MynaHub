@@ -35,8 +35,8 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
         return json(&result);
     }
     let permission = match op {
-        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_estimate_summary" | "project_ra_summary" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" | "approval_list" | "approval_get" | "studio_draft_list" | "studio_draft_get" | "project_workspace_get" | "drawing_list" | "drawing_view" | "drawing_at" | "task_list" | "subcontract_list" => Permission::View,
-        "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" | "approval_submit" | "approval_withdraw" | "project_workspace_ensure" | "task_save" | "task_set_status" | "task_delete" | "subcontract_save" | "drawing_import" | "drawing_delete" => Permission::Edit,
+        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_estimate_summary" | "project_ra_summary" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" | "approval_list" | "approval_get" | "studio_draft_list" | "studio_draft_get" | "project_workspace_get" | "task_list" | "subcontract_list" => Permission::View,
+        "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" | "approval_submit" | "approval_withdraw" | "project_workspace_ensure" | "task_save" | "task_set_status" | "task_delete" | "subcontract_save" => Permission::Edit,
         "approval_approve" | "studio_draft_approve" | "studio_draft_mark_pending" | "studio_draft_mark_superseded" => Permission::Issue,
         "company_profile_save" => Permission::ManageSettings,
         "user_list" | "user_create" | "user_update" | "user_set_password" => Permission::ManageUsers,
@@ -227,14 +227,6 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
             json(&office::library_list(conn, kind.as_deref(), search.as_deref().unwrap_or(""))?)
         }
         "library_save" => json(&office::library_save(conn, user, &arg(args, "input")?)?),
-        "drawing_list" => json(&office_core::drawings::list(conn, arg(args, "project_id")?)?),
-        "drawing_view" => json(&office_core::drawings::view(conn, arg(args, "id")?, arg(args, "window")?)?),
-        "drawing_at" => json(&office_core::drawings::at_point(conn, arg(args, "id")?, arg(args, "x")?, arg(args, "y")?, arg(args, "tolerance")?)?),
-        "drawing_import" => json(&office_core::drawings::import_dxf(conn, user, arg(args, "project_id")?, &arg::<String>(args, "name")?, &arg::<String>(args, "path")?)?),
-        "drawing_delete" => {
-            office_core::drawings::delete(conn, user, arg(args, "id")?)?;
-            json(&Value::Null)
-        }
         "task_list" => json(&tasks::list(conn, arg(args, "project_id")?)?),
         "task_save" => {
             let input: tasks::TaskInput = arg(args, "input")?;

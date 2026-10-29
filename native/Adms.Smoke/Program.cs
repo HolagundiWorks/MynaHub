@@ -100,20 +100,6 @@ try
         {
         }
 
-        // Drawings (the ShilpiDB engine): a DXF comes in against the project, is listed, and a window returns only the shapes inside it.
-        var dxf = Path.Combine(root, "plan.dxf");
-        File.WriteAllLines(dxf, new[] { "0", "SECTION", "2", "ENTITIES", "0", "LINE", "8", "WALLS", "10", "0", "20", "0", "11", "5000", "21", "0", "0", "CIRCLE", "8", "COLUMNS", "10", "9000", "20", "9000", "40", "150", "0", "ENDSEC", "0", "EOF" });
-        var drawingImport = session.Call("drawing_import", new { project_id = projectId, name = "Ground floor", path = dxf });
-        var drawingId = drawingImport.GetProperty("id").GetInt64();
-        if (drawingImport.GetProperty("entities").GetInt64() != 2 || session.Call("drawing_list", new { project_id = projectId }).GetArrayLength() != 1)
-            throw new InvalidOperationException("The drawingImport drawing should be listed with its two shapes.");
-        var window = session.Call("drawing_view", new { id = drawingId, window = new[] { 8900.0, 8900.0, 9100.0, 9100.0 } });
-        if (window.GetProperty("shapes").GetArrayLength() != 1 || window.GetProperty("total").GetInt64() != 2)
-            throw new InvalidOperationException("A window around the column should return that one shape.");
-        session.Call("drawing_delete", new { id = drawingId });
-        if (session.Call("drawing_list", new { project_id = (long?)null }).GetArrayLength() != 0)
-            throw new InvalidOperationException("The deleted drawing should be gone.");
-
         session.CloseCompany();
     }
 
