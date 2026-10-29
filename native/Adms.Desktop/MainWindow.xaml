@@ -20,7 +20,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <MenuBar VerticalAlignment="Center" Background="{ThemeResource SidebarBackgroundBrush}" FontSize="13"
+        <MenuBar VerticalAlignment="Center" Background="{ThemeResource SidebarBackgroundBrush}" FontSize="12"
                  AutomationProperties.Name="Menu bar"
                  AutomationProperties.LandmarkType="Navigation">
             <MenuBarItem Title="File" AccessKey="F">

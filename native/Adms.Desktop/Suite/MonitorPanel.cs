@@ -27,7 +27,7 @@ public sealed class MonitorPanel : StackPanel
     public MonitorPanel(Window window)
     {
         _window = window;
-        Spacing = 12;
+        Spacing = Hcw.Ui.SuiteScale.CardGap;
         var refresh = new Button { Content = "Look now" };
         refresh.Click += async (_, _) => await Look();
         Children.Add(_problem);
@@ -44,7 +44,7 @@ public sealed class MonitorPanel : StackPanel
         inside.Children.Add(_tables);
         inside.Children.Add(_stamp);
         inside.Children.Add(refresh);
-        Details = new Border { Style = Resource<Style>("SuiteCardStyle"), Width = 380, Margin = new Thickness(0, 0, 16, 16), Child = inside };
+        Details = new Border { Style = Resource<Style>("SuiteCardStyle"), Width = 380, Margin = new Thickness(0, 0, Hcw.Ui.SuiteScale.CardGap, Hcw.Ui.SuiteScale.CardGap), Child = inside };
 
         Say("No company file is open.");
         _timer.Tick += async (_, _) => await Look();
@@ -59,7 +59,7 @@ public sealed class MonitorPanel : StackPanel
 
     private static TextBlock Section(string text)
     {
-        var block = new TextBlock { Text = text, Style = Resource<Style>("SectionTitleStyle"), FontSize = 16 };
+        var block = new TextBlock { Text = text, Style = Resource<Style>("SectionTitleStyle") };
         AutomationProperties.SetHeadingLevel(block, AutomationHeadingLevel.Level3);
         return block;
     }
@@ -166,9 +166,9 @@ public sealed class MonitorPanel : StackPanel
     {
         var stack = new StackPanel { Spacing = 2 };
         stack.Children.Add(new TextBlock { Text = label, Style = Resource<Style>("CaptionStyle") });
-        stack.Children.Add(new TextBlock { Text = value, Style = Resource<Style>("SectionTitleStyle"), FontSize = 20 });
+        stack.Children.Add(new TextBlock { Text = value, Style = Resource<Style>("MetricValueStyle") });
         stack.Children.Add(new TextBlock { Text = note, Style = Resource<Style>("CaptionStyle"), TextWrapping = TextWrapping.Wrap });
-        var card = new Border { Style = Resource<Style>("SuiteCardStyle"), Width = 250, MinHeight = 92, Margin = new Thickness(0, 0, 12, 12), Child = stack };
+        var card = new Border { Style = Resource<Style>("SuiteCardStyle"), Width = 250, MinHeight = 92, Margin = new Thickness(0, 0, Hcw.Ui.SuiteScale.CardGap, Hcw.Ui.SuiteScale.CardGap), Child = stack };
         AutomationProperties.SetName(card, $"{label}: {value}. {note}");
         _tiles.Children.Add(card);
     }

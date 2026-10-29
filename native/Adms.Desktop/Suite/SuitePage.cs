@@ -20,7 +20,7 @@ internal sealed class SuitePage : UserControl
 
     public SuitePage(AppShell shell)
     {
-        var page = new StackPanel { Padding = new Thickness(32, 24, 32, 24), Spacing = 16 };
+        var page = new StackPanel { Padding = Hcw.Ui.SuiteScale.PageMargin, Spacing = Hcw.Ui.SuiteScale.CardGap };
         var title = new TextBlock { Text = "Suite", Style = Resource("PageTitleStyle") };
         AutomationProperties.SetHeadingLevel(title, AutomationHeadingLevel.Level1);
         page.Children.Add(title);
@@ -49,7 +49,7 @@ internal sealed class SuitePage : UserControl
 
     private static Style Resource(string key) => (Style)Application.Current.Resources[key];
 
-    private static Border Card(UIElement child) => new() { Style = Resource("SuiteCardStyle"), Width = 380, Margin = new Thickness(0, 0, 16, 16), Child = child };
+    private static Border Card(UIElement child) => new() { Style = Resource("SuiteCardStyle"), Width = 380, Margin = new Thickness(0, 0, Hcw.Ui.SuiteScale.CardGap, Hcw.Ui.SuiteScale.CardGap), Child = child };
 
     private UIElement AssistantCard(AppShell shell)
     {

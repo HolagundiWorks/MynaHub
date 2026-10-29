@@ -15,7 +15,7 @@ public sealed class ShilpiPanel : StackPanel
 {
     private readonly ShilpiLink _link;
     private readonly Func<string?> _company;
-    private readonly TextBlock _state = new() { Style = Resource<Style>("SectionTitleStyle"), FontSize = 20 };
+    private readonly TextBlock _state = new() { Style = Resource<Style>("MetricValueStyle") };
     private readonly TextBlock _detail = new() { Style = Resource<Style>("CaptionStyle"), TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
     private readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true };
     private readonly Button _start = new() { Content = "Start ShilpiDB" };
