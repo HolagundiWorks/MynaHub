@@ -101,8 +101,44 @@ internal sealed class WorkspaceView : UserControl
         AutomationProperties.SetName(_paneLogo, "O-Studio");
         _shell.RefreshPaneLogo = LoadPaneLogo;
         LoadPaneLogo();
-        _host.Background = Flow.Ink("SurfaceBackgroundBrush");
         BuildMenu();
+        _assistant = new AssistantBar(_shell);
+        BuildLayout();
+        SelectTab(_tabs[0]);
+        _shell.Navigate = Show;
+        Show("dashboard");
+        // Colours are looked up when a control is built, so a change of theme builds the layout again and shows the same page.
+        Hcw.Ui.SuiteAppearance.Changed += OnThemeChanged;
+        Unloaded += (_, _) => Hcw.Ui.SuiteAppearance.Changed -= OnThemeChanged;
+    }
+
+    private AssistantBar _assistant = null!;
+
+    private void OnThemeChanged(Microsoft.UI.Xaml.ElementTheme theme) => DispatcherQueue.TryEnqueue(() =>
+    {
+        var open = _tab;
+        var shown = _shown;
+        BuildLayout();
+        if (open != null)
+            SelectTab(open);
+        _shown = "";
+        _host.Children.Clear();
+        if (shown.Length > 0)
+            Show(shown);
+        _assistant.Retheme();
+    });
+
+    private void BuildLayout()
+    {
+        // The parts that outlive a rebuild are lifted out of the old layout first: a control can have only one parent.
+        (_host.Parent as Panel)?.Children.Remove(_host);
+        if (_subScroll.Parent is Border oldSub)
+            oldSub.Child = null;
+        (_assistant.Parent as Panel)?.Children.Remove(_assistant);
+        _mainBoxes.Clear();
+        _subBoxes.Clear();
+        (_paneLogo.Parent as Panel)?.Children.Remove(_paneLogo);
+        _host.Background = Flow.Ink("SurfaceBackgroundBrush");
         // Three rows that read as one sheet: the main tabs, the tabs under the open one, and the page. The open main tab, the second row and
         // the page share one background and one outline, so a tab opens straight into its canvas with no line between them.
         var root = new Grid { Background = Flow.Ink("AppBackgroundBrush") };
@@ -127,23 +163,22 @@ internal sealed class WorkspaceView : UserControl
         sub.HorizontalScrollMode = ScrollMode.Auto;
         sub.VerticalScrollMode = ScrollMode.Disabled;
         Hcw.Ui.SuiteLandmarks.Navigation(sub, "Section menu");
-        body.Children.Add(sub);
+        // A line under the second row separates it from the page, and the page keeps room above (breathing space) and below (for the assistant bar).
+        var subFrame = new Border { Child = sub, BorderBrush = Flow.Ink("BorderSubtleBrush"), BorderThickness = new Thickness(0, 0, 0, 1) };
+        body.Children.Add(subFrame);
+        _host.Margin = new Thickness(0, Hcw.Ui.SuiteScale.Space3, 0, 64);
         Grid.SetRow(_host, 1);
         Hcw.Ui.SuiteLandmarks.Main(_host, "Page");
         body.Children.Add(_host);
         Grid.SetRow(body, 1);
         root.Children.Add(body);
         // The assistant floats over the page; the other apps open from the bar along the bottom.
-        var assistant = new AssistantBar(_shell);
-        Grid.SetRow(assistant, 1);
-        root.Children.Add(assistant);
+        Grid.SetRow(_assistant, 1);
+        root.Children.Add(_assistant);
         var apps = BuildAppsBar();
         Grid.SetRow(apps, 2);
         root.Children.Add(apps);
         Content = root;
-        SelectTab(_tabs[0]);
-        _shell.Navigate = Show;
-        Show("dashboard");
     }
 
     private void LoadPaneLogo()
@@ -450,7 +485,12 @@ internal sealed class WorkspaceView : UserControl
         foreach (var group in tab.Groups)
         {
             if (labelled)
-                _subRow.Children.Add(new TextBlock { Text = group.Title, FontSize = Hcw.Ui.SuiteScale.FontCaption, Margin = new Thickness(Hcw.Ui.SuiteScale.Space2, 0, Hcw.Ui.SuiteScale.Space1, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Flow.Ink("TextSecondaryBrush") });
+            {
+                // A group is told apart from the tabs by a rule before it and a small capitalised name, so its name is not read as a tab.
+                if (_subRow.Children.Count > 0)
+                    _subRow.Children.Add(new Border { Width = 1, Height = 16, Margin = new Thickness(Hcw.Ui.SuiteScale.Space2, 0, Hcw.Ui.SuiteScale.Space2, 0), VerticalAlignment = VerticalAlignment.Center, Background = Flow.Ink("BorderSubtleBrush") });
+                _subRow.Children.Add(new TextBlock { Text = group.Title.ToUpperInvariant(), FontSize = Hcw.Ui.SuiteScale.FontCaption - 1, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, CharacterSpacing = 60, Margin = new Thickness(Hcw.Ui.SuiteScale.Space1, 0, Hcw.Ui.SuiteScale.Space2, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Flow.Ink("TextSecondaryBrush") });
+            }
             foreach (var entry in group.Items)
             {
                 var button = TabButton(entry.Label, Hcw.Ui.SuiteScale.FontBody);

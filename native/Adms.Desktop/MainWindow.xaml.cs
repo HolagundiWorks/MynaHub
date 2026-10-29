@@ -75,6 +75,8 @@ public sealed partial class MainWindow : Window
         placement.Apply(AppWindow);
         AppWindow.Changed += RememberPlacement;
         AppWindow.Closing += OnClosing;
+        // The title bar, window frame and menu take their colours from the theme, so they follow it when it is switched.
+        Hcw.Ui.SuiteAppearance.Changed += _ => DispatcherQueue.TryEnqueue(RestoreTheme);
 
         try
         {

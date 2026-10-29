@@ -37,3 +37,22 @@ Colours are unchanged: both already share the suite palette (ink `#1A2332` on `#
 - Hard-coded sizes remain in `Ledgers.cs` (25 places), `RecordPages.cs`, `Workflows.cs` and the start screens in `MainWindow.xaml` (32 px padding). O-Draft keeps a ceiling on these with `cargo xtask ui`; O-Studio has no such check yet.
 - The glowing assistant logo keeps its own size (52), because it is a brand mark and not a control.
 - Not looked at on screen: the compact sizes have been built but not reviewed in the window, in light or dark.
+
+## Second pass: light and dark, read-only data, padding (2026-10-29)
+
+Looked at on screen in both themes (window captures of the Firm, Practice, Accounts and Suite pages).
+
+Bugs found and fixed:
+
+- **Light theme was broken after switching.** Colours were looked up when a control was made and never again, so switching theme left the page, the tabs and the floating assistant in the old colours (dark text on a dark page, or the reverse), and the title bar and menu stayed light. The workspace now builds its layout again when the theme changes and shows the same page, the assistant frames take the new colours, and the main window re-applies the title bar, window frame and menu.
+- **Firm data looked editable.** The fields were read-only but drawn as input boxes, and the first one had focus. Read-only they are now plain text (empty ones say "Not set"), skip the tab order, and the GST scheme and letterhead show as values. **Edit** (now at the top, under the description) turns them into input boxes with **Save profile** and **Cancel**.
+- **The first version of Edit crashed the app** (it asked for a colour that does not exist). Fixed, and checked by pressing it.
+- **No room around the page.** The page started directly under the second row of tabs. There is now a rule under that row and 12 px above the page.
+- **The floating assistant covered the bottom of every page** and left an empty outline above the bar when closed. Pages keep 64 px clear at the bottom, and the outline goes with the panel.
+- **Group names in the second row read as tabs** ("Books" looked like a disabled tab). They are now small capitals after a divider.
+
+Not fixed, for a decision:
+
+- Some pages show the same action twice (the **New invoice** button at the top and again at the bottom right).
+- Table headers on the Invoices page mix styles (Total and Balance use a different face).
+- The theme switch is a bright blue pill in dark, which does not match the orange accent. It is in o-ui.
