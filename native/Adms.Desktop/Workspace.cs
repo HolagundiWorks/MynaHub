@@ -445,7 +445,6 @@ internal sealed class WorkspaceView : UserControl
         "site" => RecordPages.Site(_shell),
         "permits" => RecordPages.Permits(_shell),
         "library" => RecordPages.Library(_shell),
-        "suite" => Ledgers.Suite(_shell),
         "suitetools" => new SuitePage(_shell.Window),
         "approvals" => ApprovalsPage.Build(_shell),
         "assistant" => new AssistantHostPage(_shell),
