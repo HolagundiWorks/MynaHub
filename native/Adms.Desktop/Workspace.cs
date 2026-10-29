@@ -538,6 +538,9 @@ internal sealed class WorkspaceView : UserControl
         {
             var on = key == id;
             box.BorderBrush = on ? Flow.Ink("BrandAccentBrush") : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            // A tab that is off the edge of the row is scrolled into view when it is chosen.
+            if (on)
+                box.StartBringIntoView();
             if (box.Child is Button button)
                 button.FontWeight = on ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal;
         }
@@ -1076,9 +1079,10 @@ internal static class Kit
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         var heading = Flow.Heading(title);
         heading.Margin = (Thickness)Application.Current.Resources["PageMargin"];
-        heading.Margin = new Thickness(heading.Margin.Left, heading.Margin.Top, heading.Margin.Right, 8);
+        // These pages sat 8 px closer to the edge than the others; the same gutter now.
+        heading.Margin = new Thickness(heading.Margin.Left + 8, heading.Margin.Top, heading.Margin.Right + 8, 8);
         root.Children.Add(heading);
-        var split = new Grid { Margin = new Thickness(24, 0, 24, 24) };
+        var split = new Grid { Margin = new Thickness(32, 0, 32, 24) };
         var list = new Grid();
         list.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         list.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });

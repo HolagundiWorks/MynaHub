@@ -31,7 +31,7 @@ internal sealed class TransmittalLog : UserControl
         foreach (var medium in new[] { "Email", "Courier", "Hand" })
             _medium.Items.Add(new ComboBoxItem { Content = medium, Tag = medium });
         _medium.SelectedIndex = 0;
-        var page = new StackPanel { Spacing = 12, Margin = new Thickness(8) };
+        var page = new StackPanel { Spacing = 12, Margin = (Thickness)Application.Current.Resources["PageMargin"] };
         page.Children.Add(Flow.SheetMark("02.03", "Documents", "Transmittals"));
         page.Children.Add(Flow.Heading("Transmittals"));
         page.Children.Add(Flow.Secondary("A log of drawings and documents sent on a project. Removing a line drops it from the log. It does not change an issued letter."));

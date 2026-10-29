@@ -57,7 +57,7 @@ internal sealed class RecordPage : UserControl, ILiveRefresh
         _cells = cells;
         _extra = extra;
         _ready = ready;
-        var page = new StackPanel { Spacing = 12, Margin = new Thickness(8) };
+        var page = new StackPanel { Spacing = 12, Margin = (Thickness)Application.Current.Resources["PageMargin"] };
         page.Children.Add(Flow.SheetMark(sheet, group, title));
         page.Children.Add(Flow.Heading(title));
         page.Children.Add(Flow.Secondary(intro));

@@ -347,6 +347,9 @@ internal static class Flow
         var host = grid.ActualWidth > 1 ? grid.ActualWidth : grid.Parent is FrameworkElement parent && parent.ActualWidth > 1 ? parent.ActualWidth : 720;
         var cols = Math.Max(1, (int)(host / minItemWidth));
         cols = Math.Min(cols, items.Count);
+        // The gap between neighbours is the grid's own spacing, so filled and unfilled rows are spaced alike.
+        grid.ColumnSpacing = 8;
+        grid.RowSpacing = 8;
         for (var c = 0; c < cols; c++)
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = fill ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
         var rowCount = (items.Count + cols - 1) / cols;
@@ -358,8 +361,6 @@ internal static class Flow
                 continue;
             Grid.SetRow(element, i / cols);
             Grid.SetColumn(element, i % cols);
-            if (!fill)
-                element.Margin = new Thickness(0, 0, 8, 8);
             grid.Children.Add(element);
         }
     }
@@ -392,7 +393,8 @@ internal static class Flow
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Center,
             };
-            if (align)
+            // Figures in the rows are set in the mono face so they line up; the heading over them stays in the same face as the others.
+            if (align && !header && !emphasize)
                 text.FontFamily = new FontFamily("Cascadia Mono, Consolas");
             var cell = new Border
             {
@@ -804,7 +806,7 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
     private readonly AppShell _shell;
     private readonly List<JsonElement> _rows = [];
     private readonly ListView _list = new() { SelectionMode = ListViewSelectionMode.Single };
-    private readonly ContentControl _header = new();
+    private readonly ContentControl _header = new() { HorizontalContentAlignment = HorizontalAlignment.Stretch };
     private readonly TextBlock _summary = Flow.Secondary("Loading projects…");
     private readonly TextBlock _empty = Flow.Secondary("No projects match.");
     private readonly TextBox _search = new() { PlaceholderText = "Code, name, client or site", Header = "Search" };
@@ -1161,6 +1163,8 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         var status = ((ComboBoxItem?)_status.SelectedItem)?.Tag as string ?? "";
         _list.Items.Clear();
         _header.Content = Flow.Header(["Code", "Project", "Consultancy", "Client", "Status"], ProjectWidths);
+        // The rows end in an Edit button; the heading leaves the same room so its columns line up with theirs.
+        _header.Padding = new Thickness(0, 0, Hcw.Ui.SuiteScale.StackGap + 72, 0);
         var count = 0;
         foreach (var row in _rows)
         {
@@ -1478,7 +1482,7 @@ internal sealed class ClientsPage : UserControl, IPageCommands, ILiveRefresh
     private readonly AppShell _shell;
     private readonly List<JsonElement> _rows = [];
     private readonly ListView _list = new() { SelectionMode = ListViewSelectionMode.Single };
-    private readonly ContentControl _header = new();
+    private readonly ContentControl _header = new() { HorizontalContentAlignment = HorizontalAlignment.Stretch };
     private readonly TextBlock _summary = Flow.Secondary("Loading clients…");
     private readonly TextBlock _empty = Flow.Secondary("");
     private readonly TextBox _search = new() { PlaceholderText = "Name, contact, phone or email", Header = "Search", HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -1870,6 +1874,8 @@ internal sealed class ClientsPage : UserControl, IPageCommands, ILiveRefresh
         var needle = _search.Text.Trim().ToLowerInvariant();
         _list.Items.Clear();
         _header.Content = Flow.Header(["Client", "Contact", "Phone"], ClientWidths);
+        // The rows end in an Edit button; the heading leaves the same room so its columns line up with theirs.
+        _header.Padding = new Thickness(0, 0, Hcw.Ui.SuiteScale.StackGap + 72, 0);
         var count = 0;
         foreach (var row in _rows)
         {
@@ -2018,7 +2024,7 @@ internal sealed class LettersPage : UserControl, IPageCommands
     private readonly AppShell _shell;
     private readonly List<JsonElement> _rows = [];
     private readonly ListView _list = new() { SelectionMode = ListViewSelectionMode.Single };
-    private readonly ContentControl _header = new();
+    private readonly ContentControl _header = new() { HorizontalContentAlignment = HorizontalAlignment.Stretch };
     private readonly TextBlock _summary = Flow.Secondary("Loading letters…");
     private readonly TextBlock _empty = Flow.Secondary("");
     private readonly TextBox _search = new() { PlaceholderText = "Number, subject, party or reference", Header = "Search", HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -2466,6 +2472,8 @@ internal sealed class LettersPage : UserControl, IPageCommands
         var needle = _search.Text.Trim().ToLowerInvariant();
         _list.Items.Clear();
         _header.Content = Flow.Header(["Date", "Subject", "Recipient", "Status"], LetterWidths);
+        // The rows end in an Edit button; the heading leaves the same room so its columns line up with theirs.
+        _header.Padding = new Thickness(0, 0, Hcw.Ui.SuiteScale.StackGap + 72, 0);
         var count = 0;
         foreach (var row in _rows)
         {

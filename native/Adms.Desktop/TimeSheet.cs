@@ -19,7 +19,7 @@ internal sealed class TimeSheet : UserControl
     private TimeSheet(AppShell shell)
     {
         _shell = shell;
-        var page = new StackPanel { Spacing = 12, Margin = new Thickness(8) };
+        var page = new StackPanel { Spacing = 12, Margin = (Thickness)Application.Current.Resources["PageMargin"] };
         page.Children.Add(Flow.SheetMark("01.04", "Practice", "Time"));
         page.Children.Add(Flow.Heading("Time"));
         page.Children.Add(Flow.Secondary("Hours against a project. Recording time does not post a journal or an invoice."));
