@@ -28,34 +28,32 @@ public sealed class MonitorPanel : StackPanel
     {
         _window = window;
         Spacing = 12;
-        var heading = new TextBlock { Text = "Company file monitor", Style = Resource<Style>("SectionTitleStyle") };
-        AutomationProperties.SetHeadingLevel(heading, AutomationHeadingLevel.Level2);
-        Children.Add(heading);
-        Children.Add(new TextBlock
-        {
-            Text = "Watches the company file O-Studio and O-CoreOp share. It reads sizes and counts only, never names, amounts or documents, and changes nothing.",
-            Style = Resource<Style>("SecondaryStyle"),
-            TextWrapping = TextWrapping.Wrap,
-            MaxWidth = 760,
-            HorizontalAlignment = HorizontalAlignment.Left,
-        });
         var refresh = new Button { Content = "Look now" };
         refresh.Click += async (_, _) => await Look();
-        Children.Add(new FlexBar { Children = { refresh } });
-        Children.Add(_path);
         Children.Add(_problem);
         Children.Add(_tiles);
-        Children.Add(Section("Open in"));
-        Children.Add(_programs);
-        Children.Add(Section("Space used by table"));
-        Children.Add(_tables);
-        Children.Add(_stamp);
+        var inside = new StackPanel { Spacing = 8 };
+        var heading = new TextBlock { Text = "Company file monitor", Style = Resource<Style>("SectionTitleStyle") };
+        AutomationProperties.SetHeadingLevel(heading, AutomationHeadingLevel.Level2);
+        inside.Children.Add(heading);
+        inside.Children.Add(new TextBlock { Text = "Sizes and counts only, never names, amounts or documents. Nothing is changed.", Style = Resource<Style>("SecondaryStyle"), TextWrapping = TextWrapping.Wrap });
+        inside.Children.Add(_path);
+        inside.Children.Add(Section("Open in"));
+        inside.Children.Add(_programs);
+        inside.Children.Add(Section("Space used by table"));
+        inside.Children.Add(_tables);
+        inside.Children.Add(_stamp);
+        inside.Children.Add(refresh);
+        Details = new Border { Style = Resource<Style>("SuiteCardStyle"), Width = 380, Margin = new Thickness(0, 0, 16, 16), Child = inside };
 
-        Say("No company file chosen yet. Choose it in the Company section above.");
+        Say("No company file is open.");
         _timer.Tick += async (_, _) => await Look();
         Loaded += (_, _) => _timer.Start();
         Unloaded += (_, _) => _timer.Stop();
     }
+
+    /// <summary>The card with who has the file open and where the space goes, for the dashboard to place.</summary>
+    public UIElement Details { get; }
 
     private static T Resource<T>(string key) => (T)Microsoft.UI.Xaml.Application.Current.Resources[key];
 
@@ -74,7 +72,7 @@ public sealed class MonitorPanel : StackPanel
         if (path == null)
         {
             _path.Text = "";
-            Say("No company file chosen yet. Choose it in the Company section above.");
+            Say("No company file is open.");
             return;
         }
         _monitor = new CompanyFileMonitor(path);
