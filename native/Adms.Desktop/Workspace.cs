@@ -108,6 +108,7 @@ internal sealed class WorkspaceView : UserControl
         var root = new Grid { Background = Flow.Ink("AppBackgroundBrush") };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         var main = BuildMainTabs();
         root.Children.Add(main);
         var body = new Grid
@@ -127,6 +128,13 @@ internal sealed class WorkspaceView : UserControl
         body.Children.Add(_host);
         Grid.SetRow(body, 1);
         root.Children.Add(body);
+        // The assistant floats over the page; the other apps open from the bar along the bottom.
+        var assistant = new AssistantBar(_shell);
+        Grid.SetRow(assistant, 1);
+        root.Children.Add(assistant);
+        var apps = BuildAppsBar();
+        Grid.SetRow(apps, 2);
+        root.Children.Add(apps);
         Content = root;
         SelectTab(_tabs[0]);
         _shell.Navigate = Show;
@@ -304,8 +312,6 @@ internal sealed class WorkspaceView : UserControl
                 ("tds26as", "03", "26AS check", ""),
                 ("acc-setup", "03", "Chart and financial years", ""));
         }
-        AddTab("Assistant", "");
-        AddGroup("09", "Assistant", ("assistant", "01", "Ask the assistant", ""));
         AddTab("Office", "");
         AddGroup("06", "Office",
             ("company", "01", "Firm", ""),
@@ -313,6 +319,34 @@ internal sealed class WorkspaceView : UserControl
             ("settings", "06", "Security and backup", ""));
         AddTab("Suite", "");
         AddGroup("07", "Suite", ("suite", "01", "Suite apps", ""), ("suitetools", "02", "Company, users and tools", ""));
+    }
+
+    /// <summary>The bar along the bottom: one button for each of the suite's other apps, opened on this company, signed in.</summary>
+    private FrameworkElement BuildAppsBar()
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Padding = new Thickness(12, 4, 12, 4), VerticalAlignment = VerticalAlignment.Center };
+        row.Children.Add(new TextBlock { Text = "Other apps", FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Foreground = Flow.Ink("TextSecondaryBrush") });
+        foreach (var card in SuiteHub.Cards)
+        {
+            var installed = SuiteHub.FindExecutable(card) != null;
+            var button = new Button { Content = card.Title, MinHeight = 28, Padding = new Thickness(12, 2, 12, 2), IsEnabled = installed };
+            ToolTipService.SetToolTip(button, installed ? $"Open {card.Title} on this company, signed in. {card.Blurb}." : $"{card.Title} is not installed on this computer.");
+            AutomationProperties.SetName(button, installed ? $"Open {card.Title}" : $"{card.Title} (not installed)");
+            var target = card;
+            button.Click += (_, _) =>
+            {
+                try
+                {
+                    SuiteHub.Launch(_shell.Session, target, _shell.CompanyPath);
+                }
+                catch (Exception ex)
+                {
+                    _shell.Problem(ex.Message);
+                }
+            };
+            row.Children.Add(button);
+        }
+        return new Border { Child = row, BorderBrush = Flow.Ink("BorderSubtleBrush"), BorderThickness = new Thickness(0, 1, 0, 0), Background = Flow.Ink("AppBackgroundBrush") };
     }
 
     private void AddTab(string title, string glyph) => _tabs.Add(new RibbonTab(title, glyph));
@@ -445,9 +479,8 @@ internal sealed class WorkspaceView : UserControl
         "site" => RecordPages.Site(_shell),
         "permits" => RecordPages.Permits(_shell),
         "library" => RecordPages.Library(_shell),
-        "suitetools" => new SuitePage(_shell.Window),
+        "suitetools" => new SuitePage(_shell),
         "approvals" => ApprovalsPage.Build(_shell),
-        "assistant" => new AssistantHostPage(_shell),
         "proposals" => RecordPages.Proposals(_shell),
         "meetings" => RecordPages.Meetings(_shell),
         "tds26as" => new TdsReconPage(_shell),
