@@ -41,11 +41,8 @@ public sealed class Assistant
     private readonly JsonArray _tools = new();
     private readonly List<JsonObject> _conversation = new();
 
-    /// <param name="consent">The person has agreed that their questions and the records the tools return are sent to Anthropic. Without it nothing is sent.</param>
-    public Assistant(IMessagesApi api, IToolHost host, string model, string company, string user, string role, bool consent)
+    public Assistant(IMessagesApi api, IToolHost host, string model, string company, string user, string role)
     {
-        if (!consent)
-            throw new AssistantException("Agree to send your questions and the records the assistant looks up to Anthropic before using the assistant.");
         _api = api;
         _host = host;
         _model = model;

@@ -1,6 +1,6 @@
 # Getting started
 
-**O-Studio** is the office app and the suite hub for **OSAS** (Open Source Architecture Suit). Create or open the company file here, sign in with the admin password, and open CoreOp, Draft or Form from **Office → Suite apps**. Those apps never ask for the company admin password.
+**O-Studio** is the office app and the suite hub for **OSAS** (Open Source Architecture Suit). Create or open the company file here, sign in with the admin password, and open CoreOp, Draft or Form from the **Other apps** buttons along the bottom. Those apps never ask for the company admin password.
 
 ## Create a company
 
@@ -15,9 +15,9 @@ Studio then shows a recovery code **once**. Store it somewhere you can find late
 
 Choose **Open an existing company**, pick the `.osas` file (files from earlier versions end in `.adms` and open the same way), then sign in with your user name and password. Studio remembers which file you chose (`%LOCALAPPDATA%\OSAS\suite.json`) so other suite apps can follow it. It never stores a password there.
 
-## Suite apps (Cards)
+## Other apps (bottom bar)
 
-After you are signed in, open **Office → Suite apps**. Each card starts CoreOp, Draft or Form with the company path and a one-time ticket (`OSAS_COMPANY` / `OSAS_TICKET`). The app opens already signed in as you when the ticket is still valid.
+After you are signed in, use the **Other apps** bar along the bottom. Each button starts CoreOp, Draft or Form with the company path and a one-time ticket (`OSAS_COMPANY` / `OSAS_TICKET`). The app opens already signed in as you when the ticket is still valid.
 
 ## People
 
@@ -35,7 +35,7 @@ The `.osas` file holds the records, issued PDFs, attachments, and audit history.
 
 ## Finding your way around
 
-The **tabs along the top** are the main areas: Practice, Documents, Accounts, Assistant, Office and Suite. The **second row of tabs** holds the pages under the open area, and the page opens straight below it. The **Theme** button at the right switches light and dark.
+The **tabs along the top** are the main areas: Practice, Documents, Accounts, Office and Suite. The **second row of tabs** holds the pages under the open area, and the page opens straight below it. The **Theme** button at the right switches light and dark.
 
-- **Assistant** answers questions about the practice, as you, using your own Anthropic API key. It only reads, and nothing is sent until you agree.
+- The **assistant** is the glowing logo at the bottom of every page. It answers questions about the practice, as you, using a model that runs on this computer through Ollama: no key, no account, nothing leaves the computer. It only reads. Install Ollama and a model that can use tools (for example `ollama pull llama3.1`), then press **Refresh models**.
 - **Suite** opens O-CoreOp, O-Draft and O-Form signed in as you, and manages the company's users, the file monitor and the ShilpiDB server.
