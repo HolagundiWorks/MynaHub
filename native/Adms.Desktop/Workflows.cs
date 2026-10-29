@@ -201,6 +201,8 @@ internal static class Flow
         Content = content,
         HorizontalScrollMode = ScrollMode.Disabled,
         HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+        // Always drawn, so a form longer than the window shows that there is more below.
+        VerticalScrollBarVisibility = ScrollBarVisibility.Visible,
     };
 
     public static FlexBar Bar(params UIElement[] items)
@@ -2647,11 +2649,11 @@ internal sealed class BankWorkspace : UserControl, IPageCommands
         _dateOrder.SelectedIndex = 0;
         foreach (var box in new ComboBox[] { _mapDate, _mapParticulars, _mapCredit, _mapDebit, _dateOrder })
             box.SelectionChanged += (_, _) => { if (!_mapping && _csv != null) CheckRows(); };
-        var pivot = new Pivot { HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch };
+        var pivot = new Pivot { HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch, Margin = new Thickness(-10, 0, 0, 0) };
         pivot.Items.Add(new PivotItem { Header = "Accounts", Content = AccountsPane() });
         pivot.Items.Add(new PivotItem { Header = "Import statement", Content = ImportPane() });
         pivot.Items.Add(new PivotItem { Header = "Reconciliation", Content = ReconciliationPane() });
-        var column = new Grid { Margin = new Thickness(8) };
+        var column = new Grid { Margin = (Thickness)Application.Current.Resources["PageMargin"] };
         column.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         column.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         column.Children.Add(Flow.SheetMark("04.09", "Accounts", "Reconciliation"));

@@ -132,8 +132,7 @@ internal sealed class WorkspaceView : UserControl
     {
         // The parts that outlive a rebuild are lifted out of the old layout first: a control can have only one parent.
         (_host.Parent as Panel)?.Children.Remove(_host);
-        if (_subScroll.Parent is Border oldSub)
-            oldSub.Child = null;
+        (_subScroll.Parent as Panel)?.Children.Remove(_subScroll);
         (_assistant.Parent as Panel)?.Children.Remove(_assistant);
         _mainBoxes.Clear();
         _subBoxes.Clear();
@@ -164,7 +163,33 @@ internal sealed class WorkspaceView : UserControl
         sub.VerticalScrollMode = ScrollMode.Disabled;
         Hcw.Ui.SuiteLandmarks.Navigation(sub, "Section menu");
         // A line under the second row separates it from the page, and the page keeps room above (breathing space) and below (for the assistant bar).
-        var subFrame = new Border { Child = sub, BorderBrush = Flow.Ink("BorderSubtleBrush"), BorderThickness = new Thickness(0, 0, 0, 1) };
+        // Arrows at either end appear only while the row is wider than the window, and move it by most of a screen.
+        var more = new Grid();
+        more.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        more.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        more.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Button Arrow(string glyph, int dir, string name)
+        {
+            var b = new Button { Content = glyph, Padding = new Thickness(8, 0, 8, 0), Height = Hcw.Ui.SuiteScale.TabHeight, MinWidth = 0, VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, name);
+            b.Click += (_, _) => sub.ChangeView(Math.Max(0, sub.HorizontalOffset + dir * sub.ViewportWidth * 0.8), null, null);
+            return b;
+        }
+        var left = Arrow("‹", -1, "Earlier sections");
+        var right = Arrow("›", 1, "More sections");
+        Grid.SetColumn(sub, 1);
+        Grid.SetColumn(right, 2);
+        more.Children.Add(left);
+        more.Children.Add(sub);
+        more.Children.Add(right);
+        void Cue()
+        {
+            left.Visibility = sub.HorizontalOffset > 1 ? Visibility.Visible : Visibility.Collapsed;
+            right.Visibility = sub.ScrollableWidth - sub.HorizontalOffset > 1 ? Visibility.Visible : Visibility.Collapsed;
+        }
+        sub.ViewChanged += (_, _) => Cue();
+        sub.SizeChanged += (_, _) => Cue();
+        var subFrame = new Border { Child = more, BorderBrush = Flow.Ink("BorderSubtleBrush"), BorderThickness = new Thickness(0, 0, 0, 1) };
         body.Children.Add(subFrame);
         _host.Margin = new Thickness(0, Hcw.Ui.SuiteScale.Space3, 0, 64);
         Grid.SetRow(_host, 1);
