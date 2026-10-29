@@ -58,11 +58,11 @@ internal sealed class AssistantBar : UserControl
     private readonly SuiteSettings _settings = new();
     private readonly StudioToolHost _tools;
     private readonly Border _panel = new() { Visibility = Visibility.Collapsed };
-    private readonly StackPanel _transcript = new() { Spacing = 10 };
+    private readonly StackPanel _transcript = new() { Spacing = Hcw.Ui.SuiteScale.StackGap };
     private readonly ScrollViewer _scroll = new() { MaxHeight = 320, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     private readonly TextBox _question = new() { PlaceholderText = "Ask Tulu about your practice", VerticalAlignment = VerticalAlignment.Center, MinWidth = 260 };
     private readonly Button _send = new() { Content = "Ask", VerticalAlignment = VerticalAlignment.Center };
-    private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
+    private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, FontSize = Hcw.Ui.SuiteScale.FontCaption };
     private readonly OllamaApi _ollama = new();
     private Assistant? _assistant;
     private string? _assistantFor;
@@ -98,7 +98,7 @@ internal sealed class AssistantBar : UserControl
             }
         };
         _send.Click += async (_, _) => await Ask();
-        var bar = new Grid { ColumnSpacing = 10, Padding = new Thickness(10, 8, 12, 8) };
+        var bar = new Grid { ColumnSpacing = Hcw.Ui.SuiteScale.StackGap, Padding = new Thickness(Hcw.Ui.SuiteScale.Space2, Hcw.Ui.SuiteScale.Space1, Hcw.Ui.SuiteScale.Space3, Hcw.Ui.SuiteScale.Space1) };
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -120,7 +120,7 @@ internal sealed class AssistantBar : UserControl
         _scroll.Content = _transcript;
         var controls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { refresh, newChat } };
         AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
-        _panel.Child = new StackPanel { Spacing = 10, Padding = new Thickness(16), Children = { controls, _status, _scroll } };
+        _panel.Child = new StackPanel { Spacing = Hcw.Ui.SuiteScale.StackGap, Padding = new Thickness(Hcw.Ui.SuiteScale.Space3), Children = { controls, _status, _scroll } };
         var panelFrame = Frame(_panel, 12);
         panelFrame.Margin = new Thickness(0, 0, 0, 8);
 
@@ -235,10 +235,10 @@ internal sealed class AssistantBar : UserControl
     private void Say(string who, string text, string? note = null)
     {
         var block = new StackPanel { Spacing = 2 };
-        block.Children.Add(new TextBlock { Text = who, FontSize = 11, Foreground = Flow.Ink("TextSecondaryBrush") });
+        block.Children.Add(new TextBlock { Text = who, FontSize = Hcw.Ui.SuiteScale.FontCaption, Foreground = Flow.Ink("TextSecondaryBrush") });
         block.Children.Add(new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
         if (note != null)
-            block.Children.Add(new TextBlock { Text = note, FontSize = 11, TextWrapping = TextWrapping.Wrap, Foreground = Flow.Ink("TextSecondaryBrush") });
+            block.Children.Add(new TextBlock { Text = note, FontSize = Hcw.Ui.SuiteScale.FontCaption, TextWrapping = TextWrapping.Wrap, Foreground = Flow.Ink("TextSecondaryBrush") });
         AutomationProperties.SetName(block, $"{who}: {text}");
         _transcript.Children.Add(block);
     }

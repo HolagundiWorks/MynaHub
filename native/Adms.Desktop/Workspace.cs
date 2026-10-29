@@ -329,12 +329,12 @@ internal sealed class WorkspaceView : UserControl
     /// <summary>The bar along the bottom: one button for each of the suite's other apps, opened on this company, signed in.</summary>
     private FrameworkElement BuildAppsBar()
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Padding = new Thickness(12, 4, 12, 4), VerticalAlignment = VerticalAlignment.Center };
-        row.Children.Add(new TextBlock { Text = "Other apps", FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Foreground = Flow.Ink("TextSecondaryBrush") });
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Hcw.Ui.SuiteScale.Space2, Padding = new Thickness(Hcw.Ui.SuiteScale.Space3, Hcw.Ui.SuiteScale.Space1, Hcw.Ui.SuiteScale.Space3, Hcw.Ui.SuiteScale.Space1), VerticalAlignment = VerticalAlignment.Center };
+        row.Children.Add(new TextBlock { Text = "Other apps", FontSize = Hcw.Ui.SuiteScale.FontCaption, VerticalAlignment = VerticalAlignment.Center, Foreground = Flow.Ink("TextSecondaryBrush") });
         foreach (var card in SuiteHub.Cards)
         {
             var installed = SuiteHub.FindExecutable(card) != null;
-            var button = new Button { Content = card.Title, MinHeight = 28, Padding = new Thickness(12, 2, 12, 2), IsEnabled = installed };
+            var button = new Button { Content = card.Title, MinHeight = Hcw.Ui.SuiteScale.ControlMinHeight, IsEnabled = installed };
             ToolTipService.SetToolTip(button, installed ? $"Open {card.Title} on this company, signed in. {card.Blurb}." : $"{card.Title} is not installed on this computer.");
             AutomationProperties.SetName(button, installed ? $"Open {card.Title}" : $"{card.Title} (not installed)");
             var target = card;
@@ -377,9 +377,9 @@ internal sealed class WorkspaceView : UserControl
         Content = text,
         Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
         BorderThickness = new Thickness(0),
-        Padding = new Thickness(14, 7, 14, 7),
+        Padding = new Thickness(Hcw.Ui.SuiteScale.Space3, Hcw.Ui.SuiteScale.Space1 / 2, Hcw.Ui.SuiteScale.Space3, Hcw.Ui.SuiteScale.Space1 / 2),
         FontSize = size,
-        MinHeight = 34,
+        MinHeight = Hcw.Ui.SuiteScale.TabHeight,
         CornerRadius = new CornerRadius(0),
     };
 
@@ -390,7 +390,7 @@ internal sealed class WorkspaceView : UserControl
         foreach (var tab in _tabs)
         {
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var button = TabButton(tab.Title, 14);
+            var button = TabButton(tab.Title, Hcw.Ui.SuiteScale.FontSection);
             AutomationProperties.SetName(button, tab.Title);
             var captured = tab;
             button.Click += (_, _) =>
@@ -440,7 +440,7 @@ internal sealed class WorkspaceView : UserControl
             box.Background = on ? Flow.Ink("SurfaceBackgroundBrush") : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
             box.BorderBrush = line;
             box.BorderThickness = on ? new Thickness(1, 1, 1, 0) : new Thickness(0, 0, 0, 1);
-            box.CornerRadius = on ? new CornerRadius(6, 6, 0, 0) : new CornerRadius(0);
+            box.CornerRadius = on ? new CornerRadius(Hcw.Ui.SuiteScale.CornerControl.TopLeft, Hcw.Ui.SuiteScale.CornerControl.TopLeft, 0, 0) : new CornerRadius(0);
             button.FontWeight = on ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal;
             AutomationProperties.SetItemStatus(button, on ? "selected" : "");
         }
@@ -450,10 +450,10 @@ internal sealed class WorkspaceView : UserControl
         foreach (var group in tab.Groups)
         {
             if (labelled)
-                _subRow.Children.Add(new TextBlock { Text = group.Title, FontSize = 11, Margin = new Thickness(10, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Flow.Ink("TextSecondaryBrush") });
+                _subRow.Children.Add(new TextBlock { Text = group.Title, FontSize = Hcw.Ui.SuiteScale.FontCaption, Margin = new Thickness(Hcw.Ui.SuiteScale.Space2, 0, Hcw.Ui.SuiteScale.Space1, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Flow.Ink("TextSecondaryBrush") });
             foreach (var entry in group.Items)
             {
-                var button = TabButton(entry.Label, 13);
+                var button = TabButton(entry.Label, Hcw.Ui.SuiteScale.FontBody);
                 AutomationProperties.SetName(button, entry.Label);
                 var id = entry.Id;
                 button.Click += (_, _) => Show(id);
