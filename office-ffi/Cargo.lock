@@ -308,8 +308,6 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
- "shilpi-drawing",
- "shilpidb",
 ]
 
 [[package]]
@@ -460,17 +458,6 @@ dependencies = [
  "serde_core",
  "zmij",
 ]
-
-[[package]]
-name = "shilpi-drawing"
-version = "0.2.0"
-dependencies = [
- "shilpidb",
-]
-
-[[package]]
-name = "shilpidb"
-version = "0.2.0"
 
 [[package]]
 name = "shlex"

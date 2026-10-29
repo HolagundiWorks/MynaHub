@@ -220,23 +220,6 @@ pub fn invoke(state: &AppState, op: &str, args: &Value) -> Result<Option<Vec<u8>
         "permit_save" => run(crate::fieldwork::permit_save_record(HostState::new(state), arg(args, "input")?)),
         "permit_list" => run(crate::fieldwork::permit_list_records(HostState::new(state), arg(args, "project_id")?)),
         "enquiry_save" => run(crate::fieldwork::enquiry_save_record(HostState::new(state), arg(args, "input")?)),
-        "agent_tools" => {
-            office_core::workspace::require(state, office_core::auth::Permission::View).map_err(BridgeError::Domain)?;
-            let tools: Vec<serde_json::Value> = office_agent::TOOLS
-                .iter()
-                .map(|t| serde_json::json!({ "name": t.name, "description": t.description, "input_schema": (t.input_schema)() }))
-                .collect();
-            run(Ok(tools))
-        }
-        "agent_call" => {
-            let (name, arguments): (String, Option<serde_json::Value>) = (arg(args, "name")?, arg(args, "arguments")?);
-            run(office_agent::call(state, &name, &arguments.unwrap_or(serde_json::Value::Null)))
-        }
-        "drawing_import" => run(crate::drawings::drawing_import(HostState::new(state), arg(args, "project_id")?, arg(args, "name")?, arg(args, "path")?)),
-        "drawing_list" => run(crate::drawings::drawing_list(HostState::new(state), arg(args, "project_id")?)),
-        "drawing_view" => run(crate::drawings::drawing_view(HostState::new(state), arg(args, "id")?, arg(args, "window")?)),
-        "drawing_at" => run(crate::drawings::drawing_at(HostState::new(state), arg(args, "id")?, arg(args, "x")?, arg(args, "y")?, arg(args, "tolerance")?)),
-        "drawing_delete" => run(crate::drawings::drawing_delete(HostState::new(state), arg(args, "id")?)),
         "enquiry_list" => run(crate::fieldwork::enquiry_list_records(HostState::new(state))),
         "enquiry_convert" => run(crate::fieldwork::enquiry_convert_to_client(HostState::new(state), arg(args, "id")?)),
         "staff_save" => run(crate::office::staff_save_record(HostState::new(state), arg(args, "input")?)),

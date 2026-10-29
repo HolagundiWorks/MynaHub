@@ -35,14 +35,6 @@
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
-  <!-- The suite pages (company, users, monitor, assistant) use office.dll, the shared company-file engine, built from office-ffi.
-       It ships beside the app with the accounting engine; set OfficeDll to use a build from another folder. -->
-  <PropertyGroup>
-    <OfficeDll Condition="'$(OfficeDll)' == ''">$(MSBuildThisFileDirectory)..\..\office-ffi\target\release\office.dll</OfficeDll>
-  </PropertyGroup>
-  <ItemGroup>
-    <None Include="$(OfficeDll)" Link="office.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('$(OfficeDll)')" />
-  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4188" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />

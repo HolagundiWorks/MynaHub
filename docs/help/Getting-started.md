@@ -35,8 +35,7 @@ The `.osas` file holds the records, issued PDFs, attachments, and audit history.
 
 ## Finding your way around
 
-The **tabs along the top** are the main areas: Practice, Documents, Accounts, Drawings, Assistant, Office and Suite. The **second row of tabs** holds the pages under the open area, and the page opens straight below it. The **Theme** button at the right switches light and dark.
+The **tabs along the top** are the main areas: Practice, Documents, Accounts, Assistant, Office and Suite. The **second row of tabs** holds the pages under the open area, and the page opens straight below it. The **Theme** button at the right switches light and dark.
 
-- **Drawings** keeps vector drawings with each project (the ShilpiDB engine inside the company file). Choose a project, **Import DXF…** (text DXF), then scroll to zoom and drag to move.
 - **Assistant** answers questions about the practice, as you, using your own Anthropic API key. It only reads, and nothing is sent until you agree.
 - **Suite** opens O-CoreOp, O-Draft and O-Form signed in as you, and manages the company's users, the file monitor and the ShilpiDB server.

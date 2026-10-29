@@ -16,15 +16,12 @@ $engineDir = if ($env:CARGO_TARGET_DIR) { Join-Path $env:CARGO_TARGET_DIR "relea
 Write-Host "1/3 Rust engine (release)"
 cargo build --release --manifest-path src-tauri\Cargo.toml
 if ($LASTEXITCODE -ne 0) { throw "cargo build failed" }
-cargo build --release -p office-ffi
-if ($LASTEXITCODE -ne 0) { throw "cargo build of office-ffi failed" }
 
 Write-Host "2/3 Publishing the app"
 if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
-dotnet publish native\Adms.Desktop\Adms.Desktop.csproj -c Release -r win-x64 --self-contained true -p:EngineProfile=release "-p:EngineDll=$engineDir\architect_office_desktop_lib.dll" "-p:OfficeDll=$engineDir\office.dll" -o $stage
+dotnet publish native\Adms.Desktop\Adms.Desktop.csproj -c Release -r win-x64 --self-contained true -p:EngineProfile=release "-p:EngineDll=$engineDir\architect_office_desktop_lib.dll" -o $stage
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 if (-not (Test-Path (Join-Path $stage "architect_office_desktop_lib.dll"))) { throw "The engine DLL was not copied beside the app." }
-if (-not (Test-Path (Join-Path $stage "office.dll"))) { throw "office.dll was not copied beside the app." }
 
 Write-Host "3/3 Installer"
 $out = Join-Path $PSScriptRoot "O-Studio-Setup-$version.exe"

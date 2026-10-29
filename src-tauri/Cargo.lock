@@ -214,6 +214,7 @@ dependencies = [
  "harper-core",
  "office-agent",
  "office-core",
+ "office-ffi",
  "png 0.17.16",
  "printpdf",
  "qrcode",
@@ -3839,8 +3840,17 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
- "shilpi-drawing",
- "shilpidb",
+]
+
+[[package]]
+name = "office-ffi"
+version = "0.1.0"
+dependencies = [
+ "office-agent",
+ "office-core",
+ "rusqlite",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -4926,17 +4936,6 @@ dependencies = [
  "cpufeatures 0.3.1",
  "digest 0.11.3",
 ]
-
-[[package]]
-name = "shilpi-drawing"
-version = "0.2.0"
-dependencies = [
- "shilpidb",
-]
-
-[[package]]
-name = "shilpidb"
-version = "0.2.0"
 
 [[package]]
 name = "shlex"

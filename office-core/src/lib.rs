@@ -11,7 +11,6 @@ pub mod check;
 pub mod clients;
 pub mod company;
 pub mod context;
-pub mod drawings;
 pub mod hash;
 pub mod host;
 pub mod office;

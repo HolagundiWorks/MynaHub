@@ -113,7 +113,7 @@ public sealed partial class CompanyPanel : StackPanel
         var path = _settings.CompanyPath;
         if (path == null || !Engine.IsAvailable())
         {
-            Say(InfoBarSeverity.Warning, path == null ? "Choose a company file first." : "The company-file engine (office.dll) is missing beside O-Studio, so it cannot sign in here. The other apps can still be opened and sign in themselves.");
+            Say(InfoBarSeverity.Warning, path == null ? "Choose a company file first." : "The company-file engine is missing beside O-Studio, so it cannot sign in here. The other apps can still be opened and sign in themselves.");
             return;
         }
         var user = new TextBox { Header = "User name", Text = _settings.LastUser ?? "owner" };

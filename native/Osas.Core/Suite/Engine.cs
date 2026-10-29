@@ -59,14 +59,17 @@ public sealed class Engine : IDisposable
         }
     }
 
-    /// <summary>Makes the loader look for office.dll in a folder, for tests and for builds where it is not beside the program.</summary>
-    public static void LookIn(string folder)
+    /// <summary>
+    /// Makes the loader look for the office engine in a folder, for tests and for builds where it is not beside the program. O-Studio
+    /// carries the office interface inside its own engine library, so it passes that file name; the standalone office.dll is the default.
+    /// </summary>
+    public static void LookIn(string folder, string fileName = "office.dll")
     {
         try
         {
             NativeLibrary.SetDllImportResolver(typeof(Engine).Assembly, (name, _, _) =>
             {
-                var path = Path.Combine(folder, "office.dll");
+                var path = Path.Combine(folder, fileName);
                 return name == "office" && File.Exists(path) && NativeLibrary.TryLoad(path, out var handle) ? handle : 0;
             });
         }

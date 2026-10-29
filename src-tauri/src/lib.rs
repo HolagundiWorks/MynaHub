@@ -23,9 +23,11 @@ mod company_file;
 mod db;
 mod docx;
 mod documents;
-mod drawings;
 mod entries;
 mod ffi;
+
+// The shared company-file interface (`office_*`, from office-ffi) is linked in, so this one library is the whole engine.
+pub use shared_office::ffi as office_interface;
 mod grammar;
 mod ledger;
 mod pdf;
