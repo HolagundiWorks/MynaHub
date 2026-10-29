@@ -53,6 +53,15 @@ internal sealed class AssistantBar : UserControl
     public const string Family = "tulu3";
 
     private string? _model;
+    private bool _bundled;
+    private string? _problem;
+
+    /// <summary>
+    /// O-Studio's own copy of the model runtime (a bundled llama.cpp server and the Tulu package), when one is installed. It starts the
+    /// first time a question is asked and is stopped when O-Studio closes or the person unloads it.
+    /// </summary>
+    public static LocalRuntime? Runtime { get; } = LocalRuntime.Locate(AppContext.BaseDirectory,
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "O-Studio"));
 
     private readonly AppShell _shell;
     private readonly SuiteSettings _settings = new();
@@ -67,6 +76,8 @@ internal sealed class AssistantBar : UserControl
     private Assistant? _assistant;
     private string? _assistantFor;
     private bool _busy;
+
+    static AssistantBar() => AppDomain.CurrentDomain.ProcessExit += (_, _) => Runtime?.Stop();
 
     public AssistantBar(AppShell shell)
     {
@@ -116,9 +127,16 @@ internal sealed class AssistantBar : UserControl
             _assistant?.Reset();
         };
         var refresh = new Button { Content = "Check for Tulu" };
+        var unload = new Button { Content = "Unload model" };
+        unload.Click += (_, _) =>
+        {
+            Runtime?.Stop();
+            _assistant = null;
+            Update();
+        };
         refresh.Click += async (_, _) => await LoadModels();
         _scroll.Content = _transcript;
-        var controls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { refresh, newChat } };
+        var controls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { refresh, unload, newChat } };
         AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
         _panel.Child = new StackPanel { Spacing = Hcw.Ui.SuiteScale.StackGap, Padding = new Thickness(Hcw.Ui.SuiteScale.Space3), Children = { controls, _status, _scroll } };
         var panelFrame = Frame(_panel, 12);
@@ -176,6 +194,17 @@ internal sealed class AssistantBar : UserControl
 
     private async Task LoadModels()
     {
+        _bundled = Runtime != null;
+        if (_bundled)
+        {
+            var (_, problem) = await Runtime!.VerifyAsync();
+            _model = problem == null ? "Tulu 3 (bundled)" : null;
+            _problem = problem;
+            _assistant = null;
+            Update();
+            return;
+        }
+        _problem = null;
         var installed = await _ollama.InstalledModelsAsync();
         _model = installed.FirstOrDefault(n => n.StartsWith(Family, StringComparison.OrdinalIgnoreCase));
         _assistant = null;
@@ -184,7 +213,9 @@ internal sealed class AssistantBar : UserControl
 
     private void Update()
     {
-        _status.Text = _model == null
+        _status.Text = _problem != null
+            ? _problem
+            : _model == null
             ? "The Tulu model is not available. Install Ollama on this computer, start it, and run: ollama pull tulu3. Then press Check for Tulu. Everything stays on this computer."
             : $"Working as {_shell.User} ({_shell.Role}) on {_shell.CompanyName}, with {_model} on this computer. Nothing is sent anywhere.";
         _send.IsEnabled = !_busy && _model != null;
@@ -205,9 +236,12 @@ internal sealed class AssistantBar : UserControl
         try
         {
             var identity = $"{_shell.CompanyPath}|{_shell.User}|{model}";
-            if (_assistant == null || _assistantFor != identity)
+            if (_assistant == null || _assistantFor != identity || (_bundled && !Runtime!.Running))
             {
-                _assistant = new Assistant(_ollama, _tools, model, _shell.CompanyName, _shell.User, _shell.Role);
+                if (_bundled)
+                    _status.Text = Runtime!.Running ? "Looking…" : "Starting the local model. This can take a minute the first time…";
+                IMessagesApi api = _bundled ? await Runtime!.StartAsync() : _ollama;
+                _assistant = new Assistant(api, _tools, model, _shell.CompanyName, _shell.User, _shell.Role);
                 _assistantFor = identity;
             }
             var assistant = _assistant;
