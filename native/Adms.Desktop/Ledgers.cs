@@ -775,7 +775,13 @@ internal static class Ledgers
         page.Children.Add(fields["bank_details"]);
         var scheme = Book.Choices("GST scheme", ("Not registered", "none"), ("Composition", "composition"), ("Regular", "regular"));
         var letterhead = Book.Choices("Letterhead", ("Classic", "classic"), ("Minimal", "minimal"));
-        page.Children.Add(Flow.Pair(scheme, letterhead));
+        // Read-only, the two choices show as plain values; the choosers appear only while editing.
+        var schemeView = new TextBox { Header = "GST scheme", IsReadOnly = true };
+        var letterheadView = new TextBox { Header = "Letterhead", IsReadOnly = true };
+        var choosers = Flow.Pair(scheme, letterhead);
+        var views = Flow.Pair(schemeView, letterheadView);
+        page.Children.Add(views);
+        page.Children.Add(choosers);
         page.Children.Add(Flow.Secondary("The square logo is the mark in the side panel and on documents. The rectangle logo is the wide letterhead on letters, invoices, and receipts."));
         var squareImage = new Image { Width = 72, Height = 72, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left };
         var wideImage = new Image { Width = 200, Height = 56, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left };
@@ -819,10 +825,31 @@ internal static class Ledgers
         void SetEditing(bool on)
         {
             editing = on;
-            foreach (var box in fields.Values)
+            // A field that cannot be edited is drawn as plain text, not as an input box, so it does not look editable.
+            foreach (var box in fields.Values.Append(schemeView).Append(letterheadView))
+            {
                 box.IsReadOnly = !on;
-            scheme.IsEnabled = on;
-            letterhead.IsEnabled = on;
+                box.IsTabStop = on;
+                if (on)
+                {
+                    // Back to the input box the theme draws.
+                    box.ClearValue(Control.BackgroundProperty);
+                    box.ClearValue(Control.BorderThicknessProperty);
+                    box.ClearValue(Control.PaddingProperty);
+                }
+                else
+                {
+                    box.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+                    box.BorderThickness = new Thickness(0);
+                    box.Padding = new Thickness(0, Hcw.Ui.SuiteScale.ControlPadding.Top, 0, Hcw.Ui.SuiteScale.ControlPadding.Bottom);
+                }
+                box.PlaceholderText = on ? "" : "Not set";
+                box.IsHitTestVisible = on;
+            }
+            choosers.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+            views.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
+            schemeView.Text = (scheme.SelectedItem as ComboBoxItem)?.Content as string ?? "";
+            letterheadView.Text = (letterhead.SelectedItem as ComboBoxItem)?.Content as string ?? "";
             edit.Visibility = !on && shell.CanManage ? Visibility.Visible : Visibility.Collapsed;
             save.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
             cancel.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
@@ -852,6 +879,8 @@ internal static class Ledgers
                         box.Text = Kit.Str(profile, key);
                     Select(scheme, Kit.Str(profile, "gst_scheme"));
                     Select(letterhead, Kit.Str(profile, "letterhead_style"));
+                    schemeView.Text = (scheme.SelectedItem as ComboBoxItem)?.Content as string ?? "";
+                    letterheadView.Text = (letterhead.SelectedItem as ComboBoxItem)?.Content as string ?? "";
                     form.Arm();
                 });
             });
@@ -863,7 +892,8 @@ internal static class Ledgers
             form.ClearDirty();
             LoadProfile();
         };
-        page.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { edit, save, cancel } });
+        // Edit, Save and Cancel sit at the top, under the description, where the page is read.
+        page.Children.Insert(3, new StackPanel { Orientation = Orientation.Horizontal, Spacing = Hcw.Ui.SuiteScale.StackGap, Margin = new Thickness(0, Hcw.Ui.SuiteScale.Space1, 0, Hcw.Ui.SuiteScale.Space2), Children = { edit, save, cancel } });
         form.SaveAction = SaveProfile;
         if (shell.CanManage)
             form.Watch([.. fields.Values, scheme, letterhead]);

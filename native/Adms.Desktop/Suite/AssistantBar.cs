@@ -65,7 +65,10 @@ internal sealed class AssistantBar : UserControl
     private readonly AppShell _shell;
     private readonly SuiteSettings _settings = new();
     private readonly StudioToolHost _tools;
-    private readonly Border _panel = new() { Visibility = Visibility.Collapsed };
+    private readonly Border _panel = new();
+    private Border _panelFrame = null!;
+    private readonly List<Border> _frames = [];
+    private readonly List<TextBlock> _captions = [];
     private readonly StackPanel _transcript = new() { Spacing = Hcw.Ui.SuiteScale.StackGap };
     private readonly ScrollViewer _scroll = new() { MaxHeight = 320, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     private readonly TextBox _question = new() { PlaceholderText = "Ask Tulu about your practice", VerticalAlignment = VerticalAlignment.Center, MinWidth = 260 };
@@ -137,24 +140,43 @@ internal sealed class AssistantBar : UserControl
         var controls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { refresh, unload, newChat } };
         AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
         _panel.Child = new StackPanel { Spacing = Hcw.Ui.SuiteScale.StackGap, Padding = new Thickness(Hcw.Ui.SuiteScale.Space3), Children = { controls, _status, _scroll } };
-        var panelFrame = Frame(_panel, 12);
-        panelFrame.Margin = new Thickness(0, 0, 0, 8);
+        _panelFrame = Frame(_panel, 12);
+        _panelFrame.Margin = new Thickness(0, 0, 0, 8);
+        // The whole frame hides, not just what is in it, so no empty outline is left above the bar.
+        _panelFrame.Visibility = Visibility.Collapsed;
 
-        Content = new StackPanel { Children = { panelFrame, barFrame } };
+        Content = new StackPanel { Children = { _panelFrame, barFrame } };
         Update();
         Loaded += async (_, _) => await LoadModels();
     }
 
-    private static Border Frame(UIElement child, double radius) => new()
+    private Border Frame(UIElement child, double radius)
     {
-        Child = child,
-        CornerRadius = new CornerRadius(radius),
-        Background = Flow.Ink("SurfaceBackgroundBrush"),
-        BorderBrush = Flow.Ink("BorderSubtleBrush"),
-        BorderThickness = new Thickness(1),
-        Shadow = new ThemeShadow(),
-        Translation = new System.Numerics.Vector3(0, 0, 24),
-    };
+        var frame = new Border
+        {
+            Child = child,
+            CornerRadius = new CornerRadius(radius),
+            Background = Flow.Ink("SurfaceBackgroundBrush"),
+            BorderBrush = Flow.Ink("BorderSubtleBrush"),
+            BorderThickness = new Thickness(1),
+            Shadow = new ThemeShadow(),
+            Translation = new System.Numerics.Vector3(0, 0, 24),
+        };
+        _frames.Add(frame);
+        return frame;
+    }
+
+    /// <summary>Colours are looked up when a control is made, so after a change of theme the frames and captions are given the new ones.</summary>
+    public void Retheme()
+    {
+        foreach (var frame in _frames)
+        {
+            frame.Background = Flow.Ink("SurfaceBackgroundBrush");
+            frame.BorderBrush = Flow.Ink("BorderSubtleBrush");
+        }
+        foreach (var caption in _captions)
+            caption.Foreground = Flow.Ink("TextSecondaryBrush");
+    }
 
     /// <summary>The O-Studio mark with a soft halo behind it that slowly changes colour: black, blue, orange, green.</summary>
     private static UIElement BuildGlowingLogo()
@@ -188,7 +210,7 @@ internal sealed class AssistantBar : UserControl
         return grid;
     }
 
-    private void TogglePanel() => _panel.Visibility = _panel.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+    private void TogglePanel() => _panelFrame.Visibility = _panelFrame.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
 
     private async Task LoadModels()
     {
@@ -223,7 +245,7 @@ internal sealed class AssistantBar : UserControl
             return;
         _busy = true;
         Update();
-        _panel.Visibility = Visibility.Visible;
+        _panelFrame.Visibility = Visibility.Visible;
         _question.Text = "";
         Say("You", question);
         _status.Text = "Looking…";
@@ -262,10 +284,16 @@ internal sealed class AssistantBar : UserControl
     private void Say(string who, string text, string? note = null)
     {
         var block = new StackPanel { Spacing = 2 };
-        block.Children.Add(new TextBlock { Text = who, FontSize = Hcw.Ui.SuiteScale.FontCaption, Foreground = Flow.Ink("TextSecondaryBrush") });
+        var whoText = new TextBlock { Text = who, FontSize = Hcw.Ui.SuiteScale.FontCaption, Foreground = Flow.Ink("TextSecondaryBrush") };
+        _captions.Add(whoText);
+        block.Children.Add(whoText);
         block.Children.Add(new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
         if (note != null)
-            block.Children.Add(new TextBlock { Text = note, FontSize = Hcw.Ui.SuiteScale.FontCaption, TextWrapping = TextWrapping.Wrap, Foreground = Flow.Ink("TextSecondaryBrush") });
+            {
+                var noteText = new TextBlock { Text = note, FontSize = Hcw.Ui.SuiteScale.FontCaption, TextWrapping = TextWrapping.Wrap, Foreground = Flow.Ink("TextSecondaryBrush") };
+                _captions.Add(noteText);
+                block.Children.Add(noteText);
+            }
         AutomationProperties.SetName(block, $"{who}: {text}");
         _transcript.Children.Add(block);
     }
