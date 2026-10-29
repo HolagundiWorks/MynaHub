@@ -41,19 +41,18 @@ internal sealed class StudioToolHost(AppShell shell) : IToolHost
 
 /// <summary>
 /// The AI assistant, floating over every page of O-Studio. Its logo glows and shifts between the suite's colours: black, blue, orange
-/// and green. It runs a model on this computer through Ollama: no key, no account, and nothing leaves the machine. It looks things up
+/// and green. It runs Tulu 3 on this computer with a runtime O-Studio carries itself: no key, no account, and nothing leaves the machine. It looks things up
 /// in the company file through the read-only tools, as the person signed in, and cannot change a record.
 /// </summary>
 internal sealed class AssistantBar : UserControl
 {
     /// <summary>
-    /// O-Studio's assistant is Tulu 3 from the Allen Institute for AI (built on OLMo's open training recipe), run locally by Ollama.
+    /// O-Studio's assistant is Tulu 3 from the Allen Institute for AI (built on OLMo's open training recipe), the only model, run by O-Studio's own bundled runtime.
     /// O-CoreOp and O-Draft run their own models. Any installed tag of the family is used (for example tulu3:8b).
     /// </summary>
     public const string Family = "tulu3";
 
     private string? _model;
-    private bool _bundled;
     private string? _problem;
 
     /// <summary>
@@ -72,7 +71,6 @@ internal sealed class AssistantBar : UserControl
     private readonly TextBox _question = new() { PlaceholderText = "Ask Tulu about your practice", VerticalAlignment = VerticalAlignment.Center, MinWidth = 260 };
     private readonly Button _send = new() { Content = "Ask", VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, FontSize = Hcw.Ui.SuiteScale.FontCaption };
-    private readonly OllamaApi _ollama = new();
     private Assistant? _assistant;
     private string? _assistantFor;
     private bool _busy;
@@ -194,19 +192,17 @@ internal sealed class AssistantBar : UserControl
 
     private async Task LoadModels()
     {
-        _bundled = Runtime != null;
-        if (_bundled)
+        if (Runtime == null)
         {
-            var (_, problem) = await Runtime!.VerifyAsync();
-            _model = problem == null ? "Tulu 3 (bundled)" : null;
-            _problem = problem;
-            _assistant = null;
-            Update();
-            return;
+            _model = null;
+            _problem = "Tulu is not installed. The runtime and model go in the O-Studio folder or in %LOCALAPPDATA%\\O-Studio (see docs/AI_RUNTIME.md), then press Check for Tulu. Everything stays on this computer.";
         }
-        _problem = null;
-        var installed = await _ollama.InstalledModelsAsync();
-        _model = installed.FirstOrDefault(n => n.StartsWith(Family, StringComparison.OrdinalIgnoreCase));
+        else
+        {
+            var (_, problem) = await Runtime.VerifyAsync();
+            _model = problem == null ? "Tulu 3" : null;
+            _problem = problem;
+        }
         _assistant = null;
         Update();
     }
@@ -215,8 +211,6 @@ internal sealed class AssistantBar : UserControl
     {
         _status.Text = _problem != null
             ? _problem
-            : _model == null
-            ? "The Tulu model is not available. Install Ollama on this computer, start it, and run: ollama pull tulu3. Then press Check for Tulu. Everything stays on this computer."
             : $"Working as {_shell.User} ({_shell.Role}) on {_shell.CompanyName}, with {_model} on this computer. Nothing is sent anywhere.";
         _send.IsEnabled = !_busy && _model != null;
         _question.IsEnabled = !_busy;
@@ -236,11 +230,10 @@ internal sealed class AssistantBar : UserControl
         try
         {
             var identity = $"{_shell.CompanyPath}|{_shell.User}|{model}";
-            if (_assistant == null || _assistantFor != identity || (_bundled && !Runtime!.Running))
+            if (_assistant == null || _assistantFor != identity || !Runtime!.Running)
             {
-                if (_bundled)
-                    _status.Text = Runtime!.Running ? "Looking…" : "Starting the local model. This can take a minute the first time…";
-                IMessagesApi api = _bundled ? await Runtime!.StartAsync() : _ollama;
+                _status.Text = Runtime!.Running ? "Looking…" : "Starting the local model. This can take a minute the first time…";
+                var api = await Runtime.StartAsync();
                 _assistant = new Assistant(api, _tools, model, _shell.CompanyName, _shell.User, _shell.Role);
                 _assistantFor = identity;
             }

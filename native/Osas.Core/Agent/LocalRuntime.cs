@@ -197,6 +197,8 @@ public sealed class LocalRuntime : IDisposable
         {
             if (!process.HasExited)
                 process.Kill(entireProcessTree: true);
+            // Wait for it to be gone so its memory is released before this returns.
+            process.WaitForExit(10_000);
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
@@ -218,7 +220,7 @@ public sealed class LocalRuntime : IDisposable
 
 /// <summary>
 /// The assistant's model call, made to the bundled llama.cpp server on this computer. Tulu 3's own chat template has no tool-calling,
-/// so the tools are described in the prompt and the model asks for one with a small JSON reply (see <see cref="OllamaApi.ToChat"/>).
+/// so the tools are described in the prompt and the model asks for one with a small JSON reply (see <see cref="PromptChat"/>).
 /// </summary>
 public sealed class LlamaServerApi : IMessagesApi
 {
@@ -237,10 +239,9 @@ public sealed class LlamaServerApi : IMessagesApi
 
     public async Task<JsonObject> CreateAsync(JsonObject request, CancellationToken cancel)
     {
-        var chat = OllamaApi.ToChat(request, promptTools: true);
-        var body = new JsonObject
+                var body = new JsonObject
         {
-            ["messages"] = chat["messages"]!.DeepClone(),
+            ["messages"] = PromptChat.ToMessages(request),
             ["temperature"] = _profile.Temperature,
             ["top_p"] = _profile.TopP,
             ["max_tokens"] = _profile.MaxNewTokens,
@@ -277,7 +278,7 @@ public sealed class LlamaServerApi : IMessagesApi
             var content = new JsonArray();
             var said = choice["message"]?["content"]?.GetValue<string>() ?? "";
             var wanted = false;
-            if (OllamaApi.AskedForTool(said) is { } asked)
+            if (PromptChat.AskedForTool(said) is { } asked)
             {
                 content.Add(new JsonObject { ["type"] = "tool_use", ["id"] = "call_" + Interlocked.Increment(ref _calls), ["name"] = asked.Name, ["input"] = asked.Arguments });
                 wanted = true;
