@@ -47,7 +47,7 @@ The suite's spatial store for drawing geometry (shapes as boxes with data, found
 ## AI assistant
 The assistant floats over every page of O-Studio as a glowing logo whose halo shifts between black, blue, orange and green. It lets you ask questions about the practice in plain words, as the person signed in: it looks things up in the company file through the engine's fixed, read-only tools, so it sees only what that person's role allows. Every lookup is written to the audit log, and it cannot change a record or run SQL.
 
-- **Local only.** It runs a model on this computer through Ollama (`http://127.0.0.1:11434`). There is no API key and no outside service, and nothing is sent anywhere. Choose the model in the panel; it must be one that can use tools, such as `llama3.1`.
+- **Local only.** It runs a model on this computer through Ollama (`http://127.0.0.1:11434`). There is no API key and no outside service, and nothing is sent anywhere. The model is Tulu 3 from the Allen Institute for AI (built on OLMo's open recipe): install it with `ollama pull tulu3`. It is used by O-Studio only; O-CoreOp and O-Draft run their own models. If Ollama does not give the model tool calling, the tools are described in the prompt instead and the model asks for one with a small JSON reply.
 - **What it can look up.** Clients, projects, library, staff, proposals, meetings, TDS check, and the company's and a project's details. Bank and UPI details are never included.
 
 Not built: changing records through the assistant (it would need a preview, an approval and an audit entry), tools for O-Draft and ShilpiDB, streaming replies, and any run against a real Ollama model (it was tested with a scripted model and the real engine).

@@ -57,7 +57,7 @@ internal sealed class SuitePage : UserControl
         var heading = new TextBlock { Text = "Assistant", Style = Resource("SectionTitleStyle") };
         AutomationProperties.SetHeadingLevel(heading, AutomationHeadingLevel.Level2);
         stack.Children.Add(heading);
-        stack.Children.Add(new TextBlock { Text = "The glowing logo at the bottom of every page. It runs a model on this computer through Ollama: no key, nothing sent anywhere, read-only.", Style = Resource("SecondaryStyle"), TextWrapping = TextWrapping.Wrap });
+        stack.Children.Add(new TextBlock { Text = "The glowing logo at the bottom of every page. It is Tulu 3 (Allen Institute for AI), run on this computer by Ollama for O-Studio only: no key, nothing sent anywhere, read-only. O-CoreOp and O-Draft use their own models.", Style = Resource("SecondaryStyle"), TextWrapping = TextWrapping.Wrap });
         stack.Children.Add(_assistantState);
         stack.Children.Add(new TextBlock { Text = $"Works as {shell.User} ({shell.Role})", Style = Resource("CaptionStyle") });
         return stack;
@@ -66,10 +66,8 @@ internal sealed class SuitePage : UserControl
     private async Task CheckAssistant()
     {
         using var ollama = new OllamaApi();
-        var models = await ollama.InstalledModelsAsync();
-        _assistantState.Text = models.Count == 0
-            ? "Ollama is not running, or has no model yet. Install it and fetch a model that can use tools (for example ollama pull llama3.1)."
-            : $"Ready · {models.Count} model{(models.Count == 1 ? "" : "s")}: {string.Join(", ", models.Take(4))}{(models.Count > 4 ? "…" : "")}";
+        var tulu = (await ollama.InstalledModelsAsync()).FirstOrDefault(n => n.StartsWith(AssistantBar.Family, StringComparison.OrdinalIgnoreCase));
+        _assistantState.Text = tulu != null ? $"Ready · {tulu}" : "Tulu is not available. Install Ollama, start it, and run: ollama pull tulu3";
     }
 
     private static UIElement AppsCard()

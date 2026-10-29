@@ -46,7 +46,13 @@ internal sealed class StudioToolHost(AppShell shell) : IToolHost
 /// </summary>
 internal sealed class AssistantBar : UserControl
 {
-    private const string ModelKey = "assistant_local_model";
+    /// <summary>
+    /// O-Studio's assistant is Tulu 3 from the Allen Institute for AI (built on OLMo's open training recipe), run locally by Ollama.
+    /// O-CoreOp and O-Draft run their own models. Any installed tag of the family is used (for example tulu3:8b).
+    /// </summary>
+    public const string Family = "tulu3";
+
+    private string? _model;
 
     private readonly AppShell _shell;
     private readonly SuiteSettings _settings = new();
@@ -54,15 +60,13 @@ internal sealed class AssistantBar : UserControl
     private readonly Border _panel = new() { Visibility = Visibility.Collapsed };
     private readonly StackPanel _transcript = new() { Spacing = 10 };
     private readonly ScrollViewer _scroll = new() { MaxHeight = 320, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-    private readonly TextBox _question = new() { PlaceholderText = "Ask the assistant about your practice", VerticalAlignment = VerticalAlignment.Center, MinWidth = 260 };
+    private readonly TextBox _question = new() { PlaceholderText = "Ask Tulu about your practice", VerticalAlignment = VerticalAlignment.Center, MinWidth = 260 };
     private readonly Button _send = new() { Content = "Ask", VerticalAlignment = VerticalAlignment.Center };
-    private readonly ComboBox _model = new() { MinWidth = 180, PlaceholderText = "Model" };
     private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
     private readonly OllamaApi _ollama = new();
     private Assistant? _assistant;
     private string? _assistantFor;
     private bool _busy;
-    private bool _loading;
 
     public AssistantBar(AppShell shell)
     {
@@ -94,13 +98,6 @@ internal sealed class AssistantBar : UserControl
             }
         };
         _send.Click += async (_, _) => await Ask();
-        _model.SelectionChanged += (_, _) =>
-        {
-            if (!_loading && _model.SelectedItem is string name)
-                _settings.Set(ModelKey, name);
-            _assistant = null;
-        };
-
         var bar = new Grid { ColumnSpacing = 10, Padding = new Thickness(10, 8, 12, 8) };
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -118,10 +115,10 @@ internal sealed class AssistantBar : UserControl
             _transcript.Children.Clear();
             _assistant?.Reset();
         };
-        var refresh = new Button { Content = "Refresh models" };
+        var refresh = new Button { Content = "Check for Tulu" };
         refresh.Click += async (_, _) => await LoadModels();
         _scroll.Content = _transcript;
-        var controls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { _model, refresh, newChat } };
+        var controls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { refresh, newChat } };
         AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
         _panel.Child = new StackPanel { Spacing = 10, Padding = new Thickness(16), Children = { controls, _status, _scroll } };
         var panelFrame = Frame(_panel, 12);
@@ -180,31 +177,24 @@ internal sealed class AssistantBar : UserControl
     private async Task LoadModels()
     {
         var installed = await _ollama.InstalledModelsAsync();
-        _loading = true;
-        _model.Items.Clear();
-        foreach (var name in installed)
-            _model.Items.Add(name);
-        var wanted = _settings.Get(ModelKey);
-        _model.SelectedItem = installed.Contains(wanted ?? "") ? wanted : installed.FirstOrDefault();
-        _loading = false;
+        _model = installed.FirstOrDefault(n => n.StartsWith(Family, StringComparison.OrdinalIgnoreCase));
         _assistant = null;
-        Update(installed.Count);
+        Update();
     }
 
-    private void Update(int? models = null)
+    private void Update()
     {
-        var count = models ?? _model.Items.Count;
-        _status.Text = count == 0
-            ? "No local model found. Install Ollama on this computer, start it, and fetch a model that can use tools (for example: ollama pull llama3.1). Then press Refresh models. Everything stays on this computer."
-            : $"Working as {_shell.User} ({_shell.Role}) on {_shell.CompanyName}, with a model on this computer. Nothing is sent anywhere.";
-        _send.IsEnabled = !_busy && count > 0;
+        _status.Text = _model == null
+            ? "The Tulu model is not available. Install Ollama on this computer, start it, and run: ollama pull tulu3. Then press Check for Tulu. Everything stays on this computer."
+            : $"Working as {_shell.User} ({_shell.Role}) on {_shell.CompanyName}, with {_model} on this computer. Nothing is sent anywhere.";
+        _send.IsEnabled = !_busy && _model != null;
         _question.IsEnabled = !_busy;
     }
 
     private async Task Ask()
     {
         var question = _question.Text.Trim();
-        if (_busy || question.Length == 0 || _model.SelectedItem is not string model)
+        if (_busy || question.Length == 0 || _model is not { } model)
             return;
         _busy = true;
         Update();
