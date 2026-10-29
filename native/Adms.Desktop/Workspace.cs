@@ -120,7 +120,12 @@ internal sealed class WorkspaceView : UserControl
         };
         body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        var sub = new ScrollViewer { Content = _subRow, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalScrollMode = ScrollMode.Auto, VerticalScrollMode = ScrollMode.Disabled };
+        var sub = _subScroll;
+        sub.Content = _subRow;
+        sub.HorizontalScrollBarVisibility = ScrollBarVisibility.Auto;
+        sub.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
+        sub.HorizontalScrollMode = ScrollMode.Auto;
+        sub.VerticalScrollMode = ScrollMode.Disabled;
         Hcw.Ui.SuiteLandmarks.Navigation(sub, "Section menu");
         body.Children.Add(sub);
         Grid.SetRow(_host, 1);
@@ -420,9 +425,13 @@ internal sealed class WorkspaceView : UserControl
         return row;
     }
 
+    private readonly ScrollViewer _subScroll = new();
+
     private void SelectTab(RibbonTab tab)
     {
         _tab = tab;
+        // A tab with a single page, such as the Suite dashboard, has no second row.
+        _subScroll.Visibility = tab.Groups.Sum(g => g.Items.Count) <= 1 ? Visibility.Collapsed : Visibility.Visible;
         var line = Flow.Ink("BorderSubtleBrush");
         foreach (var (t, (box, button)) in _mainBoxes)
         {

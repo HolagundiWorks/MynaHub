@@ -31,14 +31,7 @@ public sealed class ShilpiPanel : StackPanel
         var heading = new TextBlock { Text = "ShilpiDB", Style = Resource<Style>("SectionTitleStyle") };
         AutomationProperties.SetHeadingLevel(heading, AutomationHeadingLevel.Level2);
         Children.Add(heading);
-        Children.Add(new TextBlock
-        {
-            Text = "The spatial store for drawings: shapes kept as boxes with data, found by place. O-Draft and the assistant use it. Clients, projects and money stay in the company file; ShilpiDB records point at them. O-Studio starts it only on this computer.",
-            Style = Resource<Style>("SecondaryStyle"),
-            TextWrapping = TextWrapping.Wrap,
-            MaxWidth = 760,
-            HorizontalAlignment = HorizontalAlignment.Left,
-        });
+        Children.Add(new TextBlock { Text = "The spatial store for drawing data, started only on this computer.", Style = Resource<Style>("SecondaryStyle"), TextWrapping = TextWrapping.Wrap });
         Children.Add(_state);
         Children.Add(_detail);
         Children.Add(_notice);
