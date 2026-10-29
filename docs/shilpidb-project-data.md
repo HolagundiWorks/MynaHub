@@ -33,10 +33,9 @@ On the project page the company-file **Stages** section and the "Where this proj
 ## Other pages that follow the file
 
 - **Tasks** (Practice, Tasks): for a project with a readable file, the board shows the file's tasks (read-only, marked as from the file) instead of the company-file tasks tagged to that project. A project whose file is missing or damaged keeps its company-file tasks.
-- **Fee proposals**: the estimate shown for a project, and the "use as cost of the work" figure, is the estimate total from the file when it has estimate items.
+- **Invoices and fee proposals**: the estimate shown for a project, and the "use as cost of the work" figure, is the estimate total from the file when it has estimate items.
 
 ## Not done
 
 - Whatever writes these records into a project's file (O-Draft, a takeoff tool) is not built here; the layout above is what it must write.
-- The invoice page's estimate hint uses the same engine figure, but its wording still says "O-CoreOp estimate".
 - The file chooser button could not be checked: in the test session no file dialog opened for it, or for the existing logo chooser on the Firm page, so this looks like the test setup and not the button. The paste-the-path route was checked and works, and a link survives a restart.
