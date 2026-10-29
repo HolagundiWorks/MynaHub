@@ -961,8 +961,6 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         var editorScroll = Flow.Scroll(_editor);
         editorScroll.Visibility = Visibility.Collapsed;
         host.Children.Add(editorScroll);
-        if (_shell.CanEdit)
-            Flow.Pin(host, ("New project", () => _ = BeginNew()));
         Content = host;
         _ = _shell.Run("Loading projects…", () =>
         {
@@ -1642,8 +1640,6 @@ internal sealed class ClientsPage : UserControl, IPageCommands, ILiveRefresh
         var editorScroll = Flow.Scroll(form);
         editorScroll.Visibility = Visibility.Collapsed;
         host.Children.Add(editorScroll);
-        if (_shell.CanEdit)
-            Flow.Pin(host, ("New client", () => _ = BeginNew()));
         Content = host;
         Reload();
         if (Flow.TakeCreate(_shell, "clients"))
@@ -2165,8 +2161,6 @@ internal sealed class LettersPage : UserControl, IPageCommands
         var editorScroll = Flow.Scroll(form);
         editorScroll.Visibility = Visibility.Collapsed;
         host.Children.Add(editorScroll);
-        if (_shell.CanEdit)
-            Flow.Pin(host, ("New letter", () => _ = BeginNew("letter_out")), ("New agreement", () => _ = BeginNew("agreement")));
         Content = host;
         Reload();
         if (Flow.TakeCreate(_shell, "documents"))

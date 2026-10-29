@@ -773,8 +773,6 @@ internal sealed class TemplateListPage : UserControl, IPageCommands
         listHost.Children.Add(_empty);
         Grid.SetRow(listHost, 1);
         page.Children.Add(listHost);
-        if (shell.Role == "Owner")
-            Flow.Pin(page, ("New template", NewItem));
         Content = page;
 
         _search.TextChanged += (_, _) => Paint();

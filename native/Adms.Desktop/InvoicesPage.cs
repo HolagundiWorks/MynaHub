@@ -200,8 +200,6 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         var editorScroll = Flow.Scroll(_editor);
         editorScroll.Visibility = Visibility.Collapsed;
         host.Children.Add(editorScroll);
-        if (_shell.CanIssue)
-            Flow.Pin(host, ("New invoice", () => _ = BeginNew()));
         Content = host;
         Reload();
     }
