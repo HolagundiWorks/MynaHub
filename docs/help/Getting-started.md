@@ -37,5 +37,5 @@ The `.osas` file holds the records, issued PDFs, attachments, and audit history.
 
 The **tabs along the top** are the main areas: Practice, Documents, Accounts, Office and Suite. The **second row of tabs** holds the pages under the open area, and the page opens straight below it. The **Theme** button at the right switches light and dark.
 
-- The **assistant** is the glowing logo at the bottom of every page. It answers questions about the practice, as you, using a model that runs on this computer through Ollama: no key, no account, nothing leaves the computer. It only reads. The model is Tulu 3 (from the Allen Institute for AI), used by O-Studio only. Install Ollama, run `ollama pull tulu3`, then press **Check for Tulu**.
+- The **assistant** is the glowing logo at the bottom of every page. It answers questions about the practice, as you, running on this computer: no key, no account, nothing leaves the computer. It only reads. The model is Tulu 3 8B (Allen Institute for AI), the only one, and it is used by O-Studio only. It runs with a runtime O-Studio carries; see `docs/AI_RUNTIME.md` for the files it needs. Press **Check for Tulu** to see whether it is installed.
 - **Suite** opens O-CoreOp, O-Draft and O-Form signed in as you, and manages the company's users, the file monitor and the ShilpiDB server.

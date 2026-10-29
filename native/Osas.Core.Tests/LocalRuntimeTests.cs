@@ -122,3 +122,74 @@ public class LocalRuntimeTests : IDisposable
         Assert.Equal(30, reply["usage"]!["input_tokens"]!.GetValue<int>());
     }
 }
+
+/// <summary>Runs the real server and model. Set TULU_DIR to a folder holding runtime\windows-x64 and models\tulu; otherwise these do nothing.</summary>
+public class LocalRuntimeLiveTests
+{
+    private static LocalRuntime? Live()
+    {
+        var folder = Environment.GetEnvironmentVariable("TULU_DIR");
+        return string.IsNullOrEmpty(folder) ? null : LocalRuntime.Locate(folder, folder);
+    }
+
+    private sealed class NoTools : IToolHost
+    {
+        public IReadOnlyList<ToolSpec> Tools() => [];
+
+        public string Call(string name, System.Text.Json.Nodes.JsonObject arguments) => throw new AssistantException("No tools here.");
+    }
+
+    [Fact]
+    public async Task The_real_model_starts_answers_and_stops_leaving_no_process_behind()
+    {
+        using var runtime = Live();
+        if (runtime == null)
+            return;
+        var (path, problem) = await runtime.VerifyAsync();
+        Assert.True(path != null, problem);
+        var api = await runtime.StartAsync();
+        Assert.True(runtime.Running);
+        var assistant = new Assistant(api, new NoTools(), "tulu", "Studio One", "owner", "Owner");
+        var answer = await assistant.AskAsync("Reply with the single word: ready");
+        Assert.False(string.IsNullOrWhiteSpace(answer.Text));
+        runtime.Stop();
+        Assert.False(runtime.Running);
+        await Task.Delay(500);
+        Assert.Empty(System.Diagnostics.Process.GetProcessesByName("llama-server"));
+    }
+
+    private sealed class OneTool : IToolHost
+    {
+        public List<string> Calls { get; } = new();
+
+        public IReadOnlyList<ToolSpec> Tools() =>
+        [
+            new("clients_search", "Find clients by a word in their name. Leave the query empty to list them all.", new System.Text.Json.Nodes.JsonObject
+            {
+                ["type"] = "object",
+                ["properties"] = new System.Text.Json.Nodes.JsonObject { ["query"] = new System.Text.Json.Nodes.JsonObject { ["type"] = "string" } },
+                ["required"] = new System.Text.Json.Nodes.JsonArray(),
+            }),
+        ];
+
+        public string Call(string name, System.Text.Json.Nodes.JsonObject arguments)
+        {
+            Calls.Add(name);
+            return "[{\"name\":\"Rao Constructions\",\"city\":\"Mysuru\"},{\"name\":\"Iyer Family Trust\",\"city\":\"Bengaluru\"}]";
+        }
+    }
+
+    [Fact]
+    public async Task The_real_model_asks_for_a_tool_reads_its_result_and_answers_from_it()
+    {
+        using var runtime = Live();
+        if (runtime == null)
+            return;
+        var tools = new OneTool();
+        var assistant = new Assistant(await runtime.StartAsync(), tools, "tulu", "Studio One", "owner", "Owner");
+        var answer = await assistant.AskAsync("Which city is the client Rao Constructions in?");
+        runtime.Stop();
+        Assert.NotEmpty(tools.Calls);
+        Assert.Contains("Mysuru", answer.Text);
+    }
+}
