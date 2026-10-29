@@ -51,8 +51,11 @@ Bugs found and fixed:
 - **The floating assistant covered the bottom of every page** and left an empty outline above the bar when closed. Pages keep 64 px clear at the bottom, and the outline goes with the panel.
 - **Group names in the second row read as tabs** ("Books" looked like a disabled tab). They are now small capitals after a divider.
 
-Not fixed, for a decision:
+Changed on request:
 
-- Some pages show the same action twice (the **New invoice** button at the top and again at the bottom right).
+- The duplicate create buttons are gone: the floating button at the bottom right of Invoices, Projects, Clients, Letters and Templates (each page keeps its button at the top; Pulse keeps its Create menu).
+- The logo is off the ribbon, the light and dark switch is at the right of the bottom bar, and the bottom bar shows each app by its logo (an initial on a tile for O-Form, which has no logo yet).
+
+Not fixed, for a decision:
 - Table headers on the Invoices page mix styles (Total and Balance use a different face).
 - The theme switch is a bright blue pill in dark, which does not match the orange accent. It is in o-ui.

@@ -362,14 +362,43 @@ internal sealed class WorkspaceView : UserControl
     }
 
     /// <summary>The bar along the bottom: one button for each of the suite's other apps, opened on this company, signed in.</summary>
+    private static readonly Dictionary<string, string> AppMarks = new()
+    {
+        ["O-CoreOp"] = "mark-metra.png",
+        ["O-Draft"] = "mark-draft.png",
+    };
+
+    /// <summary>
+    /// The bar along the bottom: the suite's other apps, each shown by its logo, opened on this company signed in; and at the right the
+    /// light and dark switch.
+    /// </summary>
     private FrameworkElement BuildAppsBar()
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Hcw.Ui.SuiteScale.Space2, Padding = new Thickness(Hcw.Ui.SuiteScale.Space3, Hcw.Ui.SuiteScale.Space1, Hcw.Ui.SuiteScale.Space3, Hcw.Ui.SuiteScale.Space1), VerticalAlignment = VerticalAlignment.Center };
-        row.Children.Add(new TextBlock { Text = "Other apps", FontSize = Hcw.Ui.SuiteScale.FontCaption, VerticalAlignment = VerticalAlignment.Center, Foreground = Flow.Ink("TextSecondaryBrush") });
+        var apps = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Hcw.Ui.SuiteScale.Space2, VerticalAlignment = VerticalAlignment.Center };
         foreach (var card in SuiteHub.Cards)
         {
             var installed = SuiteHub.FindExecutable(card) != null;
-            var button = new Button { Content = card.Title, MinHeight = Hcw.Ui.SuiteScale.ControlMinHeight, IsEnabled = installed };
+            UIElement face;
+            if (AppMarks.TryGetValue(card.Title, out var file) && File.Exists(Path.Combine(AppContext.BaseDirectory, "Assets", file)))
+            {
+                var mark = new Image { Width = 20, Height = 20, Stretch = Stretch.Uniform, Opacity = installed ? 1 : 0.4, Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "Assets", file))) };
+                AutomationProperties.SetAccessibilityView(mark, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
+                face = mark;
+            }
+            else
+            {
+                // An app with no logo yet shows its initial on a small tile, so it is still told apart.
+                face = new Border
+                {
+                    Width = 20,
+                    Height = 20,
+                    CornerRadius = new CornerRadius(Hcw.Ui.SuiteScale.CornerControl.TopLeft),
+                    Background = Flow.Ink("SelectedFillBrush"),
+                    Opacity = installed ? 1 : 0.4,
+                    Child = new TextBlock { Text = card.Title[2..3], FontSize = Hcw.Ui.SuiteScale.FontCaption, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+                };
+            }
+            var button = new Button { Content = face, MinHeight = Hcw.Ui.SuiteScale.ControlMinHeight, MinWidth = Hcw.Ui.SuiteScale.ControlMinHeight, Padding = new Thickness(Hcw.Ui.SuiteScale.Space2, 2, Hcw.Ui.SuiteScale.Space2, 2), IsEnabled = installed };
             ToolTipService.SetToolTip(button, installed ? $"Open {card.Title} on this company, signed in. {card.Blurb}." : $"{card.Title} is not installed on this computer.");
             AutomationProperties.SetName(button, installed ? $"Open {card.Title}" : $"{card.Title} (not installed)");
             var target = card;
@@ -384,8 +413,17 @@ internal sealed class WorkspaceView : UserControl
                     _shell.Problem(ex.Message);
                 }
             };
-            row.Children.Add(button);
+            apps.Children.Add(button);
         }
+        var theme = new Hcw.Ui.Controls.SuiteThemeSwitch { VerticalAlignment = VerticalAlignment.Center };
+        theme.Attach(_shell.Window);
+        var row = new Grid { Padding = new Thickness(Hcw.Ui.SuiteScale.Space3, Hcw.Ui.SuiteScale.Space1, Hcw.Ui.SuiteScale.Space3, Hcw.Ui.SuiteScale.Space1), ColumnSpacing = Hcw.Ui.SuiteScale.Space3 };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.Children.Add(apps);
+        Grid.SetColumn(theme, 2);
+        row.Children.Add(theme);
         return new Border { Child = row, BorderBrush = Flow.Ink("BorderSubtleBrush"), BorderThickness = new Thickness(0, 1, 0, 0), Background = Flow.Ink("AppBackgroundBrush") };
     }
 
@@ -444,18 +482,6 @@ internal sealed class WorkspaceView : UserControl
         var fill = new Border { BorderBrush = Flow.Ink("BorderSubtleBrush"), BorderThickness = new Thickness(0, 0, 0, 1) };
         Grid.SetColumn(fill, row.ColumnDefinitions.Count - 1);
         row.Children.Add(fill);
-        var theme = new Hcw.Ui.Controls.SuiteThemeSwitch { Margin = new Thickness(8, 0, 0, 2), VerticalAlignment = VerticalAlignment.Center };
-        theme.Attach(_shell.Window);
-        var tail = new Border
-        {
-            BorderBrush = Flow.Ink("BorderSubtleBrush"),
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(8, 0, 4, 0),
-            Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center, Children = { _paneLogo, theme } },
-        };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        Grid.SetColumn(tail, row.ColumnDefinitions.Count - 1);
-        row.Children.Add(tail);
         Hcw.Ui.SuiteLandmarks.Navigation(row, "Main menu");
         return row;
     }
