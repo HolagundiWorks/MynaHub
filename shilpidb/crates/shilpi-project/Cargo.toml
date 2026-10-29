@@ -1,0 +1,15 @@
+[package]
+name = "shilpi-project"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Typed project business records (estimate, billing stages, tasks, quantities, purchase orders) stored in a ShilpiDB data file, with a reader and writer."
+
+[dependencies]
+shilpidb = { path = "../shilpidb", version = "0.2.0" }
+
+[lints]
+workspace = true

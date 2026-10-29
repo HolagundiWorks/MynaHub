@@ -16,6 +16,7 @@ pub mod host;
 pub mod office;
 pub mod practice;
 pub mod profile;
+pub mod project_shilpi;
 pub mod project_workspace;
 pub mod refs;
 pub mod share;

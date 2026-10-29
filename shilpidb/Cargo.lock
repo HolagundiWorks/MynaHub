@@ -36,6 +36,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "shilpi-project"
+version = "0.2.0"
+dependencies = [
+ "shilpidb",
+]
+
+[[package]]
 name = "shilpi-protocol"
 version = "0.2.0"
 dependencies = [
