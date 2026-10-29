@@ -453,6 +453,8 @@ public sealed partial class MainWindow : Window
     private void OnClosing(AppWindow sender, AppWindowClosingEventArgs args)
     {
         SavePlacement();
+        // The assistant's model process is O-Studio's own; it goes when the window does.
+        AssistantBar.Runtime?.Stop();
         if (_shuttingDown)
             return;
         if (_busy)

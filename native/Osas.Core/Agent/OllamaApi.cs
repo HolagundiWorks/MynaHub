@@ -179,7 +179,7 @@ public sealed class OllamaApi : IMessagesApi, IDisposable
     }
 
     /// <summary>A reply that is just a JSON object naming a tool, possibly inside a code fence.</summary>
-    private static (string Name, JsonObject Arguments)? AskedForTool(string text)
+    public static (string Name, JsonObject Arguments)? AskedForTool(string text)
     {
         var trimmed = text.Trim();
         if (trimmed.StartsWith("```", StringComparison.Ordinal))
