@@ -33,6 +33,7 @@ On the project page the company-file **Stages** section and the "Where this proj
 ## Other pages that follow the file
 
 - **Tasks** (Practice, Tasks): for a project with a readable file, the board shows the file's tasks (read-only, marked as from the file) instead of the company-file tasks tagged to that project. A project whose file is missing or damaged keeps its company-file tasks.
+- **Invoices**: choosing a project with a file lists its billing stages (stage, amount, status). A pending stage has **Add as a line**, which puts it on the invoice as one line (the stage name and description, quantity 1, the stage amount). Nothing is written back to the file, so mark the stage invoiced in the file when you issue the bill.
 - **Invoices and fee proposals**: the estimate shown for a project, and the "use as cost of the work" figure, is the estimate total from the file when it has estimate items.
 
 ## Not done
