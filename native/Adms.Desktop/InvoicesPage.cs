@@ -25,7 +25,6 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     private readonly TextBox _notes = Flow.Input("Notes", true);
     private readonly TextBlock _estimateHint = Flow.Secondary("Choose a project to see any O-CoreOp estimate saved in this company file.");
     private readonly StackPanel _lines = new() { Spacing = 8 };
-    private readonly StackPanel _stages = new() { Spacing = 4 };
     private readonly TextBlock _title = Flow.Heading("Invoices and receipts");
     private readonly TextBlock _state = Flow.Secondary("");
     private readonly Button _save = new();
@@ -184,7 +183,6 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         _editor.Children.Add(Flow.Section("Invoice"));
         _editor.Children.Add(_project);
         _editor.Children.Add(_estimateHint);
-        _editor.Children.Add(_stages);
         _editor.Children.Add(Flow.Pair(_kind, _gst));
         _editor.Children.Add(Flow.Secondary("A regular registration charges 18 percent GST. Within the state that is CGST and SGST. Another state is IGST. Architectural fees print under SAC 9983. A pro forma uses the same figures and is not a tax invoice."));
         _editor.Children.Add(Flow.Pair(_issue, _due));
@@ -340,62 +338,6 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         _cancelReason.Visibility = _cancelInvoice.Visibility;
     }
 
-    /// <summary>The billing stages in the project's ShilpiDB file, with a button to put a stage not yet billed onto this invoice as a line.</summary>
-    private void RefreshStages()
-    {
-        _stages.Children.Clear();
-        if (_project.SelectedItem is not ComboBoxItem { Tag: long projectId } || projectId <= 0)
-            return;
-        _ = _shell.Run("Reading the billing stages\u2026", () =>
-        {
-            var data = _shell.Call("project_shilpi_read", new { project_id = projectId });
-            _shell.Window.DispatcherQueue.TryEnqueue(() =>
-            {
-                if (_project.SelectedItem is not ComboBoxItem { Tag: long now } || now != projectId)
-                    return;
-                _stages.Children.Clear();
-                if (!data.TryGetProperty("billing", out var billing) || billing.ValueKind != JsonValueKind.Array || billing.GetArrayLength() == 0)
-                    return;
-                _stages.Children.Add(Flow.Section("Billing stages in the project's ShilpiDB file"));
-                foreach (var stage in billing.EnumerateArray())
-                {
-                    var name = Kit.Str(stage, "stage");
-                    var status = Kit.Str(stage, "status");
-                    var amount = stage.TryGetProperty("amount", out var a) && a.ValueKind == JsonValueKind.Number ? a.GetDouble() : 0;
-                    var row = new Grid { ColumnSpacing = 8 };
-                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                    var label = status.Length == 0 ? status : char.ToUpperInvariant(status[0]) + status[1..];
-                    row.Children.Add(new TextBlock { Text = $"{name}, {Flow.Money((long)Math.Round(amount * 100))}, {label}", Style = Flow.Look("BodyStyle"), VerticalAlignment = VerticalAlignment.Center });
-                    if (status == "pending" && _shell.CanEdit)
-                    {
-                        var add = new Button { Content = "Add as a line" };
-                        AutomationProperties.SetName(add, $"Add the stage {name} to this invoice as a line");
-                        add.Click += (_, _) => UseStage($"{name} {Kit.Str(stage, "description")}".Trim(), amount);
-                        Grid.SetColumn(add, 1);
-                        row.Children.Add(add);
-                    }
-                    _stages.Children.Add(row);
-                }
-            });
-        });
-    }
-
-    private void UseStage(string description, double amount)
-    {
-        var rate = amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-        // The one empty line a new invoice starts with is filled rather than left behind.
-        if (_lineBoxes.Count == 1 && _lineBoxes[0].Item1.Text.Trim().Length == 0 && (_lineBoxes[0].Item3.Text.Trim() is "0" or ""))
-        {
-            _lineBoxes[0].Item1.Text = description;
-            _lineBoxes[0].Item2.Text = "1";
-            _lineBoxes[0].Item3.Text = rate;
-        }
-        else
-            AddLine(description, "1", rate);
-        _dirty = true;
-    }
-
     private void AddLine(string description, string qty, string rate)
     {
         var desc = Flow.Input("Description");
@@ -489,7 +431,6 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     /// <summary>Surfaces the company-file O-CoreOp estimate next to fee invoices so cost and fee stay on the same project identity.</summary>
     private void RefreshEstimateHint()
     {
-        RefreshStages();
         if (_project.SelectedItem is not ComboBoxItem { Tag: long projectId } || projectId <= 0)
         {
             _estimateHint.Text = "Choose a project to see any O-CoreOp estimate saved in this company file.";
@@ -508,9 +449,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
                     && summary.TryGetProperty("grand_total_paise", out var paise) && paise.TryGetInt64(out var total))
                 {
                     var book = Kit.Str(summary, "rate_book_version_name");
-                    parts.Add(Kit.Str(summary, "source") == "shilpidb"
-                        ? $"Estimate from the project's ShilpiDB file: {Flow.Money(total)}"
-                        : $"O-CoreOp estimate: {Flow.Money(total)}{(book.Length == 0 ? "" : $" Â· {book}")}");
+                    parts.Add($"O-CoreOp estimate: {Flow.Money(total)}{(book.Length == 0 ? "" : $" · {book}")}");
                 }
                 else
                     parts.Add(Kit.Str(summary, "reason").Length > 0

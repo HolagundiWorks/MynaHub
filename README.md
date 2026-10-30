@@ -31,11 +31,11 @@ O-Studio is one of several apps that share an office's records. The pieces in th
 
 | Folder | What it is |
 |---|---|
-| `office-core/` | The company file, sign-in, schema tracks and the shared records. Not ShilpiDB, which is the separate drawing store. |
+| `office-core/` | The company file, sign-in, schema tracks and the shared records. |
 | `office-ffi/`, `native/Office.Interop/` | A C interface and .NET wrapper so another native app can use the same file. Contract: [docs/office-abi.md](docs/office-abi.md) |
 | `office-agent/` | Governed read-only tools and an MCP server for an AI assistant |
 
-The architecture and integration map for O-Studio, O-Draft, O-CoreOp, ShilpiDB and O-UI is [docs/suite-architecture.md](docs/suite-architecture.md). Each folder is its own Cargo crate; run `cargo test` inside it.
+The architecture and integration map for O-Studio, O-Draft, O-CoreOp and O-UI is [docs/suite-architecture.md](docs/suite-architecture.md). Each folder is its own Cargo crate; run `cargo test` inside it.
 
 ## Develop
 
@@ -59,6 +59,10 @@ cargo test --manifest-path office-core/Cargo.toml
 
 The installer is built with `installer/build.ps1` (release engine, self-contained publish, NSIS) and is named `O-Studio-Setup-<version>.exe`. It stays unsigned unless signing secrets are set (`installer/sign.ps1`). Help → **Check for updates…** is a channel stub. Packaging notes: [docs/packaging.md](docs/packaging.md). What is open and planned is in [docs/roadmap.md](docs/roadmap.md).
 
+### Cloud sync (Neon)
+
+O-Studio will sync `.osp` project files through **Neon** (Postgres + Object Storage); only Studio holds cloud credentials. **Setup:** [docs/CLOUD-NEON.md](docs/CLOUD-NEON.md). **In the app:** Suite → **Cloud sync** (or `npm run verify` for a headless smoke test).
+
 ## Licensing
 
 O-Studio is **open source** and **dual-licensed** (Developed by Human Centric Works):
@@ -74,7 +78,7 @@ O-Studio is **open source** and **dual-licensed** (Developed by Human Centric Wo
 See [LICENSING.md](LICENSING.md). Support / commercial: **support@hcworks.in** · <https://hcworks.in>
 
 Share contracts and documents with other suite apps — do not copy source across the
-AGPL boundary into permissive repos (O-Draft, ShilpiDB, O-UI).
+AGPL boundary into permissive repos (O-Draft, O-UI).
 
 ## Before live use
 

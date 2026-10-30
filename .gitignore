@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 dist
+cloud/dist
 dist-ssr
 *.local
 
@@ -37,3 +38,4 @@ installer/suite/stage/
 installer/suite/out/
 installer/suite-dist/
 installer/suite-tools/
+.neon

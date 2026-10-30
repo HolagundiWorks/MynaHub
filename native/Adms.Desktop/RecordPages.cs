@@ -621,9 +621,6 @@ internal static class RecordPages
                         var rupees = summary.TryGetProperty("grand_total_rupees", out var g) && g.TryGetDouble(out var r) ? r : 0;
                         var book = Kit.Str(summary, "rate_book_version_name");
                         var rev = Kit.Str(summary, "document_revision");
-                        if (Kit.Str(summary, "source") == "shilpidb")
-                            caption.Text = $"Estimate total from this project's ShilpiDB file: {Flow.Money((long)Math.Round(rupees * 100))}. Using it fills Estimated cost of the work for a percentage fee.";
-                        else
                         caption.Text = $"Saved estimate grand total {Flow.Money((long)Math.Round(rupees * 100))}{(book.Length == 0 ? "" : $" · {book}")} · company document revision {rev}. This is the figure O-CoreOp calculated; using it fills Estimated cost of the work for a percentage fee.";
                         use.IsEnabled = true;
                     }

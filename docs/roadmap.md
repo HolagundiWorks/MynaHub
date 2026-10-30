@@ -50,7 +50,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 | 3.2 | Automated UI tests with UI Automation for the main flows, run in CI | Both |
 | 3.3 | Check O-CoreOp quantities and purchase-order output against a real project, and add the cases it exposes | CoreOp |
 | 3.4 | O-Studio: reports and presentations are records only; a printable pack per project | Studio |
-| 3.5 | ShilpiDB details store and search with sources (suite phase 4) | Suite |
+| 3.5 | Reusable details store and search with sources (suite phase 4) | Suite |
 
 ## Code and documentation debt
 

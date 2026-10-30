@@ -189,12 +189,12 @@ internal sealed class TasksBoardPage : UserControl, ILiveRefresh
         if (due.Length > 0)
             body.Children.Add(new TextBlock { Text = $"Due {due}", Style = Flow.Look("CaptionStyle") });
 
-        // A task that comes from a project's ShilpiDB file is read-only here: it is changed in the file, not on this board.
+        // A task marked read-only is maintained in the project file, not on this board.
         var fromFile = row.TryGetProperty("read_only", out var ro) && ro.ValueKind == JsonValueKind.True;
         if (fromFile)
         {
             var who = Kit.Str(row, "assignee");
-            body.Children.Add(new TextBlock { Text = who.Length == 0 ? "From the project's ShilpiDB file" : $"{who} · from the project's ShilpiDB file", Style = Flow.Look("CaptionStyle") });
+            body.Children.Add(new TextBlock { Text = who.Length == 0 ? "From the project file" : $"{who} · from the project file", Style = Flow.Look("CaptionStyle") });
         }
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Hcw.Ui.SuiteScale.StackGap };
         foreach (var (key, label) in Columns)

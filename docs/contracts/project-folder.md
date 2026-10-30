@@ -1,16 +1,16 @@
 # Contract: suite project folder (version 1)
 
-When O-Studio creates a project it also creates an on-disk workspace so O-Draft, O-Form and ShilpiDB share one root.
+When O-Studio creates a project it also creates an on-disk workspace so O-Draft and O-Form share one root with the `.osp` project file.
 
 ## Layout
 
 ```text
 projects/<slug>-<project_id>/
   osas.project.json
+  project.osp          # created on first save by O-Draft or O-CoreOp
   draft/model.dxf
   draft/project.json
   form/model.blend
-  shilpi/project.vdb   # created when an app binds ShilpiDB
 ```
 
 Root is `<company_file_parent>/projects/…`. Path is stored on `projects.workspace_path`.
@@ -27,16 +27,13 @@ Root is `<company_file_parent>/projects/…`. Path is stored on `projects.worksp
   "drawing_id": "…",
   "project_office_id": "…",
   "files": {
+    "project": "project.osp",
     "draft": "draft/model.dxf",
-    "form": "form/model.blend",
-    "shilpi": "shilpi/project.vdb"
+    "form": "form/model.blend"
   },
-  "sync": {
-    "mode": "live",
-    "shilpid": "127.0.0.1:7420",
-    "gateway": "127.0.0.1:7421",
-    "poll_ms": 1500,
-    "data_rel": "shilpi/project.vdb"
+  "apps": {
+    "odraft": { "file": "project.osp", "drawing": "draft/model.dxf" },
+    "ocoreop": { "file": "project.osp" }
   }
 }
 ```
@@ -48,8 +45,8 @@ Root is `<company_file_parent>/projects/…`. Path is stored on `projects.worksp
 | `project_save` (create) | O-Studio | Inserts row + scaffolds folder |
 | `project_workspace_ensure` | O-Studio | Re-scaffolds / repairs |
 | `project_workspace_get` | O-Studio | Returns paths + drawing_id |
-| Open Project Folder | O-Form | Binds manifest, live sync |
-| `project.open` / open DXF | O-Draft | Uses `draft/` |
+| Open Project Folder | O-Form | Binds manifest |
+| `project.open` / open DXF | O-Draft | Uses `draft/` and `project.osp` |
 
 ## Code
 

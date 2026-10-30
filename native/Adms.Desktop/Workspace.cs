@@ -38,6 +38,8 @@ internal sealed class AppShell
     public string CompanyName { get; init; } = "";
     /// <summary>Path of the open company file; used when launching suite cards.</summary>
     public string CompanyPath { get; set; } = "";
+    /// <summary>Company file UUID from the open .osas file.</summary>
+    public string CompanyUuid { get; set; } = "";
     public IPageCommands? Page { get; set; }
     public Action<string>? Navigate { get; set; }
     public string? PendingCreate { get; set; }
@@ -143,7 +145,6 @@ internal sealed class WorkspaceView : UserControl
         var root = new Grid { Background = Flow.Ink("AppBackgroundBrush") };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         var main = BuildMainTabs();
         root.Children.Add(main);
         var body = new Grid
@@ -200,10 +201,54 @@ internal sealed class WorkspaceView : UserControl
         // The assistant floats over the page; the other apps open from the bar along the bottom.
         Grid.SetRow(_assistant, 1);
         root.Children.Add(_assistant);
-        var apps = BuildAppsBar();
-        Grid.SetRow(apps, 2);
-        root.Children.Add(apps);
         Content = root;
+    }
+
+    internal void WireBottomBar(Hcw.Ui.Controls.SuiteBottomStatusBar bar)
+    {
+        ClearBottomBar(bar);
+        foreach (var card in SuiteHub.Cards)
+            bar.Left.Children.Add(SuiteAppButton(card));
+    }
+
+    internal void ClearBottomBar(Hcw.Ui.Controls.SuiteBottomStatusBar bar)
+    {
+        for (var i = bar.Left.Children.Count - 1; i >= 1; i--)
+            bar.Left.Children.RemoveAt(i);
+    }
+
+    Button SuiteAppButton(SuiteCard card)
+    {
+        var installed = SuiteHub.FindExecutable(card) != null;
+        UIElement face;
+        if (AppMarks.TryGetValue(card.Title, out var file) && File.Exists(Path.Combine(AppContext.BaseDirectory, "Assets", file)))
+        {
+            var mark = new Image { Width = 20, Height = 20, Stretch = Stretch.Uniform, Opacity = installed ? 1 : 0.4, Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "Assets", file))) };
+            AutomationProperties.SetAccessibilityView(mark, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
+            face = mark;
+        }
+        else
+        {
+            face = new Border
+            {
+                Width = 20,
+                Height = 20,
+                CornerRadius = new CornerRadius(Hcw.Ui.SuiteScale.CornerControl.TopLeft),
+                Background = Flow.Ink("SelectedFillBrush"),
+                Opacity = installed ? 1 : 0.4,
+                Child = new TextBlock { Text = card.Title[2..3], FontSize = Hcw.Ui.SuiteScale.FontCaption, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+            };
+        }
+        var button = new Button { Content = face, MinHeight = Hcw.Ui.SuiteScale.ControlMinHeight, MinWidth = Hcw.Ui.SuiteScale.ControlMinHeight, Padding = new Thickness(Hcw.Ui.SuiteScale.Space2, 2, Hcw.Ui.SuiteScale.Space2, 2), IsEnabled = installed };
+        ToolTipService.SetToolTip(button, installed ? $"Open {card.Title} on this company, signed in. {card.Blurb}." : $"{card.Title} is not installed on this computer.");
+        AutomationProperties.SetName(button, installed ? $"Open {card.Title}" : $"{card.Title} (not installed)");
+        var target = card;
+        button.Click += (_, _) =>
+        {
+            try { SuiteHub.Launch(_shell.Session, target, _shell.CompanyPath); }
+            catch (Exception ex) { _shell.Problem(ex.Message); }
+        };
+        return button;
     }
 
     private void LoadPaneLogo()
@@ -383,74 +428,15 @@ internal sealed class WorkspaceView : UserControl
             ("library", "04", "Library", ""),
             ("settings", "06", "Security and backup", ""));
         AddTab("Suite", "");
-        AddGroup("07", "Suite", ("suitetools", "01", "Dashboard", ""));
+        AddGroup("07", "Suite", ("suitetools", "01", "Dashboard", ""), ("cloudsync", "02", "Cloud sync", ""));
     }
 
-    /// <summary>The bar along the bottom: one button for each of the suite's other apps, opened on this company, signed in.</summary>
+    /// <summary>Suite app marks in the window status bar (see <see cref="WireBottomBar"/>).</summary>
     private static readonly Dictionary<string, string> AppMarks = new()
     {
         ["O-CoreOp"] = "mark-metra.png",
         ["O-Draft"] = "mark-draft.png",
     };
-
-    /// <summary>
-    /// The bar along the bottom: the suite's other apps, each shown by its logo, opened on this company signed in; and at the right the
-    /// light and dark switch.
-    /// </summary>
-    private FrameworkElement BuildAppsBar()
-    {
-        var apps = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Hcw.Ui.SuiteScale.Space2, VerticalAlignment = VerticalAlignment.Center };
-        foreach (var card in SuiteHub.Cards)
-        {
-            var installed = SuiteHub.FindExecutable(card) != null;
-            UIElement face;
-            if (AppMarks.TryGetValue(card.Title, out var file) && File.Exists(Path.Combine(AppContext.BaseDirectory, "Assets", file)))
-            {
-                var mark = new Image { Width = 20, Height = 20, Stretch = Stretch.Uniform, Opacity = installed ? 1 : 0.4, Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Path.Combine(AppContext.BaseDirectory, "Assets", file))) };
-                AutomationProperties.SetAccessibilityView(mark, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
-                face = mark;
-            }
-            else
-            {
-                // An app with no logo yet shows its initial on a small tile, so it is still told apart.
-                face = new Border
-                {
-                    Width = 20,
-                    Height = 20,
-                    CornerRadius = new CornerRadius(Hcw.Ui.SuiteScale.CornerControl.TopLeft),
-                    Background = Flow.Ink("SelectedFillBrush"),
-                    Opacity = installed ? 1 : 0.4,
-                    Child = new TextBlock { Text = card.Title[2..3], FontSize = Hcw.Ui.SuiteScale.FontCaption, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
-                };
-            }
-            var button = new Button { Content = face, MinHeight = Hcw.Ui.SuiteScale.ControlMinHeight, MinWidth = Hcw.Ui.SuiteScale.ControlMinHeight, Padding = new Thickness(Hcw.Ui.SuiteScale.Space2, 2, Hcw.Ui.SuiteScale.Space2, 2), IsEnabled = installed };
-            ToolTipService.SetToolTip(button, installed ? $"Open {card.Title} on this company, signed in. {card.Blurb}." : $"{card.Title} is not installed on this computer.");
-            AutomationProperties.SetName(button, installed ? $"Open {card.Title}" : $"{card.Title} (not installed)");
-            var target = card;
-            button.Click += (_, _) =>
-            {
-                try
-                {
-                    SuiteHub.Launch(_shell.Session, target, _shell.CompanyPath);
-                }
-                catch (Exception ex)
-                {
-                    _shell.Problem(ex.Message);
-                }
-            };
-            apps.Children.Add(button);
-        }
-        var theme = new Hcw.Ui.Controls.SuiteThemeSwitch { VerticalAlignment = VerticalAlignment.Center };
-        theme.Attach(_shell.Window);
-        var row = new Grid { Padding = new Thickness(Hcw.Ui.SuiteScale.Space3, Hcw.Ui.SuiteScale.Space1, Hcw.Ui.SuiteScale.Space3, Hcw.Ui.SuiteScale.Space1), ColumnSpacing = Hcw.Ui.SuiteScale.Space3 };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        row.Children.Add(apps);
-        Grid.SetColumn(theme, 2);
-        row.Children.Add(theme);
-        return new Border { Child = row, BorderBrush = Flow.Ink("BorderSubtleBrush"), BorderThickness = new Thickness(0, 1, 0, 0), Background = Flow.Ink("AppBackgroundBrush") };
-    }
 
     private void AddTab(string title, string glyph) => _tabs.Add(new RibbonTab(title, glyph));
 
@@ -583,6 +569,7 @@ internal sealed class WorkspaceView : UserControl
         "permits" => RecordPages.Permits(_shell),
         "library" => RecordPages.Library(_shell),
         "suitetools" => new SuitePage(_shell),
+        "cloudsync" => new CloudSyncPage(_shell),
         "approvals" => ApprovalsPage.Build(_shell),
         "proposals" => RecordPages.Proposals(_shell),
         "meetings" => RecordPages.Meetings(_shell),
