@@ -2,6 +2,8 @@
 
 O-Studio is the office app and suite hub of **OSAS, the Open Source Architecture Suit**. The suite is O-Studio (office, company file and launcher cards, orange), O-CoreOp (quantities, estimates and billing, blue) and O-Draft (drafting, black). Some code identifiers keep older spellings, such as the `aos` / `aqc` session strings and the `AOSENC1` file marker, because files already use them.
 
+> **The suite:** names, roles, file formats, toolbars of every app and how they link in real time are in [docs/SUITE.md](docs/SUITE.md).
+
 Offline Windows desktop app for an architectural practice. Clients, projects, letters, invoices, and the accounts live in one company file. Studio also chooses that company file, holds the admin password, launches sibling apps with one-time tickets, and approves estimates / running bills shared from CoreOp. A separate **OSAS.exe** hub is deprecated. Developed by Human Centric Works.
 
 **License:** [AGPL-3.0](LICENSE) (Community) or [Commercial](LICENSING.md) · see also [NOTICE](NOTICE)

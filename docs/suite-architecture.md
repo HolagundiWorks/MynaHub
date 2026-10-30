@@ -1,5 +1,7 @@
 # HolagundiWorks suite: architecture and integration map
 
+> **Update 2026-10-30:** projects now live in a `.osp` project file shared by O-Draft and O-CoreOp; ShilpiDB is retired for projects, and O-Studio will hold the cloud sync. The current names, roles, toolbars and links are in [SUITE.md](SUITE.md); where this map disagrees, SUITE.md is newer.
+
 Status: written 2026-10-18 from a read of the repositories and the code in this one. Every statement marked **verified** was read in a repository or run. Everything marked **proposed** is a recommendation for the owner to decide, not something that exists.
 
 ## Names
