@@ -41,16 +41,13 @@ Below the app cards, OSAS watches the company file that O-Studio and O-CoreOp sh
 
 It opens the file read-only, never signs in, and shows sizes and counts only: no names, amounts or documents. A protected (encrypted) file can only be measured from outside, so for those it shows the size and who has it open.
 
-## ShilpiDB
-The suite's spatial store for drawing geometry (shapes as boxes with data, found by place). The **ShilpiDB** section shows whether the server is running, its web gateway, and how many records it holds, and starts or stops a server for the chosen company. The data file is kept beside the company file, named `<company>.shilpi.vdb`. OSAS starts it only on `127.0.0.1`, stops only a server it started itself, and asks for the record count only, never the records. It looks for `shilpid.exe` and `shilpi-http.exe` beside OSAS, in `%LOCALAPPDATA%\Programs\shilpidb`, in the folder set as `shilpi_dir` in `suite.json`, and on the `PATH`. Host and ports (`shilpi_host`, `shilpi_port`, `shilpi_http_port`) are set in `suite.json` too. Clients, projects and money stay in the company file; ShilpiDB records point at them by ProjectRef.
-
 ## AI assistant
 The assistant floats over every page of O-Studio as a glowing logo whose halo shifts between black, blue, orange and green. It lets you ask questions about the practice in plain words, as the person signed in: it looks things up in the company file through the engine's fixed, read-only tools, so it sees only what that person's role allows. Every lookup is written to the audit log, and it cannot change a record or run SQL.
 
 - **Local only.** It runs Tulu 3 8B (Allen Institute for AI) on this computer with a runtime O-Studio carries itself. There is no API key, no outside service and no Ollama; nothing is sent anywhere. It is the only model, and it is used by O-Studio only: O-CoreOp and O-Draft run their own. The model loads the first time you ask and stops when you unload it or close O-Studio. Setup and files: `docs/AI_RUNTIME.md`.
 - **What it can look up.** Clients, projects, library, staff, proposals, meetings, TDS check, and the company's and a project's details. Bank and UPI details are never included.
 
-Not built: changing records through the assistant (it would need a preview, an approval and an audit entry), tools for O-Draft and ShilpiDB, streaming replies, and a measured run of the model on the smallest target machine (see `docs/AI_RUNTIME.md`).
+Not built: changing records through the assistant (it would need a preview, an approval and an audit entry), tools for O-Draft, streaming replies, and a measured run of the model on the smallest target machine (see `docs/AI_RUNTIME.md`).
 
 ## Install
 ```powershell
@@ -72,7 +69,7 @@ In this order, for each app: a program you chose with **Find it…** (kept in `%
 | Folder | |
 |---|---|
 | `Osas.Core` | Finding the apps and the saved paths, and the company file monitor (`Monitor/`). No user interface, so it is tested on its own |
-| `Osas.Core.Tests` | Fifty-six tests: the monitor, ShilpiDB and the assistant settings, and the company details, tickets and settings against the real engine (set `OFFICE_DLL_DIR` to the folder with `office.dll`); one asks Windows which program holds a file with a pretend computer: `dotnet test Osas.Core.Tests` |
+| `Osas.Core.Tests` | Tests for the monitor, assistant settings, and company details, tickets and settings against the real engine (set `OFFICE_DLL_DIR` to the folder with `office.dll`): `dotnet test Osas.Core.Tests` |
 | `Osas.Launcher` | The WinUI 3 window. Uses the shared design in `hcw-ui` (check it out beside this repository) |
 
 ```powershell

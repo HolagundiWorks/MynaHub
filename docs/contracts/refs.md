@@ -82,6 +82,6 @@ The **company file** (`company_uuid` + `project_id`) is the suite system of reco
 
 ## What is not done yet
 - O-Draft interactive project picker UI for `companyfile` (engine already stamps `project_ref` on take-off when linked).
-- Bridge file (`hcw-aqc-bridge`): O-CoreOp parses `source.project_ref` when present (Import captions Mine/Other/missing); keep ensuring Draft export always writes it when company-linked. ShilpiDB take-off path already carries the ref.
+- Bridge file (`hcw-aqc-bridge`): O-CoreOp parses `source.project_ref` when present (Import captions Mine/Other/missing); keep ensuring Draft export always writes it when company-linked. The `.osp` take-off path carries the ref when linked.
 - Fee proposals can use the O-CoreOp estimate as cost; Studio also surfaces RA (`project_ra_summary`) beside fee/invoices. Fee invoices do not yet store an `ArtifactRef` column of their own.
 - End-to-end click-through of calculate → company-file save → fee proposal → invoice on a real project (Windows GUI / human).

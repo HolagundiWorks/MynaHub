@@ -10,6 +10,15 @@ powershell -ExecutionPolicy Bypass -File installer\build.ps1
 
 Output: `installer/O-Studio-Setup-<version>.exe` → `%LOCALAPPDATA%\Programs\O-Studio\`.
 
+### SQLite (no separate install)
+
+The company file (`.osas`) and the Rust engine use SQLite, but nothing asks the user to install SQLite on Windows.
+
+| Layer | How it is bundled |
+|---|---|
+| Rust engine (`architect_office_desktop_lib.dll`) | `rusqlite` with the **`bundled`** feature — SQLite is linked into the DLL (`office-core`, `src-tauri`, `office-ffi`, `office-agent`). |
+| WinUI monitor (`Osas.Core`) | `SQLitePCLRaw.bundle_e_sqlite3` — publishes **`e_sqlite3.dll`** next to `O-Studio.exe` for read-only company-file health checks. |
+
 `build.ps1` calls `installer/sign.ps1` after NSIS. Without signing secrets the Setup
 stays **unsigned** (exit 0). Configure:
 

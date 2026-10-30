@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Office.Ai;
 using Osas.Core.Agent;
 using Osas.Core.Suite;
 using Windows.UI;
@@ -40,27 +41,15 @@ internal sealed class StudioToolHost(AppShell shell) : IToolHost
 }
 
 /// <summary>
-/// The AI assistant, floating over every page of O-Studio. Its logo glows and shifts between the suite's colours: black, blue, orange
-/// and green. It runs Tulu 3 on this computer with a runtime O-Studio carries itself: no key, no account, and nothing leaves the machine. It looks things up
-/// in the company file through the read-only tools, as the person signed in, and cannot change a record.
+/// The AI assistant, floating over every page of O-Studio. Its logo glows and shifts between the suite's colours. Olmo 3 7B runs on this
+/// computer from O-Studio (shared with O-CoreOp and O-Draft over loopback). Read-only tools only; nothing leaves the machine.
 /// </summary>
 internal sealed class AssistantBar : UserControl
 {
-    /// <summary>
-    /// O-Studio's assistant is Tulu 3 from the Allen Institute for AI (built on OLMo's open training recipe), the only model, run by O-Studio's own bundled runtime.
-    /// O-CoreOp and O-Draft run their own models. Any installed tag of the family is used (for example tulu3:8b).
-    /// </summary>
-    public const string Family = "tulu3";
+    public const string ModelLabel = "Olmo 3 7B";
 
     private string? _model;
     private string? _problem;
-
-    /// <summary>
-    /// O-Studio's own copy of the model runtime (a bundled llama.cpp server and the Tulu package), when one is installed. It starts the
-    /// first time a question is asked and is stopped when O-Studio closes or the person unloads it.
-    /// </summary>
-    public static LocalRuntime? Runtime { get; } = LocalRuntime.Locate(AppContext.BaseDirectory,
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "O-Studio"));
 
     private readonly AppShell _shell;
     private readonly SuiteSettings _settings = new();
@@ -71,14 +60,12 @@ internal sealed class AssistantBar : UserControl
     private readonly List<TextBlock> _captions = [];
     private readonly StackPanel _transcript = new() { Spacing = Hcw.Ui.SuiteScale.StackGap };
     private readonly ScrollViewer _scroll = new() { MaxHeight = 320, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-    private readonly TextBox _question = new() { PlaceholderText = "Ask Tulu about your practice", VerticalAlignment = VerticalAlignment.Center, MinWidth = 260 };
+    private readonly TextBox _question = new() { PlaceholderText = "Ask about your practice", VerticalAlignment = VerticalAlignment.Center, MinWidth = 260 };
     private readonly Button _send = new() { Content = "Ask", VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, FontSize = Hcw.Ui.SuiteScale.FontCaption };
     private Assistant? _assistant;
     private string? _assistantFor;
     private bool _busy;
-
-    static AssistantBar() => AppDomain.CurrentDomain.ProcessExit += (_, _) => Runtime?.Stop();
 
     public AssistantBar(AppShell shell)
     {
@@ -86,8 +73,8 @@ internal sealed class AssistantBar : UserControl
         _tools = new StudioToolHost(shell);
         HorizontalAlignment = HorizontalAlignment.Center;
         VerticalAlignment = VerticalAlignment.Bottom;
-        Margin = new Thickness(16, 0, 16, 18);
-        MaxWidth = 720;
+        Margin = Hcw.Ui.SuiteAskChrome.BarMargin;
+        MaxWidth = Hcw.Ui.SuiteAskChrome.BarMaxWidth;
 
         var logo = new Button
         {
@@ -119,7 +106,7 @@ internal sealed class AssistantBar : UserControl
         bar.Children.Add(_question);
         Grid.SetColumn(_send, 2);
         bar.Children.Add(_send);
-        var barFrame = Frame(bar, 28);
+        var barFrame = Frame(bar, Hcw.Ui.SuiteAskChrome.BarCornerRadius);
 
         var newChat = new Button { Content = "New conversation" };
         newChat.Click += (_, _) =>
@@ -127,11 +114,11 @@ internal sealed class AssistantBar : UserControl
             _transcript.Children.Clear();
             _assistant?.Reset();
         };
-        var refresh = new Button { Content = "Check for Tulu" };
+        var refresh = new Button { Content = "Check for Olmo" };
         var unload = new Button { Content = "Unload model" };
         unload.Click += (_, _) =>
         {
-            Runtime?.Stop();
+            LocalLlmHost.Shutdown();
             _assistant = null;
             Update();
         };
@@ -214,15 +201,16 @@ internal sealed class AssistantBar : UserControl
 
     private async Task LoadModels()
     {
-        if (Runtime == null)
+        SuiteAiCoordinator.StartHostIfNeeded();
+        if (!LocalLlmHost.Installed)
         {
             _model = null;
-            _problem = "Tulu is not installed. The runtime and model go in the O-Studio folder or in %LOCALAPPDATA%\\O-Studio (see docs/AI_RUNTIME.md), then press Check for Tulu. Everything stays on this computer.";
+            _problem = $"Olmo is not installed. Put {LocalModel.FileName} in {LocalModel.SharedDirectory} and unpack llama.cpp {LocalModel.RuntimeRelease} into {LocalModel.RuntimeDirectory} (see docs/LOCAL-MODEL.md in O-CoreOp).";
         }
         else
         {
-            var (_, problem) = await Runtime.VerifyAsync();
-            _model = problem == null ? "Tulu 3" : null;
+            var (ready, problem) = await OlmoAiCoreApi.VerifyAsync();
+            _model = ready && problem is null ? ModelLabel : null;
             _problem = problem;
         }
         _assistant = null;
@@ -252,11 +240,10 @@ internal sealed class AssistantBar : UserControl
         try
         {
             var identity = $"{_shell.CompanyPath}|{_shell.User}|{model}";
-            if (_assistant == null || _assistantFor != identity || !Runtime!.Running)
+            if (_assistant == null || _assistantFor != identity)
             {
-                _status.Text = Runtime!.Running ? "Looking…" : "Starting the local model. This can take a minute the first time…";
-                var api = await Runtime.StartAsync();
-                _assistant = new Assistant(api, _tools, model, _shell.CompanyName, _shell.User, _shell.Role);
+                _status.Text = "Looking…";
+                _assistant = new Assistant(new OlmoAiCoreApi(), _tools, model, _shell.CompanyName, _shell.User, _shell.Role);
                 _assistantFor = identity;
             }
             var assistant = _assistant;

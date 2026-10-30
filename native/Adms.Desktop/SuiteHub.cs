@@ -144,6 +144,9 @@ internal static class SuiteHub
         };
         start.Environment["OSAS_COMPANY"] = companyPath;
         start.Environment["OSAS_TICKET"] = secret;
+        start.Environment["OSAS_AI_ROLE"] = "client";
+        start.Environment["OSAS_AI_HOST"] = "127.0.0.1";
+        start.Environment["OSAS_AI_PORT"] = "8742";
         Process.Start(start);
     }
 }

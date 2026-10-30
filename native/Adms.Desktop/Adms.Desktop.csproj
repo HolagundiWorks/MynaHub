@@ -40,8 +40,10 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Adms.Cloud\Adms.Cloud.csproj" />
     <ProjectReference Include="..\Adms.Interop\Adms.Interop.csproj" />
     <ProjectReference Include="..\Osas.Core\Osas.Core.csproj" />
+    <ProjectReference Include="..\..\..\O-COREOP\BBSDesktop\Office.Ai\Office.Ai.csproj" />
     <ProjectReference Include="..\..\..\o-ui\Hcw.Ui\Hcw.Ui.csproj" />
   </ItemGroup>
 </Project>

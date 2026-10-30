@@ -2,13 +2,13 @@
 
 The shared company file for the architecture office apps: O-Studio (the office app), O-CoreOp (quantities, bar bending, estimation and billing) and O-Draft (CAD).
 
-This is not ShilpiDB. ShilpiDB is the separate spatial store for drawing data. Office Core holds the office's clients, projects, staff and library and the company file that holds them.
+Office Core holds the office's clients, projects, staff and library and the company file that holds them.
 
 The crate owns:
 - **Sign-in and the running workspace.** `workspace` holds the open company file and the signed-in session, with `require` (the check every command makes first), login, lock and unlock. `auth` has the roles and permissions and password handling.
 - **The company file itself.** `company` creates, opens, locks and closes a company file, keeps the recent-files list, converts the first release's data, and can protect a file with a password and recovery code (`vault`). Documents are stored inside the file (`store`).
 - **A C interface for native shells.** `host` has the session registry, the result type and the common operations (`company.open`, `company.create`, `auth.login` and so on). An app exports its own functions and passes its operations to it.
-- **The file format.** `migrations/` and `schema::migrate`. An app passes a `prepare` function that brings a newly opened file to the schema it needs (the core, plus its own track). A company file is one SQLite file versioned by `user_version`; migrations only append.
+- **The file format.** `migrations/` and `schema::migrate`. An app passes a `prepare` function that brings a newly opened file to the schema it needs (the core, plus its own track). A company file is one SQLite file versioned by `user_version`; migrations only append. The engine links SQLite through `rusqlite` with the **`bundled`** feature, so the installer does not need a separate SQLite runtime on the machine.
 - **The audit log.** `audit` writes to a table that the schema makes append-only.
 - **The shared records.** `clients` (clients, representatives, projects, project brief) and `office` (staff, leave, library), with the checks in `check`.
 

@@ -3,18 +3,16 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
-using Osas.Core.Suite;
+using Office.Ai;
+using Osas.Core.Agent;
 
 namespace Adms.Desktop;
 
 /// <summary>
-/// The Suite dashboard for the open company: the company file's health along the top, then cards for who has the file open, ShilpiDB,
-/// the local assistant and the other apps. The company itself is the Firm page, the assistant floats over every page, and the other
-/// apps open from the bar along the bottom.
+/// The Suite dashboard for the open company: file health, the local assistant and launcher cards for sibling apps.
 /// </summary>
 internal sealed class SuitePage : UserControl
 {
-    private readonly ShilpiPanel _shilpi;
     private readonly TextBlock _assistantState = new() { Style = Resource("BodyStyle"), TextWrapping = TextWrapping.Wrap };
 
     public SuitePage(AppShell shell)
@@ -29,20 +27,17 @@ internal sealed class SuitePage : UserControl
         monitor.Follow(shell.CompanyPath);
         page.Children.Add(monitor);
 
-        _shilpi = new ShilpiPanel(new SuiteSettings(), () => shell.CompanyPath);
         var cards = new FlexBar
         {
             Children =
             {
                 monitor.Details,
-                Card(_shilpi),
                 Card(AssistantCard(shell)),
                 Card(AppsCard()),
             },
         };
         page.Children.Add(cards);
         Content = new ScrollViewer { Content = page };
-        Unloaded += (_, _) => _shilpi.Shutdown();
         _ = CheckAssistant();
     }
 
@@ -56,7 +51,7 @@ internal sealed class SuitePage : UserControl
         var heading = new TextBlock { Text = "Assistant", Style = Resource("SectionTitleStyle") };
         AutomationProperties.SetHeadingLevel(heading, AutomationHeadingLevel.Level2);
         stack.Children.Add(heading);
-        stack.Children.Add(new TextBlock { Text = "The glowing logo at the bottom of every page. It is Tulu 3 (Allen Institute for AI), run on this computer by O-Studio's own runtime, for O-Studio only: no key, nothing sent anywhere, read-only. O-CoreOp and O-Draft use their own models.", Style = Resource("SecondaryStyle"), TextWrapping = TextWrapping.Wrap });
+        stack.Children.Add(new TextBlock { Text = "The glowing logo at the bottom of every page. Olmo 3 7B runs on this computer from O-Studio; O-CoreOp and O-Draft connect to the same model. Read-only, nothing sent anywhere.", Style = Resource("SecondaryStyle"), TextWrapping = TextWrapping.Wrap });
         stack.Children.Add(_assistantState);
         stack.Children.Add(new TextBlock { Text = $"Works as {shell.User} ({shell.Role})", Style = Resource("CaptionStyle") });
         return stack;
@@ -64,14 +59,13 @@ internal sealed class SuitePage : UserControl
 
     private async Task CheckAssistant()
     {
-        var runtime = AssistantBar.Runtime;
-        if (runtime == null)
+        if (!Office.Ai.LocalLlmHost.Installed)
         {
-            _assistantState.Text = "Tulu is not installed: the runtime and model files are missing (see docs/AI_RUNTIME.md).";
+            _assistantState.Text = $"Olmo is not installed (see docs/LOCAL-MODEL.md in O-CoreOp).";
             return;
         }
-        var (_, problem) = await runtime.VerifyAsync();
-        _assistantState.Text = problem ?? (runtime.Running ? "Ready · the model is loaded" : "Ready · the model loads when you first ask");
+        var (ready, problem) = await OlmoAiCoreApi.VerifyAsync();
+        _assistantState.Text = problem ?? (ready ? "Ready · loads on first question" : "Not ready");
     }
 
     private static UIElement AppsCard()
@@ -80,15 +74,7 @@ internal sealed class SuitePage : UserControl
         var heading = new TextBlock { Text = "Other apps", Style = Resource("SectionTitleStyle") };
         AutomationProperties.SetHeadingLevel(heading, AutomationHeadingLevel.Level2);
         stack.Children.Add(heading);
-        stack.Children.Add(new TextBlock { Text = "Open them from the bar along the bottom. They open on this company, already signed in.", Style = Resource("SecondaryStyle"), TextWrapping = TextWrapping.Wrap });
-        foreach (var card in SuiteHub.Cards)
-        {
-            var found = SuiteHub.FindExecutable(card);
-            var row = new StackPanel { Spacing = 0 };
-            row.Children.Add(new TextBlock { Text = $"{card.Title} · {(found != null ? "installed" : "not installed")}", Style = Resource("BodyStyle") });
-            row.Children.Add(new TextBlock { Text = card.Blurb, Style = Resource("CaptionStyle"), TextWrapping = TextWrapping.Wrap });
-            stack.Children.Add(row);
-        }
+        stack.Children.Add(new TextBlock { Text = "Open O-CoreOp, O-Draft and O-Form from the bar at the bottom of the window, or from OSAS.", Style = Resource("SecondaryStyle"), TextWrapping = TextWrapping.Wrap });
         return stack;
     }
 }

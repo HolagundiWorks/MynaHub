@@ -824,7 +824,6 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
     private readonly TextBlock _phase = Flow.Secondary("");
     private readonly StackPanel _stageList = new() { Spacing = 8 };
     private readonly StackPanel _path = new() { Spacing = 8 };
-    private ShilpiProjectPanel _shilpi = null!;
     private readonly Button _assignStages = new() { Content = "Assign standard stages" };
     private readonly InfoBar _notice = Flow.Notice();
     private readonly TextBox _site = Flow.Input("Site address", true);
@@ -935,9 +934,6 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         _editor.Children.Add(_title);
         _editor.Children.Add(Flow.Secondary("A client can have many projects. Each project keeps its own agreements, letters and invoices."));
         _editor.Children.Add(_path);
-        _shilpi = new ShilpiProjectPanel(_shell);
-        _shilpi.Show(null);
-        _editor.Children.Add(_shilpi);
         _editor.Children.Add(Flow.Section("Project details"));
         _editor.Children.Add(Flow.Pair(_name, _code));
         _editor.Children.Add(Flow.Pair(_client, _state));
@@ -946,7 +942,6 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         _floors.Text = "1";
         _floors.TextChanged += (_, _) => { if (!_filling) _dirty = true; };
         _editor.Children.Add(Flow.Pair(_consultancy, _floors));
-        // The company file's stages are for a project without a ShilpiDB file; with one, the billing comes from that file.
         var stages = new StackPanel { Spacing = 8 };
         stages.Children.Add(Flow.Section("Stages"));
         stages.Children.Add(Flow.Secondary("Save the consultancy and the floors, then assign the standard stages. Marking a stage records the phase and reminds you of the payment. It does not raise an invoice."));
@@ -957,10 +952,6 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         stages.Children.Add(_stageList);
         stages.Children.Add(_notice);
         _editor.Children.Add(stages);
-        _shilpi.LinkedChanged += linked =>
-        {
-            stages.Visibility = _path.Visibility = linked ? Visibility.Collapsed : Visibility.Visible;
-        };
         _editor.Children.Add(Flow.Section("Site"));
         _editor.Children.Add(_site);
         _editor.Children.Add(Flow.Section("Description"));
@@ -1041,7 +1032,6 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         _phase.Text = "";
         _stageList.Children.Clear();
         _path.Children.Clear();
-        _shilpi.Show(null);
         _assignStages.Visibility = Visibility.Collapsed;
         _notice.IsOpen = false;
         _title.Text = "New project";
@@ -1084,7 +1074,6 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         _dirty = false;
         ListPane.Visibility = Visibility.Collapsed;
         EditorPane.Visibility = Visibility.Visible;
-        _shilpi.Show(_id);
         if (_id is long id)
         {
             LoadBrief(id);

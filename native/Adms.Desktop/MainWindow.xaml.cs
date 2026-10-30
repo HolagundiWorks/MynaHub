@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Adms.Cloud;
 using Adms.Interop;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -46,11 +47,27 @@ public sealed partial class MainWindow : Window
     private IPrintDocumentSource? _printSource;
     private IReadOnlyList<UIElement> _printPages = [];
     private string _printJob = "O-Studio";
+    private readonly ProgressRing _busyRing = new() { Width = 20, Height = 20, IsActive = false };
+    private readonly Hcw.Ui.Controls.SuiteThemeSwitch _suiteTheme = new();
 
     public MainWindow()
     {
         InitializeComponent();
         Hcw.Ui.SuiteMotion.RespectSystemPreference();
+        StatusStrip.Left.Children.Add(_busyRing);
+        _suiteTheme.Attach(this);
+        StatusStrip.Right.Children.Add(_suiteTheme);
+        StatusStrip.Right.Children.Add(new TextBlock
+        {
+            Text = "Human Centric Works",
+            FontSize = Hcw.Ui.SuiteScale.FontCaption,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        Hcw.Ui.SuiteAppearance.Changed += _ => DispatcherQueue.TryEnqueue(() =>
+        {
+            RestoreTheme();
+            StatusStrip.Retheme();
+        });
         WelcomeLogo.Source = BrandArt.Wordmark();
         LoginLogo.Source = BrandArt.Mark();
         SetupLogo.Source = BrandArt.Mark();
@@ -76,13 +93,11 @@ public sealed partial class MainWindow : Window
         AppWindow.Changed += RememberPlacement;
         AppWindow.Closing += OnClosing;
         // The title bar, window frame and menu take their colours from the theme, so they follow it when it is switched.
-        Hcw.Ui.SuiteAppearance.Changed += _ => DispatcherQueue.TryEnqueue(RestoreTheme);
-
         try
         {
             var dir = AppFolder.Prepare();
             _session = new AdmsSession(dir);
-            StatusText.Text = "Engine ready";
+            StatusStrip.StatusText = "Engine ready";
         }
         catch (Exception ex)
         {
@@ -432,7 +447,7 @@ public sealed partial class MainWindow : Window
             return false;
         PdfHost.Visibility = Visibility.Collapsed;
         _pdf?.Clear();
-        StatusText.Text = "Preview closed";
+        StatusStrip.StatusText = "Preview closed";
         return true;
     }
 
@@ -455,8 +470,7 @@ public sealed partial class MainWindow : Window
     private void OnClosing(AppWindow sender, AppWindowClosingEventArgs args)
     {
         SavePlacement();
-        // The assistant's model process is O-Studio's own; it goes when the window does.
-        AssistantBar.Runtime?.Stop();
+        Office.Ai.SuiteAiCoordinator.StopHost();
         if (_shuttingDown)
             return;
         if (_busy)
@@ -473,6 +487,7 @@ public sealed partial class MainWindow : Window
             return;
         }
         _shuttingDown = true;
+        _ = CloudSyncHub.StopAsync();
         ReleaseSession();
     }
 
@@ -616,7 +631,7 @@ public sealed partial class MainWindow : Window
         if (opened && unlock == "recovery" && _companyOpen)
         {
             ShowRecover(this, new RoutedEventArgs());
-            StatusText.Text = "Set a new password. It opens this company file, and a new recovery code is shown once.";
+            StatusStrip.StatusText = "Set a new password. It opens this company file, and a new recovery code is shown once.";
         }
     }
 
@@ -642,7 +657,7 @@ public sealed partial class MainWindow : Window
             ClearSecrets();
             ClearWorkspace();
             ShowWelcome();
-            StatusText.Text = "Company closed";
+            StatusStrip.StatusText = "Company closed";
             Notice.IsOpen = false;
             _ = LoadWelcomeAsync();
         }
@@ -866,7 +881,7 @@ public sealed partial class MainWindow : Window
         if (!produced || pdf == null || _closeAfterBusy || _shuttingDown)
             return;
         await ShowPdf(pdf, SafeFileName(_companyName));
-        StatusText.Text = "Preview ready";
+        StatusStrip.StatusText = "Preview ready";
         Notice.IsOpen = false;
     }
 
@@ -1077,7 +1092,7 @@ public sealed partial class MainWindow : Window
             await Task.Run(work);
             if (!_closeAfterBusy)
             {
-                StatusText.Text = "";
+                StatusStrip.StatusText = "";
                 Notice.IsOpen = false;
             }
             return true;
@@ -1094,7 +1109,7 @@ public sealed partial class MainWindow : Window
         }
         finally
         {
-            SetBusy(false, StatusText.Text);
+            SetBusy(false, StatusStrip.StatusText);
             if (_closeAfterBusy)
                 FinishClose();
         }
@@ -1217,8 +1232,8 @@ public sealed partial class MainWindow : Window
     private void SetBusy(bool busy, string status)
     {
         _busy = busy;
-        BusyRing.IsActive = busy;
-        StatusText.Text = status;
+        _busyRing.IsActive = busy;
+        StatusStrip.StatusText = status;
         UpdateCommands();
     }
 
@@ -1275,11 +1290,13 @@ public sealed partial class MainWindow : Window
         _role = CanonicalRole(role);
         ClearWorkspace();
         _signedIn = true;
-        _workspace = new WorkspaceView(new AppShell { Session = _session!, Window = this, Role = _role, User = username, CompanyName = _companyName, CompanyPath = _companyPath });
+        _workspace = new WorkspaceView(new AppShell { Session = _session!, Window = this, Role = _role, User = username, CompanyName = _companyName, CompanyPath = _companyPath, CompanyUuid = _companyUuid });
         WorkspaceHost.Children.Add(_workspace);
+        Office.Ai.SuiteAiCoordinator.StartHostIfNeeded();
+        _workspace.WireBottomBar(StatusStrip);
         ShowOnly(WorkspaceHost);
         Notice.IsOpen = false;
-        StatusText.Text = "Signed in";
+        StatusStrip.StatusText = "Signed in";
     }
 
     private void ClearWorkspace()
@@ -1287,6 +1304,9 @@ public sealed partial class MainWindow : Window
         _signedIn = false;
         _workspace = null;
         WorkspaceHost.Children.Clear();
+        if (_workspace is not null)
+            _workspace.ClearBottomBar(StatusStrip);
+        Office.Ai.SuiteAiCoordinator.StopHost();
     }
 
     private void ClearSecrets()
@@ -1358,7 +1378,7 @@ public sealed partial class MainWindow : Window
         Notice.Title = message.Trim();
         Notice.Message = "";
         Notice.IsOpen = true;
-        StatusText.Text = "";
+        StatusStrip.StatusText = "";
     }
 
     private static string Text(JsonElement element, string name) =>

@@ -1,16 +1,13 @@
-//! Suite project folder: one directory per O-Studio project holding O-Draft, O-Form and ShilpiDB.
+//! Suite project folder: one directory per O-Studio project holding O-Draft, O-Form and the `.osp` project file.
 //!
 //! Layout (relative to the company file's parent):
 //! ```text
 //! projects/<slug>/
-//!   osas.project.json   # suite envelope (ProjectRef + drawing_id + sync)
-//!   draft/model.dxf     # O-Draft starter drawing
+//!   osas.project.json   # suite envelope (ProjectRef + drawing_id)
+//!   project.osp         # drawing, take-off, CoreOp project record (O-Draft / O-CoreOp)
+//!   draft/model.dxf     # O-Draft starter drawing (legacy scaffold)
 //!   form/model.blend    # O-Form model (created empty; first save fills it)
-//!   shilpi/project.vdb  # project-scoped ShilpiDB data file
 //! ```
-//!
-//! Live sync: every app opens the same `drawing_id` against the project `.vdb`
-//! (or the shared suite server on 7420 when that file is already mounted).
 
 use crate::refs::{self, ProjectRef, REF_VERSION};
 use rusqlite::{params, Connection};
@@ -31,7 +28,7 @@ pub struct WorkspaceInfo {
     pub manifest: String,
     pub draft: String,
     pub form: String,
-    pub shilpi: String,
+    pub osp: String,
     pub drawing_id: String,
     pub project_ref: ProjectRef,
 }
@@ -119,11 +116,10 @@ pub fn scaffold(conn: &Connection, input: ScaffoldInput<'_>) -> Result<Workspace
     let root = workspace_root(input.company_path, input.code, input.name, input.project_id);
     fs::create_dir_all(root.join("draft")).map_err(|e| e.to_string())?;
     fs::create_dir_all(root.join("form")).map_err(|e| e.to_string())?;
-    fs::create_dir_all(root.join("shilpi")).map_err(|e| e.to_string())?;
 
     let draft = root.join("draft").join("model.dxf");
     let form = root.join("form").join("model.blend");
-    let shilpi = root.join("shilpi").join("project.vdb");
+    let osp = root.join("project.osp");
 
     if !draft.exists() {
         write_atomic(&draft, MINIMAL_DXF.as_bytes())?;
@@ -132,7 +128,7 @@ pub fn scaffold(conn: &Connection, input: ScaffoldInput<'_>) -> Result<Workspace
     if !form.exists() {
         write_atomic(&form, b"")?;
     }
-    // Do not pre-create the .vdb binary; shilpid creates it on first bind.
+    // `.osp` is created when O-Draft or O-CoreOp first saves the project file.
 
     let drawing_id = {
         let existing = read_manifest(&root).ok().and_then(|m| {
@@ -165,21 +161,14 @@ pub fn scaffold(conn: &Connection, input: ScaffoldInput<'_>) -> Result<Workspace
         "files": {
             "draft": "draft/model.dxf",
             "form": "form/model.blend",
-            "shilpi": "shilpi/project.vdb",
+            "project": "project.osp",
             "odraft_project": "draft/project.json"
-        },
-        "sync": {
-            "mode": "live",
-            "shilpid": "127.0.0.1:7420",
-            "gateway": "127.0.0.1:7421",
-            "poll_ms": 1500,
-            "data_rel": "shilpi/project.vdb"
         },
         "apps": {
             "ostudio": { "role": "owner" },
-            "odraft": { "file": "draft/model.dxf" },
-            "oform": { "file": "form/model.blend" },
-            "shilpidb": { "file": "shilpi/project.vdb" }
+            "odraft": { "file": "project.osp", "drawing": "draft/model.dxf" },
+            "ocoreop": { "file": "project.osp" },
+            "oform": { "file": "form/model.blend" }
         }
     });
 
@@ -233,7 +222,7 @@ pub fn scaffold(conn: &Connection, input: ScaffoldInput<'_>) -> Result<Workspace
         manifest: manifest_path.to_string_lossy().to_string(),
         draft: draft.to_string_lossy().to_string(),
         form: form.to_string_lossy().to_string(),
-        shilpi: shilpi.to_string_lossy().to_string(),
+        osp: osp.to_string_lossy().to_string(),
         drawing_id,
         project_ref: ProjectRef {
             v: REF_VERSION,
@@ -273,7 +262,7 @@ pub fn get(conn: &Connection, project_id: i64) -> Result<Option<WorkspaceInfo>, 
         manifest: root.join(MANIFEST).to_string_lossy().to_string(),
         draft: root.join("draft").join("model.dxf").to_string_lossy().to_string(),
         form: root.join("form").join("model.blend").to_string_lossy().to_string(),
-        shilpi: root.join("shilpi").join("project.vdb").to_string_lossy().to_string(),
+        osp: root.join("project.osp").to_string_lossy().to_string(),
         drawing_id,
         project_ref: pref,
     }))
@@ -324,7 +313,7 @@ mod tests {
         assert!(Path::new(&info.root).join(MANIFEST).is_file());
         assert!(Path::new(&info.draft).is_file());
         assert!(Path::new(&info.form).is_file());
-        assert!(Path::new(&info.root).join("shilpi").is_dir());
+        assert!(!Path::new(&info.osp).exists());
         assert!(!info.drawing_id.is_empty());
         let again = scaffold(
             &conn,

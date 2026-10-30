@@ -2,7 +2,7 @@
 
 `office.dll` lets a native app, such as O-CoreOp, share the office company file with O-Studio. It is built from `office-ffi/` with `cargo build --release` there. `native/Office.Interop` is a small .NET wrapper and `native/Office.Smoke` shows it in use; an app that prefers its own wrapper only needs the contract below.
 
-This is not ShilpiDB. ShilpiDB is the separate store for drawing data. This interface is for the office's records: clients, projects, staff, leave and the library.
+This interface is for the office's records: clients, projects, staff, leave and the library.
 
 Several apps can have the same company file open at the same time (see [shared-company-file.md](shared-company-file.md)). A session holds a shared claim on the file while it is open, and destroying the session releases it. Protecting a file or upgrading its format needs the file to itself and is refused while another app has it open; a protected (encrypted) file can be open in one app at a time.
 
