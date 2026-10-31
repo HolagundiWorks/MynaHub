@@ -1,4 +1,4 @@
-using Hcw.Ui.Controls;
+using O.Ui.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
@@ -17,7 +17,7 @@ internal sealed class SuitePage : UserControl
 
     public SuitePage(AppShell shell)
     {
-        var page = new StackPanel { Padding = Hcw.Ui.SuiteScale.PageMargin, Spacing = Hcw.Ui.SuiteScale.CardGap };
+        var page = new StackPanel { Padding = O.Ui.SuiteScale.PageMargin, Spacing = O.Ui.SuiteScale.CardGap };
         var title = new TextBlock { Text = "Suite", Style = Resource("PageTitleStyle") };
         AutomationProperties.SetHeadingLevel(title, AutomationHeadingLevel.Level1);
         page.Children.Add(title);
@@ -43,7 +43,7 @@ internal sealed class SuitePage : UserControl
 
     private static Style Resource(string key) => (Style)Application.Current.Resources[key];
 
-    private static Border Card(UIElement child) => new() { Style = Resource("SuiteCardStyle"), Width = 380, Margin = new Thickness(0, 0, Hcw.Ui.SuiteScale.CardGap, Hcw.Ui.SuiteScale.CardGap), Child = child };
+    private static Border Card(UIElement child) => new() { Style = Resource("SuiteCardStyle"), Width = 380, Margin = new Thickness(0, 0, O.Ui.SuiteScale.CardGap, O.Ui.SuiteScale.CardGap), Child = child };
 
     private UIElement AssistantCard(AppShell shell)
     {
@@ -74,7 +74,7 @@ internal sealed class SuitePage : UserControl
         var heading = new TextBlock { Text = "Other apps", Style = Resource("SectionTitleStyle") };
         AutomationProperties.SetHeadingLevel(heading, AutomationHeadingLevel.Level2);
         stack.Children.Add(heading);
-        stack.Children.Add(new TextBlock { Text = "Open O-CoreOp, O-Draft and O-Form from the bar at the bottom of the window, or from OSAS.", Style = Resource("SecondaryStyle"), TextWrapping = TextWrapping.Wrap });
+        stack.Children.Add(new TextBlock { Text = "Open O-CoreOp, O-Draft and O-Form from the bar at the bottom of the window.", Style = Resource("SecondaryStyle"), TextWrapping = TextWrapping.Wrap });
         return stack;
     }
 }

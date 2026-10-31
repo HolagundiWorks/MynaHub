@@ -841,7 +841,7 @@ internal static class Ledgers
                 {
                     box.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
                     box.BorderThickness = new Thickness(0);
-                    box.Padding = new Thickness(0, Hcw.Ui.SuiteScale.ControlPadding.Top, 0, Hcw.Ui.SuiteScale.ControlPadding.Bottom);
+                    box.Padding = new Thickness(0, O.Ui.SuiteScale.ControlPadding.Top, 0, O.Ui.SuiteScale.ControlPadding.Bottom);
                 }
                 box.PlaceholderText = on ? "" : "Not set";
                 box.IsHitTestVisible = on;
@@ -893,7 +893,7 @@ internal static class Ledgers
             LoadProfile();
         };
         // Edit, Save and Cancel sit at the top, under the description, where the page is read.
-        page.Children.Insert(3, new StackPanel { Orientation = Orientation.Horizontal, Spacing = Hcw.Ui.SuiteScale.StackGap, Margin = new Thickness(0, Hcw.Ui.SuiteScale.Space1, 0, Hcw.Ui.SuiteScale.Space2), Children = { edit, save, cancel } });
+        page.Children.Insert(3, new StackPanel { Orientation = Orientation.Horizontal, Spacing = O.Ui.SuiteScale.StackGap, Margin = new Thickness(0, O.Ui.SuiteScale.Space1, 0, O.Ui.SuiteScale.Space2), Children = { edit, save, cancel } });
         form.SaveAction = SaveProfile;
         if (shell.CanManage)
             form.Watch([.. fields.Values, scheme, letterhead]);

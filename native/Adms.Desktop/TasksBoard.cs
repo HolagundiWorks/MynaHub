@@ -33,11 +33,11 @@ internal sealed class TasksBoardPage : UserControl, ILiveRefresh
     public TasksBoardPage(AppShell shell, bool widget = false)
     {
         _shell = shell;
-        var gap = Hcw.Ui.SuiteScale.StackGap;
+        var gap = O.Ui.SuiteScale.StackGap;
         var page = new StackPanel
         {
-            Spacing = widget ? gap : Hcw.Ui.SuiteScale.SectionGap,
-            Margin = widget ? new Thickness(0) : Hcw.Ui.SuiteScale.PageMargin,
+            Spacing = widget ? gap : O.Ui.SuiteScale.SectionGap,
+            Margin = widget ? new Thickness(0) : O.Ui.SuiteScale.PageMargin,
         };
         if (!widget)
         {
@@ -66,7 +66,7 @@ internal sealed class TasksBoardPage : UserControl, ILiveRefresh
         };
         page.Children.Add(_projectFilter);
 
-        var board = new Grid { ColumnSpacing = Hcw.Ui.SuiteScale.CardGap };
+        var board = new Grid { ColumnSpacing = O.Ui.SuiteScale.CardGap };
         for (var i = 0; i < Columns.Length; i++)
         {
             board.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -196,18 +196,18 @@ internal sealed class TasksBoardPage : UserControl, ILiveRefresh
             var who = Kit.Str(row, "assignee");
             body.Children.Add(new TextBlock { Text = who.Length == 0 ? "From the project file" : $"{who} · from the project file", Style = Flow.Look("CaptionStyle") });
         }
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Hcw.Ui.SuiteScale.StackGap };
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = O.Ui.SuiteScale.StackGap };
         foreach (var (key, label) in Columns)
         {
             if (key == status || fromFile)
                 continue;
-            var move = new Button { Content = label, MinHeight = Hcw.Ui.SuiteScale.ControlMinHeight };
+            var move = new Button { Content = label, MinHeight = O.Ui.SuiteScale.ControlMinHeight };
             move.Click += (_, _) => Move(id, key);
             actions.Children.Add(move);
         }
         if (_shell.CanEdit && !fromFile)
         {
-            var del = new Button { Content = "Delete", MinHeight = Hcw.Ui.SuiteScale.ControlMinHeight };
+            var del = new Button { Content = "Delete", MinHeight = O.Ui.SuiteScale.ControlMinHeight };
             del.Click += (_, _) => Delete(id);
             actions.Children.Add(del);
         }
@@ -216,7 +216,7 @@ internal sealed class TasksBoardPage : UserControl, ILiveRefresh
         var card = new Border
         {
             Background = (Brush)Application.Current.Resources["AppBackgroundBrush"],
-            CornerRadius = Hcw.Ui.SuiteScale.CornerControl,
+            CornerRadius = O.Ui.SuiteScale.CornerControl,
             Padding = new Thickness(12),
             Child = body,
         };

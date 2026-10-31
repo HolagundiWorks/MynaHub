@@ -22,7 +22,7 @@ jobs:
         run: cargo test --manifest-path ${{ matrix.crate }}/Cargo.toml
 
   windows-app:
-    # Public shared design library (assembly Hcw.Ui), checked out beside this repo as o-ui.
+    # Public shared design library (assembly O.Ui), checked out beside this repo as o-ui.
     runs-on: windows-latest
     needs: rust
     steps:

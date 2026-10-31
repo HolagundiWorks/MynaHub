@@ -5,16 +5,16 @@
 
 ## What changed
 
-The separate **OSAS** suite hub executable is **deprecated**. O-Studio is the user-facing shell for:
+The **OSAS.exe** launcher is **deprecated**. **O-Studio** is the user-facing shell for:
 
 - Choosing and creating the company file
 - Admin password and users
 - Firm (company) details
-- Suite launcher cards (`OSAS_COMPANY` + `OSAS_TICKET`)
+- Suite launcher cards (sibling apps via ticket)
 - Approvals inbox for CoreOp estimates / running bills
 - Assistant (governed local tools; cloud chat opt-in)
 
-The **OSAS** name remains the suite brand. Environment variables and `%LOCALAPPDATA%\OSAS\suite.json` are unchanged so CoreOp, Draft and Form keep working.
+User-facing docs and UI must say **O-Studio**, not OSAS or a separate launcher. Environment variables and `%LOCALAPPDATA%\OSAS\suite.json` stay unchanged on the wire so CoreOp, Draft and Form keep working.
 
 ## Installers
 

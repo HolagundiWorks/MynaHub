@@ -13,5 +13,5 @@ Third-party notices
 - IBM Plex fonts — SIL Open Font License 1.1; see src-tauri/assets/fonts/plex/
 - DejaVu Sans — see src-tauri/assets/fonts/DejaVu-LICENSE.txt
 - Windows App SDK / WinUI — Microsoft licenses
-- O-UI (Hcw.Ui) — MIT; brand marks in that repository are reserved
+- O-UI (O.Ui) — MIT; brand marks in that repository are reserved
   (see o-ui/brand/LICENSE.md)

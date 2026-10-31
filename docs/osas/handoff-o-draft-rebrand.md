@@ -14,7 +14,7 @@ OSAS, the Open Source Architecture Suit, has three apps. Two are rebranded; this
 | **O-CoreOp** | blue `#1F5FD1` | Done, in `HolagundiWorks/O-COREOP` (merging branch `claude/aos-shell`) |
 | **O-Draft** | black `#1B1C20` | **This hand-off** |
 
-The decision, from the owner: all three use **the O-CoreOp logo**, redrawn in each app's colour. O-Draft's is the logo on a black plate. The suite launcher is `HolagundiWorks/OSAS-Open_Source_Architecture_Suit`; the shared design and the marks are in `HolagundiWorks/hcw-ui` (both private).
+The decision, from the owner: all three use **the O-CoreOp logo**, redrawn in each app's colour. O-Draft's is the logo on a black plate. The suite launcher is `HolagundiWorks/OSAS-Open_Source_Architecture_Suit`; the shared design and the marks are in `HolagundiWorks/o-ui` (both private).
 
 ## 2. What changes, and what does not
 
@@ -34,7 +34,7 @@ The decision, from the owner: all three use **the O-CoreOp logo**, redrawn in ea
 ## 3. The logo
 The mark is the O-CoreOp logo: a half ring open to the right, a smaller half ring below the centre, and a small ring at the centre, all white on a plate. O-Draft's plate is `#17181B`. It replaces O-Draft's present logo (a blue square with a white "A" and a crosshair).
 
-Ready-made files, drawn by `hcw-ui/tools/Brand`, in `hcw-ui/brand/draft/`: `mark.svg`, `mark.png` (1024), `mark-256.png`, `app.ico` (16 to 256), `lockup.png`, and `tiles/` (Windows tile sizes). Use the SVG as the vector source.
+Ready-made files, drawn by `o-ui/tools/Brand`, in `o-ui/brand/draft/`: `mark.svg`, `mark.png` (1024), `mark-256.png`, `app.ico` (16 to 256), `lockup.png`, and `tiles/` (Windows tile sizes). Use the SVG as the vector source.
 
 Geometry, in a 194 by 194 box, centred at (107, 96), all strokes white and flat-ended:
 
@@ -57,7 +57,7 @@ Geometry, in a 194 by 194 box, centred at (107, 96), all strokes white and flat-
 
 **How O-Draft makes its icons.** `cargo xtask logo` (`xtask/src/logo.rs`) draws the logo itself, with no image tools: straight lines, its own small PNG writer, and the old artwork's 1254 by 1254 coordinates. It writes `assets/app-icon/aad-logo.svg`, `aad-1024.png`, `aad-256.png`, `aad-64.png`, `aad-macos-512.png`, `hicolor/<n>x<n>/apps/io.github.holagundiworks.aad.png`, `aad.ico` and `aad.icns`. The new mark has arcs, so `logo.rs` needs an arc rasteriser (an annulus segment: a pixel is inside when its distance from the centre is between the inner and outer radius, and its angle is in range; sample 4 by 4 per pixel for smooth edges). Scale from the 194 box to 1254 by 6.464. Keep the macOS icon's rounded corners and margin. Then update the `<title>` and the SVG, and run `cargo xtask logo`.
 
-The `.ico` from `hcw-ui` can be used until the xtask draws the new mark, but the repository's rule is that everything under `assets/app-icon/` is generated, so the xtask must be updated before this is done.
+The `.ico` from `o-ui` can be used until the xtask draws the new mark, but the repository's rule is that everything under `assets/app-icon/` is generated, so the xtask must be updated before this is done.
 
 ## 4. Colour
 O-Draft's accent is black. O-Draft's rules (`CLAUDE.md`): colours come from `theme::Tokens` in `crates/ui-egui/src/theme.rs`; there are two palettes, dark with a black drawing area and light with a white one; there is no other colour customisation. So the change is to the two token sets, not new settings.
@@ -73,7 +73,7 @@ Today `accent` is orange (`#F2841C` dark, `#D9660A` light) and `icon_accent` ora
 
 Check every new pair with `node tools/a11y/contrast.mjs` (in the `HolagundiWorks/O-STUDIO` repository, `tools/a11y/`): text 4.5:1, component edges and focus rings 3:1. The two palettes and their old values were read from `theme.rs` without a build, so confirm the token names before editing.
 
-The WinUI shell (`apps/aad-winui`) has `App.xaml` with only `XamlControlsResources`, so it uses the system accent. Give it the same look: the `SuiteAccent.Black` colours, an amber-free primary button and the navigation look from `hcw-ui`. O-Draft is MIT OR Apache-2.0 and `Hcw.Ui` is now MIT licensed (see section 10), so it can be referenced directly.
+The WinUI shell (`apps/aad-winui`) has `App.xaml` with only `XamlControlsResources`, so it uses the system accent. Give it the same look: the `SuiteAccent.Black` colours, an amber-free primary button and the navigation look from `o-ui`. O-Draft is MIT OR Apache-2.0 and `O.Ui` is now MIT licensed (see section 10), so it can be referenced directly.
 
 ## 5. Names: where to change them
 From a text search of the repository. The first group is user-visible and must change.
@@ -125,7 +125,7 @@ git grep -n "aad-logo\|app-icon" -- ":!assets"
 ```
 
 ## 10. Decisions for the owner
-Answered on 2026-10-18: (1) a light-neutral accent in the dark palette is acceptable; (2) the executables are renamed (see below); (4) the old "A with crosshair" logo is retired completely. Item 3 is settled: `hcw-ui` is MIT licensed, the marks have their own notice (`hcw-ui/brand/LICENSE.md`), so `Hcw.Ui` may now be added to O-Draft's WinUI shell as a dependency, and the `ATTRIBUTION.md` row can read "Original artwork by Human Centric Works, derived from the O-CoreOp logo; used under the owner's grant."
+Answered on 2026-10-18: (1) a light-neutral accent in the dark palette is acceptable; (2) the executables are renamed (see below); (4) the old "A with crosshair" logo is retired completely. Item 3 is settled: `o-ui` is MIT licensed, the marks have their own notice (`o-ui/brand/LICENSE.md`), so `O.Ui` may now be added to O-Draft's WinUI shell as a dependency, and the `ATTRIBUTION.md` row can read "Original artwork by Human Centric Works, derived from the O-CoreOp logo; used under the owner's grant."
 
 **Renaming the executables.** `aad.exe` becomes `o-draft.exe` (and `Aad.WinUi.exe` becomes `ODraft.WinUi.exe`). The cargo crates and library names stay, because other crates import them. Change the binary name in `apps/aad/Cargo.toml` (`[[bin]] name`), the WiX file and installer script, the WinUI project `AssemblyName`, and every place that starts the shell. The OSAS launcher looks for `aad.exe` today (`Osas.Core/AppCatalog.cs`, `ExeName`); it must be changed to `o-draft.exe` in the same release, with `aad.exe` kept as a fallback for old installs. Keep the `aad` AORMS session name.
 

@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Osas.Core;
 using Osas.Core.Suite;
 using Xunit;
 
@@ -143,7 +144,7 @@ public class SuiteCompanyTests : IDisposable
     public void The_environment_an_app_is_started_with_names_the_company_and_the_ticket()
     {
         var env = SuiteSettings.AppEnvironment(@"C:\Files\Studio.osas", new AppTicket("abc", "owner"));
-        Assert.Equal((@"C:\Files\Studio.osas", "abc", "owner"), (env["OSAS_COMPANY"], env["OSAS_TICKET"], env["OSAS_USER"]));
+        Assert.Equal((@"C:\Files\Studio.osas", "abc", "owner"), (env[SuiteWire.EnvCompany], env[SuiteWire.EnvTicket], env[SuiteWire.EnvUser]));
         var bare = SuiteSettings.AppEnvironment(@"C:\Files\Studio.osas", null);
         Assert.Single(bare);
     }

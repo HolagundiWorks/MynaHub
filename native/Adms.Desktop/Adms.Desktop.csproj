@@ -44,6 +44,6 @@
     <ProjectReference Include="..\Adms.Interop\Adms.Interop.csproj" />
     <ProjectReference Include="..\Osas.Core\Osas.Core.csproj" />
     <ProjectReference Include="..\..\..\O-COREOP\BBSDesktop\Office.Ai\Office.Ai.csproj" />
-    <ProjectReference Include="..\..\..\o-ui\Hcw.Ui\Hcw.Ui.csproj" />
+    <ProjectReference Include="..\..\..\o-ui\O.Ui\O.Ui.csproj" />
   </ItemGroup>
 </Project>

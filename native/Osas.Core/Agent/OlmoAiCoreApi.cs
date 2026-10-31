@@ -3,6 +3,8 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
+using Osas.Core;
+
 namespace Osas.Core.Agent;
 
 /// <summary>
@@ -27,7 +29,7 @@ public sealed class OlmoAiCoreApi : IMessagesApi
 
     static string ReadToken()
     {
-        var env = Environment.GetEnvironmentVariable("OSAS_AI_TOKEN")?.Trim();
+        var env = Environment.GetEnvironmentVariable(SuiteWire.EnvAiToken)?.Trim();
         if (!string.IsNullOrEmpty(env)) return env;
         var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OSAS", "ai", "auth.token");
         try

@@ -27,7 +27,7 @@ internal sealed class CloudSyncPage : UserControl
         _run.Toggled += async (_, _) => await OnRunToggledAsync();
         CloudSyncHub.LogLine += _onLog;
 
-        var page = new StackPanel { Padding = Hcw.Ui.SuiteScale.PageMargin, Spacing = Hcw.Ui.SuiteScale.SectionGap };
+        var page = new StackPanel { Padding = O.Ui.SuiteScale.PageMargin, Spacing = O.Ui.SuiteScale.SectionGap };
         page.Children.Add(title);
         page.Children.Add(new TextBlock
         {
@@ -38,7 +38,7 @@ internal sealed class CloudSyncPage : UserControl
         page.Children.Add(_status);
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        var test = new Button { Content = "Test connection", MinHeight = Hcw.Ui.SuiteScale.ControlMinHeight };
+        var test = new Button { Content = "Test connection", MinHeight = O.Ui.SuiteScale.ControlMinHeight };
         test.Click += async (_, _) => await TestAsync();
         actions.Children.Add(test);
         actions.Children.Add(new TextBlock { Text = "Background sync", VerticalAlignment = VerticalAlignment.Center, Style = Resource("CaptionStyle") });

@@ -116,7 +116,7 @@ public sealed class OspCloudClient : IAsyncDisposable
             BucketName = _settings.S3Bucket,
             Key = key,
             InputStream = new MemoryStream(bytes),
-            ContentType = "application/x-osas-project",
+            ContentType = "application/x-osp",
         }, ct).ConfigureAwait(false);
 
         await using var conn = await _pg.OpenConnectionAsync(ct).ConfigureAwait(false);
