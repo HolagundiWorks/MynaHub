@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>Adms.LoginWidget</RootNamespace>
+    <AssemblyName>O-Studio.Launcher</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\Adms.Desktop\Assets\app.ico</ApplicationIcon>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <MrtCoreEnablePriGeneration>false</MrtCoreEnablePriGeneration>
+    <AppxGeneratePriEnabled>false</AppxGeneratePriEnabled>
+    <AppxPackage>false</AppxPackage>
+    <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <Company>Human Centric Works</Company>
+    <Product>O-Studio Suite Launcher</Product>
+    <AssemblyTitle>O-Studio Suite Launcher</AssemblyTitle>
+    <Description>System tray launcher: company sign-in and suite apps.</Description>
+    <Copyright>Copyright © 2026 Human Centric Works</Copyright>
+    <Version>0.1.0</Version>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EngineProfile Condition="'$(EngineProfile)' == ''">release</EngineProfile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="..\Adms.Desktop\Assets\app.ico" Link="Assets\app.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Adms.Desktop\Assets\mark.png" Link="Assets\mark.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4188" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Adms.Interop\Adms.Interop.csproj">
+      <Properties>EngineProfile=$(EngineProfile)</Properties>
+    </ProjectReference>
+    <ProjectReference Include="..\Osas.Core\Osas.Core.csproj" />
+    <ProjectReference Include="..\..\..\o-ui\O.Ui\O.Ui.csproj" />
+  </ItemGroup>
+</Project>

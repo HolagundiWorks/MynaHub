@@ -43,21 +43,52 @@ pub fn project_save(state: HostState<'_>, project: Project) -> Result<i64, Strin
     if creating {
         if let Ok(guard) = state.company.lock() {
             if let Some(active) = guard.as_ref() {
+                let (code, name, floors): (String, String, i64) = conn
+                    .query_row(
+                        "SELECT code, name, floors FROM projects WHERE id=?1",
+                        rusqlite::params![id],
+                        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+                    )
+                    .map_err(|_| "Project not found.".to_string())?;
                 let company_path = std::path::PathBuf::from(&active.summary.path);
                 let _ = office_core::project_workspace::scaffold(
                     &conn,
                     office_core::project_workspace::ScaffoldInput {
                         company_path: &company_path,
                         project_id: id,
-                        code: &project.code,
-                        name: &project.name,
-                        floors: project.floors,
+                        code: &code,
+                        name: &name,
+                        floors,
                     },
                 );
             }
         }
     }
     Ok(id)
+}
+
+pub fn project_next_code(state: HostState<'_>) -> Result<String, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    next_code(&conn)
+}
+
+pub fn project_workspace_attach_osp(state: HostState<'_>, project_id: i64, osp_path: String) -> Result<office_core::project_workspace::WorkspaceInfo, String> {
+    let uid = require(&state, Permission::Edit)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    let company_path = {
+        let guard = state.company.lock().map_err(|_| INTERNAL)?;
+        let active = guard.as_ref().ok_or("Open a company file first.")?;
+        std::path::PathBuf::from(&active.summary.path)
+    };
+    let info = office_core::project_workspace::attach_osp(
+        &conn,
+        &company_path,
+        project_id,
+        std::path::Path::new(&osp_path),
+    )?;
+    db::audit(&conn, Some(uid), "project_osp_attached", &format!("project {project_id}"));
+    Ok(info)
 }
 
 pub fn project_workspace_get(state: HostState<'_>, project_id: i64) -> Result<Option<office_core::project_workspace::WorkspaceInfo>, String> {

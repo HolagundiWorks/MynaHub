@@ -1,4 +1,6 @@
 using System.Text.Json;
+using Npgsql;
+using Office.Shared;
 
 namespace Adms.Cloud;
 
@@ -52,14 +54,80 @@ public static class CloudSyncHub
 
     public static async Task<(bool Ok, string Message)> TestConnectionAsync()
     {
-        var settings = NeonSettings.Load();
-        if (!settings.IsComplete)
-            return (false, "Missing DATABASE_URL or AWS_* variables.");
-        await using var client = new OspCloudClient(settings);
-        await client.EnsureSchemaAsync().ConfigureAwait(false);
-        if (!await client.PingAsync().ConfigureAwait(false))
-            return (false, "Postgres ping failed.");
-        return (true, "Postgres schema ready.");
+        try
+        {
+            var settings = NeonSettings.Load();
+            if (!settings.IsComplete)
+                return (false, "Missing DATABASE_URL or AWS_* variables. See docs/CLOUD-NEON.md and %LocalAppData%\\O-Studio\\neon.env.");
+
+            await using var client = new OspCloudClient(settings);
+            await client.EnsureSchemaAsync().ConfigureAwait(false);
+            if (!await client.PingAsync().ConfigureAwait(false))
+                return (false, "Postgres ping failed.");
+            var (s3Ok, s3Msg) = await client.TestStorageAsync().ConfigureAwait(false);
+            if (!s3Ok)
+                return (false, s3Msg);
+            return (true, "Postgres schema ready. " + s3Msg);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return (false, DescribeConnectionFailure(ex));
+        }
+    }
+
+    static string DescribeConnectionFailure(Exception ex)
+    {
+        for (var cur = ex; cur is not null; cur = cur.InnerException)
+        {
+            if (cur is PostgresException pg)
+                return "Postgres: " + pg.MessageText;
+            if (cur is NpgsqlException or TimeoutException)
+                return "Postgres: " + cur.Message;
+        }
+
+        return "Cloud connection failed. " + ex.Message;
+    }
+
+    /// <summary>Cloud head for an open <c>.osp</c> (does not require background sync to be running).</summary>
+    public static async Task<CloudHead?> GetCloudHeadForOspAsync(string ospPath)
+    {
+        try
+        {
+            if (!File.Exists(ospPath) || !OdpFile.LooksLikeOdp(ospPath))
+                return null;
+            string projectId;
+            using (var odp = OdpFile.Open(ospPath))
+            {
+                projectId = odp.Meta().ProjectId;
+            }
+            if (string.IsNullOrWhiteSpace(projectId))
+                return null;
+            var settings = NeonSettings.Load();
+            if (!settings.IsComplete)
+                return null;
+            await using var client = new OspCloudClient(settings);
+            return await client.GetHeadAsync(projectId).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Refresh cached cloud revision from Postgres after a failed push or on page load.</summary>
+    public static async Task<long?> RefreshCloudRevisionAsync(long studioProjectId, string ospPath)
+    {
+        var head = await GetCloudHeadForOspAsync(ospPath).ConfigureAwait(false);
+        if (head is null)
+            return null;
+        var store = Store;
+        var state = store.Get(studioProjectId);
+        state.LastKnownCloudRevision = head.LatestRevision;
+        if (!string.IsNullOrEmpty(ospPath))
+            state.OspPath = ospPath;
+        store.Projects[studioProjectId] = state;
+        store.Save();
+        return head.LatestRevision;
     }
 
     public static async Task<PushResult> PushNowAsync(long studioProjectId, string ospPath) =>

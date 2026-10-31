@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <RootNamespace>Adms.Cloud</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -10,6 +10,7 @@
     <PackageReference Include="Npgsql" Version="8.0.7" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Osas.Core\Osas.Core.csproj" />
     <ProjectReference Include="..\..\..\O-COREOP\BBSDesktop\Office.Shared\Office.Shared.csproj" />
   </ItemGroup>
 </Project>

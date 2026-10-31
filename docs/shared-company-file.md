@@ -9,7 +9,7 @@ This is roadmap item 2.2. It is built in `office-core` (`company.rs`, `share.rs`
 | What | Where it lives | Who writes it |
 |---|---|---|
 | Clients, projects, the project brief, staff, leave, library | The shared tables of the company file | O-Studio, and O-CoreOp through the office interface |
-| A project's quantities, estimates and settings | `project_documents`, kind `aqc.project` (the same JSON a `.bbsproj` holds) | O-CoreOp |
+| A project's quantities, estimates and settings | `project_documents`, kind `aqc.project` (**summary mirror**: `project_ref`, `last_estimate`, `accounts.bills` only — enforced by `validate_body_for_put`) | O-CoreOp on save/calculate when linked to Studio |
 | Invoices, letters, accounts | The company file | O-Studio |
 
 O-CoreOp keeps the content of a project as one JSON document. The relational tables for quantities and estimates are a later step: they would let O-Studio query a BOQ line, and they need O-CoreOp's model (`.bbsproj` version 17, dozens of lists) normalised and migrated. The document store already gives one place for the data, one project identity, revisions and history.

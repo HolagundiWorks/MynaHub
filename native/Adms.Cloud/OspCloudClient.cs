@@ -22,7 +22,7 @@ public sealed class OspCloudClient : IAsyncDisposable
     public OspCloudClient(NeonSettings settings)
     {
         _settings = settings;
-        _pg = NpgsqlDataSource.Create(settings.DatabaseUrl);
+        _pg = NpgsqlDataSource.Create(NeonPostgres.ToNpgsqlConnectionString(settings.DatabaseUrl));
         _s3 = new AmazonS3Client(
             settings.S3AccessKeyId,
             settings.S3SecretAccessKey,
@@ -48,6 +48,24 @@ public sealed class OspCloudClient : IAsyncDisposable
         await using var cmd = _pg.CreateCommand("SELECT 1");
         var n = (int?)(await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false)) ?? 0;
         return n == 1;
+    }
+
+    /// <summary>Verify the configured bucket accepts API calls (HeadBucket).</summary>
+    public async Task<(bool Ok, string Message)> TestStorageAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            await _s3.ListObjectsV2Async(new ListObjectsV2Request
+            {
+                BucketName = _settings.S3Bucket,
+                MaxKeys = 1,
+            }, ct).ConfigureAwait(false);
+            return (true, $"Bucket “{_settings.S3Bucket}” is reachable.");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Object Storage: {ex.Message}");
+        }
     }
 
     public async Task<CloudHead?> GetHeadAsync(string projectId, CancellationToken ct = default)

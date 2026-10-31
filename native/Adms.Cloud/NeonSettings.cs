@@ -33,7 +33,18 @@ public sealed class NeonSettings
         if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
             LoadEnvFile(path);
 
-        return new NeonSettings
+        return FromEnvironment();
+    }
+
+    /// <summary>Re-read a KEY=VALUE file into the current process environment.</summary>
+    public static void ApplyFile(string path)
+    {
+        if (File.Exists(path))
+            LoadEnvFile(path);
+    }
+
+    static NeonSettings FromEnvironment() =>
+        new()
         {
             DatabaseUrl = FirstEnv("DATABASE_URL_POOLED", "DATABASE_URL") ?? "",
             DatabaseUrlUnpooled = Environment.GetEnvironmentVariable("DATABASE_URL_UNPOOLED")
@@ -44,7 +55,6 @@ public sealed class NeonSettings
             S3SecretAccessKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY") ?? "",
             S3Bucket = Environment.GetEnvironmentVariable("S3_BUCKET") ?? "uploads",
         };
-    }
 
     static string? FirstEnv(params string[] keys)
     {

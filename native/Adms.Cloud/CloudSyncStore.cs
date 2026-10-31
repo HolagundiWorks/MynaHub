@@ -1,12 +1,15 @@
 using System.Text.Json;
+using Osas.Core;
 
 namespace Adms.Cloud;
 
 /// <summary>Per-machine sync preferences (which Studio projects sync, last known cloud revision).</summary>
 public sealed class CloudSyncStore
 {
-    static string StorePath =>
-        System.IO.Path.Combine(
+    static string StorePath => SuiteWire.LocalPath("cloud-sync.json");
+
+    static string LegacyStorePath =>
+        Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "OSAS",
             "cloud-sync.json");
@@ -26,9 +29,15 @@ public sealed class CloudSyncStore
     {
         try
         {
-            if (!File.Exists(StorePath))
-                return new CloudSyncStore();
-            return JsonSerializer.Deserialize<CloudSyncStore>(File.ReadAllText(StorePath)) ?? new CloudSyncStore();
+            if (File.Exists(StorePath))
+                return JsonSerializer.Deserialize<CloudSyncStore>(File.ReadAllText(StorePath)) ?? new CloudSyncStore();
+            if (File.Exists(LegacyStorePath))
+            {
+                var migrated = JsonSerializer.Deserialize<CloudSyncStore>(File.ReadAllText(LegacyStorePath)) ?? new CloudSyncStore();
+                migrated.Save();
+                return migrated;
+            }
+            return new CloudSyncStore();
         }
         catch
         {
@@ -38,8 +47,7 @@ public sealed class CloudSyncStore
 
     public void Save()
     {
-        var dir = System.IO.Path.GetDirectoryName(StorePath)!;
-        Directory.CreateDirectory(dir);
+        Directory.CreateDirectory(SuiteWire.LocalDirectory);
         File.WriteAllText(StorePath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
     }
 

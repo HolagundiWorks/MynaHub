@@ -773,6 +773,52 @@ internal static class Ledgers
         fields["accent_hex"].PlaceholderText = "#3E5240";
         page.Children.Add(Flow.Secondary("One colour for rules and labels on new documents, as six hex digits. Leave it blank for black ink. Issued documents stay as they were."));
         page.Children.Add(fields["bank_details"]);
+        page.Children.Add(Flow.Section("Projects"));
+        page.Children.Add(Flow.Secondary("New projects receive the next code automatically. The sequence counts projects created in each calendar year."));
+        fields["project_code_prefix"] = Flow.Input("Code prefix");
+        fields["project_code_prefix"].PlaceholderText = "PROJ";
+        var codeFormat = Book.Choices(
+            "Code format",
+            ("PROJ / year / number", "prefix_year_number"),
+            ("PROJ-year-number", "prefix_year_dash"),
+            ("Year / number", "year_number"),
+            ("PROJ-number", "prefix_number"),
+            ("Number only (001)", "number_only"),
+            ("Custom pattern", "custom"));
+        fields["project_code_custom"] = Flow.Input("Custom pattern");
+        fields["project_code_custom"].PlaceholderText = "{prefix}/{year}/{no}";
+        var ospOnCreate = Book.Choices(
+            "New project: require .osp",
+            ("Optional on Projects page", "automatic"),
+            ("Required before Create", "choose"));
+        var codeLock = Book.Choices(
+            "Lock project codes",
+            ("On (auto-assign, read-only on Projects)", "on"),
+            ("Off (editable on Projects)", "off"));
+        var codeFormatView = new TextBox { Header = "Code format", IsReadOnly = true };
+        var ospOnCreateView = new TextBox { Header = "New project: require .osp", IsReadOnly = true };
+        var codeLockView = new TextBox { Header = "Lock project codes", IsReadOnly = true };
+        page.Children.Add(Flow.Pair(fields["project_code_prefix"], codeFormatView));
+        page.Children.Add(fields["project_code_custom"]);
+        page.Children.Add(Flow.Pair(ospOnCreateView, codeLockView));
+        page.Children.Add(Flow.Secondary("Custom pattern tokens: {prefix}, {year}, {yy}, {no}. Linking .osp files is on Projects (new and existing). Require .osp only controls whether Create needs a file first."));
+        var projectChoosers = new StackPanel { Spacing = O.Ui.SuiteScale.StackGap, Visibility = Visibility.Collapsed };
+        projectChoosers.Children.Add(codeFormat);
+        projectChoosers.Children.Add(ospOnCreate);
+        projectChoosers.Children.Add(codeLock);
+        page.Children.Add(projectChoosers);
+        void SyncProjectSettingsViews()
+        {
+            codeFormatView.Text = (codeFormat.SelectedItem as ComboBoxItem)?.Content as string ?? "";
+            ospOnCreateView.Text = (ospOnCreate.SelectedItem as ComboBoxItem)?.Content as string ?? "";
+            codeLockView.Text = (codeLock.SelectedItem as ComboBoxItem)?.Content as string ?? "";
+            fields["project_code_custom"].Visibility = Book.Selected(codeFormat, "prefix_year_number") == "custom"
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+        codeFormat.SelectionChanged += (_, _) => SyncProjectSettingsViews();
+        ospOnCreate.SelectionChanged += (_, _) => SyncProjectSettingsViews();
+        codeLock.SelectionChanged += (_, _) => SyncProjectSettingsViews();
         var scheme = Book.Choices("GST scheme", ("Not registered", "none"), ("Composition", "composition"), ("Regular", "regular"));
         var letterhead = Book.Choices("Letterhead", ("Classic", "classic"), ("Minimal", "minimal"));
         // Read-only, the two choices show as plain values; the choosers appear only while editing.
@@ -826,7 +872,7 @@ internal static class Ledgers
         {
             editing = on;
             // A field that cannot be edited is drawn as plain text, not as an input box, so it does not look editable.
-            foreach (var box in fields.Values.Append(schemeView).Append(letterheadView))
+            foreach (var box in fields.Values.Append(schemeView).Append(letterheadView).Append(codeFormatView).Append(ospOnCreateView).Append(codeLockView))
             {
                 box.IsReadOnly = !on;
                 box.IsTabStop = on;
@@ -847,9 +893,16 @@ internal static class Ledgers
                 box.IsHitTestVisible = on;
             }
             choosers.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+            projectChoosers.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
             views.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
             schemeView.Text = (scheme.SelectedItem as ComboBoxItem)?.Content as string ?? "";
             letterheadView.Text = (letterhead.SelectedItem as ComboBoxItem)?.Content as string ?? "";
+            if (!on)
+                SyncProjectSettingsViews();
+            else
+                fields["project_code_custom"].Visibility = Book.Selected(codeFormat, "prefix_year_number") == "custom"
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
             edit.Visibility = !on && shell.CanManage ? Visibility.Visible : Visibility.Collapsed;
             save.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
             cancel.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
@@ -864,6 +917,9 @@ internal static class Ledgers
             var profile = fields.ToDictionary(pair => pair.Key, pair => pair.Value.Text);
             profile["gst_scheme"] = Book.Selected(scheme, "none");
             profile["letterhead_style"] = Book.Selected(letterhead, "classic");
+            profile["project_code_format"] = Book.Selected(codeFormat, "prefix_year_number");
+            profile["project_osp_on_create"] = Book.Selected(ospOnCreate, "automatic");
+            profile["project_code_locked"] = Book.Selected(codeLock, "on");
             _ = shell.Run("Saving profile…", () => shell.Call("company_save_profile", new { profile })).ContinueWith(task =>
                 shell.Window.DispatcherQueue.TryEnqueue(() => { if (task.Result) { form.ClearDirty(); SetEditing(false); } }));
         }
@@ -879,8 +935,12 @@ internal static class Ledgers
                         box.Text = Kit.Str(profile, key);
                     Select(scheme, Kit.Str(profile, "gst_scheme"));
                     Select(letterhead, Kit.Str(profile, "letterhead_style"));
+                    Select(codeFormat, Kit.Str(profile, "project_code_format"));
+                    Select(ospOnCreate, Kit.Str(profile, "project_osp_on_create"));
+                    Select(codeLock, string.IsNullOrWhiteSpace(Kit.Str(profile, "project_code_locked")) ? "on" : Kit.Str(profile, "project_code_locked"));
                     schemeView.Text = (scheme.SelectedItem as ComboBoxItem)?.Content as string ?? "";
                     letterheadView.Text = (letterhead.SelectedItem as ComboBoxItem)?.Content as string ?? "";
+                    SyncProjectSettingsViews();
                     form.Arm();
                 });
             });
@@ -896,7 +956,7 @@ internal static class Ledgers
         page.Children.Insert(3, new StackPanel { Orientation = Orientation.Horizontal, Spacing = O.Ui.SuiteScale.StackGap, Margin = new Thickness(0, O.Ui.SuiteScale.Space1, 0, O.Ui.SuiteScale.Space2), Children = { edit, save, cancel } });
         form.SaveAction = SaveProfile;
         if (shell.CanManage)
-            form.Watch([.. fields.Values, scheme, letterhead]);
+            form.Watch([.. fields.Values, scheme, letterhead, codeFormat, ospOnCreate, codeLock]);
         SetEditing(false);
         LoadProfile();
         LoadLogos();

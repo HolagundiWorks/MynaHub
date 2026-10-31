@@ -55,7 +55,7 @@ When an app is started by OSAS without a valid ticket (it expired, or the person
 | **Company details**: name, address, registrations, bank, letterhead, accent | **O-Studio** | every app, for reports, title plates, letters, invoices |
 | **Users and sign-in** | **O-Studio** | every app |
 | **Project details**: code, name, site, client, service, floors, brief | **O-Studio** | O-CoreOp and O-Draft, for reports, title plates and other documents |
-| Quantities, estimates, billing | O-CoreOp | O-Studio shows the results against the fee proposal (approval/lock in Studio is planned) |
+| Quantities, estimates, billing | O-CoreOp (full data in `.osp`; **abstracts** in company `aqc.project` when linked) | O-Studio dashboards, fee proposals, Approvals |
 | Drawings and take-off geometry | O-Draft (records in the `.osp`) | O-CoreOp reads the take-off |
 | **The AI assistant** | **Studio hosts it** (was OSAS) | it reads the other apps through the suite's own connection |
 

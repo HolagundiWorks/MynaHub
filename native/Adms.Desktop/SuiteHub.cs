@@ -13,7 +13,7 @@ internal static class SuiteHub
 {
     internal static string SuiteDirectory => SuiteWire.LocalDirectory;
 
-    internal static string SuiteFile => SuiteWire.LocalPath("suite.json");
+    internal static string SuiteFile => SuiteJsonHub.SuiteFile;
 
     /// <summary>Known suite apps launched from Studio cards. Discovery is best-effort.</summary>
     internal static IReadOnlyList<SuiteCard> Cards { get; } =
@@ -23,68 +23,14 @@ internal static class SuiteHub
         new("O-Form", "3D / BIM form", "O-Form", ["O-Form"], "O-Form.exe"),
     ];
 
-    internal static string? CompanyPath()
-    {
-        try
-        {
-            if (!File.Exists(SuiteFile))
-                return null;
-            using var doc = JsonDocument.Parse(File.ReadAllText(SuiteFile));
-            return doc.RootElement.TryGetProperty("company_path", out var p)
-                && p.GetString() is { Length: > 0 } path
-                && File.Exists(path)
-                ? path
-                : null;
-        }
-        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
-        {
-            return null;
-        }
-    }
+    internal static string? CompanyPath() => SuiteJsonHub.CompanyPath();
 
     /// <summary>Last signed-in username remembered for the suite (never a password).</summary>
-    internal static string? RememberedUsername()
-    {
-        try
-        {
-            if (!File.Exists(SuiteFile))
-                return null;
-            using var doc = JsonDocument.Parse(File.ReadAllText(SuiteFile));
-            return doc.RootElement.TryGetProperty("username", out var u) && u.GetString() is { Length: > 0 } name
-                ? name
-                : null;
-        }
-        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
-        {
-            return null;
-        }
-    }
+    internal static string? RememberedUsername() => SuiteJsonHub.RememberedUsername();
 
     /// <summary>Records the company Studio has open so sibling apps can follow without a password. Username is optional and never a secret.</summary>
-    internal static void RememberCompany(string path, string? username = null)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-            return;
-        try
-        {
-            Directory.CreateDirectory(SuiteDirectory);
-            var priorUser = username;
-            if (string.IsNullOrWhiteSpace(priorUser))
-                priorUser = RememberedUsername();
-            var payload = JsonSerializer.Serialize(new
-            {
-                company_path = path,
-                username = string.IsNullOrWhiteSpace(priorUser) ? null : priorUser.Trim(),
-                chosen_by = "O-Studio",
-                chosen_at = DateTimeOffset.UtcNow.ToString("O"),
-            });
-            File.WriteAllText(SuiteFile, payload);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // Sibling apps can still be launched with an explicit path+ticket in this session.
-        }
-    }
+    internal static void RememberCompany(string path, string? username = null) =>
+        SuiteJsonHub.RememberCompany(path, username);
 
     internal static string? FindExecutable(SuiteCard card)
     {

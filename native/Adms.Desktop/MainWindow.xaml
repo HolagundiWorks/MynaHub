@@ -90,6 +90,7 @@
                 </MenuFlyoutItem>
                 <MenuFlyoutSeparator/>
                 <MenuFlyoutItem Text="Tasks widget…" AccessKey="T" Click="OpenTasksWidget"/>
+                <MenuFlyoutItem Text="Suite launcher…" Click="OpenCompanyLoginWidget"/>
             </MenuBarItem>
             <MenuBarItem Title="Company" AccessKey="M">
                 <MenuFlyoutItem Text="Company profile" Click="GoCompany">
