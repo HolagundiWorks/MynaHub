@@ -177,8 +177,6 @@
                         </StackPanel>
                         <Button x:Name="ForgotButton" Content="Forgot password? Use recovery code" Click="ShowRecover"/>
                     </StackPanel>
-                        <Button x:Name="ForgotButton" Content="Forgot password? Use recovery code" Click="ShowRecover"/>
-                    </StackPanel>
                 </Border>
             </ScrollViewer>
 
