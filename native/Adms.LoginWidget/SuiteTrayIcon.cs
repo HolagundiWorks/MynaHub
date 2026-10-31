@@ -301,7 +301,7 @@ internal sealed class SuiteTrayIcon : IDisposable
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     static extern nint GetModuleHandle(string? lpModuleName);
 
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    [DllImport("shell32.dll", EntryPoint = "Shell_NotifyIconW", CharSet = CharSet.Unicode)]
     static extern bool ShellNotifyIcon(uint dwMessage, ref NotifyIconData lpData);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
