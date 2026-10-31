@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Osas.Core.Tests", "Osas.Cor
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Adms.LoginWidget", "Adms.LoginWidget\Adms.LoginWidget.csproj", "{B4E8C2A1-9F3D-4E5B-8C1A-2D7F6E903148}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Adms.TestSeed", "Adms.TestSeed\Adms.TestSeed.csproj", "{C1A9D4E2-8B5F-4A3C-9D2E-1F708E904259}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,5 +50,9 @@ Global
 		{B4E8C2A1-9F3D-4E5B-8C1A-2D7F6E903148}.Debug|Any CPU.Build.0 = Debug|x64
 		{B4E8C2A1-9F3D-4E5B-8C1A-2D7F6E903148}.Release|Any CPU.ActiveCfg = Release|x64
 		{B4E8C2A1-9F3D-4E5B-8C1A-2D7F6E903148}.Release|Any CPU.Build.0 = Release|x64
+		{C1A9D4E2-8B5F-4A3C-9D2E-1F708E904259}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1A9D4E2-8B5F-4A3C-9D2E-1F708E904259}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1A9D4E2-8B5F-4A3C-9D2E-1F708E904259}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1A9D4E2-8B5F-4A3C-9D2E-1F708E904259}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
