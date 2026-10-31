@@ -17,7 +17,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 pub const MANIFEST: &str = "osas.project.json";
-pub const FORMAT: &str = "osas-project";
+pub const FORMAT: &str = "osp";
 pub const MANIFEST_VERSION: u32 = 1;
 
 const MINIMAL_DXF: &str = "0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF\n";

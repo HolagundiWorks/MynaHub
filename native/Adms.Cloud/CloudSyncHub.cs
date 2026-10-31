@@ -22,7 +22,7 @@ public static class CloudSyncHub
         var settings = NeonSettings.Load();
         if (!settings.IsComplete)
         {
-            Emit("Neon not configured — add %LocalAppData%\\OSAS\\neon.env (see docs/CLOUD-NEON.md).");
+            Emit("Neon not configured — add %LocalAppData%\\O-Studio\\neon.env (see docs/CLOUD-NEON.md).");
             return false;
         }
 

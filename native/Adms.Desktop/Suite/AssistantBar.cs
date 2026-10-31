@@ -58,11 +58,11 @@ internal sealed class AssistantBar : UserControl
     private Border _panelFrame = null!;
     private readonly List<Border> _frames = [];
     private readonly List<TextBlock> _captions = [];
-    private readonly StackPanel _transcript = new() { Spacing = Hcw.Ui.SuiteScale.StackGap };
+    private readonly StackPanel _transcript = new() { Spacing = O.Ui.SuiteScale.StackGap };
     private readonly ScrollViewer _scroll = new() { MaxHeight = 320, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     private readonly TextBox _question = new() { PlaceholderText = "Ask about your practice", VerticalAlignment = VerticalAlignment.Center, MinWidth = 260 };
     private readonly Button _send = new() { Content = "Ask", VerticalAlignment = VerticalAlignment.Center };
-    private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, FontSize = Hcw.Ui.SuiteScale.FontCaption };
+    private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, FontSize = O.Ui.SuiteScale.FontCaption };
     private Assistant? _assistant;
     private string? _assistantFor;
     private bool _busy;
@@ -73,8 +73,8 @@ internal sealed class AssistantBar : UserControl
         _tools = new StudioToolHost(shell);
         HorizontalAlignment = HorizontalAlignment.Center;
         VerticalAlignment = VerticalAlignment.Bottom;
-        Margin = Hcw.Ui.SuiteAskChrome.BarMargin;
-        MaxWidth = Hcw.Ui.SuiteAskChrome.BarMaxWidth;
+        Margin = O.Ui.SuiteAskChrome.BarMargin;
+        MaxWidth = O.Ui.SuiteAskChrome.BarMaxWidth;
 
         var logo = new Button
         {
@@ -97,7 +97,7 @@ internal sealed class AssistantBar : UserControl
             }
         };
         _send.Click += async (_, _) => await Ask();
-        var bar = new Grid { ColumnSpacing = Hcw.Ui.SuiteScale.StackGap, Padding = new Thickness(Hcw.Ui.SuiteScale.Space2, Hcw.Ui.SuiteScale.Space1, Hcw.Ui.SuiteScale.Space3, Hcw.Ui.SuiteScale.Space1) };
+        var bar = new Grid { ColumnSpacing = O.Ui.SuiteScale.StackGap, Padding = new Thickness(O.Ui.SuiteScale.Space2, O.Ui.SuiteScale.Space1, O.Ui.SuiteScale.Space3, O.Ui.SuiteScale.Space1) };
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -106,7 +106,7 @@ internal sealed class AssistantBar : UserControl
         bar.Children.Add(_question);
         Grid.SetColumn(_send, 2);
         bar.Children.Add(_send);
-        var barFrame = Frame(bar, Hcw.Ui.SuiteAskChrome.BarCornerRadius);
+        var barFrame = Frame(bar, O.Ui.SuiteAskChrome.BarCornerRadius);
 
         var newChat = new Button { Content = "New conversation" };
         newChat.Click += (_, _) =>
@@ -126,7 +126,7 @@ internal sealed class AssistantBar : UserControl
         _scroll.Content = _transcript;
         var controls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { refresh, unload, newChat } };
         AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
-        _panel.Child = new StackPanel { Spacing = Hcw.Ui.SuiteScale.StackGap, Padding = new Thickness(Hcw.Ui.SuiteScale.Space3), Children = { controls, _status, _scroll } };
+        _panel.Child = new StackPanel { Spacing = O.Ui.SuiteScale.StackGap, Padding = new Thickness(O.Ui.SuiteScale.Space3), Children = { controls, _status, _scroll } };
         _panelFrame = Frame(_panel, 12);
         _panelFrame.Margin = new Thickness(0, 0, 0, 8);
         // The whole frame hides, not just what is in it, so no empty outline is left above the bar.
@@ -271,13 +271,13 @@ internal sealed class AssistantBar : UserControl
     private void Say(string who, string text, string? note = null)
     {
         var block = new StackPanel { Spacing = 2 };
-        var whoText = new TextBlock { Text = who, FontSize = Hcw.Ui.SuiteScale.FontCaption, Foreground = Flow.Ink("TextSecondaryBrush") };
+        var whoText = new TextBlock { Text = who, FontSize = O.Ui.SuiteScale.FontCaption, Foreground = Flow.Ink("TextSecondaryBrush") };
         _captions.Add(whoText);
         block.Children.Add(whoText);
         block.Children.Add(new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
         if (note != null)
             {
-                var noteText = new TextBlock { Text = note, FontSize = Hcw.Ui.SuiteScale.FontCaption, TextWrapping = TextWrapping.Wrap, Foreground = Flow.Ink("TextSecondaryBrush") };
+                var noteText = new TextBlock { Text = note, FontSize = O.Ui.SuiteScale.FontCaption, TextWrapping = TextWrapping.Wrap, Foreground = Flow.Ink("TextSecondaryBrush") };
                 _captions.Add(noteText);
                 block.Children.Add(noteText);
             }

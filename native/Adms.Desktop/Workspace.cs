@@ -110,8 +110,8 @@ internal sealed class WorkspaceView : UserControl
         _shell.Navigate = Show;
         Show("dashboard");
         // Colours are looked up when a control is built, so a change of theme builds the layout again and shows the same page.
-        Hcw.Ui.SuiteAppearance.Changed += OnThemeChanged;
-        Unloaded += (_, _) => Hcw.Ui.SuiteAppearance.Changed -= OnThemeChanged;
+        O.Ui.SuiteAppearance.Changed += OnThemeChanged;
+        Unloaded += (_, _) => O.Ui.SuiteAppearance.Changed -= OnThemeChanged;
     }
 
     private AssistantBar _assistant = null!;
@@ -162,7 +162,7 @@ internal sealed class WorkspaceView : UserControl
         sub.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
         sub.HorizontalScrollMode = ScrollMode.Auto;
         sub.VerticalScrollMode = ScrollMode.Disabled;
-        Hcw.Ui.SuiteLandmarks.Navigation(sub, "Section menu");
+        O.Ui.SuiteLandmarks.Navigation(sub, "Section menu");
         // A line under the second row separates it from the page, and the page keeps room above (breathing space) and below (for the assistant bar).
         // Arrows at either end appear only while the row is wider than the window, and move it by most of a screen.
         var more = new Grid();
@@ -171,7 +171,7 @@ internal sealed class WorkspaceView : UserControl
         more.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         Button Arrow(string glyph, int dir, string name)
         {
-            var b = new Button { Content = glyph, Padding = new Thickness(8, 0, 8, 0), Height = Hcw.Ui.SuiteScale.TabHeight, MinWidth = 0, VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
+            var b = new Button { Content = glyph, Padding = new Thickness(8, 0, 8, 0), Height = O.Ui.SuiteScale.TabHeight, MinWidth = 0, VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
             Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(b, name);
             b.Click += (_, _) => sub.ChangeView(Math.Max(0, sub.HorizontalOffset + dir * sub.ViewportWidth * 0.8), null, null);
             return b;
@@ -192,9 +192,9 @@ internal sealed class WorkspaceView : UserControl
         sub.SizeChanged += (_, _) => Cue();
         var subFrame = new Border { Child = more, BorderBrush = Flow.Ink("BorderSubtleBrush"), BorderThickness = new Thickness(0, 0, 0, 1) };
         body.Children.Add(subFrame);
-        _host.Margin = new Thickness(0, Hcw.Ui.SuiteScale.Space3, 0, 64);
+        _host.Margin = new Thickness(0, O.Ui.SuiteScale.Space3, 0, 64);
         Grid.SetRow(_host, 1);
-        Hcw.Ui.SuiteLandmarks.Main(_host, "Page");
+        O.Ui.SuiteLandmarks.Main(_host, "Page");
         body.Children.Add(_host);
         Grid.SetRow(body, 1);
         root.Children.Add(body);
@@ -204,14 +204,14 @@ internal sealed class WorkspaceView : UserControl
         Content = root;
     }
 
-    internal void WireBottomBar(Hcw.Ui.Controls.SuiteBottomStatusBar bar)
+    internal void WireBottomBar(O.Ui.Controls.SuiteBottomStatusBar bar)
     {
         ClearBottomBar(bar);
         foreach (var card in SuiteHub.Cards)
             bar.Left.Children.Add(SuiteAppButton(card));
     }
 
-    internal void ClearBottomBar(Hcw.Ui.Controls.SuiteBottomStatusBar bar)
+    internal void ClearBottomBar(O.Ui.Controls.SuiteBottomStatusBar bar)
     {
         for (var i = bar.Left.Children.Count - 1; i >= 1; i--)
             bar.Left.Children.RemoveAt(i);
@@ -233,13 +233,13 @@ internal sealed class WorkspaceView : UserControl
             {
                 Width = 20,
                 Height = 20,
-                CornerRadius = new CornerRadius(Hcw.Ui.SuiteScale.CornerControl.TopLeft),
+                CornerRadius = new CornerRadius(O.Ui.SuiteScale.CornerControl.TopLeft),
                 Background = Flow.Ink("SelectedFillBrush"),
                 Opacity = installed ? 1 : 0.4,
-                Child = new TextBlock { Text = card.Title[2..3], FontSize = Hcw.Ui.SuiteScale.FontCaption, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+                Child = new TextBlock { Text = card.Title[2..3], FontSize = O.Ui.SuiteScale.FontCaption, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
             };
         }
-        var button = new Button { Content = face, MinHeight = Hcw.Ui.SuiteScale.ControlMinHeight, MinWidth = Hcw.Ui.SuiteScale.ControlMinHeight, Padding = new Thickness(Hcw.Ui.SuiteScale.Space2, 2, Hcw.Ui.SuiteScale.Space2, 2), IsEnabled = installed };
+        var button = new Button { Content = face, MinHeight = O.Ui.SuiteScale.ControlMinHeight, MinWidth = O.Ui.SuiteScale.ControlMinHeight, Padding = new Thickness(O.Ui.SuiteScale.Space2, 2, O.Ui.SuiteScale.Space2, 2), IsEnabled = installed };
         ToolTipService.SetToolTip(button, installed ? $"Open {card.Title} on this company, signed in. {card.Blurb}." : $"{card.Title} is not installed on this computer.");
         AutomationProperties.SetName(button, installed ? $"Open {card.Title}" : $"{card.Title} (not installed)");
         var target = card;
@@ -461,9 +461,9 @@ internal sealed class WorkspaceView : UserControl
         Content = text,
         Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
         BorderThickness = new Thickness(0),
-        Padding = new Thickness(Hcw.Ui.SuiteScale.Space3, Hcw.Ui.SuiteScale.Space1 / 2, Hcw.Ui.SuiteScale.Space3, Hcw.Ui.SuiteScale.Space1 / 2),
+        Padding = new Thickness(O.Ui.SuiteScale.Space3, O.Ui.SuiteScale.Space1 / 2, O.Ui.SuiteScale.Space3, O.Ui.SuiteScale.Space1 / 2),
         FontSize = size,
-        MinHeight = Hcw.Ui.SuiteScale.TabHeight,
+        MinHeight = O.Ui.SuiteScale.TabHeight,
         CornerRadius = new CornerRadius(0),
     };
 
@@ -474,7 +474,7 @@ internal sealed class WorkspaceView : UserControl
         foreach (var tab in _tabs)
         {
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var button = TabButton(tab.Title, Hcw.Ui.SuiteScale.FontSection);
+            var button = TabButton(tab.Title, O.Ui.SuiteScale.FontSection);
             AutomationProperties.SetName(button, tab.Title);
             var captured = tab;
             button.Click += (_, _) =>
@@ -493,7 +493,7 @@ internal sealed class WorkspaceView : UserControl
         var fill = new Border { BorderBrush = Flow.Ink("BorderSubtleBrush"), BorderThickness = new Thickness(0, 0, 0, 1) };
         Grid.SetColumn(fill, row.ColumnDefinitions.Count - 1);
         row.Children.Add(fill);
-        Hcw.Ui.SuiteLandmarks.Navigation(row, "Main menu");
+        O.Ui.SuiteLandmarks.Navigation(row, "Main menu");
         return row;
     }
 
@@ -512,7 +512,7 @@ internal sealed class WorkspaceView : UserControl
             box.Background = on ? Flow.Ink("SurfaceBackgroundBrush") : new SolidColorBrush(Microsoft.UI.Colors.Transparent);
             box.BorderBrush = line;
             box.BorderThickness = on ? new Thickness(1, 1, 1, 0) : new Thickness(0, 0, 0, 1);
-            box.CornerRadius = on ? new CornerRadius(Hcw.Ui.SuiteScale.CornerControl.TopLeft, Hcw.Ui.SuiteScale.CornerControl.TopLeft, 0, 0) : new CornerRadius(0);
+            box.CornerRadius = on ? new CornerRadius(O.Ui.SuiteScale.CornerControl.TopLeft, O.Ui.SuiteScale.CornerControl.TopLeft, 0, 0) : new CornerRadius(0);
             button.FontWeight = on ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal;
             AutomationProperties.SetItemStatus(button, on ? "selected" : "");
         }
@@ -525,12 +525,12 @@ internal sealed class WorkspaceView : UserControl
             {
                 // A group is told apart from the tabs by a rule before it and a small capitalised name, so its name is not read as a tab.
                 if (_subRow.Children.Count > 0)
-                    _subRow.Children.Add(new Border { Width = 1, Height = 16, Margin = new Thickness(Hcw.Ui.SuiteScale.Space2, 0, Hcw.Ui.SuiteScale.Space2, 0), VerticalAlignment = VerticalAlignment.Center, Background = Flow.Ink("BorderSubtleBrush") });
-                _subRow.Children.Add(new TextBlock { Text = group.Title.ToUpperInvariant(), FontSize = Hcw.Ui.SuiteScale.FontCaption - 1, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, CharacterSpacing = 60, Margin = new Thickness(Hcw.Ui.SuiteScale.Space1, 0, Hcw.Ui.SuiteScale.Space2, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Flow.Ink("TextSecondaryBrush") });
+                    _subRow.Children.Add(new Border { Width = 1, Height = 16, Margin = new Thickness(O.Ui.SuiteScale.Space2, 0, O.Ui.SuiteScale.Space2, 0), VerticalAlignment = VerticalAlignment.Center, Background = Flow.Ink("BorderSubtleBrush") });
+                _subRow.Children.Add(new TextBlock { Text = group.Title.ToUpperInvariant(), FontSize = O.Ui.SuiteScale.FontCaption - 1, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, CharacterSpacing = 60, Margin = new Thickness(O.Ui.SuiteScale.Space1, 0, O.Ui.SuiteScale.Space2, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Flow.Ink("TextSecondaryBrush") });
             }
             foreach (var entry in group.Items)
             {
-                var button = TabButton(entry.Label, Hcw.Ui.SuiteScale.FontBody);
+                var button = TabButton(entry.Label, O.Ui.SuiteScale.FontBody);
                 AutomationProperties.SetName(button, entry.Label);
                 var id = entry.Id;
                 button.Click += (_, _) => Show(id);

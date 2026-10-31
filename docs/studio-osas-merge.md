@@ -10,7 +10,7 @@
 | Surviving repository | This one (`HolagundiWorks/O-STUDIO` / `holagundiworks/o-studio`) |
 | User-facing shell | **O-Studio** WinUI — company, admin password, users, firm, suite cards, approvals, assistant |
 | Source of truth | Company file via `office-core` / `office-ffi` (`office.dll`) |
-| Suite brand | **OSAS** remains the suite name; env vars and `suite.json` keep the `OSAS_*` contract |
+| Suite brand | User-facing hub is **O-Studio**; wire env vars keep the `OSAS_*` contract |
 | Secondary OSAS.exe | **Deprecated** — see [osas-deprecation.md](osas-deprecation.md) |
 
 ## Implemented vs proposed

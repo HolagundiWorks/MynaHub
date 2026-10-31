@@ -16,7 +16,7 @@ internal sealed class SubcontractsPage : UserControl, ILiveRefresh
     ];
 
     private readonly AppShell _shell;
-    private readonly StackPanel _list = new() { Spacing = Hcw.Ui.SuiteScale.StackGap };
+    private readonly StackPanel _list = new() { Spacing = O.Ui.SuiteScale.StackGap };
     private readonly ComboBox _project = new() { Header = "Project", HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly TextBox _consultant = Flow.Input("Consultant");
     private readonly TextBox _work = Flow.Input("Work");
@@ -42,8 +42,8 @@ internal sealed class SubcontractsPage : UserControl, ILiveRefresh
 
         var page = new StackPanel
         {
-            Spacing = Hcw.Ui.SuiteScale.SectionGap,
-            Margin = Hcw.Ui.SuiteScale.PageMargin,
+            Spacing = O.Ui.SuiteScale.SectionGap,
+            Margin = O.Ui.SuiteScale.PageMargin,
         };
         page.Children.Add(Flow.SheetMark("03", "Billing", "Subcontracts"));
         page.Children.Add(Flow.Heading("Consultancy payouts"));
@@ -52,7 +52,7 @@ internal sealed class SubcontractsPage : UserControl, ILiveRefresh
 
         if (shell.CanEdit)
         {
-            var form = new StackPanel { Spacing = Hcw.Ui.SuiteScale.StackGap };
+            var form = new StackPanel { Spacing = O.Ui.SuiteScale.StackGap };
             form.Children.Add(Flow.Section("Record"));
             form.Children.Add(Flow.Pair(_project, _consultant));
             form.Children.Add(Flow.Pair(_work, _amount));
@@ -123,7 +123,7 @@ internal sealed class SubcontractsPage : UserControl, ILiveRefresh
             return;
         foreach (var row in rows.EnumerateArray())
         {
-            var line = new Grid { ColumnSpacing = Hcw.Ui.SuiteScale.FieldGap };
+            var line = new Grid { ColumnSpacing = O.Ui.SuiteScale.FieldGap };
             line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.4, GridUnitType.Star) });
             line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.6, GridUnitType.Star) });
             line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
@@ -163,7 +163,7 @@ internal sealed class SubcontractsPage : UserControl, ILiveRefresh
             line.Children.Add(status);
             if (_shell.CanEdit && Kit.Id(row) is long id)
             {
-                var edit = new Button { Content = "Edit", MinHeight = Hcw.Ui.SuiteScale.ControlMinHeight };
+                var edit = new Button { Content = "Edit", MinHeight = O.Ui.SuiteScale.ControlMinHeight };
                 edit.Click += (_, _) => Fill(row);
                 Grid.SetColumn(edit, 4);
                 line.Children.Add(edit);

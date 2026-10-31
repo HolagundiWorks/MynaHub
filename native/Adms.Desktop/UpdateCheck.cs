@@ -5,17 +5,19 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Osas.Core;
+
 namespace Adms.Desktop;
 
 /// <summary>
-/// Check-only stub against the shared OSAS update-channel JSON
-/// (<c>OSAS_UPDATE_CHANNEL_URL</c>). Does not download or install updates.
+/// Check-only stub against the shared suite update-channel JSON
+/// (<c>OSTUDIO_UPDATE_CHANNEL_URL</c>). Does not download or install updates.
 /// </summary>
 internal static class UpdateCheck
 {
     public const string ProductId = "o-studio";
     public const string ProductVersion = "0.1.0";
-    public const string EnvUrl = "OSAS_UPDATE_CHANNEL_URL";
+    public const string EnvUrl = SuiteWire.EnvUpdateChannel;
 
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
 
@@ -28,7 +30,7 @@ internal static class UpdateCheck
         if (string.IsNullOrWhiteSpace(url))
         {
             return new Result(false, false, currentVersion, null,
-                "Update checks are not configured. Set OSAS_UPDATE_CHANNEL_URL when a channel JSON is published.");
+                "Update checks are not configured. Set OSTUDIO_UPDATE_CHANNEL_URL when a channel JSON is published.");
         }
 
         if (!Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri) ||

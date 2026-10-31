@@ -1,20 +1,19 @@
 using System.Diagnostics;
 using System.Text.Json;
 using Adms.Interop;
+using Osas.Core;
 
 namespace Adms.Desktop;
 
 /// <summary>
 /// Studio as the suite hub: remembers the chosen company for sibling apps and launches them
-/// with <c>OSAS_COMPANY</c> + a one-time <c>OSAS_TICKET</c>. Path and env names stay OSAS for
-/// compatibility with CoreOp, Draft and Form.
+/// with <c>OSTUDIO_COMPANY</c> + a one-time <c>OSTUDIO_TICKET</c>.
 /// </summary>
 internal static class SuiteHub
 {
-    internal static string SuiteDirectory =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OSAS");
+    internal static string SuiteDirectory => SuiteWire.LocalDirectory;
 
-    internal static string SuiteFile => Path.Combine(SuiteDirectory, "suite.json");
+    internal static string SuiteFile => SuiteWire.LocalPath("suite.json");
 
     /// <summary>Known suite apps launched from Studio cards. Discovery is best-effort.</summary>
     internal static IReadOnlyList<SuiteCard> Cards { get; } =
@@ -142,11 +141,11 @@ internal static class SuiteHub
             UseShellExecute = false,
             WorkingDirectory = Path.GetDirectoryName(exe) ?? Environment.CurrentDirectory,
         };
-        start.Environment["OSAS_COMPANY"] = companyPath;
-        start.Environment["OSAS_TICKET"] = secret;
-        start.Environment["OSAS_AI_ROLE"] = "client";
-        start.Environment["OSAS_AI_HOST"] = "127.0.0.1";
-        start.Environment["OSAS_AI_PORT"] = "8742";
+        start.Environment[SuiteWire.EnvCompany] = companyPath;
+        start.Environment[SuiteWire.EnvTicket] = secret;
+        start.Environment[SuiteWire.EnvAiRole] = "client";
+        start.Environment[SuiteWire.EnvAiHost] = "127.0.0.1";
+        start.Environment[SuiteWire.EnvAiPort] = "8742";
         Process.Start(start);
     }
 }

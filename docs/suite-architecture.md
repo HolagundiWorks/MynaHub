@@ -14,7 +14,7 @@ The suite is **OSAS, the Open Source Architecture Suit**. Some code identifiers 
 | **O-CoreOp** | Quantities, estimates, billing | Blue | `HolagundiWorks/O-COREOP` |
 | **O-Draft** | Drafting | Black | `HolagundiWorks/O-DRAFT` |
 
-The shared design is the public `HolagundiWorks/O-UI` library (assembly `Hcw.Ui`, MIT licensed; the marks in its brand folder have their own notice), and the folder has the marks for all three apps in their colours. O-Studio and O-CoreOp use the same responsive layout: a pane that collapses below 900 px, and pages that wrap down to 520 px. The accessibility audit is `docs/wcag-audit.md`.
+The shared design is the public `HolagundiWorks/O-UI` library (assembly `O.Ui`, MIT licensed; the marks in its brand folder have their own notice), and the folder has the marks for all three apps in their colours. O-Studio and O-CoreOp use the same responsive layout: a pane that collapses below 900 px, and pages that wrap down to 520 px. The accessibility audit is `docs/wcag-audit.md`.
 
 ## 1. The products today (verified)
 
@@ -23,7 +23,7 @@ The shared design is the public `HolagundiWorks/O-UI` library (assembly `Hcw.Ui`
 | **O-Studio** | `HolagundiWorks/O-STUDIO` | Offline office app: clients, projects, letters, invoices, accounts, bank import, tax, staff, library, proposals, meetings, attendance, site records, permits, 26AS check. One `.adms` company file | Rust engine (cdylib) + WinUI 3 shell over a C interface | AGPL-3.0, or commercial |
 | **O-Draft** | `HolagundiWorks/O-DRAFT` | 2D CAD in Rust: drafting, DXF and DWG, layouts, plotting, architecture tools, take-off into `.osp`, an offline local-model agent (Qwen3), an MCP server, a JSON control channel | Rust, wgpu, WinUI 3 shell (`aad-host.dll`) | MIT or Apache-2.0 |
 | **O-CoreOp** | `HolagundiWorks/O-COREOP` | Quantity take-off, BOQ, rate books, DSR estimates, bar bending schedules, purchase orders, running-account billing, scheduling, correspondence, stores and HR, an opt-in AI assistant, a CAD bridge importer | C# WinUI 3, C++ `bbs_engine.dll` | AGPL-3.0, or commercial |
-| **O-UI** | `HolagundiWorks/O-UI` | Shared WinUI themes, marks, SuiteShell chrome (`Hcw.Ui`) | .NET 8 class library | MIT (marks reserved) |
+| **O-UI** | `HolagundiWorks/O-UI` | Shared WinUI themes, marks, SuiteShell chrome (`O.Ui`) | .NET 8 class library | MIT (marks reserved) |
 
 OSS suite apps do **not** ship a portal connector. A hosted practice portal (if any) will live in separate forks later — not in these open-source trees.
 
@@ -123,6 +123,6 @@ Licence boundary: O-Studio and O-CoreOp are AGPL-3.0 or commercial; O-Draft is M
 
 1. ~~Portal vs company-file SoR~~ — company file (2026-10-28).
 2. The bridge file must carry `ProjectRef` for offline sharing; does O-Studio also need a dedicated export?
-3. ~~What licence does O-Studio carry?~~ **Settled:** O-Studio is AGPL-3.0 or commercial (same dual path as O-CoreOp; see `LICENSING.md`). Shared design `O-UI` / `Hcw.Ui` remains MIT; marks reserved.
+3. ~~What licence does O-Studio carry?~~ **Settled:** O-Studio is AGPL-3.0 or commercial (same dual path as O-CoreOp; see `LICENSING.md`). Shared design `O-UI` / `O.Ui` remains MIT; marks reserved.
 4. Is the suite host a separate small app, or part of O-Studio?
 5. What is a reusable "detail" record, precisely?

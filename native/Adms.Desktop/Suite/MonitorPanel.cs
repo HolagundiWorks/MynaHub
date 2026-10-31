@@ -1,4 +1,4 @@
-using Hcw.Ui.Controls;
+using O.Ui.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
@@ -27,7 +27,7 @@ public sealed class MonitorPanel : StackPanel
     public MonitorPanel(Window window)
     {
         _window = window;
-        Spacing = Hcw.Ui.SuiteScale.CardGap;
+        Spacing = O.Ui.SuiteScale.CardGap;
         var refresh = new Button { Content = "Look now" };
         refresh.Click += async (_, _) => await Look();
         Children.Add(_problem);
@@ -44,7 +44,7 @@ public sealed class MonitorPanel : StackPanel
         inside.Children.Add(_tables);
         inside.Children.Add(_stamp);
         inside.Children.Add(refresh);
-        Details = new Border { Style = Resource<Style>("SuiteCardStyle"), Width = 380, Margin = new Thickness(0, 0, Hcw.Ui.SuiteScale.CardGap, Hcw.Ui.SuiteScale.CardGap), Child = inside };
+        Details = new Border { Style = Resource<Style>("SuiteCardStyle"), Width = 380, Margin = new Thickness(0, 0, O.Ui.SuiteScale.CardGap, O.Ui.SuiteScale.CardGap), Child = inside };
 
         Say("No company file is open.");
         _timer.Tick += async (_, _) => await Look();
@@ -168,7 +168,7 @@ public sealed class MonitorPanel : StackPanel
         stack.Children.Add(new TextBlock { Text = label, Style = Resource<Style>("CaptionStyle") });
         stack.Children.Add(new TextBlock { Text = value, Style = Resource<Style>("MetricValueStyle") });
         stack.Children.Add(new TextBlock { Text = note, Style = Resource<Style>("CaptionStyle"), TextWrapping = TextWrapping.Wrap });
-        var card = new Border { Style = Resource<Style>("SuiteCardStyle"), Width = 250, MinHeight = 92, Margin = new Thickness(0, 0, Hcw.Ui.SuiteScale.CardGap, Hcw.Ui.SuiteScale.CardGap), Child = stack };
+        var card = new Border { Style = Resource<Style>("SuiteCardStyle"), Width = 250, MinHeight = 92, Margin = new Thickness(0, 0, O.Ui.SuiteScale.CardGap, O.Ui.SuiteScale.CardGap), Child = stack };
         AutomationProperties.SetName(card, $"{label}: {value}. {note}");
         _tiles.Children.Add(card);
     }

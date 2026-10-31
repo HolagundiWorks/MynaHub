@@ -210,7 +210,7 @@ internal sealed class WordRibbon : UserControl
 
     private static Button Icon(string glyph, string name, Action action, List<Control> bucket)
     {
-        var button = Command(new FontIcon { Glyph = glyph, FontSize = Hcw.Ui.SuiteIconSize.Nav, FontFamily = new FontFamily("Segoe MDL2 Assets") }, name, action, bucket);
+        var button = Command(new FontIcon { Glyph = glyph, FontSize = O.Ui.SuiteIconSize.Nav, FontFamily = new FontFamily("Segoe MDL2 Assets") }, name, action, bucket);
         button.Width = 32;
         button.Height = 32;
         return button;

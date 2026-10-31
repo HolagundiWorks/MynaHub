@@ -1,3 +1,5 @@
+using Osas.Core;
+
 namespace Adms.Cloud;
 
 /// <summary>Neon credentials for O-Studio only (see docs/CLOUD-NEON.md). Never pass to O-Draft or O-CoreOp.</summary>
@@ -18,16 +20,13 @@ public sealed class NeonSettings
         && !string.IsNullOrWhiteSpace(S3AccessKeyId)
         && !string.IsNullOrWhiteSpace(S3SecretAccessKey);
 
-    /// <summary>Load from environment and optional <c>OSAS_NEON_ENV_FILE</c> (KEY=VALUE lines).</summary>
+    /// <summary>Load from environment and optional <c>OSTUDIO_NEON_ENV_FILE</c> (KEY=VALUE lines).</summary>
     public static NeonSettings Load()
     {
-        var path = Environment.GetEnvironmentVariable("OSAS_NEON_ENV_FILE");
+        var path = Environment.GetEnvironmentVariable(SuiteWire.EnvNeonEnvFile);
         if (string.IsNullOrWhiteSpace(path))
         {
-            var local = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "OSAS",
-                "neon.env");
+            var local = SuiteWire.LocalPath("neon.env");
             if (File.Exists(local))
                 path = local;
         }

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Adms.Cloud;
 using Adms.Interop;
+using Osas.Core;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -48,22 +49,22 @@ public sealed partial class MainWindow : Window
     private IReadOnlyList<UIElement> _printPages = [];
     private string _printJob = "O-Studio";
     private readonly ProgressRing _busyRing = new() { Width = 20, Height = 20, IsActive = false };
-    private readonly Hcw.Ui.Controls.SuiteThemeSwitch _suiteTheme = new();
+    private readonly O.Ui.Controls.SuiteThemeSwitch _suiteTheme = new();
 
     public MainWindow()
     {
         InitializeComponent();
-        Hcw.Ui.SuiteMotion.RespectSystemPreference();
+        O.Ui.SuiteMotion.RespectSystemPreference();
         StatusStrip.Left.Children.Add(_busyRing);
         _suiteTheme.Attach(this);
         StatusStrip.Right.Children.Add(_suiteTheme);
         StatusStrip.Right.Children.Add(new TextBlock
         {
             Text = "Human Centric Works",
-            FontSize = Hcw.Ui.SuiteScale.FontCaption,
+            FontSize = O.Ui.SuiteScale.FontCaption,
             VerticalAlignment = VerticalAlignment.Center,
         });
-        Hcw.Ui.SuiteAppearance.Changed += _ => DispatcherQueue.TryEnqueue(() =>
+        O.Ui.SuiteAppearance.Changed += _ => DispatcherQueue.TryEnqueue(() =>
         {
             RestoreTheme();
             StatusStrip.Retheme();
@@ -142,14 +143,14 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Another suite process (or an older OSAS launcher) may start Studio with OSAS_COMPANY and a one-time
-    /// OSAS_TICKET. The file opens through the ordinary path; an expired ticket leaves the sign-in page showing.
+    /// A sibling app may start Studio with <c>OSTUDIO_COMPANY</c> and a one-time
+    /// <c>OSTUDIO_TICKET</c>. The file opens through the ordinary path; an expired ticket leaves the sign-in page showing.
     /// </summary>
     private async Task StartFromSuiteAsync()
     {
-        var path = Environment.GetEnvironmentVariable("OSAS_COMPANY");
-        var ticket = Environment.GetEnvironmentVariable("OSAS_TICKET");
-        Environment.SetEnvironmentVariable("OSAS_TICKET", null);
+        var path = Environment.GetEnvironmentVariable(SuiteWire.EnvCompany);
+        var ticket = Environment.GetEnvironmentVariable(SuiteWire.EnvTicket);
+        Environment.SetEnvironmentVariable(SuiteWire.EnvTicket, null);
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             return;
         for (var i = 0; i < 100 && (_session == null || _busy); i++)

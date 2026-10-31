@@ -42,7 +42,7 @@ public sealed class OspSyncCoordinator : IAsyncDisposable
     {
         if (!_settings.IsComplete)
         {
-            _log("Neon is not configured. Copy docs/CLOUD-NEON.md settings into %LocalAppData%\\OSAS\\neon.env");
+            _log("Neon is not configured. Copy docs/CLOUD-NEON.md settings into %LocalAppData%\\O-Studio\\neon.env");
             return false;
         }
         await DisposeClientAsync().ConfigureAwait(false);

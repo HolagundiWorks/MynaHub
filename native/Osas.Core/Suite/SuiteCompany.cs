@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Osas.Core;
 
 namespace Osas.Core.Suite;
 
@@ -257,11 +258,11 @@ public sealed class SuiteSettings
     /// <summary>The environment an app is started with: where the company file is, and the ticket that signs it in.</summary>
     public static IReadOnlyDictionary<string, string> AppEnvironment(string companyPath, AppTicket? ticket)
     {
-        var env = new Dictionary<string, string> { ["OSAS_COMPANY"] = companyPath };
+        var env = new Dictionary<string, string> { [SuiteWire.EnvCompany] = companyPath };
         if (ticket != null)
         {
-            env["OSAS_TICKET"] = ticket.Ticket;
-            env["OSAS_USER"] = ticket.Username;
+            env[SuiteWire.EnvTicket] = ticket.Ticket;
+            env[SuiteWire.EnvUser] = ticket.Username;
         }
         return env;
     }

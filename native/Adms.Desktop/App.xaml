@@ -9,29 +9,29 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <controls:XamlControlsResources />
-                <ResourceDictionary Source="ms-appx:///Hcw.Ui/Themes/SuiteColors.xaml"/>
-                <ResourceDictionary Source="ms-appx:///Hcw.Ui/Themes/SuiteAccent.Orange.xaml"/>
-                <ResourceDictionary Source="ms-appx:///Hcw.Ui/Themes/SuiteStyles.xaml"/>
+                <ResourceDictionary Source="ms-appx:///O.Ui/Themes/SuiteColors.xaml"/>
+                <ResourceDictionary Source="ms-appx:///O.Ui/Themes/SuiteAccent.Orange.xaml"/>
+                <ResourceDictionary Source="ms-appx:///O.Ui/Themes/SuiteStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
                     <ResourceDictionary.MergedDictionaries>
-                        <ResourceDictionary Source="ms-appx:///Hcw.Ui/Themes/SuiteLight.Orange.xaml"/>
+                        <ResourceDictionary Source="ms-appx:///O.Ui/Themes/SuiteLight.Orange.xaml"/>
                     </ResourceDictionary.MergedDictionaries>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Default">
                     <ResourceDictionary.MergedDictionaries>
-                        <ResourceDictionary Source="ms-appx:///Hcw.Ui/Themes/SuiteDark.Orange.xaml"/>
+                        <ResourceDictionary Source="ms-appx:///O.Ui/Themes/SuiteDark.Orange.xaml"/>
                     </ResourceDictionary.MergedDictionaries>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <ResourceDictionary.MergedDictionaries>
-                        <ResourceDictionary Source="ms-appx:///Hcw.Ui/Themes/SuiteDark.Orange.xaml"/>
+                        <ResourceDictionary Source="ms-appx:///O.Ui/Themes/SuiteDark.Orange.xaml"/>
                     </ResourceDictionary.MergedDictionaries>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
                     <ResourceDictionary.MergedDictionaries>
-                        <ResourceDictionary Source="ms-appx:///Hcw.Ui/Themes/SuiteHighContrast.xaml"/>
+                        <ResourceDictionary Source="ms-appx:///O.Ui/Themes/SuiteHighContrast.xaml"/>
                     </ResourceDictionary.MergedDictionaries>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>

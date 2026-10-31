@@ -23,7 +23,7 @@ Colours are unchanged: both already share the suite palette (ink `#1A2332` on `#
 
 ## What changed in o-ui
 
-`Hcw.Ui/Themes/SuiteStyles.xaml` holds the values (the scale keys and the default styles for buttons, text boxes, password boxes, combo boxes, cards, chips and the primary button), and `SuiteScale.cs` reads them with the same fallbacks. New keys: `Space1` to `Space6`, `SuiteMenuBarHeight`, `SuiteMenuItemHeight`, `SuiteTabHeight`, `SuiteStatusBarHeight`, `SuitePanelHeaderHeight`, `SuitePropertyRowHeight`, `SuiteControlHeightCompact`, `SuiteFontCaption`, `SuiteFontIcon`, `SuiteFontDisplay`. `SuiteThemeSwitch` now takes its height from the scale.
+`O.Ui/Themes/SuiteStyles.xaml` holds the values (the scale keys and the default styles for buttons, text boxes, password boxes, combo boxes, cards, chips and the primary button), and `SuiteScale.cs` reads them with the same fallbacks. New keys: `Space1` to `Space6`, `SuiteMenuBarHeight`, `SuiteMenuItemHeight`, `SuiteTabHeight`, `SuiteStatusBarHeight`, `SuitePanelHeaderHeight`, `SuitePropertyRowHeight`, `SuiteControlHeightCompact`, `SuiteFontCaption`, `SuiteFontIcon`, `SuiteFontDisplay`. `SuiteThemeSwitch` now takes its height from the scale.
 
 ## What changed in O-Studio
 

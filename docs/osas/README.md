@@ -54,7 +54,7 @@ Not built: changing records through the assistant (it would need a preview, an a
 powershell -ExecutionPolicy Bypass -File installerinstall.ps1            # install for the current user
 powershell -ExecutionPolicy Bypass -File installerinstall.ps1 -Uninstall # remove it
 ```
-It publishes self-contained (no .NET or Windows App SDK needed on the computer), installs to `%LOCALAPPDATA%ProgramsOSAS`, adds a Start menu shortcut and an entry in Settings > Apps, and needs no administrator rights. Your saved choices in `%LOCALAPPDATA%OSAS` are kept when you uninstall. `hcw-ui` must be checked out beside this repository.
+It publishes self-contained (no .NET or Windows App SDK needed on the computer), installs to `%LOCALAPPDATA%ProgramsOSAS`, adds a Start menu shortcut and an entry in Settings > Apps, and needs no administrator rights. Your saved choices in `%LOCALAPPDATA%OSAS` are kept when you uninstall. `o-ui` must be checked out beside this repository.
 
 ## How an app is found
 In this order, for each app: a program you chose with **Find it…** (kept in `%LOCALAPPDATA%\OSAS\paths.json`); the folder its installer registered; the usual install folder (`%LOCALAPPDATA%\Programs\O-Studio`, `O-CoreOp`, `O-Draft`, and the earlier names); and the `PATH`. A chosen path must be an absolute path to an `.exe` that exists.
@@ -70,7 +70,7 @@ In this order, for each app: a program you chose with **Find it…** (kept in `%
 |---|---|
 | `Osas.Core` | Finding the apps and the saved paths, and the company file monitor (`Monitor/`). No user interface, so it is tested on its own |
 | `Osas.Core.Tests` | Tests for the monitor, assistant settings, and company details, tickets and settings against the real engine (set `OFFICE_DLL_DIR` to the folder with `office.dll`): `dotnet test Osas.Core.Tests` |
-| `Osas.Launcher` | The WinUI 3 window. Uses the shared design in `hcw-ui` (check it out beside this repository) |
+| `Osas.Launcher` | The WinUI 3 window. Uses the shared design in `o-ui` (check it out beside this repository) |
 
 ```powershell
 dotnet build Osas.Launcher -o Osas.Launcher\bin\Next
@@ -82,7 +82,7 @@ The window was checked with UI Automation: every button has a name, and an app t
 An installer that puts the launcher and the apps in place, a check for newer versions, opening a company file straight from the launcher, and a way to tell when an app is already running.
 
 ## Licence
-The launcher is Human Centric Works software. It uses `hcw-ui`, which is MIT licensed; the marks in that repository have a separate notice (`hcw-ui/brand/LICENSE.md`). The licence of this repository has not been chosen.
+The launcher is Human Centric Works software. It uses `o-ui`, which is MIT licensed; the marks in that repository have a separate notice (`o-ui/brand/LICENSE.md`). The licence of this repository has not been chosen.
 
 ---
 **Moved into O-Studio.** OSAS is no longer a separate program or repository. Its library is `native/Osas.Core` (tests in `native/Osas.Core.Tests`) and its screens are the **Suite, users and AI** page of O-Studio (`native/Adms.Desktop/Suite/`). The installer files kept here are for reference until O-Studio's installer takes them over.
