@@ -43,11 +43,27 @@ internal sealed class SuiteStatus
             Ai = ai;
             Database = DescribeDatabase();
             Cloud = DescribeCloud();
+            WriteLog();
             Changed?.Invoke();
         }
         finally
         {
             Interlocked.Exchange(ref _running, 0);
+        }
+    }
+
+    /// <summary>The latest status as plain text, <c>launcher-status.txt</c> in the suite's local folder, so it can be read without opening the menu. It is overwritten each time.</summary>
+    void WriteLog()
+    {
+        try
+        {
+            var path = SuiteWire.LocalPath("launcher-status.txt");
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}{Environment.NewLine}AI agent: {Ai}{Environment.NewLine}Database: {Database}{Environment.NewLine}Cloud sync: {Cloud}{Environment.NewLine}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // the log is a convenience; never let it disturb the launcher
         }
     }
 

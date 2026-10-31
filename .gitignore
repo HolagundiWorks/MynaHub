@@ -39,3 +39,8 @@ installer/suite/out/
 installer/suite-dist/
 installer/suite-tools/
 .neon
+
+# test program: credentials and raw evidence stay local
+docs/testing/.local/
+docs/testing/evidence/**/*.zip
+docs/testing/evidence/**/*.exe
