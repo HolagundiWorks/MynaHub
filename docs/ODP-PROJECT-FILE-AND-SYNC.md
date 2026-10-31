@@ -63,7 +63,7 @@ The file stays the working copy on each device. **Neon** (Lakebase Postgres + Ob
 
 1. **`.osp` library** (Rust crate `aad-odp` and a .NET reader in `Office.Shared`), with import from `.vdb` and `.bbsproj`, tests, and a spec. No UI change.
 2. **O-Draft and O-CoreOp on `.osp`:** open, save, take-off recording, live refresh by revision; remove the server and pointer file.
-3. **Sync service (step 3 — in progress):** Neon schema (Postgres), Object Storage layout, push/pull in **O-Studio** WinUI (**Suite → Cloud sync**), Postgres `LISTEN` for near-real-time pull. Merge UI and viewer still open.
+3. **Sync service (step 3 — MVP shipped):** Neon schema (Postgres), Object Storage snapshots, push/pull and background sync in **O-Studio** (**Suite → Cloud sync**), Postgres `LISTEN` for pull, local/cloud revision display, and a simple **cloud-ahead** dialog (take cloud or back up local then pull). **Still open:** row-level merge for simultaneous edits, Neon Auth sign-in, tablet **viewer** (step 4).
 4. **Viewer phase 1** (WASM render, read-only), then **phase 2** (markups).
 
 Each step ships on its own; the file works without sync, and sync works without the viewer.
@@ -95,7 +95,8 @@ Each step ships on its own; the file works without sync, and sync works without 
 - O-Draft stores the drawing as DXF when a project is saved as a new `.osp` from a DWG (DWG stays DWG when the file already holds one). "Save as project" from a DWG keeping the DWG bytes is not done.
 - Two writers at the same instant were not stress-tested (one waits up to five seconds for the other).
 - The `.osp` is not in the installers' file associations yet.
-- Sync (step 3) and the viewer (step 4).
+- **Sync (step 3)** MVP is in O-Studio (**Suite → Cloud sync**); full row merge and Neon Auth remain open.
+- The viewer (step 4) is not started.
 
 ## Decision (2026-10-30): the Neon connector is in O-Studio
 

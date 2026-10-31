@@ -12,7 +12,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     private readonly List<JsonElement> _rows = [];
     private readonly ListView _list = new() { SelectionMode = ListViewSelectionMode.Single };
     private readonly ContentControl _header = new() { HorizontalContentAlignment = HorizontalAlignment.Stretch };
-    private readonly TextBlock _summary = Flow.Secondary("Loading invoices�");
+    private readonly TextBlock _summary = Flow.Secondary("Loading invoices…");
     private readonly TextBlock _empty = Flow.Secondary("");
     private readonly TextBox _search = new() { PlaceholderText = "Number, client or project", Header = "Search", HorizontalAlignment = HorizontalAlignment.Stretch };
     private readonly ComboBox _status = new() { Header = "Status", HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -256,7 +256,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     /// <summary>Opens one invoice. From the project path "record payment", focus goes to the amount received.</summary>
     private void OpenById(long invoiceId, bool focusReceipt)
     {
-        _ = _shell.Run("Opening invoice�", () =>
+        _ = _shell.Run("Opening invoice…", () =>
         {
             var detail = _shell.Call("invoice_get", new { id = invoiceId });
             _shell.Window.DispatcherQueue.TryEnqueue(() =>
@@ -404,7 +404,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         _empty.Visibility = count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void Reload() => _ = _shell.Run("Loading invoices�", () =>
+    private void Reload() => _ = _shell.Run("Loading invoices…", () =>
     {
         var page = _shell.Call("invoice_page", new { query = Flow.PageQuery(pageSize: 200) });
         var projects = _shell.Call("project_list", new { client_id = (long?)null, include_archived = false });
@@ -418,7 +418,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             _project.Items.Add(Item("Select a project", 0L));
             if (projects.ValueKind == JsonValueKind.Array)
                 foreach (var row in projects.EnumerateArray())
-                    _project.Items.Add(Item($"{Kit.Str(row, "client_name")} � {Kit.Str(row, "name")}", Kit.Id(row) ?? 0));
+                    _project.Items.Add(Item($"{Kit.Str(row, "client_name")} · {Kit.Str(row, "name")}", Kit.Id(row) ?? 0));
             Paint();
             RefreshEstimateHint();
             if (Flow.TakeCreate(_shell, "invoices"))
@@ -449,7 +449,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
                     && summary.TryGetProperty("grand_total_paise", out var paise) && paise.TryGetInt64(out var total))
                 {
                     var book = Kit.Str(summary, "rate_book_version_name");
-                    parts.Add($"O-CoreOp estimate: {Flow.Money(total)}{(book.Length == 0 ? "" : $" � {book}")}");
+                    parts.Add($"O-CoreOp estimate: {Flow.Money(total)}{(book.Length == 0 ? "" : $" · {book}")}");
                 }
                 else
                     parts.Add(Kit.Str(summary, "reason").Length > 0
@@ -478,7 +478,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             return;
         _saving = true;
         _save.IsEnabled = false;
-        _ = _shell.Run(_id == null ? "Creating invoice�" : "Saving draft�", () =>
+        _ = _shell.Run(_id == null ? "Creating invoice…" : "Saving draft…", () =>
         {
             var saved = _shell.Call("invoice_save_draft", new { input });
             if (saved.ValueKind == JsonValueKind.Number)
@@ -506,7 +506,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             return;
         _saving = true;
         _issueButton.IsEnabled = false;
-        _ = _shell.Run("Issuing invoice�", () =>
+        _ = _shell.Run("Issuing invoice…", () =>
         {
             var saved = _shell.Call("invoice_save_draft", new { input });
             var id = saved.ValueKind == JsonValueKind.Number ? saved.GetInt64() : _id ?? throw new Adms.Interop.AdmsException(1, "Save the draft before issuing it.");
@@ -530,7 +530,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             Fail("Save the draft before previewing it.");
             return;
         }
-        _ = _shell.Run("Preparing PDF�", () =>
+        _ = _shell.Run("Preparing PDF…", () =>
         {
             var encoded = _shell.Call("invoice_pdf", new { id }).GetString() ?? "";
             _shell.Window.DispatcherQueue.TryEnqueue(async () => await Kit.PreviewPdf(_shell, encoded, "invoice"));
@@ -541,7 +541,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     {
         if (_id is not long id)
             return;
-        _ = _shell.Run("Converting pro forma�", () =>
+        _ = _shell.Run("Converting pro forma…", () =>
         {
             var created = _shell.Call("invoice_convert_proforma", new { id, today = Kit.Today() });
             var next = created.ValueKind == JsonValueKind.Number ? created.GetInt64() : id;
@@ -562,7 +562,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         }
         if (!await Flow.Confirm(this, "Cancel this invoice?", "The number stays used. Cancel only when nothing has been received against it.", "Cancel invoice"))
             return;
-        _ = _shell.Run("Cancelling invoice�", () => _shell.Call("invoice_cancel", new { id, reason }))
+        _ = _shell.Run("Cancelling invoice…", () => _shell.Call("invoice_cancel", new { id, reason }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result)
@@ -577,7 +577,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     {
         if (_id is not long id)
             return;
-        _ = _shell.Run("Loading receipts�", () =>
+        _ = _shell.Run("Loading receipts…", () =>
         {
             var list = _shell.Call("receipt_list", new { invoice_id = id });
             var balance = _shell.Call("receipt_balance", new { invoice_id = id });
@@ -606,16 +606,16 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
                 continue;
             var tds = Kit.Str(row, "tds_display");
             var section = Kit.Str(row, "tds_section");
-            var label = $"{Kit.Str(row, "number")} � {Kit.Str(row, "received_date")} � {Kit.Str(row, "amount_display")}";
+            var label = $"{Kit.Str(row, "number")} · {Kit.Str(row, "received_date")} · {Kit.Str(row, "amount_display")}";
             if (section.Length > 0)
-                label += $" � TDS {tds} ({section})";
+                label += $" · TDS {tds} ({section})";
             if (row.TryGetProperty("reversed", out var reversed) && reversed.ValueKind == JsonValueKind.True)
-                label += " � Reversed";
+                label += " · Reversed";
             var preview = new Button { Content = "Receipt PDF" };
             var number = Kit.Str(row, "number");
             preview.Click += (_, _) =>
             {
-                _ = _shell.Run("Preparing receipt�", () =>
+                _ = _shell.Run("Preparing receipt…", () =>
                 {
                     var encoded = _shell.Call("receipt_pdf", new { receipt_id = receiptId }).GetString() ?? "";
                     _shell.Window.DispatcherQueue.TryEnqueue(async () => await Kit.PreviewPdf(_shell, encoded, number.Length == 0 ? "receipt" : number));
@@ -641,9 +641,9 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             if (Kit.Id(row) is not long writeoffId)
                 continue;
             var reversed = row.TryGetProperty("reversed", out var flag) && flag.ValueKind == JsonValueKind.True;
-            var label = $"Write-off � {Kit.Str(row, "date")} � {Kit.Str(row, "amount_display")} � {Kit.Str(row, "reason")}";
+            var label = $"Write-off · {Kit.Str(row, "date")} · {Kit.Str(row, "amount_display")} · {Kit.Str(row, "reason")}";
             if (reversed)
-                label += " � Reversed";
+                label += " · Reversed";
             var line = new Grid { ColumnSpacing = 12 };
             line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -672,7 +672,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             return;
         }
         var input = new { invoice_id = id, writeoff_date = date, amount, reason };
-        _ = _shell.Run("Writing off�", () => _shell.Call("invoice_writeoff", new { input }))
+        _ = _shell.Run("Writing off…", () => _shell.Call("invoice_writeoff", new { input }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result)
@@ -692,7 +692,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             Fail("Enter the reason for reversing the write-off.");
             return;
         }
-        _ = _shell.Run("Reversing write-off�", () => _shell.Call("invoice_writeoff_reverse", new { writeoff_id = writeoffId, reason }))
+        _ = _shell.Run("Reversing write-off…", () => _shell.Call("invoice_writeoff_reverse", new { writeoff_id = writeoffId, reason }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result)
@@ -707,7 +707,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     {
         if (_id is not long id)
             return;
-        _ = _shell.Run("Suggesting TDS�", () =>
+        _ = _shell.Run("Suggesting TDS…", () =>
         {
             var value = _shell.Call("receipt_suggest_tds", new { invoice_id = id, rate }).GetString() ?? "";
             _shell.Window.DispatcherQueue.TryEnqueue(() => _receiptTds.Text = value);
@@ -735,7 +735,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
             return;
         }
         var receipt = new { invoice_id = id, received_date = date, amount, tds, tds_section = section, mode, reference, notes = "", bank_account_id = (long?)null };
-        _ = _shell.Run("Recording receipt�", () => _shell.Call("receipt_record", new { input = receipt }))
+        _ = _shell.Run("Recording receipt…", () => _shell.Call("receipt_record", new { input = receipt }))
             .ContinueWith(task => _shell.Window.DispatcherQueue.TryEnqueue(() =>
             {
                 if (!task.Result)

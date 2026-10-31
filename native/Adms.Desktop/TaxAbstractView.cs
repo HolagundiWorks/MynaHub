@@ -96,7 +96,7 @@ internal static class TaxAbstractView
     private static long Paise(JsonElement row, string key) =>
         row.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : 0;
 
-    private static string Money(long paise) => paise == 0 ? "0.00" : Flow.Money(paise).Replace("?", "").Trim();
+    private static string Money(long paise) => paise == 0 ? "\u20B9 0.00" : Flow.Money(paise);
 
     private static IEnumerable<JsonElement> List(JsonElement parent, string key) =>
         parent.TryGetProperty(key, out var list) && list.ValueKind == JsonValueKind.Array ? list.EnumerateArray().Select(r => r.Clone()) : [];

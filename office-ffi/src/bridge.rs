@@ -35,8 +35,8 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
         return json(&result);
     }
     let permission = match op {
-        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_estimate_summary" | "project_ra_summary" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" | "approval_list" | "approval_get" | "studio_draft_list" | "studio_draft_get" | "project_workspace_get" | "task_list" | "subcontract_list" => Permission::View,
-        "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" | "approval_submit" | "approval_withdraw" | "project_workspace_ensure" | "task_save" | "task_set_status" | "task_delete" | "subcontract_save" => Permission::Edit,
+        "client_list" | "project_list" | "project_brief_get" | "company_profile_get" | "document_context" | "data_version" | "doc_get" | "doc_list" | "doc_revision" | "project_estimate_summary" | "project_ra_summary" | "project_boq_summary" | "project_ref" | "project_resolve" | "artifact_ref_check" | "staff_list" | "leave_list" | "library_list" | "track.version" | "track.apply" | "approval_list" | "approval_get" | "studio_draft_list" | "studio_draft_get" |         "project_workspace_get" | "project_next_code" | "task_list" | "subcontract_list" => Permission::View,
+        "doc_put" | "client_save" | "client_set_archived" | "project_save" | "project_set_archived" | "project_brief_save" | "staff_save" | "leave_save" | "library_save" | "approval_submit" | "approval_withdraw" | "project_workspace_ensure" | "project_workspace_attach_osp" | "task_save" | "task_set_status" | "task_delete" | "subcontract_save" => Permission::Edit,
         "approval_approve" | "studio_draft_approve" | "studio_draft_mark_pending" | "studio_draft_mark_superseded" => Permission::Issue,
         "company_profile_save" => Permission::ManageSettings,
         "user_list" | "user_create" | "user_update" | "user_set_password" => Permission::ManageUsers,
@@ -81,15 +81,22 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
             if creating {
                 if let Ok(guard) = state.company.lock() {
                     if let Some(active) = guard.as_ref() {
+                        let (code, name, floors): (String, String, i64) = conn
+                            .query_row(
+                                "SELECT code, name, floors FROM projects WHERE id=?1",
+                                rusqlite::params![id],
+                                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+                            )
+                            .map_err(|_| CallError::Domain("Project not found.".into()))?;
                         let company_path = std::path::PathBuf::from(&active.summary.path);
                         let _ = office_core::project_workspace::scaffold(
                             conn,
                             office_core::project_workspace::ScaffoldInput {
                                 company_path: &company_path,
                                 project_id: id,
-                                code: &project.code,
-                                name: &project.name,
-                                floors: project.floors,
+                                code: &code,
+                                name: &name,
+                                floors,
                             },
                         );
                     }
@@ -97,6 +104,7 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
             }
             json(&id)
         }
+        "project_next_code" => json(&clients::next_code(conn)?),
         "project_workspace_get" => json(&office_core::project_workspace::get(conn, arg(args, "project_id")?)?),
         "project_workspace_ensure" => {
             let project_id: i64 = arg(args, "project_id")?;
@@ -126,6 +134,24 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
             audit(conn, Some(user), "project_workspace_ensured", &format!("project {project_id}"));
             json(&info)
         }
+        "project_workspace_attach_osp" => {
+            let project_id: i64 = arg(args, "project_id")?;
+            let osp_path: String = arg(args, "osp_path")?;
+            let company_path = {
+                let guard = state.company.lock().map_err(|_| CallError::Domain(INTERNAL.into()))?;
+                let active = guard.as_ref().ok_or_else(|| CallError::Domain("Open a company file first.".into()))?;
+                std::path::PathBuf::from(&active.summary.path)
+            };
+            let info = office_core::project_workspace::attach_osp(
+                conn,
+                &company_path,
+                project_id,
+                std::path::Path::new(&osp_path),
+            )
+            .map_err(CallError::Domain)?;
+            audit(conn, Some(user), "project_osp_attached", &format!("project {project_id}"));
+            json(&info)
+        }
         "project_set_archived" => {
             let (id, archived): (i64, bool) = (arg(args, "id")?, arg(args, "archived")?);
             clients::set_project_archived(conn, id, archived)?;
@@ -153,6 +179,7 @@ pub fn dispatch(state: &AppState, op: &str, args: &Value) -> Result<Vec<u8>, Cal
         "doc_list" => json(&share::doc_list(conn, arg(args, "project_id")?)?),
         "doc_revision" => json(&share::doc_revision(conn, arg(args, "project_id")?, &arg::<String>(args, "kind")?, arg(args, "revision")?)?),
         "project_estimate_summary" => json(&share::estimate_summary(conn, arg(args, "project_id")?)?),
+        "project_boq_summary" => json(&share::boq_summary(conn, arg(args, "project_id")?)?),
         "project_ra_summary" => json(&share::ra_summary(conn, arg(args, "project_id")?)?),
         "doc_put" => {
             let (project_id, kind, expected, body): (i64, String, i64, String) = (arg(args, "project_id")?, arg(args, "kind")?, arg(args, "expected_revision")?, arg(args, "body")?);
@@ -353,17 +380,17 @@ mod tests {
         let before = call(&b, "data_version", json!({})).unwrap();
         assert_eq!(before["schema_ok"], true);
         assert!(call(&a, "doc_get", json!({ "project_id": project, "kind": "aqc.project" })).unwrap().is_null());
-        let first = call(&a, "doc_put", json!({ "project_id": project, "kind": "aqc.project", "expected_revision": 0, "body": "{\"levels\":2}" })).unwrap();
+        let first = call(&a, "doc_put", json!({ "project_id": project, "kind": "aqc.project", "expected_revision": 0, "body": r#"{"last_estimate":{"grand_total":2},"accounts":{"bills":[]}}"# })).unwrap();
         assert_eq!(first["revision"], 1);
         assert_ne!(call(&b, "data_version", json!({})).unwrap()["version"], before["version"], "B sees that A wrote");
         let seen = call(&b, "doc_get", json!({ "project_id": project, "kind": "aqc.project" })).unwrap();
-        assert_eq!((seen["revision"].as_i64(), seen["body"].as_str()), (Some(1), Some("{\"levels\":2}")));
+        assert_eq!((seen["revision"].as_i64(), seen["body"].as_str()), (Some(1), Some(r#"{"last_estimate":{"grand_total":2},"accounts":{"bills":[]}}"#)));
         assert_eq!(seen["checksum_sha256"], first["checksum_sha256"]);
-        call(&b, "doc_put", json!({ "project_id": project, "kind": "aqc.project", "expected_revision": 1, "body": "{\"levels\":3}" })).unwrap();
-        let stale = call(&a, "doc_put", json!({ "project_id": project, "kind": "aqc.project", "expected_revision": 1, "body": "{\"levels\":9}" })).unwrap_err();
+        call(&b, "doc_put", json!({ "project_id": project, "kind": "aqc.project", "expected_revision": 1, "body": r#"{"last_estimate":{"grand_total":3},"accounts":{"bills":[]}}"# })).unwrap();
+        let stale = call(&a, "doc_put", json!({ "project_id": project, "kind": "aqc.project", "expected_revision": 1, "body": r#"{"last_estimate":{"grand_total":9},"accounts":{"bills":[]}}"# })).unwrap_err();
         assert!(stale.contains("changed in another app"), "{stale}");
         assert_eq!(call(&a, "doc_list", json!({ "project_id": project })).unwrap()[0]["revision"], 2);
-        assert_eq!(call(&a, "doc_revision", json!({ "project_id": project, "kind": "aqc.project", "revision": 1 })).unwrap()["body"], "{\"levels\":2}");
+        assert_eq!(call(&a, "doc_revision", json!({ "project_id": project, "kind": "aqc.project", "revision": 1 })).unwrap()["body"], r#"{"last_estimate":{"grand_total":2},"accounts":{"bills":[]}}"#);
         assert!(call(&b, "project_list", json!({ "client_id": null, "include_archived": false })).unwrap().as_array().unwrap().iter().any(|p| p["name"] == "Villa"), "the project A made is B's too");
     }
 

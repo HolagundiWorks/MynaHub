@@ -236,7 +236,7 @@ fn set_state(
     }
     let by = username(conn, actor);
     let body = serde_json::to_string(&env).map_err(|e| e.to_string())?;
-    let (revision, _) = share::doc_put(conn, project_id, kind, expected_revision, &body, &by)?;
+    let (revision, _) = share::doc_put_unchecked(conn, project_id, kind, expected_revision, &body, &by)?;
     audit(conn, Some(actor), audit_event, &format!("project {project_id} {kind} → {new_state} revision {revision}"));
     get(conn, project_id, kind)?.ok_or_else(|| "That draft was not found after save.".into())
 }
@@ -255,6 +255,30 @@ pub fn mark_pending(conn: &Connection, actor: i64, project_id: i64, kind: &str, 
 /// Product revise still requires a new CoreOp `doc_put` with `state: draft`.
 pub fn mark_superseded(conn: &Connection, actor: i64, project_id: i64, kind: &str, expected_revision: i64) -> Result<Draft, String> {
     set_state(conn, actor, project_id, kind, expected_revision, STATE_SUPERSEDED, "studio_draft_superseded")
+}
+
+/// CoreOp shares drafts through `doc_put` with Edit permission. Approval states are Studio-only (Issue permission).
+pub fn validate_coreop_share_body(body: &str) -> Result<(), String> {
+    let env = parse_envelope(body)?;
+    if str_field(&env, "state") != STATE_DRAFT {
+        return Err(
+            "Approval states can only be set from O-Studio (Practice → Approvals), not through a direct document save.".into(),
+        );
+    }
+    if envelope_field(&env, "v").as_u64() != Some(1) {
+        return Err("Draft envelope version must be 1.".into());
+    }
+    let kind = str_field(&env, "artifact_kind");
+    if kind != "estimate" && kind != "ra_bill" {
+        return Err("Draft artifact_kind must be estimate or ra_bill.".into());
+    }
+    if !env.get("summary").map(|s| s.is_object()).unwrap_or(false) {
+        return Err("Draft envelope must include a summary object.".into());
+    }
+    if !env.get("body").map(|b| b.is_object()).unwrap_or(false) {
+        return Err("Draft envelope must include a body object.".into());
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -294,10 +318,17 @@ mod tests {
     }
 
     #[test]
+    fn coreop_cannot_set_approval_state_through_doc_put() {
+        let c = conn();
+        let locked = estimate_envelope(STATE_LOCKED);
+        assert!(doc_put(&c, 7, ESTIMATE_DRAFT_KIND, 0, &locked, "bad").unwrap_err().contains("Approval states"));
+    }
+
+    #[test]
     fn lists_filters_and_approves_coreop_estimate_draft() {
         let c = conn();
         doc_put(&c, 7, ESTIMATE_DRAFT_KIND, 0, &estimate_envelope(STATE_DRAFT), "estimator").unwrap();
-        doc_put(&c, 7, "aqc.project", 0, "{\"levels\":1}", "estimator").unwrap();
+        doc_put(&c, 7, "aqc.project", 0, r#"{"accounts":{"bills":[]}}"#, "estimator").unwrap();
         let listed = list(&c, None, Some(STATE_DRAFT)).unwrap();
         assert_eq!(listed.len(), 1);
         assert_eq!(listed[0].kind, ESTIMATE_DRAFT_KIND);

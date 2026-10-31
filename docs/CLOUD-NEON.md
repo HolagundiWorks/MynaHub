@@ -151,17 +151,17 @@ This runs [`cloud/src/verify.ts`](../cloud/src/verify.ts): creates sync tables i
 
 ---
 
-## 5. How O-Studio the **app** will connect (planned)
+## 5. How O-Studio the **app** connects
 
-Not built in WinUI yet; architecture is fixed in [SUITE.md](SUITE.md):
+Built in WinUI (**Suite → Cloud sync**). Architecture: [SUITE.md](SUITE.md) and [ODP-PROJECT-FILE-AND-SYNC.md](ODP-PROJECT-FILE-AND-SYNC.md).
 
-1. **Only O-Studio** holds Neon credentials (same machine as the company file, or OS secure storage later).
-2. **Suite → Cloud sync** (planned): sign in, list company projects with an `.osp` path, turn sync on per project.
-3. **Push:** watch local `meta.revision` → upload snapshot to **`uploads`** → insert row in **`osp_project_revision`**.
-4. **Pull:** poll Postgres (or Realtime when stable) → download snapshot → merge into `.osp` via `aad-odp` / `OdpFile`.
-5. **O-Draft / O-CoreOp** unchanged: they only see the local file and revision counter.
+1. **Only O-Studio** holds Neon credentials (`%LocalAppData%\\O-Studio\\neon.env` or `OSTUDIO_NEON_ENV_FILE`).
+2. **Suite → Cloud sync:** list company projects that have a `project.osp` path, turn sync on per project, **Push now** / **Pull now**, background push every 2s and pull on Postgres `NOTIFY osp_revision`.
+3. **Test connection** checks Postgres schema and Object Storage (`S3_BUCKET`, default **`uploads`** from [`neon.ts`](../neon.ts)).
+4. **Cloud ahead:** when push fails because another device uploaded first, Studio offers **Take cloud copy** or **Back up local, then pull** (sibling `.osp` backup file).
+5. **O-Draft / O-CoreOp** unchanged: local `.osp` only; they detect new revisions via existing polls.
 
-Until that UI exists, **`npm run start`** is the official “Studio ↔ Neon connected” check for developers.
+Developers without WinUI can still run **`npm run verify`** (same services as the app connector uses).
 
 ---
 

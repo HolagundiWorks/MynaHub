@@ -352,6 +352,27 @@ pub fn save_project(conn: &Connection, p: &Project) -> Result<i64, String> {
     if summary.chars().count() > 2000 {
         return Err("Keep the project description under 2,000 characters.".into());
     }
+    let mut code = p.code.trim().to_string();
+    if p.id.is_none() && code.is_empty() {
+        let profile = crate::profile::read(conn)?;
+        code = crate::project_codes::next_project_code(conn, &profile)?;
+    }
+    if code.is_empty() {
+        return Err("Project code is required.".into());
+    }
+    if code.chars().count() > 64 {
+        return Err("Keep the project code under 64 characters.".into());
+    }
+    let duplicate: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM projects WHERE code=?1 COLLATE NOCASE AND (?2 IS NULL OR id<>?2)",
+            params![code, p.id],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    if duplicate > 0 {
+        return Err("Another project already uses this code.".into());
+    }
     let client_archived: Option<i64> = conn
         .query_row("SELECT archived FROM clients WHERE id=?1", params![p.client_id], |r| r.get(0))
         .ok();
@@ -365,7 +386,7 @@ pub fn save_project(conn: &Connection, p: &Project) -> Result<i64, String> {
             let n = conn
                 .execute(
                     "UPDATE projects SET client_id=?1, code=?2, name=?3, site_address=?4, status=?5, consultancy_type=?6, floors=?7, summary=?8, updated_at=datetime('now') WHERE id=?9",
-                    params![p.client_id, p.code.trim(), name, p.site_address.trim(), p.status, consultancy_type, floors, summary, id],
+                    params![p.client_id, code, name, p.site_address.trim(), p.status, consultancy_type, floors, summary, id],
                 )
                 .map_err(|e| map_unique(e, "This client already has a project with this name; it"))?;
             if n == 0 {
@@ -376,12 +397,17 @@ pub fn save_project(conn: &Connection, p: &Project) -> Result<i64, String> {
         None => {
             conn.execute(
                 "INSERT INTO projects (client_id, code, name, site_address, status, consultancy_type, floors, summary) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
-                params![p.client_id, p.code.trim(), name, p.site_address.trim(), p.status, consultancy_type, floors, summary],
+                params![p.client_id, code, name, p.site_address.trim(), p.status, consultancy_type, floors, summary],
             )
             .map_err(|e| map_unique(e, "This client already has a project with this name; it"))?;
             Ok(conn.last_insert_rowid())
         }
     }
+}
+
+pub fn next_code(conn: &Connection) -> Result<String, String> {
+    let profile = crate::profile::read(conn)?;
+    crate::project_codes::next_project_code(conn, &profile)
 }
 
 pub fn set_project_archived(conn: &Connection, id: i64, archived: bool) -> Result<(), String> {

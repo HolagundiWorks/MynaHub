@@ -59,7 +59,7 @@ This page is the living checklist for retiring the old take-off store (ShilpiDB,
 | Item | Notes |
 |---|---|
 | **`.vdb` / `.bbsproj` → `.osp` importer** | Spec in O-Studio ODP doc; `aad-odp` has take-off read/write, not a full legacy importer in apps |
-| **Neon sync** | O-Studio planned work |
+| **Neon sync** | O-Studio **Suite → Cloud sync** (push/pull, NOTIFY pull, conflict dialog); Neon Auth and viewer still open |
 | **Draft WinUI → record → CoreOp import** on a **new** `.osp` | Product E2E beyond fixture-based UIA |
 | **Scanned PDF underlay polish** | O-Draft trust work |
 | **`bbs_engine.dll` on dev machines without MSVC** | Install VS Build Tools; `cmake` in `BBSDesktop` |

@@ -11,11 +11,27 @@
     <EngineProfile Condition="'$(EngineProfile)' == ''">debug</EngineProfile>
     <EngineDll>$(MSBuildThisFileDirectory)..\..\src-tauri\target\$(EngineProfile)\architect_office_desktop_lib.dll</EngineDll>
   </PropertyGroup>
-  <ItemGroup>
-    <None Include="$(EngineDll)"
-          Link="architect_office_desktop_lib.dll"
-          CopyToOutputDirectory="PreserveNewest"
-          Visible="false"
-          Condition="Exists('$(EngineDll)')" />
-  </ItemGroup>
+  <!-- When CARGO_TARGET_DIR is set globally, Rust output may not live under src-tauri/target. -->
+  <Target Name="ResolveEngineDll" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <CargoTargetDir>$([System.Environment]::GetEnvironmentVariable('CARGO_TARGET_DIR'))</CargoTargetDir>
+    </PropertyGroup>
+    <PropertyGroup Condition="!Exists('$(EngineDll)') and '$(CargoTargetDir)' != ''">
+      <EngineDll Condition="Exists('$(CargoTargetDir)\$(EngineProfile)\architect_office_desktop_lib.dll')">$(CargoTargetDir)\$(EngineProfile)\architect_office_desktop_lib.dll</EngineDll>
+      <EngineDll Condition="!Exists('$(EngineDll)') and Exists('$(CargoTargetDir)\release\architect_office_desktop_lib.dll')">$(CargoTargetDir)\release\architect_office_desktop_lib.dll</EngineDll>
+      <EngineDll Condition="!Exists('$(EngineDll)') and Exists('$(CargoTargetDir)\debug\architect_office_desktop_lib.dll')">$(CargoTargetDir)\debug\architect_office_desktop_lib.dll</EngineDll>
+    </PropertyGroup>
+    <PropertyGroup Condition="!Exists('$(EngineDll)')">
+      <EngineDll Condition="Exists('$(MSBuildThisFileDirectory)..\..\src-tauri\target\release\architect_office_desktop_lib.dll')">$(MSBuildThisFileDirectory)..\..\src-tauri\target\release\architect_office_desktop_lib.dll</EngineDll>
+    </PropertyGroup>
+    <Warning Text="architect_office_desktop_lib.dll was not found (EngineDll=$(EngineDll)). Build the Rust engine: cd src-tauri &amp;&amp; cargo build --release, or pass -p:EngineDll=..." Condition="!Exists('$(EngineDll)')" />
+  </Target>
+  <Target Name="IncludeEngineDll" AfterTargets="ResolveEngineDll" BeforeTargets="GetCopyToOutputDirectoryItems">
+    <ItemGroup Condition="Exists('$(EngineDll)')">
+      <Content Include="$(EngineDll)"
+                Link="architect_office_desktop_lib.dll"
+                CopyToOutputDirectory="PreserveNewest"
+                Visible="false" />
+    </ItemGroup>
+  </Target>
 </Project>

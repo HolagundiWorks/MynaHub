@@ -268,6 +268,42 @@ pub fn get(conn: &Connection, project_id: i64) -> Result<Option<WorkspaceInfo>, 
     }))
 }
 
+/// Copy an existing `.osp` into the project's workspace (`project.osp`).
+pub fn attach_osp(conn: &Connection, company_path: &Path, project_id: i64, source: &Path) -> Result<WorkspaceInfo, String> {
+    if !source.is_file() {
+        return Err("The project file was not found.".into());
+    }
+    if source.extension().and_then(|e| e.to_str()) != Some("osp") {
+        return Err("Choose an ODP project file (.osp).".into());
+    }
+    let (code, name, floors): (String, String, i64) = conn
+        .query_row(
+            "SELECT code, name, floors FROM projects WHERE id=?1",
+            params![project_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .map_err(|_| "Project not found.".to_string())?;
+    let info = match get(conn, project_id)? {
+        Some(existing) => existing,
+        None => scaffold(
+            conn,
+            ScaffoldInput {
+                company_path,
+                project_id,
+                code: &code,
+                name: &name,
+                floors,
+            },
+        )?,
+    };
+    let dest = PathBuf::from(&info.osp);
+    if let Some(parent) = dest.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::copy(source, &dest).map_err(|e| format!("Could not copy the project file: {e}"))?;
+    Ok(info)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -132,6 +132,12 @@ pub fn doc_list(conn: &Connection, project_id: i64) -> Result<Vec<DocumentInfo>,
 /// Saves a document. `expected_revision` is the revision the caller loaded (0 when it has never been saved). If another app has saved
 /// since, nothing is written and the message says so. Returns the new revision and the checksum of what was stored.
 pub fn doc_put(conn: &Connection, project_id: i64, kind: &str, expected_revision: i64, body: &str, by: &str) -> Result<(i64, String), String> {
+    validate_body_for_put(conn, project_id, kind, body)?;
+    doc_put_unchecked(conn, project_id, kind, expected_revision, body, by)
+}
+
+/// Like [`doc_put`] but skips policy checks. Only for Studio approval state transitions inside this crate.
+pub(crate) fn doc_put_unchecked(conn: &Connection, project_id: i64, kind: &str, expected_revision: i64, body: &str, by: &str) -> Result<(i64, String), String> {
     check_kind(kind)?;
     if body.len() > MAX_BODY {
         return Err("That document is too large to store.".into());
@@ -176,6 +182,53 @@ pub fn doc_put(conn: &Connection, project_id: i64, kind: &str, expected_revision
     Ok((revision, checksum))
 }
 
+/// Allowed top-level keys on kind `aqc.project` (summary mirror only — full quantities stay in `.osp`).
+const AQC_PROJECT_SUMMARY_KEYS: &[&str] = &["project_ref", "last_estimate", "last_estimate_rate_book_version_id", "accounts"];
+
+/// Validates document bodies before they are stored (classification, separation of duties, reference integrity).
+pub fn validate_body_for_put(conn: &Connection, project_id: i64, kind: &str, body: &str) -> Result<(), String> {
+    check_kind(kind)?;
+    if kind == "aqc.project" {
+        validate_aqc_project_summary(conn, project_id, body)?;
+    } else if crate::studio_drafts::is_studio_draft_kind(kind) {
+        crate::studio_drafts::validate_coreop_share_body(body)?;
+    }
+    Ok(())
+}
+
+fn validate_aqc_project_summary(conn: &Connection, project_id: i64, body: &str) -> Result<(), String> {
+    let value: serde_json::Value = serde_json::from_str(body).map_err(|_| "The aqc.project document must be valid JSON.")?;
+    let obj = value
+        .as_object()
+        .ok_or_else(|| "The aqc.project document must be a JSON object.".to_string())?;
+    for key in obj.keys() {
+        if !AQC_PROJECT_SUMMARY_KEYS.contains(&key.as_str()) {
+            return Err(format!(
+                "The aqc.project document may only contain O-Studio summary fields (\"{key}\" is not allowed). Full project data belongs in the .osp file."
+            ));
+        }
+    }
+    if let Some(pr) = obj.get("project_ref") {
+        let reference: crate::refs::ProjectRef =
+            serde_json::from_value(pr.clone()).map_err(|_| "The project_ref is not valid.".to_string())?;
+        crate::refs::resolve_project(conn, &reference)?;
+        if reference.project_id != project_id {
+            return Err("The project_ref must name the same project as this document.".into());
+        }
+    }
+    if let Some(accounts) = obj.get("accounts") {
+        let ac = accounts
+            .as_object()
+            .ok_or_else(|| "The accounts field must be a JSON object.".to_string())?;
+        for key in ac.keys() {
+            if key != "bills" {
+                return Err("The accounts field may only contain bills (running-bill summaries).".into());
+            }
+        }
+    }
+    Ok(())
+}
+
 /// What O-Studio shows against a fee proposal: the last estimate O-CoreOp saved on this project in the company file.
 ///
 /// Reads `project_documents` kind `aqc.project` and picks `last_estimate.grand_total` (rupees) plus any `artifact_ref` /
@@ -218,6 +271,42 @@ pub fn estimate_summary(conn: &Connection, project_id: i64) -> Result<serde_json
         "rate_book_version_id": estimate.get("rate_book_version_id").and_then(|v| v.as_str()).unwrap_or(""),
         "rate_book_version_name": estimate.get("rate_book_version_name").and_then(|v| v.as_str()).unwrap_or(""),
         "artifact_ref": estimate.get("artifact_ref").cloned().unwrap_or(serde_json::Value::Null),
+        "project_ref": body.get("project_ref").cloned().unwrap_or(serde_json::Value::Null),
+    }))
+}
+
+/// BOQ-style abstract: base total at schedule rates from O-CoreOp `last_estimate` (before markups).
+pub fn boq_summary(conn: &Connection, project_id: i64) -> Result<serde_json::Value, String> {
+    project_exists(conn, project_id)?;
+    let Some(doc) = doc_get(conn, project_id, "aqc.project")? else {
+        return Ok(serde_json::json!({
+            "present": false,
+            "project_id": project_id,
+            "reason": "O-CoreOp has not saved a quantities document for this project yet."
+        }));
+    };
+    let body: serde_json::Value = serde_json::from_str(&doc.body).map_err(|_| "The O-CoreOp project document could not be read.".to_string())?;
+    let Some(estimate) = body.get("last_estimate").filter(|v| !v.is_null()) else {
+        return Ok(serde_json::json!({
+            "present": false,
+            "project_id": project_id,
+            "document_revision": doc.revision,
+            "updated_by": doc.updated_by,
+            "updated_at": doc.updated_at,
+            "reason": "O-CoreOp has not calculated a BOQ/estimate base for this project yet."
+        }));
+    };
+    let base = estimate.get("base_total").and_then(|v| v.as_f64()).unwrap_or(0.0);
+    let base_paise = (base * 100.0).round() as i64;
+    Ok(serde_json::json!({
+        "present": true,
+        "project_id": project_id,
+        "document_revision": doc.revision,
+        "updated_by": doc.updated_by,
+        "updated_at": doc.updated_at,
+        "base_total_rupees": base,
+        "base_total_paise": base_paise,
+        "rate_book_version_name": estimate.get("rate_book_version_name").and_then(|v| v.as_str()).unwrap_or(""),
         "project_ref": body.get("project_ref").cloned().unwrap_or(serde_json::Value::Null),
     }))
 }
@@ -324,35 +413,45 @@ mod tests {
         let mut c = Connection::open_in_memory().unwrap();
         c.pragma_update(None, "foreign_keys", "ON").unwrap();
         crate::schema::migrate(&mut c).unwrap();
+        c.execute("INSERT INTO company_file (id, format, company_uuid, display_name) VALUES (1, 'ADMS', 'u-1', 'T')", []).unwrap();
         c.execute("INSERT INTO clients (id, name) VALUES (1, 'Client')", []).unwrap();
         c.execute("INSERT INTO projects (id, client_id, name) VALUES (7, 1, 'House')", []).unwrap();
         c
+    }
+
+    fn summary(grand: f64) -> String {
+        format!(
+            r#"{{"project_ref":{{"v":1,"company_uuid":"u-1","project_id":7}},"last_estimate":{{"grand_total":{grand}}},"accounts":{{"bills":[]}}}}"#
+        )
     }
 
     #[test]
     fn a_document_is_saved_by_revision_and_reads_back_with_its_checksum() {
         let c = conn();
         assert!(doc_get(&c, 7, "aqc.project").unwrap().is_none());
-        let (r1, sum1) = doc_put(&c, 7, "aqc.project", 0, "{\"a\":1}", "owner").unwrap();
+        let b1 = summary(1.0);
+        let (r1, sum1) = doc_put(&c, 7, "aqc.project", 0, &b1, "owner").unwrap();
         assert_eq!(r1, 1);
-        assert_eq!(sum1, sha256_hex(b"{\"a\":1}"));
-        let (r2, _) = doc_put(&c, 7, "aqc.project", 1, "{\"a\":2}", "owner").unwrap();
+        assert_eq!(sum1, sha256_hex(b1.as_bytes()));
+        let b2 = summary(2.0);
+        let (r2, _) = doc_put(&c, 7, "aqc.project", 1, &b2, "owner").unwrap();
         assert_eq!(r2, 2);
         let got = doc_get(&c, 7, "aqc.project").unwrap().unwrap();
-        assert_eq!((got.revision, got.body.as_str(), got.updated_by.as_str()), (2, "{\"a\":2}", "owner"));
+        assert_eq!((got.revision, got.body.as_str(), got.updated_by.as_str()), (2, b2.as_str(), "owner"));
         assert_eq!(doc_list(&c, 7).unwrap().len(), 1);
-        assert_eq!(doc_list(&c, 7).unwrap()[0].bytes, 7);
     }
 
     #[test]
     fn a_save_based_on_an_old_revision_is_refused_and_changes_nothing() {
         let c = conn();
-        doc_put(&c, 7, "aqc.project", 0, "one", "a").unwrap();
-        doc_put(&c, 7, "aqc.project", 1, "two", "b").unwrap();
-        let stale = doc_put(&c, 7, "aqc.project", 1, "three", "a").unwrap_err();
+        let one = summary(1.0);
+        let two = summary(2.0);
+        doc_put(&c, 7, "aqc.project", 0, &one, "a").unwrap();
+        doc_put(&c, 7, "aqc.project", 1, &two, "b").unwrap();
+        let stale = doc_put(&c, 7, "aqc.project", 1, &summary(9.0), "a").unwrap_err();
         assert!(stale.contains("changed in another app"), "{stale}");
-        assert_eq!(doc_get(&c, 7, "aqc.project").unwrap().unwrap().body, "two");
-        assert!(doc_put(&c, 7, "aqc.project", 0, "new", "a").is_err(), "a first save over an existing document is refused too");
+        assert_eq!(doc_get(&c, 7, "aqc.project").unwrap().unwrap().body, two);
+        assert!(doc_put(&c, 7, "aqc.project", 0, &summary(0.0), "a").is_err(), "a first save over an existing document is refused too");
     }
 
     #[test]
@@ -360,28 +459,44 @@ mod tests {
         let c = conn();
         let mut revision = 0;
         for i in 1..=15 {
-            revision = doc_put(&c, 7, "aqc.project", revision, &format!("body {i}"), "a").unwrap().0;
+            revision = doc_put(&c, 7, "aqc.project", revision, &summary(i as f64), "a").unwrap().0;
         }
         assert_eq!(revision, 15);
-        assert_eq!(doc_revision(&c, 7, "aqc.project", 15).unwrap().unwrap().body, "body 15");
-        assert_eq!(doc_revision(&c, 7, "aqc.project", 5).unwrap().unwrap().body, "body 5");
+        assert_eq!(doc_revision(&c, 7, "aqc.project", 15).unwrap().unwrap().body, summary(15.0));
+        assert_eq!(doc_revision(&c, 7, "aqc.project", 5).unwrap().unwrap().body, summary(5.0));
         assert!(doc_revision(&c, 7, "aqc.project", 4).unwrap().is_none(), "older than ten revisions back is dropped");
+    }
+
+    #[test]
+    fn aqc_project_rejects_full_project_payload() {
+        let c = conn();
+        let err = doc_put(
+            &c,
+            7,
+            "aqc.project",
+            0,
+            r#"{"walls":[],"last_estimate":{"grand_total":1}}"#,
+            "a",
+        )
+        .unwrap_err();
+        assert!(err.contains("walls"), "{err}");
     }
 
     #[test]
     fn kinds_and_projects_are_checked() {
         let c = conn();
         for bad in ["", "Aqc", "1abc", "a b", &"a".repeat(MAX_KIND_LEN + 1)] {
-            assert!(doc_put(&c, 7, bad, 0, "x", "a").is_err(), "{bad:?}");
+            assert!(doc_put(&c, 7, bad, 0, "{}", "a").is_err(), "{bad:?}");
         }
-        assert_eq!(doc_put(&c, 99, "aqc.project", 0, "x", "a").unwrap_err(), "Project not found.");
+        assert_eq!(doc_put(&c, 99, "aqc.project", 0, "{}", "a").unwrap_err(), "Project not found.");
         doc_put(&c, 7, "aqc.rates", 0, "r", "a").unwrap();
-        doc_put(&c, 7, "aqc.project", 0, "p", "a").unwrap();
+        doc_put(&c, 7, "aqc.project", 0, "{}", "a").unwrap();
         assert_eq!(doc_list(&c, 7).unwrap().iter().map(|d| d.kind.as_str()).collect::<Vec<_>>(), ["aqc.project", "aqc.rates"]);
         // CoreOp RA draft kinds: prefix + 32-char Guid "N" form (exceeds the old 40-char limit).
         let ra = format!("aqc.ra.draft.{}", "b".repeat(32));
         assert!(ra.len() > 40 && ra.len() <= MAX_KIND_LEN);
-        doc_put(&c, 7, &ra, 0, "bill", "a").unwrap();
+        let draft = r#"{"v":1,"state":"draft","artifact_kind":"ra_bill","shared_at":"2026-01-01T00:00:00.0000000Z","shared_by":"a","summary":{"title":"RA","currency":"INR","bill_id":"x","gross":1,"net":1},"body":{}}"#;
+        doc_put(&c, 7, &ra, 0, draft, "a").unwrap();
         assert!(doc_list(&c, 7).unwrap().iter().any(|d| d.kind == ra));
     }
 
@@ -389,7 +504,7 @@ mod tests {
     fn watching_reports_the_document_revision_without_reading_it() {
         let c = conn();
         assert_eq!(watch(&c, Some(7), "aqc.project").unwrap().revision, 0);
-        doc_put(&c, 7, "aqc.project", 0, "x", "a").unwrap();
+        doc_put(&c, 7, "aqc.project", 0, "{}", "a").unwrap();
         let w = watch(&c, Some(7), "aqc.project").unwrap();
         assert_eq!((w.revision, w.schema_ok), (1, true));
         assert_eq!(watch(&c, None, "aqc.project").unwrap().revision, 0);

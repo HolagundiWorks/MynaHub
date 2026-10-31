@@ -131,6 +131,12 @@ public sealed partial class MainWindow : Window
         TasksWidget.ShowOrFocus(shell);
     }
 
+    private void OpenCompanyLoginWidget(object sender, RoutedEventArgs e)
+    {
+        if (!CompanyLoginLauncher.TryLaunch(out var error) && error != null)
+            ShowError(error);
+    }
+
     private void RestoreTheme() => AppTheme.Apply(Root, AppWindow, Hwnd);
 
     // ----- Studio is the suite hub: company choose/create, suite.json, ticket launch -----
@@ -208,8 +214,21 @@ public sealed partial class MainWindow : Window
 
     private async Task CreateCompanyAsync()
     {
-        if (_busy || _companyOpen || _session == null)
+        if (_session == null)
+        {
+            ShowError("The accounting engine is not loaded. Rebuild O-Studio with the Rust engine (src-tauri, cargo build --release) and ensure architect_office_desktop_lib.dll is beside O-Studio.exe.");
             return;
+        }
+        if (_busy)
+        {
+            ShowError("Wait for the current operation to finish, then try again.");
+            return;
+        }
+        if (_companyOpen)
+        {
+            ShowError("Close the current company before creating a new one.");
+            return;
+        }
         var nameBox = new TextBox { Header = "Company name" };
         var fileBox = new TextBox { Header = "File name", Text = "Company.osas" };
         var folderText = new TextBlock { Text = "No folder chosen", TextWrapping = TextWrapping.Wrap };
@@ -289,7 +308,9 @@ public sealed partial class MainWindow : Window
                 review.Text = string.Join(Environment.NewLine, $"Company: {nameBox.Text.Trim()}", $"File: {(folder == null ? "" : Path.Combine(folder, FullName()))}", "Administrator: admin");
         }
         Show();
-        string? recovery = null;
+        string? pendingPath = null;
+        string? pendingName = null;
+        string? pendingPassword = null;
         dialog.SecondaryButtonClick += (_, args) =>
         {
             args.Cancel = true;
@@ -297,7 +318,7 @@ public sealed partial class MainWindow : Window
                 step--;
             Show();
         };
-        dialog.PrimaryButtonClick += async (_, args) =>
+        dialog.PrimaryButtonClick += (_, args) =>
         {
             var deferral = args.GetDeferral();
             error.Text = "";
@@ -329,20 +350,11 @@ public sealed partial class MainWindow : Window
                     }
                     return;
                 }
-                var path = Path.Combine(folder!, FullName());
-                dialog.IsPrimaryButtonEnabled = false;
-                dialog.IsSecondaryButtonEnabled = false;
-                var created = await Task.Run(() => _session.CreateCompany(path, nameBox.Text.Trim(), "admin", password.Password, confirm.Password));
-                recovery = created.Recovery;
+                pendingPath = Path.Combine(folder!, FullName());
+                pendingName = nameBox.Text.Trim();
+                pendingPassword = password.Password;
                 password.Password = "";
                 confirm.Password = "";
-            }
-            catch (Exception ex)
-            {
-                args.Cancel = true;
-                error.Text = ex.Message;
-                dialog.IsPrimaryButtonEnabled = true;
-                dialog.IsSecondaryButtonEnabled = step > 0;
             }
             finally
             {
@@ -350,7 +362,16 @@ public sealed partial class MainWindow : Window
             }
         };
         await dialog.ShowAsync();
-        if (recovery == null || _shuttingDown)
+        if (pendingPath == null || pendingName == null || pendingPassword == null || _shuttingDown)
+            return;
+
+        string? recovery = null;
+        var createdOk = await RunEngineAsync("Creating company…", () =>
+        {
+            var created = _session!.CreateCompany(pendingPath, pendingName, "admin", pendingPassword, pendingPassword);
+            recovery = created.Recovery;
+        });
+        if (!createdOk || recovery == null || _shuttingDown)
             return;
         await ShowRecoveryAsync(recovery, "Save your recovery code", "This code is shown once. It is the only way to recover the owner account if the password is forgotten.");
         await RefreshStatusAsync();

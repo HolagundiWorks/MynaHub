@@ -125,6 +125,7 @@ Saving: O-Draft writes the drawing back into the `.osp` only when its bytes chan
 | Topic | Document |
 |---|---|
 | Project file format and sync plan | O-Studio `docs/ODP-PROJECT-FILE-AND-SYNC.md` (filename keeps the working name) |
+| Project hierarchy and security | `docs/PROJECT-HIERARCHY-AND-SECURITY.md` |
 | Suite architecture and integration map | O-Studio `docs/suite-architecture.md`, `docs/suite-hub.md` |
 | Suite hub and wire | O-Studio `docs/suite-hub.md`, `Office.Shared/SuiteWire.cs` |
 | Company file ABI | O-Studio `docs/office-abi.md` |

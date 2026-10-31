@@ -105,7 +105,7 @@ public sealed class OspSyncCoordinator : IAsyncDisposable
 
     async Task ListenLoopAsync(CancellationToken ct)
     {
-        var url = _settings.DatabaseUrlUnpooled ?? _settings.DatabaseUrl;
+        var url = NeonPostgres.ToNpgsqlConnectionString(_settings.DatabaseUrlUnpooled ?? _settings.DatabaseUrl);
         while (!ct.IsCancellationRequested)
         {
             try
