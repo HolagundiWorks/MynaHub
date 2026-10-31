@@ -36,6 +36,9 @@ internal sealed class CompanyLoginWidget : WidgetWindow
     readonly StackPanel _login = new() { Spacing = 12 };
     readonly StackPanel _setup = new() { Spacing = 12 };
     readonly StackPanel _unlock = new() { Spacing = 12 };
+    readonly StackPanel _create = new() { Spacing = 12 };
+    readonly StackPanel _recover = new() { Spacing = 12 };
+    readonly StackPanel _recent = new() { Spacing = 4 };
     readonly StackPanel _signedInPanel = new() { Spacing = 12 };
 
     readonly TextBox _usernameBox = new() { Header = "User name", PlaceholderText = "User name" };
@@ -44,10 +47,20 @@ internal sealed class CompanyLoginWidget : WidgetWindow
     readonly PasswordBox _setupPassword = new() { Header = "Admin password (12 or more characters)" };
     readonly PasswordBox _setupConfirm = new() { Header = "Confirm password" };
     readonly PasswordBox _unlockPassword = new() { Header = "Password" };
+    readonly TextBox _createName = new() { Header = "Company name" };
+    readonly TextBox _createUser = new() { Header = "Owner user name", Text = "admin" };
+    readonly PasswordBox _createPassword = new() { Header = "Owner password (12 or more characters)" };
+    readonly PasswordBox _createConfirm = new() { Header = "Confirm password" };
+    readonly TextBox _recoverUser = new() { Header = "User name" };
+    readonly TextBox _recoverCode = new() { Header = "Recovery code" };
+    readonly PasswordBox _recoverPassword = new() { Header = "New password (12 or more characters)" };
+    readonly PasswordBox _recoverConfirm = new() { Header = "Confirm new password" };
     readonly TextBlock _signedInSummary = new() { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
 
     readonly Button _signInButton = new() { Content = "Sign in", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
     readonly Button _setupButton = new() { Content = "Create admin account", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+    readonly Button _createButton = new() { Content = "Create company", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+    readonly Button _recoverButton = new() { Content = "Reset password", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
     readonly Button _unlockButton = new() { Content = "Unlock", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
 
     public CompanyLoginWidget() : base("Company login")
@@ -69,7 +82,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
             AppWindow.SetIcon(icon);
 
         AttachChrome(BuildChrome());
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(420, 520));
+        AppWindow.Resize(new Windows.Graphics.SizeInt32(420, 640));
         EnsureSession();
         ShowWelcome();
         UpdateCommands();
@@ -98,6 +111,8 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         BuildLoginPanel();
         BuildSetupPanel();
         BuildUnlockPanel();
+        BuildCreatePanel();
+        BuildRecoverPanel();
         BuildSignedInPanel();
 
         var body = new Grid { MinWidth = 360 };
@@ -112,6 +127,8 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         host.Children.Add(_login);
         host.Children.Add(_setup);
         host.Children.Add(_unlock);
+        host.Children.Add(_create);
+        host.Children.Add(_recover);
         host.Children.Add(_signedInPanel);
         body.Children.Add(host);
         Grid.SetRow(host, 1);
@@ -168,11 +185,21 @@ internal sealed class CompanyLoginWidget : WidgetWindow
             else
             ShowError("No company is remembered yet. Open a company file first.");
         };
+        var create = new Button { Content = "Create a new company…", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+        create.Click += (_, _) => ShowCreate();
+        _welcome.Children.Add(create);
         _welcome.Children.Add(open);
         _welcome.Children.Add(follow);
         _welcome.Children.Add(new TextBlock
         {
-            Text = "Create a new company or manage users in full O-Studio.",
+            Text = "Recent companies",
+            Style = (Style)Application.Current.Resources["SectionTitleStyle"],
+            Margin = new Thickness(0, 8, 0, 0),
+        });
+        _welcome.Children.Add(_recent);
+        _welcome.Children.Add(new TextBlock
+        {
+            Text = "Manage users and company settings in full O-Studio.",
             TextWrapping = TextWrapping.Wrap,
             Opacity = 0.85,
             FontSize = 12,
@@ -186,6 +213,9 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         _login.Children.Add(_passwordBox);
         _signInButton.Click += SignIn;
         _login.Children.Add(_signInButton);
+        var forgot = new HyperlinkButton { Content = "Forgot password?" };
+        forgot.Click += (_, _) => ShowRecover();
+        _login.Children.Add(forgot);
         var close = new HyperlinkButton { Content = "Close company" };
         close.Click += (_, _) => _ = CloseCompanyAsync();
         _login.Children.Add(close);
@@ -203,6 +233,42 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         _setup.Children.Add(_setupConfirm);
         _setupButton.Click += CreateOwner;
         _setup.Children.Add(_setupButton);
+    }
+
+    void BuildCreatePanel()
+    {
+        _create.Children.Add(new TextBlock
+        {
+            Text = "Create a new company",
+            Style = (Style)Application.Current.Resources["SectionTitleStyle"],
+        });
+        _create.Children.Add(_createName);
+        _create.Children.Add(_createUser);
+        _create.Children.Add(_createPassword);
+        _create.Children.Add(_createConfirm);
+        _createButton.Click += CreateCompany;
+        _create.Children.Add(_createButton);
+        var back = new HyperlinkButton { Content = "Back" };
+        back.Click += (_, _) => ShowWelcome();
+        _create.Children.Add(back);
+    }
+
+    void BuildRecoverPanel()
+    {
+        _recover.Children.Add(new TextBlock
+        {
+            Text = "Reset a forgotten password with the recovery code saved when the company was created.",
+            TextWrapping = TextWrapping.Wrap,
+        });
+        _recover.Children.Add(_recoverUser);
+        _recover.Children.Add(_recoverCode);
+        _recover.Children.Add(_recoverPassword);
+        _recover.Children.Add(_recoverConfirm);
+        _recoverButton.Click += ResetPassword;
+        _recover.Children.Add(_recoverButton);
+        var back = new HyperlinkButton { Content = "Back to sign in" };
+        back.Click += (_, _) => ShowOnly(_login);
+        _recover.Children.Add(back);
     }
 
     void BuildUnlockPanel()
@@ -270,6 +336,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
     void ShowWelcome()
     {
         ShowOnly(_welcome);
+        _ = LoadRecentAsync();
         _status.Text = SuiteJsonHub.CompanyPath() is { } p
             ? $"Remembered: {Path.GetFileName(p)}"
             : "No company remembered";
@@ -281,6 +348,8 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         _login.Visibility = panel == _login ? Visibility.Visible : Visibility.Collapsed;
         _setup.Visibility = panel == _setup ? Visibility.Visible : Visibility.Collapsed;
         _unlock.Visibility = panel == _unlock ? Visibility.Visible : Visibility.Collapsed;
+        _create.Visibility = panel == _create ? Visibility.Visible : Visibility.Collapsed;
+        _recover.Visibility = panel == _recover ? Visibility.Visible : Visibility.Collapsed;
         _signedInPanel.Visibility = panel == _signedInPanel ? Visibility.Visible : Visibility.Collapsed;
         UpdateCommands();
     }
@@ -291,6 +360,8 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         _signInButton.IsEnabled = engine && _companyOpen && !_signedIn;
         _setupButton.IsEnabled = engine && _companyOpen;
         _unlockButton.IsEnabled = engine && _companyOpen;
+        _createButton.IsEnabled = engine && !_companyOpen;
+        _recoverButton.IsEnabled = engine && _companyOpen;
         _usernameBox.IsEnabled = !_busy;
         _passwordBox.IsEnabled = !_busy;
     }
@@ -422,6 +493,134 @@ internal sealed class CompanyLoginWidget : WidgetWindow
                 ApplyStatus(status);
             });
         });
+    }
+
+    async Task LoadRecentAsync()
+    {
+        if (_session == null)
+            return;
+        JsonElement rows = default;
+        if (!await RunEngineAsync("", () => rows = _session!.Call("company_recent_list").Clone()))
+            return;
+        _recent.Children.Clear();
+        if (rows.ValueKind != JsonValueKind.Array || rows.GetArrayLength() == 0)
+        {
+            _recent.Children.Add(new TextBlock { Text = "None yet.", Opacity = 0.7 });
+            return;
+        }
+
+        foreach (var row in rows.EnumerateArray())
+        {
+            var path = Text(row, "path");
+            var present = row.TryGetProperty("exists", out var exists) && exists.ValueKind == JsonValueKind.True;
+            var name = Text(row, "name");
+            var button = new HyperlinkButton
+            {
+                Content = (string.IsNullOrWhiteSpace(name) ? Path.GetFileName(path) : name) + (present ? "" : " (file not found)"),
+                IsEnabled = present,
+            };
+            ToolTipService.SetToolTip(button, path);
+            button.Click += async (_, _) => await OpenPathAsync(path);
+            _recent.Children.Add(button);
+        }
+    }
+
+    void ShowCreate()
+    {
+        if (_busy || _companyOpen)
+            return;
+        ShowOnly(_create);
+        _createName.Focus(FocusState.Programmatic);
+    }
+
+    async void CreateCompany(object sender, RoutedEventArgs e)
+    {
+        if (_busy || _session == null || _companyOpen)
+            return;
+        var name = _createName.Text.Trim();
+        var username = _createUser.Text.Trim();
+        var password = _createPassword.Password;
+        var confirm = _createConfirm.Password;
+        if (name.Length == 0 || username.Length == 0 || password.Length == 0)
+        {
+            ShowError("Enter the company name, the owner user name and a password.");
+            return;
+        }
+
+        string? path;
+        try
+        {
+            path = await LocalPickers.PickNewCompanyFile(Hwnd, name);
+        }
+        catch (Exception ex)
+        {
+            ShowError("The file picker could not be opened. " + ex.Message);
+            return;
+        }
+
+        if (path == null)
+            return;
+        // The save picker leaves an empty placeholder; the engine must create the file itself.
+        try
+        {
+            if (File.Exists(path) && new FileInfo(path).Length == 0)
+                File.Delete(path);
+        }
+        catch (IOException)
+        {
+        }
+
+        JsonElement result = default;
+        var created = await RunEngineAsync("Creating the company…", () =>
+        {
+            result = _session!.Call("company_create", new { path, name, username, password, confirm }).Clone();
+        });
+        _createPassword.Password = "";
+        _createConfirm.Password = "";
+        if (!created)
+            return;
+        var code = result.ValueKind == JsonValueKind.Array && result.GetArrayLength() > 1 ? result[1].GetString() : null;
+        await RefreshStatusAsync();
+        if (!string.IsNullOrWhiteSpace(code))
+            await ShowRecoveryAsync(code, "Save your recovery code");
+    }
+
+    void ShowRecover()
+    {
+        if (_busy || !_companyOpen)
+            return;
+        ShowOnly(_recover);
+        if (string.IsNullOrWhiteSpace(_recoverUser.Text))
+            _recoverUser.Text = SuiteJsonHub.RememberedUsername() ?? "";
+        _recoverUser.Focus(FocusState.Programmatic);
+    }
+
+    async void ResetPassword(object sender, RoutedEventArgs e)
+    {
+        if (_busy || _session == null || !_companyOpen)
+            return;
+        var username = _recoverUser.Text.Trim();
+        var code = _recoverCode.Text.Trim();
+        var password = _recoverPassword.Password;
+        var confirm = _recoverConfirm.Password;
+        if (username.Length == 0 || code.Length == 0 || password.Length == 0)
+        {
+            ShowError("Enter the user name, the recovery code and a new password.");
+            return;
+        }
+
+        string? fresh = null;
+        var reset = await RunEngineAsync("Resetting the password…", () =>
+        {
+            fresh = _session!.Call("auth_recover", new { username, code, @new = password, confirm }).GetString();
+        });
+        _recoverPassword.Password = "";
+        _recoverConfirm.Password = "";
+        _recoverCode.Text = "";
+        if (!reset || string.IsNullOrWhiteSpace(fresh))
+            return;
+        await ShowRecoveryAsync(fresh, "Password reset. Save the new recovery code");
+        ShowOnly(_login);
     }
 
     async void CreateOwner(object sender, RoutedEventArgs e)
