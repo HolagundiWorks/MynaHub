@@ -50,6 +50,14 @@
     <ProjectReference Include="..\..\..\O-COREOP\BBSDesktop\Office.Ai\Office.Ai.csproj" />
     <ProjectReference Include="..\..\..\o-ui\O.Ui\O.Ui.csproj" />
   </ItemGroup>
+  <!-- The launcher is a build-order reference only. Its own Windows App SDK payload would repeat Studio's, so it is left out of Studio's publish list
+       (installer/build.ps1 publishes the launcher into the same folder). -->
+  <Target Name="DropLauncherPayloadFromPublish" BeforeTargets="_HandleFileConflictsForPublish">
+    <ItemGroup>
+      <_LauncherPublishFile Include="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(ResolvedFileToPublish.FullPath)').Contains('Adms.LoginWidget'))" />
+      <ResolvedFileToPublish Remove="@(_LauncherPublishFile)" />
+    </ItemGroup>
+  </Target>
   <Target Name="CopyCompanyLoginWidget" AfterTargets="Build">
     <PropertyGroup>
       <LoginWidgetOut>$(MSBuildThisFileDirectory)..\Adms.LoginWidget\bin\$(Configuration)\net8.0-windows10.0.19041.0\win-x64\</LoginWidgetOut>
