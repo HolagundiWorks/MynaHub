@@ -23,10 +23,11 @@ dotnet publish native\Adms.Desktop\Adms.Desktop.csproj -c Release -r win-x64 --s
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 if (-not (Test-Path (Join-Path $stage "architect_office_desktop_lib.dll"))) { throw "The engine DLL was not copied beside the app." }
 
-# The suite launcher (tray icon, company sign-in) goes into the same folder; both are self-contained with the same runtime, so shared files are identical.
-dotnet publish native\Adms.LoginWidget\Adms.LoginWidget.csproj -c Release -r win-x64 --self-contained true -o $stage
+# The suite launcher (tray icon, company sign-in) is a separate WinUI app with its own resource index, so it gets its own folder beside Studio.
+$launcherDir = Join-Path $stage "launcher"
+dotnet publish native\Adms.LoginWidget\Adms.LoginWidget.csproj -c Release -r win-x64 --self-contained true -o $launcherDir
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish (launcher) failed" }
-if (-not (Test-Path (Join-Path $stage "O-Studio.Launcher.exe"))) { throw "O-Studio.Launcher.exe was not published beside the app." }
+if (-not (Test-Path (Join-Path $launcherDir "O-Studio.Launcher.exe"))) { throw "O-Studio.Launcher.exe was not published." }
 
 Write-Host "3/3 Installer"
 $out = Join-Path $PSScriptRoot "O-Studio-Setup-$version.exe"
