@@ -12,7 +12,7 @@ One row per bug. Process: [BUG-PROCESS.md](BUG-PROCESS.md). Severity: [README.md
 
 Items 0002 to 0005 were found while building the installers and are listed so the agent confirms or closes them in its first run. Items still to be found by the test program are added below.
 
-| BUG-0006 | S2 | Launcher | LNC-WIN-03 | Sign-in window has no **Create a new company** flow; plan expects creating `TestCo-<date>.osas` from the launcher | open | 2026-11-01 | |
-| BUG-0007 | S3 | Launcher | LNC-WIN-01 | Welcome panel is Open + Follow only; plan lists create, open, and recent list on the welcome panel | open | 2026-11-01 | |
-| BUG-0008 | S3 | Launcher / docs | LNC-WIN-13 | Plan cites `%LOCALAPPDATA%\OSAS\suite.json`; app writes `%LOCALAPPDATA%\O-Studio\suite.json` per SUITE.md | open (fix PLAN-LAUNCHER) | 2026-11-01 | |
-| BUG-0009 | S3 | Launcher | LNC-WIN-15 | No user password recovery (“Forgot password?”) on the sign-in panel; only file-unlock recovery and admin setup recovery code | open | 2026-11-01 | |
+| BUG-0006 | S2 | Launcher | LNC-WIN-03 | Sign-in window has no **Create a new company** flow; plan expects creating `TestCo-<date>.osas` from the launcher | fixed in code, to be verified in a UI run | 2026-11-01 | launcher commit |
+| BUG-0007 | S3 | Launcher | LNC-WIN-01 | Welcome panel is Open + Follow only; plan lists create, open, and recent list on the welcome panel | fixed in code, to be verified in a UI run | 2026-11-01 | launcher commit |
+| BUG-0008 | S3 | Launcher / docs | LNC-WIN-13 | Plan cites `%LOCALAPPDATA%\OSAS\suite.json`; app writes `%LOCALAPPDATA%\O-Studio\suite.json` per SUITE.md | fixed in code, to be verified in a UI run | 2026-11-01 | launcher commit |
+| BUG-0009 | S3 | Launcher | LNC-WIN-15 | No user password recovery (“Forgot password?”) on the sign-in panel; only file-unlock recovery and admin setup recovery code | fixed in code, to be verified in a UI run | 2026-11-01 | launcher commit |
