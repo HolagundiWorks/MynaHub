@@ -170,13 +170,13 @@
                     <StackPanel Spacing="12">
                         <Image x:Name="LoginLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="O-Studio"/>
                         <TextBlock x:Name="LoginHeading" Style="{ThemeResource PageTitleStyle}" TextWrapping="WrapWholeWords"/>
-                        <TextBlock Text="Enter your username and password." Style="{ThemeResource BodyStyle}" TextWrapping="WrapWholeWords"/>
-                        <TextBox x:Name="UsernameBox" Header="Username"/>
-                        <PasswordBox x:Name="PasswordBox" Header="Password" KeyDown="PasswordKeyDown"/>
+                        <TextBlock Text="Sign in once in the O-Studio launcher (the tray icon). Choose O-Studio there and it opens signed in." Style="{ThemeResource BodyStyle}" TextWrapping="WrapWholeWords"/>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button x:Name="SignInButton" Content="Sign in" Click="SignIn" Style="{StaticResource AccentButtonStyle}"/>
+                            <Button x:Name="OpenLauncherButton" Content="Open the launcher" Click="OpenCompanyLoginWidget" Style="{StaticResource AccentButtonStyle}"/>
                             <Button x:Name="SwitchFromLogin" Content="Switch company" Click="CloseCompany"/>
                         </StackPanel>
+                        <Button x:Name="ForgotButton" Content="Forgot password? Use recovery code" Click="ShowRecover"/>
+                    </StackPanel>
                         <Button x:Name="ForgotButton" Content="Forgot password? Use recovery code" Click="ShowRecover"/>
                     </StackPanel>
                 </Border>

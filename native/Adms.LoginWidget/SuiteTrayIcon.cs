@@ -15,6 +15,7 @@ internal sealed class SuiteTrayIcon : IDisposable
 
     const uint IdSignIn = 1001;
     const uint IdExit = 1002;
+    const uint IdRefresh = 1003;
     const uint IdAppBase = 2000;
 
     const uint NifMessage = 0x00000001;
@@ -118,6 +119,7 @@ internal sealed class SuiteTrayIcon : IDisposable
 
     void ShowMenu()
     {
+        _ = SuiteStatus.Instance.RefreshAsync();
         var menu = CreatePopupMenu();
         var host = SuiteLauncherHost.Instance;
         var status = host.SignedIn
@@ -128,6 +130,11 @@ internal sealed class SuiteTrayIcon : IDisposable
         if (status.Length > 80)
             status = status[..80];
         AppendMenu(menu, MfString | MfDisabled, 0, status);
+        var suite = SuiteStatus.Instance;
+        AppendMenu(menu, MfString | MfDisabled, 0, Clip("AI agent: " + suite.Ai));
+        AppendMenu(menu, MfString | MfDisabled, 0, Clip("Database: " + suite.Database));
+        AppendMenu(menu, MfString | MfDisabled, 0, Clip("Cloud sync: " + suite.Cloud));
+        AppendMenu(menu, MfString, IdRefresh, "Refresh status");
         AppendMenu(menu, MfSeparator, 0, null);
         AppendMenu(menu, MfString, IdSignIn, "Company sign-in…");
 
@@ -160,6 +167,12 @@ internal sealed class SuiteTrayIcon : IDisposable
             return;
         }
 
+        if (cmd == IdRefresh)
+        {
+            await SuiteStatus.Instance.RefreshAsync();
+            return;
+        }
+
         if (cmd == IdExit)
         {
             Dispose();
@@ -180,6 +193,8 @@ internal sealed class SuiteTrayIcon : IDisposable
             }
         }
     }
+
+    static string Clip(string text) => text.Length > 100 ? text[..100] + "…" : text;
 
     async Task ShowTrayErrorAsync(string message)
     {

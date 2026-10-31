@@ -150,7 +150,7 @@ public sealed partial class MainWindow : Window
 
     /// <summary>
     /// A sibling app may start Studio with <c>OSTUDIO_COMPANY</c> and a one-time
-    /// <c>OSTUDIO_TICKET</c>. The file opens through the ordinary path; an expired ticket leaves the sign-in page showing.
+    /// <c>OSTUDIO_TICKET</c>. The file opens through the ordinary path; an expired ticket leaves the launcher prompt showing.
     /// </summary>
     private async Task StartFromSuiteAsync()
     {
@@ -716,14 +716,6 @@ public sealed partial class MainWindow : Window
         });
     }
 
-    private void PasswordKeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key != VirtualKey.Enter)
-            return;
-        e.Handled = true;
-        SignIn(sender, new RoutedEventArgs());
-    }
-
     private void SetupKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key != VirtualKey.Enter)
@@ -746,29 +738,6 @@ public sealed partial class MainWindow : Window
             return;
         e.Handled = true;
         Unlock(sender, new RoutedEventArgs());
-    }
-
-    private async void SignIn(object sender, RoutedEventArgs e)
-    {
-        if (_busy || _session == null || !_companyOpen)
-            return;
-        var password = PasswordBox.Password;
-        var username = UsernameBox.Text.Trim();
-        if (username.Length == 0 || password.Length == 0)
-        {
-            ShowError("Enter your username and password.");
-            return;
-        }
-        await RunEngineAsync("Signing in…", () =>
-        {
-            _session.Login(username, password);
-            var status = _session.Call("auth_status");
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                PasswordBox.Password = "";
-                ApplyStatus(status);
-            });
-        });
     }
 
     private async void CreateOwner(object sender, RoutedEventArgs e)
@@ -801,7 +770,7 @@ public sealed partial class MainWindow : Window
             return;
         ShowOnly(RecoverPanel);
         if (string.IsNullOrWhiteSpace(RecoverUser.Text))
-            RecoverUser.Text = UsernameBox.Text;
+            RecoverUser.Text = SuiteHub.RememberedUsername() ?? "";
         RecoverUser.Focus(FocusState.Programmatic);
     }
 
@@ -1224,8 +1193,6 @@ public sealed partial class MainWindow : Window
         {
             ClearWorkspace();
             ShowLogin(_companyName);
-            if (string.IsNullOrWhiteSpace(UsernameBox.Text) && SuiteHub.RememberedUsername() is { } remembered)
-                UsernameBox.Text = remembered;
             return;
         }
         var username = Text(user, "username");
@@ -1272,12 +1239,19 @@ public sealed partial class MainWindow : Window
 
     private void ShowWelcome() => ShowOnly(WelcomePanel);
 
+    private bool _launcherOffered;
+
     private void ShowLogin(string name)
     {
-        LoginHeading.Text = string.IsNullOrWhiteSpace(name) ? "Sign in" : name;
+        LoginHeading.Text = string.IsNullOrWhiteSpace(name) ? "Sign in with the launcher" : name;
         ShowOnly(LoginPanel);
         Notice.IsOpen = false;
-        UsernameBox.Focus(FocusState.Programmatic);
+        // Sign-in lives in the launcher: start it once per run so the user is not left looking at a dead end.
+        if (!_launcherOffered)
+        {
+            _launcherOffered = true;
+            CompanyLoginLauncher.TryLaunch(out _);
+        }
     }
 
     private void ShowSetup()
@@ -1333,8 +1307,6 @@ public sealed partial class MainWindow : Window
 
     private void ClearSecrets()
     {
-        UsernameBox.Text = "";
-        PasswordBox.Password = "";
         SetupUser.Text = "";
         SetupPassword.Password = "";
         SetupConfirm.Password = "";
@@ -1373,12 +1345,9 @@ public sealed partial class MainWindow : Window
         LockItem.IsEnabled = !_busy && _signedIn;
         LogoutItem.IsEnabled = !_busy && _signedIn;
         PreviewItem.IsEnabled = !_busy && _signedIn;
-        SignInButton.IsEnabled = !_busy && _companyOpen;
         SetupButton.IsEnabled = !_busy && _companyOpen;
         RecoverButton.IsEnabled = !_busy && _companyOpen;
         UnlockButton.IsEnabled = !_busy && _companyOpen;
-        UsernameBox.IsEnabled = !_busy;
-        PasswordBox.IsEnabled = !_busy;
         ForgotButton.IsEnabled = !_busy;
         SwitchFromLogin.IsEnabled = !_busy && _companyOpen;
     }
