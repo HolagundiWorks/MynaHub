@@ -31,5 +31,6 @@ internal sealed class SuiteLauncherWindow : Window
         };
 
         SuiteTrayIcon.Start(DispatcherQueue);
+        SuiteStatus.Instance.Start(DispatcherQueue);
     }
 }

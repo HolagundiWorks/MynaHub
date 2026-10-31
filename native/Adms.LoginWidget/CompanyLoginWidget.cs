@@ -30,6 +30,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
     readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true };
     readonly ProgressRing _ring = new() { Width = 18, Height = 18, IsActive = false };
     readonly TextBlock _status = new() { VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _suiteStatus = new() { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true, Style = (Style)Application.Current.Resources["CaptionStyle"] };
 
     readonly StackPanel _welcome = new() { Spacing = 12 };
     readonly StackPanel _login = new() { Spacing = 12 };
@@ -51,8 +52,13 @@ internal sealed class CompanyLoginWidget : WidgetWindow
 
     public CompanyLoginWidget() : base("Company login")
     {
+        void ShowSuiteStatus() => DispatcherQueue.TryEnqueue(() =>
+            _suiteStatus.Text = $"AI agent: {SuiteStatus.Instance.Ai}\nDatabase: {SuiteStatus.Instance.Database}\nCloud sync: {SuiteStatus.Instance.Cloud}");
+        SuiteStatus.Instance.Changed += ShowSuiteStatus;
+        ShowSuiteStatus();
         Closed += (_, _) =>
         {
+            SuiteStatus.Instance.Changed -= ShowSuiteStatus;
             ReleaseSession();
             if (ReferenceEquals(_open, this))
                 _open = null;
@@ -112,10 +118,13 @@ internal sealed class CompanyLoginWidget : WidgetWindow
 
         var footer = new StackPanel
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
+            Spacing = 6,
             Margin = new Thickness(0, 8, 0, 0),
-            Children = { _ring, _status },
+            Children =
+            {
+                _suiteStatus,
+                new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { _ring, _status } },
+            },
         };
         body.Children.Add(footer);
         Grid.SetRow(footer, 2);
