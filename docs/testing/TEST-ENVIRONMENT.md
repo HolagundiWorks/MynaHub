@@ -46,7 +46,7 @@ Record in every run report: the installer file name and SHA-256, the commit of e
 
 | Data | How to get it | Used by |
 |---|---|---|
-| Test company `TestCo-<date>.osas` | create it with the launcher's sign-in window (**Create a new company**); owner `testowner`; generated password; keep the recovery code in `.local/credentials.txt` | all |
+| Test company `TestCo-<date>.osas` | run `dotnet run --project native/Adms.TestSeed -c Release` (creates company under `D:\Work Development\TestRuns\<date>\`, role users, demo client/project, copies `small.osp`; passwords in `docs/testing/.local/credentials.txt`) | all |
 | Test users, one per role | create in O-Studio (Owner, Principal, Accounts, Document editor, Auditor) | role tests |
 | Small DXF/DWG | the demo drawing in the user's Documents folder (copy it into the test folder first), plus `O-DRAFT-main\crates\engine\tests\fixtures` and `docs/qa` files | Draft |
 | `small.osp` | `O-COREOP\BBSDesktop\Office.Shared.Tests\Fixtures\small.osp` (copy; never test on the fixture itself) | CoreOp, Draft |

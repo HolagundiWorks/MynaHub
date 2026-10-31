@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Adms.TestSeed</RootNamespace>
+    <EngineProfile Condition="'$(EngineProfile)' == ''">release</EngineProfile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Adms.Interop\Adms.Interop.csproj">
+      <Properties>EngineProfile=$(EngineProfile)</Properties>
+    </ProjectReference>
+    <ProjectReference Include="..\Osas.Core\Osas.Core.csproj" />
+  </ItemGroup>
+</Project>
