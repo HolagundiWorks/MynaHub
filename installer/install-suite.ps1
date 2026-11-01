@@ -6,7 +6,7 @@
 .DESCRIPTION
   Migrated into O-Studio as the surviving OSAS hub (Phase 1 merge). Looks in
   -ArtifactsDir for O-Studio-Setup-*.exe (and optional O-CoreOp / O-Draft setups)
-  and runs each silently for the current user. Does not create a separate OSAS.exe.
+  and runs each silently for the current user. Does not create a separate hub app (OSAS.exe is retired, see docs/osas-deprecation.md).
 
 .PARAMETER ArtifactsDir
   Folder containing suite Setup.exe files (default: this installer folder).

@@ -1,25 +1,25 @@
-# OSAS.exe deprecation
+# OSAS.exe retired
 
-**Status:** Implemented policy (2026-10-28)  
-**Surviving product:** O-Studio (`HolagundiWorks/O-STUDIO`)
+**Status:** Retired (2026-11-01). Deprecated 2026-10-28. **Surviving product:** O-Studio (`HolagundiWorks/O-STUDIO`).
 
-## What changed
+The old **OSAS.exe** hub is gone. Its work is done by two apps:
 
-The **OSAS.exe** launcher is **deprecated**. **O-Studio** is the user-facing shell for:
+- **The O-Studio launcher** (`O-Studio.Launcher.exe`, `native/Adms.LoginWidget`): sign-in, the project list (select, load, close), starting O-Draft, O-CoreOp and later O-Form with the selected project, the AI agent and the database (cloud sync) servers, and the tray icon.
+- **O-Studio**: the company file, admin password, users, firm details, approvals and the Neon sync settings.
 
-- Choosing and creating the company file
-- Admin password and users
-- Firm (company) details
-- Suite launcher cards (sibling apps via ticket)
-- Approvals inbox for CoreOp estimates / running bills
-- Assistant (governed local tools; cloud chat opt-in)
+Removed on 2026-11-01: `installer/osas` (the OSAS Setup scripts), `docs/osas` (the hand-off notes) and the installed OSAS 0.3.0 entry on the development machine. Saved choices in `%LOCALAPPDATA%\OSAS` are not touched.
 
-User-facing docs and UI must say **O-Studio**, not OSAS or a separate launcher. Environment variables and `%LOCALAPPDATA%\OSAS\suite.json` stay unchanged on the wire so CoreOp, Draft and Form keep working.
+## What stays, on purpose
 
-## Installers
+These keep the OSAS name because renaming them would break existing files and the other apps; they are not a product:
 
-Use `installer/install-suite.ps1` in this repository. Do not publish a new OSAS Setup as the company chooser.
+- the shared library **Osas.Core** (`native/Osas.Core`) and its tests,
+- the company file extension **`.osas`**,
+- the data folder `%LOCALAPPDATA%\OSAS` (`suite.json`, `active-project.json`) next to `%LOCALAPPDATA%\O-Studio`,
+- `OSAS_*` environment variables read by older builds.
 
-## If the OSAS GitHub repository becomes writable
+User text says **O-Studio**; never OSAS (see `SUITE.md`).
 
-Add a short README at the top that points contributors to `HolagundiWorks/O-STUDIO` and states that OSAS.exe is no longer the hub. Archive the repository when ready.
+## The old repository
+
+`OSAS-Open_Source_Architecture_Suit` is no longer built or released. It still holds uncommitted edits on branch `suite/single-installer`, so it was left as it is; add a README pointing to `HolagundiWorks/O-STUDIO` and archive it when those edits are dealt with.
