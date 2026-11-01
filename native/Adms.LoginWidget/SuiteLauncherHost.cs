@@ -224,6 +224,27 @@ internal sealed class SuiteLauncherHost
         SuiteCatalog.StartWithTicket(exe, path, ticket!);
     }
 
+    /// <summary>Start the app that asked for the launcher (<see cref="LaunchRequest"/>) once a company is signed in and a project is locked.</summary>
+    internal async Task RunPendingLaunchAsync(DispatcherQueue queue)
+    {
+        var app = LaunchRequest.Read();
+        if (app == null || !CanLaunchSiblingApps || Project == null)
+            return;
+        var descriptor = SuiteCatalog.Apps.FirstOrDefault(a =>
+            string.Equals(a.Title, app, StringComparison.OrdinalIgnoreCase) || string.Equals(a.TicketApp, app, StringComparison.OrdinalIgnoreCase));
+        LaunchRequest.Clear();
+        if (descriptor == null)
+            return;
+        try
+        {
+            await LaunchAppAsync(descriptor, queue);
+        }
+        catch (Exception ex)
+        {
+            CompanyLoginWidget.ShowError(ex.Message);
+        }
+    }
+
     internal async Task HandOffToStudioAsync(DispatcherQueue queue)
     {
         if (Session == null || !SignedIn || string.IsNullOrWhiteSpace(CompanyPath))

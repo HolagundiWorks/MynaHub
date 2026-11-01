@@ -17,6 +17,9 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        var request = LaunchRequest.FromArguments(Environment.GetCommandLineArgs());
+        if (request != null)
+            LaunchRequest.Write(request);
         _single = new Mutex(true, "O-Studio.Suite.Launcher", out var first);
         _show = new EventWaitHandle(false, EventResetMode.AutoReset, "O-Studio.Suite.Launcher.Show");
         if (!first)
@@ -27,7 +30,12 @@ public partial class App : Application
             return;
         }
         var queue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
-        ThreadPool.RegisterWaitForSingleObject(_show, (_, _) => queue.TryEnqueue(CompanyLoginWidget.ShowOrFocus), null, Timeout.Infinite, false);
+        ThreadPool.RegisterWaitForSingleObject(_show, (_, _) => queue.TryEnqueue(() =>
+        {
+            CompanyLoginWidget.ShowOrFocus();
+            _ = SuiteLauncherHost.Instance.RunPendingLaunchAsync(queue);
+        }), null, Timeout.Infinite, false);
+        SuiteLauncherHost.Instance.Changed += () => queue.TryEnqueue(async () => await SuiteLauncherHost.Instance.RunPendingLaunchAsync(queue));
 
         var enginePath = Path.Combine(AppContext.BaseDirectory, "architect_office_desktop_lib.dll");
         if (File.Exists(enginePath))
@@ -44,5 +52,14 @@ public partial class App : Application
         Osas.Core.Suite.Engine.LookIn(AppContext.BaseDirectory, "architect_office_desktop_lib.dll");
         O.Ui.SuiteMotion.RespectSystemPreference();
         new SuiteLauncherWindow().Activate();
+        if (request != null)
+        {
+            // Started on behalf of an app: show the sign-in window; the app starts when a project is locked.
+            queue.TryEnqueue(() =>
+            {
+                CompanyLoginWidget.ShowOrFocus();
+                _ = SuiteLauncherHost.Instance.RunPendingLaunchAsync(queue);
+            });
+        }
     }
 }
