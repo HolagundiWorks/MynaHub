@@ -960,6 +960,8 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         }
 
         _companyOpen = true;
+        // Signed in only when the status below says so (after Sign out or Lock the sign-in button must work again).
+        _signedIn = false;
         _companyName = Text(company, "name");
         _companyPath = Text(company, "path");
         if (!string.IsNullOrWhiteSpace(_companyPath))

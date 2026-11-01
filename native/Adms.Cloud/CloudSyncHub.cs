@@ -29,7 +29,8 @@ public static class CloudSyncHub
         }
 
         _store = CloudSyncStore.Load();
-        _coordinator = new OspSyncCoordinator(
+        // The coordinator counts as running only once it is connected, so a connection that is still being tried (or fails) never reads as "running".
+        var coordinator = new OspSyncCoordinator(
             settings,
             _store,
             ownerId: shell.CompanyUuid,
@@ -39,7 +40,7 @@ public static class CloudSyncHub
         bool connected;
         try
         {
-            connected = await _coordinator.ConnectAsync().ConfigureAwait(false);
+            connected = await coordinator.ConnectAsync().ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -49,13 +50,12 @@ public static class CloudSyncHub
 
         if (!connected)
         {
-            // A coordinator that never connected must not count as running.
-            await _coordinator.DisposeAsync().ConfigureAwait(false);
-            _coordinator = null;
+            await coordinator.DisposeAsync().ConfigureAwait(false);
             return false;
         }
 
-        _coordinator.Start();
+        _coordinator = coordinator;
+        coordinator.Start();
         Emit("Cloud sync running (push every 2s, pull on Postgres NOTIFY).");
         return true;
     }
