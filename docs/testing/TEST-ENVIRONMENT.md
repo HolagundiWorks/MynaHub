@@ -47,8 +47,9 @@ Record in every run report: the installer file name and SHA-256, the commit of e
 | Data | How to get it | Used by |
 |---|---|---|
 | Test company `TestCo-<date>.osas` | run `dotnet run --project native/Adms.TestSeed -c Release` (creates company under `D:\Work Development\TestRuns\<date>\`, role users, demo client/project, copies `small.osp`; passwords in `docs/testing/.local/credentials.txt`) | all |
+| Re-link Documents `001-1` + DEMO drawing to TC-01 without re-seeding | `dotnet run --project native/Adms.TestSeed -c Release -- "D:\Work Development\TestRuns\<date>" --wire-only` | all |
 | Test users, one per role | create in O-Studio (Owner, Principal, Accounts, Document editor, Auditor) | role tests |
-| Small DXF/DWG | the demo drawing in the user's Documents folder (copy it into the test folder first), plus `O-DRAFT-main\crates\engine\tests\fixtures` and `docs/qa` files | Draft |
+| Small DXF/DWG | `Adms.TestSeed` copies `OneDrive\Documents\OSAS TEST\DEMO.dwg` (and `D1.dwg`) into `<test folder>\cad\`, and into `projects\tc-01-1\draft\`; also copies `drawing.osp` and `projects\001-1\` into `<test folder>\from-documents\`. Paths are listed in `docs/testing/.local/credentials.txt`. Plus `O-DRAFT-main\crates\engine\tests\fixtures` and `docs/qa` files | Draft |
 | `small.osp` | `O-COREOP\BBSDesktop\Office.Shared.Tests\Fixtures\small.osp` (copy; never test on the fixture itself) | CoreOp, Draft |
 | Empty `.osp` | `cargo run -p aad-odp --example pack -- test.osp Test --drawing demo.dxf` | Draft, CoreOp |
 | Bank statement CSV / XLSX | write a 20-row sample (date, narration, debit, credit, balance) into the test folder | Studio bank import |

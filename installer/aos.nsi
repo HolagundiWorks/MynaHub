@@ -56,6 +56,8 @@ Section "Install"
   SetOutPath "$INSTDIR"
   ; the program was called Adms.Desktop before; remove those files so an upgrade leaves one program behind
   Delete "$INSTDIR\Adms.Desktop.*"
+  ; the launcher lives in its own folder; an older install left a copy in this folder that cannot start there (BUG-0019)
+  Delete "$INSTDIR\O-Studio.Launcher.*"
   File /r "${SOURCE}\*.*"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 

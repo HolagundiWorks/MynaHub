@@ -1,11 +1,11 @@
-# Bug log
+﻿# Bug log
 
 One row per bug. Process: [BUG-PROCESS.md](BUG-PROCESS.md). Severity: [README.md](README.md). Newest at the bottom. S1 and S2 also have a file in `bugs/`.
 
 | Id | Severity | App | Case | Summary | Status | Found | Fix |
 |---|---|---|---|---|---|---|---|
 | BUG-0001 | S3 | O-Studio (`Osas.Core.Tests`) | ENV-03 | `SuiteCompanyTests.The_environment_an_app_is_started_with_names_the_company_and_the_ticket` fails: the test expects one environment variable when no ticket is given, but the suite shell now also sets the `OSAS_AI_*` / AI variables | verified fixed (59/59 pass on 2026-11-01) | 2026-10-30 | 2026-11-01 run |
-| BUG-0002 | S3 | Launcher | LNC-TRY-04 | The tray menu with the AI agent, database and cloud sync lines was added and compiles, but its rendered text has not been inspected by a test (the status file is checked instead) | open — status file verified; menu pixels not captured | 2026-10-31 | |
+| BUG-0002 | S3 | Launcher | LNC-TRY-04 | The tray menu with the AI agent, database and cloud sync lines was added and compiles, but its rendered text has not been inspected by a test (the status file is checked instead) | open â€” status file verified; menu pixels not captured | 2026-10-31 | |
 | BUG-0003 | S3 | O-Studio repo | ENV-04 | `installer/stage-test/*` (about 100 built Windows App SDK files) is tracked in git (commit `7d8e5d9`); build output should not be tracked | open | 2026-10-31 | |
 | BUG-0004 | S3 | O-Studio repo | ENV-04 | The earlier public history of the OSAS repository contains installers (about 320 MB, `installer/suite-dist`); only a history rewrite removes them and that needs the owner's decision | open (owner decision) | 2026-10-30 | |
 | BUG-0005 | S4 | O-Studio build | ENV-04 | The launcher and O-Studio each carry the full Windows App SDK payload, so the O-Studio Setup is large (61 MB compressed); publishing them as one app would halve it | open | 2026-10-31 | |
@@ -15,4 +15,14 @@ Items 0002 to 0005 were found while building the installers and are listed so th
 | BUG-0006 | S2 | Launcher | LNC-WIN-03 | Sign-in window has no **Create a new company** flow; plan expects creating `TestCo-<date>.osas` from the launcher | fixed in code, to be verified in a UI run | 2026-11-01 | launcher commit |
 | BUG-0007 | S3 | Launcher | LNC-WIN-01 | Welcome panel is Open + Follow only; plan lists create, open, and recent list on the welcome panel | fixed in code, to be verified in a UI run | 2026-11-01 | launcher commit |
 | BUG-0008 | S3 | Launcher / docs | LNC-WIN-13 | Plan cites `%LOCALAPPDATA%\OSAS\suite.json`; app writes `%LOCALAPPDATA%\O-Studio\suite.json` per SUITE.md | fixed in code, to be verified in a UI run | 2026-11-01 | launcher commit |
-| BUG-0009 | S3 | Launcher | LNC-WIN-15 | No user password recovery (“Forgot password?”) on the sign-in panel; only file-unlock recovery and admin setup recovery code | fixed in code, to be verified in a UI run | 2026-11-01 | launcher commit |
+| BUG-0009 | S3 | Launcher | LNC-WIN-15 | No user password recovery (â€œForgot password?â€) on the sign-in panel; only file-unlock recovery and admin setup recovery code | fixed in code, to be verified in a UI run | 2026-11-01 | launcher commit |
+| BUG-0010 | S1 | O-Draft (source) | ENV-01 / DRF-SMK-04 | Working tree had deleted `dwg_worker.rs`; blocked workspace build until restored from git | open (restored; verify when workspace run completes) | 2026-11-01 | |
+| BUG-0011 | S2 | O-Draft (`aad-cli`) | DRF-FIL-03 | `aad-cli run --save` does not write `<file>.aadrev.json`; `drawing.revision` stays `unrecorded` (WinUI `app.save` does write the sidecar) | fixed (O-Draft PR 38), verified on installer 1.0.6 on 2026-11-01 | 2026-11-01 | |
+| BUG-0012 | S2 | O-Draft (engine/`aad-cli`) | DRF-MOD-08 | `line` with point `1e308` succeeds; plan expects refusal with a message | fixed (O-Draft PR 38), verified on installer 1.0.6 on 2026-11-01 | 2026-11-01 | |
+| BUG-0013 | S3 | O-Draft (`aad-cli`) | DRF-FIL-07 | Installed `aad-cli` reports project files (`.osp`) not available in this build; WinUI opens the same `.osp` | fixed (O-Draft PR 38), verified by tests (cargo test --workspace, 1661 passed); re-run the UI case | 2026-11-01 | |
+| BUG-0014 | S3 | O-Draft (`aad-cli`) | DRF-FIL-09 | Truncated DXF (`0`/`SECTION` only) opens as an empty drawing with exit 0 and no error message | fixed (O-Draft PR 38), verified on installer 1.0.6 on 2026-11-01 | 2026-11-01 | |
+| BUG-0015 | S3 | O-Draft (engine/`aad-cli`) | DRF-MOD-03 | `arrayrect` with `rows: 0` returns exit 0 and `created: 0` instead of refusing | fixed (O-Draft PR 38), verified on installer 1.0.6 on 2026-11-01 | 2026-11-01 | |
+| BUG-0016 | S2 | O-Draft (`aad-io`) | ENV-01 / DRF-SMK-04 | `mutation_robustness`: apartment DXF mutant seed 41 (`-1e308`) hangs past 20 s | fixed (O-Draft PR 38), verified by tests (cargo test --workspace, 1661 passed); re-run the UI case | 2026-11-01 | |
+| BUG-0018 | S2 | O-Draft (WinUI) | DRF-PRJ-02 | `ActiveProjectPointer` never called; `active-project.json` not written on `.osp` open | fixed (O-Draft PR 38), verified on installer 1.0.6 on 2026-11-01 | 2026-11-01 | |
+| BUG-0019 | S3 | Installer | INT-INS-03 | An upgrade leaves the old O-Studio.Launcher.exe in the O-Studio install root; it starts and crashes in Microsoft.UI.Xaml.dll (0xc000027b). The working launcher is in the launcher folder. Removed by hand on 2026-11-01; the installer should delete it on upgrade | fixed in installer/aos.nsi (to be verified by an upgrade install) | 2026-11-01 | launcher branch |
+
