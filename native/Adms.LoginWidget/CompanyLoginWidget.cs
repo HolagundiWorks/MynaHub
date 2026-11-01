@@ -321,10 +321,12 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
     void BuildSignedInPanel()
     {
         BuildHomePage();
+        BuildAskPage();
         BuildServicesPage();
         BuildAccountPage();
         _signedInPanel.Spacing = 0;
         _signedInPanel.Children.Add(_pageHome);
+        _signedInPanel.Children.Add(_pageAsk);
         _signedInPanel.Children.Add(_pageServices);
         _signedInPanel.Children.Add(_pageAccount);
         ShowTab(0);

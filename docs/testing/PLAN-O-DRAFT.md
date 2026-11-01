@@ -40,6 +40,13 @@ Every command case also checks **undo and redo** (`[R]`) unless the command is m
 | DRF-FIL-16 | Save off the UI thread | Save a large drawing | Window stays responsive during the save; result committed | timing |
 | DRF-FIL-17 | File association | Double-click an `.osp` in Explorer | Opens in O-Draft (suite installer registers `.osp`) | Explorer |
 | DRF-FIL-18 | Drawing compare | `dwgcompare` against itself and against a changed file | Equal vs different | command |
+| DRF-FIL-19 | Import DXF / DWG `[N]` | File > Import…, pick a DXF, then a DWG | Objects, layers and blocks merged into the open drawing at their own coordinates; names the drawing already has keep its definitions; one undo removes it | screenshot, undo |
+| DRF-FIL-20 | Import PDF | File > Import…, pick a vector PDF | Same as `pdf.import`: lines, text and fills as geometry on the PDF's layers | screenshot |
+| DRF-FIL-21 | Import SVG `[N]` | Import an SVG with paths, curves, arcs, a rect, a circle and a group with `transform`; check sizes in a file with `width="100mm"` | Polylines on layer SVG-IMPORT at the stated size, y up, curves smooth; text and pictures inside are reported as not drawn | screenshot, measure |
+| DRF-FIL-22 | Import picture `[N]` | Import a PNG, a JPEG, a TIFF and a JPG of a black line drawing on white | Outlines traced to polylines on layer RASTER-IMPORT; the message says the pixels are not placed and the scale is not known; `underlay.calibrate` fixes the scale | screenshot |
+| DRF-FIL-23 | Import picture, bad `[B]` | Import an all-white PNG; a photograph; a text file renamed `.png`; an `.exe` | Each refused with a clear message (no lines at the threshold; too detailed to trace; not a picture; kind not imported); nothing added | message |
+| DRF-FIL-24 | Import twice, same layer `[B]` | Import the same SVG twice | The second is refused (layer already holds objects) unless another `layer` is given | message |
+| DRF-FIL-25 | The + in the prompt | Press the + at the left of the prompt | The Import file dialog opens with the nine kinds; the file is imported as in DRF-FIL-19..22 | UIA, screenshot |
 
 ## D3 Drawing and modify
 

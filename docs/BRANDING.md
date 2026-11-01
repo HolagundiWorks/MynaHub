@@ -3,7 +3,7 @@
 **Canonical copy:** O-Studio `docs/BRANDING.md`. O-CoreOp and O-Draft keep an identical copy; **O-UI** (`o-ui`) holds the artwork, the colour files and the tool that draws them.
 **Names and terms:** [SUITE.md](SUITE.md). **Written 2026-11-01.**
 
-The idea: **one mark, four colours.** Every app wears the same mark. Each app has one colour of the palette. The **AI agent** wears **gold**.
+The idea: **one mark, four colours.** Every app wears the same mark. Each app has one colour of the palette. The **AI agent** wears all four.
 
 ## 1. The palette
 
@@ -28,7 +28,6 @@ All four Light Conditions accents are dark enough for **white** text and glyphs.
 | White on Dusk | 9.1 : 1 | text and glyph on CoreOp's tile |
 | White on Grove | 7.6 : 1 | text and glyph on Form's tile |
 | White on Ember | 5.6 : 1 | text and glyph on Studio's tile (AA ✓) |
-| Gold text `#9B6000` on white | 4.7 : 1 | AI agent accent text on white (AA ✓) |
 
 ## 2. The mark
 
@@ -61,24 +60,17 @@ Rules
 
 ## 3. The AI agent
 
-The AI agent is the **suite logo on a molten-gold tile**. Its three circles (the big C, the bowl under it and the ring at the centre) are drawn in **white** on a gold radial-gradient disc — a distinct identity separate from the four app colours.
+The AI agent has its own symbol, drawn in the design file `o-ui/brand/ai/ai-orb.html` (the animated master): a **dark sphere lit by four soft lobes**, one in each app colour (Ember upper left, Dusk upper right, Midnight lower right, Grove lower left), the **suite mark in white** with round ends on it, a halo of the same four colours behind, and **four small particles** orbiting. It wears all four app colours because it works for all four apps.
 
 | State | Look |
 |---|---|
-| **Running** | White ring strokes on a pulsing gold disc; a warm gold halo breathes every four seconds. Gold particles orbit the disc in four variants: #F0C840, #D4980E, #E8B030, #C88010 |
-| **Waiting** (starting) | Ring strokes at half white opacity, disc at 60 % gold |
-| **Not running / off** | Disc and strokes at 30 % — nearly dark |
+| **Running** | The sphere breathes (7.5 s, 5 %), the four halos swell and fade on their own beats (5.2, 6.8, 7.4 and 5.9 s), the white mark glows (4.8 s), and the particles orbit: Ember `#E05A28` in 11 s, Dusk `#7858D0` in 16 s (the other way), Midnight `#2858B8` in 20 s, Grove `#22A870` in 26 s (the other way) |
+| **Waiting** (starting) | Still, at 60 % |
+| **Not running / off** | Still, at 30 % |
 
-The gold gradient (radial, upper-left highlight):
+With "reduce motion" on, the design file stops all animation; the launcher shows the still orb then.
 
-| Stop | Colour | Offset |
-|---|---|---|
-| Bright highlight | `#F0C840` | 0 % |
-| Mid gold | `#D4980E` | 35 % |
-| Deep gold | `#9B6000` | 65 % |
-| Dark amber | `#6B4000` | 100 % |
-
-Files: `o-ui/brand/ai/ai-orb.svg` (static mark, animated master), `ai-orb-<size>.png` (still). In the launcher, the app bar and the Services page.
+Files: `o-ui/brand/ai/ai-orb.html` (design file, animated), `ai-orb.svg` and `ai-orb-<size>.png` (first frame). In the launcher it is `AiOrb` (`native/Adms.LoginWidget/AiOrb.cs`), drawn on a 300 unit scene like the design file: in the app bar, on the Services page and in the AI prompt. The O-Studio assistant bar uses the mark with a halo that moves through the four colours.
 
 The database server and the company file use plain icons, not the orb: a database icon and a folder icon, lit (accent wash) while they run and dim grey when they do not.
 
@@ -109,7 +101,7 @@ Rules: the name of an app is always written with a capital O and a hyphen (O-Cor
 | The four marks, ICO and tiles, lockups, brand sheet | done: `o-ui` `feat/brand` |
 | Accent colour files per app (`SuiteAccent.Orange / Mirage / Sea / Sand`, values updated to Light Conditions) | done |
 | `SuiteFonts` (Names, Display with fallbacks), `SuiteApp.Form` | done; the font files are not added |
-| AI orb — molten-gold identity (`o-ui/brand/ai/ai-orb.svg`) | done |
+| AI orb — four-colour sphere from the design file (`o-ui/brand/ai/ai-orb.html`) | done |
 | Launcher: marks in tiles, O-Form tile, Ember accent, animated AI orb, Names font for app names, Display font for titles | done |
 | O-Studio: marks and `app.ico` | done; its own pages take Ember from `SuiteAccent.Orange` automatically |
 | O-CoreOp: Dusk accent, tiles and `app.ico` | done |

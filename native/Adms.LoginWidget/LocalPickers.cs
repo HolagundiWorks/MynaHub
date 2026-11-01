@@ -20,6 +20,17 @@ internal static class LocalPickers
         return file?.Path;
     }
 
+    /// <summary>A text file to attach to a question for the assistant.</summary>
+    public static async Task<string?> PickTextFile(nint window)
+    {
+        var picker = new FileOpenPicker { ViewMode = PickerViewMode.List, SuggestedStartLocation = PickerLocationId.DocumentsLibrary };
+        foreach (var ext in new[] { ".txt", ".md", ".csv", ".json", ".xml", ".log", ".tsv" })
+            picker.FileTypeFilter.Add(ext);
+        InitializeWithWindow.Initialize(picker, window);
+        var file = await picker.PickSingleFileAsync();
+        return file?.Path;
+    }
+
     public static async Task<string?> PickCompanyFile(nint window)
     {
         var picker = new FileOpenPicker

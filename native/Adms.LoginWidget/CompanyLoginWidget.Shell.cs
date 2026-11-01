@@ -144,7 +144,7 @@ internal sealed partial class CompanyLoginWidget
         dots.Tapped += (_, _) =>
         {
             if (_signedInPanel.Visibility == Visibility.Visible)
-                ShowTab(1);
+                ShowTab(2);
         };
         var bar = new Grid { ColumnSpacing = 12, Padding = new Thickness(16, 12, 16, 12) };
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -181,6 +181,7 @@ internal sealed partial class CompanyLoginWidget
         var specs = new (string Name, string Glyph, UIElement Page)[]
         {
             ("Home", "", _pageHome),
+            ("Ask", "", _pageAsk),
             ("Services", "", _pageServices),
             ("Account", "", _pageAccount),
         };

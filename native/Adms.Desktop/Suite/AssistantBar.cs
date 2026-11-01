@@ -41,7 +41,7 @@ internal sealed class StudioToolHost(AppShell shell) : IToolHost
 }
 
 /// <summary>
-/// The AI assistant, floating over every page of O-Studio. Its logo glows and shifts between the suite's colours. Olmo 3 7B runs on this
+/// The AI assistant, floating over every page of O-Studio. Its orb glows with a halo that moves through the four app colours. Olmo 3 7B runs on this
 /// computer from O-Studio (shared with O-CoreOp and O-Draft over loopback). Read-only tools only; nothing leaves the machine.
 /// </summary>
 internal sealed class AssistantBar : UserControl
@@ -165,10 +165,10 @@ internal sealed class AssistantBar : UserControl
             caption.Foreground = Flow.Ink("TextSecondaryBrush");
     }
 
-    /// <summary>The O-Studio mark with a soft halo behind it that slowly changes colour: black, blue, orange, green.</summary>
+    /// <summary>The AI orb mark with a halo that slowly cycles through Ember, Dusk, Midnight and Grove.</summary>
     private static UIElement BuildGlowingLogo()
     {
-        var halo = new SolidColorBrush(Color.FromArgb(255, 0x1B, 0x1C, 0x20));
+        var halo = new SolidColorBrush(Color.FromArgb(255, 0xB8, 0x3E, 0x16));
         var grid = new Grid { Width = 52, Height = 52 };
         foreach (var (size, opacity) in new[] { (52.0, 0.14), (44.0, 0.22), (36.0, 0.34) })
             grid.Children.Add(new Microsoft.UI.Xaml.Shapes.Ellipse { Width = size, Height = size, Fill = halo, Opacity = opacity, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center });
@@ -183,8 +183,8 @@ internal sealed class AssistantBar : UserControl
         AutomationProperties.SetAccessibilityView(mark, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
         grid.Children.Add(mark);
 
-        // 12 seconds round: each colour holds a moment and eases into the next.
-        var colours = new[] { Color.FromArgb(255, 0x1B, 0x1C, 0x20), Color.FromArgb(255, 0x1F, 0x5F, 0xD1), Color.FromArgb(255, 0xF2, 0x8C, 0x28), Color.FromArgb(255, 0x2E, 0x9E, 0x5B) };
+        // 12 seconds round: Ember, Dusk, Midnight, Grove, easing between them (the colours of the AI orb).
+        var colours = new[] { Color.FromArgb(255, 0xB8, 0x3E, 0x16), Color.FromArgb(255, 0x56, 0x30, 0xA0), Color.FromArgb(255, 0x10, 0x2C, 0x80), Color.FromArgb(255, 0x16, 0x60, 0x40) };
         var animation = new ColorAnimationUsingKeyFrames { Duration = TimeSpan.FromSeconds(12), RepeatBehavior = RepeatBehavior.Forever };
         for (var i = 0; i <= colours.Length; i++)
             animation.KeyFrames.Add(new EasingColorKeyFrame { KeyTime = TimeSpan.FromSeconds(i * 3), Value = colours[i % colours.Length], EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } });
