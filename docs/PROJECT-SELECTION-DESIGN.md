@@ -112,6 +112,6 @@ O-Draft's current wizard splits in two: project identity moves to the launcher; 
 | Step | State |
 |---|---|
 | 1. Wire constants `OSTUDIO_PROJECT_ID`, `OSTUDIO_PROJECT_OSP`, `selected-project.json` in the three SuiteWire copies; `SelectedProjectStore`; project added to the environment of every app start; engine calls `project_launch_info`, `project_workspace_ensure` | built, tested (6 new Osas.Core tests, 1 office-core test) |
-| 2. Launcher: project drop-down, lock, New project dialog, "app has it open" check | not started |
+| 2. Launcher: project drop-down with search, lock and unlock, New project dialog (creates the client when new), refuses a change while O-CoreOp or O-Draft is running, `Project:` line in the window, tray menu and `launcher-status.txt`; apps refuse to start without a lock | built and compiled; UI flows not yet run (cases LNC-PRJ-01..16) |
 | 3. O-CoreOp then O-Draft start on the locked project; launcher is started and awaited when there is no lock | not started |
 | 4. Remove the old project UI; update SUITE.md and the test plans; run the suite test program | not started |

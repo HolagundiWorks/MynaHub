@@ -15,6 +15,7 @@ internal sealed class SuiteStatus
     internal string Ai { get; private set; } = "checking…";
     internal string Database { get; private set; } = "checking…";
     internal string Cloud { get; private set; } = "checking…";
+    internal string Project => SuiteLauncherHost.Instance.ProjectLine();
 
     internal event Action? Changed;
 
@@ -59,7 +60,7 @@ internal sealed class SuiteStatus
         {
             var path = SuiteWire.LocalPath("launcher-status.txt");
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}{Environment.NewLine}AI agent: {Ai}{Environment.NewLine}Database: {Database}{Environment.NewLine}Cloud sync: {Cloud}{Environment.NewLine}");
+            File.WriteAllText(path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}{Environment.NewLine}AI agent: {Ai}{Environment.NewLine}Database: {Database}{Environment.NewLine}Cloud sync: {Cloud}{Environment.NewLine}Project: {Project}{Environment.NewLine}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

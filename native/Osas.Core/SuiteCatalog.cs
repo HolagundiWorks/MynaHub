@@ -18,7 +18,7 @@ public static class SuiteCatalog
     [
         new("O-Studio", "Company hub, projects, and people", "O-Studio", ["O-Studio"], "O-Studio.exe"),
         new("O-CoreOp", "Quantities, estimates and billing", "O-CoreOp", ["O-CoreOp", "AQCCore"], "O-CoreOp.exe", "AQCCore.exe"),
-        new("O-Draft", "Drafting", "O-Draft", ["O-Draft", "AAD"], "O-Draft.exe", "aad-host.exe"),
+        new("O-Draft", "Drafting", "O-Draft", ["O-Draft", "AAD"], "ODraft.WinUi.exe", "O-Draft.exe", "aad-host.exe"),
         new("O-Form", "3D / BIM form", "O-Form", ["O-Form"], "O-Form.exe"),
     ];
 

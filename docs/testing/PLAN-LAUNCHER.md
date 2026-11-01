@@ -95,3 +95,24 @@ Opened by **Company sign-in…**, by a second launch, or by an error.
 | LNC-APP-06 | App not installed `[B]` | Rename an app's folder, choose it | Message that the app is not installed; the launcher keeps running | UIA |
 | LNC-APP-07 | Signed out `[B]` | Try to start an app signed out | Not possible (item greyed) | menu |
 | LNC-APP-08 | Environment | Inspect the started app's environment | `OSTUDIO_COMPANY` (path), `OSTUDIO_TICKET` (cleared by the app after use), `OSTUDIO_USER`; no password | process environment |
+
+## L6 Project selection (design: [../PROJECT-SELECTION-DESIGN.md](../PROJECT-SELECTION-DESIGN.md))
+
+| ID | Feature | Steps | Expected | How to check |
+|---|---|---|---|---|
+| LNC-PRJ-01 | List `[N]` | Sign in; look at the Project section | Drop-down lists the company's projects as `code  name  (client)`; archived ones are absent | UIA |
+| LNC-PRJ-02 | Search `[N]` | Type part of a code, name or client in the filter | The list narrows; clearing the filter restores it | UIA |
+| LNC-PRJ-03 | Lock `[N]` | Pick a project, Lock project | State line says Locked with code and name; `selected-project.json` has the project id, `.osp` path, company and user; status file `Project:` line shows it | file read |
+| LNC-PRJ-04 | Folder made on lock `[N]` | Lock a project that has no folder yet | The project folder with `osas.project.json` exists; the lock names `project.osp` inside it | file system |
+| LNC-PRJ-05 | Launch on the project `[N]` | Lock, then Tray > O-CoreOp and O-Draft | Each starts with `OSTUDIO_PROJECT_ID` and `OSTUDIO_PROJECT_OSP` set (read from the process environment) | process env |
+| LNC-PRJ-06 | Launch without a lock `[B]` | Unlock, Tray > O-Draft | Refused with "Choose and lock a project first" | message |
+| LNC-PRJ-07 | Switch refused while an app is open `[B]` | Lock A, start O-Draft, pick B and Lock | Refused: "O-Draft still has A open"; the lock stays on A | message, file |
+| LNC-PRJ-08 | Unlock refused while an app is open `[B]` | O-Draft running, Unlock | Refused naming O-Draft; after closing it, Unlock works and `selected-project.json` is gone | file |
+| LNC-PRJ-09 | Same project again `[R]` | Lock the locked project again with an app open | Accepted (no change) | message |
+| LNC-PRJ-10 | Archived project `[B]` | Archive a project in O-Studio, refresh the list | Not listed; a stale lock on it is refused by `project_launch_info` (launchable false) | engine call |
+| LNC-PRJ-11 | New project `[N]` | New project…, existing client, name, accept the generated code | Project and its folder exist in the company file; it is locked at once | O-Studio project list |
+| LNC-PRJ-12 | New project, new client `[N]` | New project…, New client…, enter the client name | Client and project created, project locked | O-Studio |
+| LNC-PRJ-13 | New project, bad input `[B]` | No name; no client; a duplicate name for the same client; a duplicate code | Each refused with a clear message; nothing created | message |
+| LNC-PRJ-14 | New project as Auditor `[B]` | Sign in as Auditor, New project… | Refused (Edit permission); no records created | message, audit log |
+| LNC-PRJ-15 | Other company `[B]` | Lock in company A, sign in to company B | B sees no lock; A's lock returns when A is opened again | file |
+| LNC-PRJ-16 | Tray status line `[N]` | Open the tray menu | A disabled line `Project: code name (locked)` or `none locked` | UIA |

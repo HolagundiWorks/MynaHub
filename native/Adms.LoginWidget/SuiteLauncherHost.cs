@@ -5,6 +5,12 @@ using Osas.Core;
 
 namespace Adms.LoginWidget;
 
+/// <summary>One line of the project drop-down.</summary>
+internal sealed record ProjectEntry(long Id, string Code, string Name, string Client, string Status)
+{
+    public override string ToString() => $"{Code}  {Name}  ({Client}){(Status == "active" ? "" : " - " + Status.Replace('_', ' '))}";
+}
+
 /// <summary>Shared company session for the tray launcher and sign-in widget.</summary>
 internal sealed class SuiteLauncherHost
 {
@@ -83,6 +89,96 @@ internal sealed class SuiteLauncherHost
 
     internal bool CanLaunchSiblingApps => Session != null && SignedIn && !string.IsNullOrWhiteSpace(CompanyPath);
 
+    /// <summary>The project locked for this company, or none.</summary>
+    internal SelectedProject? Project => string.IsNullOrWhiteSpace(CompanyPath) ? null : SelectedProjectStore.Read(CompanyPath);
+
+    internal string ProjectLine() => Project is { } p ? $"{p.Code} {p.Name} (locked)" : "none locked";
+
+    /// <summary>The apps that work on the locked project and are running now, by name.</summary>
+    internal static IReadOnlyList<string> AppsHoldingProject()
+    {
+        var held = new List<string>();
+        foreach (var app in SuiteCatalog.Apps)
+        {
+            if (string.Equals(app.TicketApp, "O-Studio", StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (app.ExeNames.Any(exe => System.Diagnostics.Process.GetProcessesByName(Path.GetFileNameWithoutExtension(exe)).Length > 0))
+                held.Add(app.Title);
+        }
+
+        return held;
+    }
+
+    internal async Task<IReadOnlyList<ProjectEntry>> ListProjectsAsync()
+    {
+        if (Session == null || !CanLaunchSiblingApps)
+            return [];
+        var rows = await Task.Run(() => Session.Call("project_list", new { client_id = (long?)null, include_archived = false }).Clone());
+        var list = new List<ProjectEntry>();
+        if (rows.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var row in rows.EnumerateArray())
+            {
+                if (row.TryGetProperty("id", out var id) && id.TryGetInt64(out var n))
+                    list.Add(new ProjectEntry(n, Text(row, "code"), Text(row, "name"), Text(row, "client_name"), Text(row, "status")));
+            }
+        }
+
+        return list;
+    }
+
+    /// <summary>Lock a project for the suite. Refused while O-CoreOp or O-Draft is open on a different project. Makes the project's folder when it has none.</summary>
+    internal async Task<SelectedProject> LockProjectAsync(ProjectEntry entry)
+    {
+        if (Session == null || !CanLaunchSiblingApps)
+            throw new InvalidOperationException("Sign in to your company first.");
+        var current = Project;
+        if (current != null && current.ProjectId != entry.Id)
+            RefuseWhileAppsOpen(current);
+
+        var path = CompanyPath;
+        var user = Username;
+        var locked = await Task.Run(() =>
+        {
+            var info = Session.Call("project_launch_info", new { project_id = entry.Id }).Clone();
+            if (info.TryGetProperty("archived", out var archived) && archived.ValueKind == JsonValueKind.True)
+                throw new InvalidOperationException($"{entry.Name} is archived. Restore it in O-Studio first.");
+            if (!HasWorkspace(info))
+                info = Session.Call("project_workspace_ensure", new { project_id = entry.Id }).Clone() is var made && HasWorkspace(made) ? Wrap(made) : info;
+            var osp = info.TryGetProperty("workspace", out var ws) && ws.ValueKind == JsonValueKind.Object ? Text(ws, "osp") : "";
+            if (osp.Length == 0)
+                throw new InvalidOperationException($"{entry.Name} has no project folder and one could not be made.");
+            var project = new SelectedProject(path, entry.Id, entry.Code, entry.Name, osp, user, DateTimeOffset.UtcNow);
+            SelectedProjectStore.Lock(project);
+            return project;
+        });
+        Changed?.Invoke();
+        return locked;
+    }
+
+    /// <summary>Release the lock. Refused while O-CoreOp or O-Draft is open on it.</summary>
+    internal void UnlockProject()
+    {
+        if (Project is { } current)
+            RefuseWhileAppsOpen(current);
+        SelectedProjectStore.Clear();
+        Changed?.Invoke();
+    }
+
+    static void RefuseWhileAppsOpen(SelectedProject current)
+    {
+        var held = AppsHoldingProject();
+        if (held.Count > 0)
+            throw new InvalidOperationException($"{string.Join(" and ", held)} still has {current.Name} open. Close it before changing the project.");
+    }
+
+    static bool HasWorkspace(JsonElement info) =>
+        info.ValueKind == JsonValueKind.Object && info.TryGetProperty("workspace", out var ws) && ws.ValueKind == JsonValueKind.Object;
+
+    /// <summary><c>project_workspace_ensure</c> answers with the workspace alone; wrap it like <c>project_launch_info</c> does.</summary>
+    static JsonElement Wrap(JsonElement workspace) =>
+        JsonDocument.Parse("{\"workspace\":" + workspace.GetRawText() + "}").RootElement.Clone();
+
     internal string TrayTooltip()
     {
         if (SignedIn && !string.IsNullOrWhiteSpace(CompanyName))
@@ -108,6 +204,8 @@ internal sealed class SuiteLauncherHost
 
         if (!CanLaunchSiblingApps)
             throw new InvalidOperationException("Sign in to your company first (Company sign-in…).");
+        if (Project == null)
+            throw new InvalidOperationException($"Choose and lock a project first (Company sign-in…, Project). {app.Title} opens on the locked project.");
 
         var exe = SuiteCatalog.FindExecutable(app)
             ?? throw new InvalidOperationException($"{app.Title} is not installed.");

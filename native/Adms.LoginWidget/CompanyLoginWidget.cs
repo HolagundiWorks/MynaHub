@@ -55,6 +55,13 @@ internal sealed class CompanyLoginWidget : WidgetWindow
     readonly TextBox _recoverCode = new() { Header = "Recovery code" };
     readonly PasswordBox _recoverPassword = new() { Header = "New password (12 or more characters)" };
     readonly PasswordBox _recoverConfirm = new() { Header = "Confirm new password" };
+    readonly TextBox _projectFilter = new() { Header = "Project", PlaceholderText = "Search by code, name or client" };
+    readonly ComboBox _projectBox = new() { HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = "Choose a project" };
+    readonly TextBlock _projectState = new() { TextWrapping = TextWrapping.Wrap, Opacity = 0.85, FontSize = 12 };
+    readonly Button _projectLock = new() { Content = "Lock project", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+    readonly Button _projectRelease = new() { Content = "Unlock" };
+    readonly Button _projectNew = new() { Content = "New project…" };
+    IReadOnlyList<ProjectEntry> _projects = [];
     readonly TextBlock _signedInSummary = new() { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
 
     readonly Button _signInButton = new() { Content = "Sign in", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
@@ -66,7 +73,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
     public CompanyLoginWidget() : base("Company login")
     {
         void ShowSuiteStatus() => DispatcherQueue.TryEnqueue(() =>
-            _suiteStatus.Text = $"AI agent: {SuiteStatus.Instance.Ai}\nDatabase: {SuiteStatus.Instance.Database}\nCloud sync: {SuiteStatus.Instance.Cloud}");
+            _suiteStatus.Text = $"AI agent: {SuiteStatus.Instance.Ai}\nDatabase: {SuiteStatus.Instance.Database}\nCloud sync: {SuiteStatus.Instance.Cloud}\nProject: {SuiteStatus.Instance.Project}");
         SuiteStatus.Instance.Changed += ShowSuiteStatus;
         ShowSuiteStatus();
         Closed += (_, _) =>
@@ -291,6 +298,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
             Style = (Style)Application.Current.Resources["SectionTitleStyle"],
         });
         _signedInPanel.Children.Add(_signedInSummary);
+        BuildProjectSection();
         var studio = new Button
         {
             Content = "Open O-Studio…",
@@ -307,6 +315,189 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         _signedInPanel.Children.Add(lockBtn);
         _signedInPanel.Children.Add(logout);
         _signedInPanel.Children.Add(close);
+    }
+
+    void BuildProjectSection()
+    {
+        _projectFilter.TextChanged += (_, _) => ShowProjects();
+        _projectLock.Click += async (_, _) => await LockSelectedProjectAsync();
+        _projectRelease.Click += (_, _) => ReleaseProject();
+        _projectNew.Click += async (_, _) => await NewProjectAsync();
+        _signedInPanel.Children.Add(_projectFilter);
+        _signedInPanel.Children.Add(_projectBox);
+        _signedInPanel.Children.Add(new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Children = { _projectLock, _projectRelease, _projectNew },
+        });
+        _signedInPanel.Children.Add(_projectState);
+    }
+
+    async Task LoadProjectsAsync()
+    {
+        try
+        {
+            _projects = await SuiteLauncherHost.Instance.ListProjectsAsync();
+        }
+        catch (Exception ex)
+        {
+            _projects = [];
+            ShowError(string.IsNullOrWhiteSpace(ex.Message) ? "The project list could not be read." : ex.Message);
+        }
+
+        ShowProjects();
+    }
+
+    void ShowProjects()
+    {
+        var term = _projectFilter.Text.Trim();
+        var locked = SuiteLauncherHost.Instance.Project;
+        _projectBox.Items.Clear();
+        ProjectEntry? pick = null;
+        foreach (var p in _projects)
+        {
+            if (term.Length > 0 && p.ToString().IndexOf(term, StringComparison.OrdinalIgnoreCase) < 0)
+                continue;
+            _projectBox.Items.Add(p);
+            if (locked != null && p.Id == locked.ProjectId)
+                pick = p;
+        }
+
+        if (pick != null)
+            _projectBox.SelectedItem = pick;
+        _projectState.Text = locked != null
+            ? $"Locked: {locked.Code} {locked.Name}. O-CoreOp and O-Draft open on it."
+            : _projects.Count == 0 ? "No projects yet. Create one with New project…" : "No project locked. O-CoreOp and O-Draft need one.";
+        _projectRelease.IsEnabled = locked != null;
+    }
+
+    async Task LockSelectedProjectAsync()
+    {
+        if (_projectBox.SelectedItem is not ProjectEntry entry)
+        {
+            ShowError("Choose a project first.");
+            return;
+        }
+
+        await RunEngineAsync("Locking the project…", () => SuiteLauncherHost.Instance.LockProjectAsync(entry).GetAwaiter().GetResult());
+        ShowProjects();
+    }
+
+    void ReleaseProject()
+    {
+        try
+        {
+            SuiteLauncherHost.Instance.UnlockProject();
+            _notice.IsOpen = false;
+        }
+        catch (InvalidOperationException ex)
+        {
+            ShowError(ex.Message);
+        }
+
+        ShowProjects();
+    }
+
+    /// <summary>The basic project wizard: client, name, code, site address. Everything else is edited in O-Studio.</summary>
+    async Task NewProjectAsync()
+    {
+        if (_busy || _session == null || !_signedIn)
+            return;
+        JsonElement clients = default;
+        string nextCode = "";
+        if (!await RunEngineAsync("", () =>
+        {
+            clients = _session!.Call("client_list", new { include_archived = false }).Clone();
+            nextCode = _session.Call("project_next_code").GetString() ?? "";
+        }))
+            return;
+
+        var clientBox = new ComboBox { Header = "Client", HorizontalAlignment = HorizontalAlignment.Stretch };
+        clientBox.Items.Add("New client…");
+        var ids = new List<long?> { null };
+        if (clients.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var c in clients.EnumerateArray())
+            {
+                if (c.TryGetProperty("id", out var cid) && cid.TryGetInt64(out var n))
+                {
+                    clientBox.Items.Add(Text(c, "name"));
+                    ids.Add(n);
+                }
+            }
+        }
+
+        clientBox.SelectedIndex = ids.Count > 1 ? 1 : 0;
+        var newClient = new TextBox { Header = "New client name", Visibility = ids.Count > 1 ? Visibility.Collapsed : Visibility.Visible };
+        clientBox.SelectionChanged += (_, _) => newClient.Visibility = clientBox.SelectedIndex == 0 ? Visibility.Visible : Visibility.Collapsed;
+        var name = new TextBox { Header = "Project name" };
+        var code = new TextBox { Header = "Project code", Text = nextCode };
+        var address = new TextBox { Header = "Site address", AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 72 };
+        var dialog = new ContentDialog
+        {
+            Title = "New project",
+            Content = new StackPanel { Spacing = 10, Children = { clientBox, newClient, name, code, address } },
+            PrimaryButtonText = "Create and lock",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = Content.XamlRoot,
+        };
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            return;
+
+        var projectName = name.Text.Trim();
+        if (projectName.Length == 0)
+        {
+            ShowError("Enter the project name.");
+            return;
+        }
+
+        var clientId = ids[Math.Max(0, clientBox.SelectedIndex)];
+        var clientName = newClient.Text.Trim();
+        if (clientId == null && clientName.Length == 0)
+        {
+            ShowError("Choose a client or enter a new client name.");
+            return;
+        }
+
+        var projectCode = code.Text.Trim();
+        var site = address.Text.Trim();
+        long createdId = 0;
+        if (!await RunEngineAsync("Creating the project…", () =>
+        {
+            var owner = clientId;
+            if (owner == null)
+            {
+                owner = _session!.Call("client_save", new
+                {
+                    client = new
+                    {
+                        id = (long?)null,
+                        name = clientName,
+                        contact_person = "",
+                        email = "",
+                        phone = "",
+                        address = "",
+                        pan = "",
+                        gstin = "",
+                    },
+                }).GetInt64();
+            }
+
+            createdId = _session!.Call("project_save", new
+            {
+                project = new { id = (long?)null, client_id = owner, code = projectCode, name = projectName, site_address = site, status = "active" },
+            }).GetInt64();
+        }))
+            return;
+
+        await LoadProjectsAsync();
+        if (_projects.FirstOrDefault(p => p.Id == createdId) is { } created)
+        {
+            _projectBox.SelectedItem = created;
+            await LockSelectedProjectAsync();
+        }
     }
 
     nint Hwnd => WindowNative.GetWindowHandle(this);
@@ -793,7 +984,10 @@ internal sealed class CompanyLoginWidget : WidgetWindow
             return;
         }
 
+        var firstShow = !_signedIn;
         _signedIn = true;
+        if (firstShow)
+            _ = LoadProjectsAsync();
         _signedInSummary.Text = $"{_username} ({_role})\n{_companyPath}\n\nLaunch suite apps from the notification area icon, or open full O-Studio below.";
         ShowOnly(_signedInPanel);
         _status.Text = "Signed in";

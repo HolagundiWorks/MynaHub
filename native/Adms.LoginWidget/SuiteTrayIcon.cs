@@ -134,6 +134,7 @@ internal sealed class SuiteTrayIcon : IDisposable
         AppendMenu(menu, MfString | MfDisabled, 0, Clip("AI agent: " + suite.Ai));
         AppendMenu(menu, MfString | MfDisabled, 0, Clip("Database: " + suite.Database));
         AppendMenu(menu, MfString | MfDisabled, 0, Clip("Cloud sync: " + suite.Cloud));
+        AppendMenu(menu, MfString | MfDisabled, 0, Clip("Project: " + suite.Project));
         AppendMenu(menu, MfString, IdRefresh, "Refresh status");
         AppendMenu(menu, MfSeparator, 0, null);
         AppendMenu(menu, MfString, IdSignIn, "Company sign-in…");
