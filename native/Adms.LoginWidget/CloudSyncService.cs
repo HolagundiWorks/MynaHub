@@ -166,7 +166,7 @@ internal sealed class CloudSyncService
         if (DateTime.UtcNow - _flagsAt > TimeSpan.FromSeconds(4))
         {
             _flagsAt = DateTime.UtcNow;
-            var fresh = CloudSyncStore.Load();
+            var fresh = CloudSyncStore.Load(_companyUuid);
             var mine = CloudSyncHub.Store;
             foreach (var id in mine.Projects.Keys.Union(fresh.Projects.Keys).ToList())
             {
@@ -176,6 +176,7 @@ internal sealed class CloudSyncService
             }
         }
 
+        CloudSyncHub.UseCompany(_companyUuid);
         IReadOnlyList<OspSyncCoordinator.SyncTarget> all;
         lock (_gate)
             all = _targets;

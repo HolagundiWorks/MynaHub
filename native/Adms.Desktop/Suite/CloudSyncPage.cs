@@ -21,6 +21,8 @@ internal sealed class CloudSyncPage : UserControl
     public CloudSyncPage(AppShell shell)
     {
         _shell = shell;
+        // The switches and revisions on this page belong to the company that is open, not to every company file used on this PC.
+        CloudSyncHub.UseCompany(string.IsNullOrWhiteSpace(shell.CompanyUuid) ? shell.CompanyPath : shell.CompanyUuid);
         _onLog = _ => DispatcherQueue.TryEnqueue(RefreshLog);
         var title = new TextBlock { Text = "Cloud sync (Neon)", Style = Resource("PageTitleStyle") };
         AutomationProperties.SetHeadingLevel(title, AutomationHeadingLevel.Level1);

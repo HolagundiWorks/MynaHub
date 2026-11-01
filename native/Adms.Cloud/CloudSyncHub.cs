@@ -10,7 +10,20 @@ public static class CloudSyncHub
     static OspSyncCoordinator? _coordinator;
     static CloudSyncStore? _store;
 
-    public static CloudSyncStore Store => _store ??= CloudSyncStore.Load();
+    /// <summary>The sync preferences of the company in use (see <see cref="UseCompany"/>); empty and never saved until a company is chosen.</summary>
+    public static CloudSyncStore Store => _store ??= CloudSyncStore.Load(_companyId);
+
+    static string _companyId = "";
+
+    /// <summary>Choose the company whose project switches and revisions <see cref="Store"/> reads and writes.</summary>
+    public static void UseCompany(string companyId)
+    {
+        companyId = companyId?.Trim() ?? "";
+        if (companyId == _companyId && _store is not null)
+            return;
+        _companyId = companyId;
+        _store = CloudSyncStore.Load(companyId);
+    }
 
     public static event Action<string>? LogLine;
 
@@ -28,7 +41,8 @@ public static class CloudSyncHub
             return false;
         }
 
-        _store = CloudSyncStore.Load();
+        UseCompany(shell.CompanyUuid);
+        _store = CloudSyncStore.Load(_companyId);
         // The coordinator counts as running only once it is connected, so a connection that is still being tried (or fails) never reads as "running".
         var coordinator = new OspSyncCoordinator(
             settings,
@@ -160,6 +174,7 @@ public static class CloudSyncHub
             return new PushResult(false, "Neon is not configured. See docs/CLOUD-NEON.md.", null);
         if (shell is null)
             return new PushResult(false, "Not connected.", null);
+        UseCompany(shell.CompanyUuid);
         await using var client = new OspCloudClient(settings);
         await client.EnsureSchemaAsync().ConfigureAwait(false);
         return await client.PushAsync(ospPath, shell.CompanyUuid, shell.UserName, Store.Get(studioProjectId).LastKnownCloudRevision).ConfigureAwait(false);

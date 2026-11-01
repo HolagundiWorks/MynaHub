@@ -37,7 +37,7 @@ Links under test:
 | INT-LNC-05 | Company file in use by two apps | O-Studio and O-CoreOp open the same company | No corruption; both read; writes from O-Studio visible in O-CoreOp |
 | INT-LNC-06 | Lock and sign out | Lock or sign out in the launcher while apps run | Document the behaviour of running apps (they keep their ticket session). A missing re-check is logged as a finding, not assumed a bug |
 | INT-LNC-07 | Hand-off | Launcher, **O-Studio** | The launcher releases the file; O-Studio opens it signed in; closing O-Studio leaves the launcher usable |
-| INT-LNC-08 | Single launcher | Start O-Studio's **Suite launcher…** and the tray launcher together | One launcher process |
+| INT-LNC-08 | Single launcher | Start O-Studio's **Suite launcherâ€¦** and the tray launcher together | One launcher process |
 | INT-LNC-09 | Status line truth | With AI host up/down, company open/closed, `neon.env` present/absent | `launcher-status.txt` follows within 20 s |
 
 ## I3 O-Draft to O-CoreOp through one `.osp`
@@ -95,6 +95,7 @@ Links under test:
 | INT-CLD-10 | Sign out stops it | Sign out in the launcher | "stopped (signed out)"; no push after a save; signing in again restarts it |
 | INT-CLD-11 | Switch on / off while running | In O-Studio, switch a project on, then off | The launcher picks it up within about 5 s; the other projects' switches are not undone by the launcher's own saves |
 | INT-CLD-12 | Neon unreachable | Point `OSTUDIO_NEON_ENV_FILE` at an unreachable database | "could not connect ... retrying every 30 s"; the launcher stays usable |
+| INT-CLD-13 | Two companies on one PC | Switch project 1 on in company A; open company B (also has a project 1) | Company B's project 1 is off; switching it on or off does not change company A's; the launcher syncs only the signed-in company's switched-on projects |
 
 ## I7 Failure and recovery
 
