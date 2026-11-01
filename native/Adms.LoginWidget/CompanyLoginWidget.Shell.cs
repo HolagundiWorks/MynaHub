@@ -18,8 +18,8 @@ internal sealed partial class CompanyLoginWidget
 
     readonly TextBlock _barTitle = new() { Text = "O-Studio suite", Style = (Style)Application.Current.Resources["SectionTitleStyle"], TextTrimming = TextTrimming.CharacterEllipsis };
     readonly TextBlock _barSub = new() { Style = (Style)Application.Current.Resources["CaptionStyle"], TextTrimming = TextTrimming.CharacterEllipsis, Opacity = 0.8 };
-    readonly Microsoft.UI.Xaml.Shapes.Ellipse _barAi = new() { Width = 10, Height = 10 };
-    readonly Microsoft.UI.Xaml.Shapes.Ellipse _barDb = new() { Width = 10, Height = 10 };
+    readonly StatusIcon _barAi = new("\uF4A5", 36);
+    readonly StatusIcon _barDb = new("\uEE94", 36);
 
     readonly StackPanel _pageHome = new() { Spacing = 14 };
     readonly StackPanel _pageServices = new() { Spacing = 10, Visibility = Visibility.Collapsed };
@@ -47,6 +47,62 @@ internal sealed partial class CompanyLoginWidget
         Child = child,
     };
 
+    /// <summary>A button that is only an icon; its name and tooltip say what it does.</summary>
+    static void IconOnly(Button b, string glyph, string name, bool accent = false)
+    {
+        b.Content = new FontIcon { Glyph = glyph, FontSize = 20 };
+        b.MinHeight = Touch;
+        b.MinWidth = Touch;
+        if (accent)
+            b.Style = Accent;
+        AutomationProperties.SetName(b, name);
+        ToolTipService.SetToolTip(b, name);
+    }
+
+    /// <summary>
+    /// The symbol of a service: lit in the suite colours while the service runs, amber while it waits, grey and dim when it is not running or off.
+    /// </summary>
+    sealed class StatusIcon
+    {
+        readonly FontIcon _icon;
+        readonly Border _badge;
+
+        internal StatusIcon(string glyph, double size)
+        {
+            _icon = new FontIcon { Glyph = glyph, FontSize = size * 0.5, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            _badge = new Border { Width = size, Height = size, CornerRadius = new CornerRadius(size / 2), Child = _icon, VerticalAlignment = VerticalAlignment.Center };
+            Set(ServiceLevel.Off, "checking…");
+        }
+
+        internal FrameworkElement Root => _badge;
+
+        internal void Set(ServiceLevel level, string tip)
+        {
+            static Windows.UI.Color Res(string key) => (Windows.UI.Color)Application.Current.Resources[key];
+            switch (level)
+            {
+                case ServiceLevel.Running:
+                    _badge.Background = new SolidColorBrush(Res("SuiteAccentWash"));
+                    _icon.Foreground = new SolidColorBrush(Res("SuiteAccentText"));
+                    _icon.Opacity = 1;
+                    break;
+                case ServiceLevel.Waiting:
+                    _badge.Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(255, 0xFF, 0xF1, 0xD0));
+                    _icon.Foreground = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(255, 0x9A, 0x67, 0x00));
+                    _icon.Opacity = 1;
+                    break;
+                default:
+                    _badge.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+                    _icon.Foreground = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(255, 0x8B, 0x94, 0x9E));
+                    _icon.Opacity = 0.55;
+                    break;
+            }
+
+            AutomationProperties.SetName(_badge, tip);
+            ToolTipService.SetToolTip(_badge, tip);
+        }
+    }
+
     static void Big(Button b)
     {
         b.MinHeight = Touch;
@@ -62,10 +118,9 @@ internal sealed partial class CompanyLoginWidget
         var titles = new StackPanel { Spacing = 0, VerticalAlignment = VerticalAlignment.Center };
         titles.Children.Add(_barTitle);
         titles.Children.Add(_barSub);
-        var dots = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
-        dots.Children.Add(_barAi);
-        dots.Children.Add(_barDb);
-        ToolTipService.SetToolTip(dots, "AI agent and database server. Tap for details.");
+        var dots = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
+        dots.Children.Add(_barAi.Root);
+        dots.Children.Add(_barDb.Root);
         dots.Tapped += (_, _) =>
         {
             if (_signedInPanel.Visibility == Visibility.Visible)
@@ -97,12 +152,8 @@ internal sealed partial class CompanyLoginWidget
 
     void ColourDots(ServiceLevel ai, ServiceLevel db, string aiText, string dbText)
     {
-        _barAi.Fill = StatusRow.Colour(ai);
-        _barDb.Fill = StatusRow.Colour(db);
-        AutomationProperties.SetName(_barAi, $"AI agent: {ServiceStatus.Word(ai)}");
-        AutomationProperties.SetName(_barDb, $"Database server: {ServiceStatus.Word(db)}");
-        ToolTipService.SetToolTip(_barAi, $"AI agent: {aiText}");
-        ToolTipService.SetToolTip(_barDb, $"Database server: {dbText}");
+        _barAi.Set(ai, $"AI agent: {ServiceStatus.Word(ai)} ({aiText})");
+        _barDb.Set(db, $"Database server: {ServiceStatus.Word(db)} ({dbText})");
     }
 
     FrameworkElement BuildNavBar()
@@ -182,26 +233,35 @@ internal sealed partial class CompanyLoginWidget
         AutomationProperties.SetName(_projectBox, "Project list");
         _projectBox.MinHeight = 40;
         _projectBox.HorizontalAlignment = HorizontalAlignment.Stretch;
-        Big(_projectLock);
-        Big(_projectRelease);
-        Big(_projectNew);
+        IconOnly(_projectLock, "\uE73E", "Load project", accent: true);
+        IconOnly(_projectNew, "\uE710", "New project…");
+        IconOnly(_projectRelease, "\uE711", "Close project");
 
         _projectPickBox.Children.Add(new TextBlock { Text = "Project", Style = (Style)Application.Current.Resources["SectionTitleStyle"] });
         _projectPickBox.Children.Add(_projectState);
         _projectPickBox.Children.Add(_projectFilter);
         _projectPickBox.Children.Add(_projectBox);
         var actions = new Grid { ColumnSpacing = 8 };
-        actions.ColumnDefinitions.Add(new ColumnDefinition());
-        actions.ColumnDefinitions.Add(new ColumnDefinition());
+        actions.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        actions.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        _projectLock.HorizontalAlignment = HorizontalAlignment.Stretch;
         actions.Children.Add(_projectLock);
         Grid.SetColumn(_projectNew, 1);
         actions.Children.Add(_projectNew);
         _projectPickBox.Children.Add(actions);
 
-        _projectLoadedBox.Children.Add(new TextBlock { Text = "Current project", Style = (Style)Application.Current.Resources["CaptionStyle"], Opacity = 0.8 });
-        _projectLoadedBox.Children.Add(_projectTitle);
-        _projectLoadedBox.Children.Add(_projectMeta);
-        _projectLoadedBox.Children.Add(_projectRelease);
+        var loadedText = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+        loadedText.Children.Add(new TextBlock { Text = "Current project", Style = (Style)Application.Current.Resources["CaptionStyle"], Opacity = 0.8 });
+        loadedText.Children.Add(_projectTitle);
+        loadedText.Children.Add(_projectMeta);
+        var loadedRow = new Grid { ColumnSpacing = 8 };
+        loadedRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        loadedRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        loadedRow.Children.Add(loadedText);
+        _projectRelease.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(_projectRelease, 1);
+        loadedRow.Children.Add(_projectRelease);
+        _projectLoadedBox.Children.Add(loadedRow);
 
         var inside = new StackPanel { Spacing = 0 };
         inside.Children.Add(_projectPickBox);
@@ -249,17 +309,26 @@ internal sealed partial class CompanyLoginWidget
         who.Children.Add(_signedInPath);
         _pageAccount.Children.Add(Card(who));
 
-        var lockBtn = new Button { Content = "Lock session" };
+        var lockBtn = new Button();
         lockBtn.Click += async (_, _) => await LockAsync();
-        var logout = new Button { Content = "Sign out" };
+        var logout = new Button();
         logout.Click += async (_, _) => await LogOutAsync();
-        var close = new Button { Content = "Close company" };
+        var close = new Button();
         close.Click += (_, _) => _ = CloseCompanyAsync();
-        foreach (var b in new[] { lockBtn, logout, close })
+        IconOnly(lockBtn, "\uE72E", "Lock session");
+        IconOnly(logout, "\uE7E8", "Sign out");
+        IconOnly(close, "\uE72B", "Close company");
+        var row = new Grid { ColumnSpacing = 8 };
+        var buttons = new[] { lockBtn, logout, close };
+        for (var i = 0; i < buttons.Length; i++)
         {
-            Big(b);
-            _pageAccount.Children.Add(b);
+            row.ColumnDefinitions.Add(new ColumnDefinition());
+            buttons[i].HorizontalAlignment = HorizontalAlignment.Stretch;
+            Grid.SetColumn(buttons[i], i);
+            row.Children.Add(buttons[i]);
         }
+
+        _pageAccount.Children.Add(row);
 
         _pageAccount.Children.Add(new TextBlock
         {

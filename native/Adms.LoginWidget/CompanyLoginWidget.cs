@@ -32,9 +32,9 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
     readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true };
     readonly ProgressRing _ring = new() { Width = 18, Height = 18, IsActive = false };
     readonly TextBlock _status = new() { VerticalAlignment = VerticalAlignment.Center };
-    readonly StatusRow _aiRow = new("AI agent");
-    readonly StatusRow _dbRow = new("Database server (cloud sync)");
-    readonly StatusRow _fileRow = new("Company file");
+    readonly StatusRow _aiRow = new("AI agent", "\uF4A5");
+    readonly StatusRow _dbRow = new("Database server (cloud sync)", "\uEE94");
+    readonly StatusRow _fileRow = new("Company file", "\uE8B7");
     readonly TextBlock _suiteStatus = new() { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true, Style = (Style)Application.Current.Resources["CaptionStyle"] };
 
     readonly StackPanel _welcome = new() { Spacing = 12 };
@@ -514,21 +514,22 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
     /// <summary>One line of the status area: a coloured marker, the name, what it is doing in words, and the detail.</summary>
     sealed class StatusRow
     {
-        readonly Microsoft.UI.Xaml.Shapes.Ellipse _dot = new() { Width = 10, Height = 10, VerticalAlignment = VerticalAlignment.Center };
+        readonly StatusIcon _icon;
         readonly TextBlock _state = new() { FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
         readonly TextBlock _detail = new() { Style = (Style)Application.Current.Resources["CaptionStyle"], TextWrapping = TextWrapping.Wrap, Opacity = 0.8 };
         readonly string _name;
 
-        internal StatusRow(string name)
+        internal StatusRow(string name, string glyph)
         {
             _name = name;
-            var head = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-            head.Children.Add(_dot);
+            _icon = new StatusIcon(glyph, 36);
+            var head = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+            head.Children.Add(_icon.Root);
             head.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center });
             head.Children.Add(_state);
             var column = new StackPanel { Spacing = 0 };
             column.Children.Add(head);
-            _detail.Margin = new Thickness(18, 0, 0, 0);
+            _detail.Margin = new Thickness(46, 2, 0, 0);
             column.Children.Add(_detail);
             Root = column;
             Set(ServiceLevel.Off, "checking…");
@@ -536,17 +537,10 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
 
         internal FrameworkElement Root { get; }
 
-        internal static Brush Colour(ServiceLevel level) => new SolidColorBrush(level switch
-        {
-            ServiceLevel.Running => Microsoft.UI.ColorHelper.FromArgb(255, 0x2E, 0xA0, 0x43),
-            ServiceLevel.Waiting => Microsoft.UI.ColorHelper.FromArgb(255, 0xD2, 0x99, 0x22),
-            ServiceLevel.Stopped => Microsoft.UI.ColorHelper.FromArgb(255, 0xD1, 0x24, 0x2F),
-            _ => Microsoft.UI.ColorHelper.FromArgb(255, 0x8B, 0x94, 0x9E),
-        });
 
         internal void Set(ServiceLevel level, string detail)
         {
-            _dot.Fill = Colour(level);
+            _icon.Set(level, $"{_name}: {ServiceStatus.Word(level)}");
             _state.Text = ServiceStatus.Word(level);
             _detail.Text = detail;
             AutomationProperties.SetName(Root, $"{_name}: {ServiceStatus.Word(level)}. {detail}");
