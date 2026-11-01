@@ -16,9 +16,9 @@ internal sealed partial class CompanyLoginWidget
 {
     const double Touch = 48;
 
-    readonly TextBlock _barTitle = new() { Text = "O-Studio suite", Style = (Style)Application.Current.Resources["SectionTitleStyle"], TextTrimming = TextTrimming.CharacterEllipsis };
+    readonly TextBlock _barTitle = new() { Text = "O-Studio suite", Style = (Style)Application.Current.Resources["SectionTitleStyle"], FontFamily = O.Ui.SuiteFonts.Names, TextTrimming = TextTrimming.CharacterEllipsis };
     readonly TextBlock _barSub = new() { Style = (Style)Application.Current.Resources["CaptionStyle"], TextTrimming = TextTrimming.CharacterEllipsis, Opacity = 0.8 };
-    readonly StatusIcon _barAi = new("\uF4A5", 36);
+    readonly StatusIcon _barAi = StatusIcon.Orb(36);
     readonly StatusIcon _barDb = new("\uEE94", 36);
 
     readonly StackPanel _pageHome = new() { Spacing = 14 };
@@ -26,7 +26,7 @@ internal sealed partial class CompanyLoginWidget
     readonly StackPanel _pageAccount = new() { Spacing = 10, Visibility = Visibility.Collapsed };
     readonly StackPanel _projectLoadedBox = new() { Spacing = 8, Visibility = Visibility.Collapsed };
     readonly StackPanel _projectPickBox = new() { Spacing = 8 };
-    readonly TextBlock _projectTitle = new() { Style = (Style)Application.Current.Resources["SectionTitleStyle"], TextWrapping = TextWrapping.Wrap };
+    readonly TextBlock _projectTitle = new() { Style = (Style)Application.Current.Resources["SectionTitleStyle"], FontFamily = O.Ui.SuiteFonts.Display, TextWrapping = TextWrapping.Wrap };
     readonly TextBlock _projectMeta = new() { Style = (Style)Application.Current.Resources["CaptionStyle"], TextWrapping = TextWrapping.Wrap, Opacity = 0.8 };
     readonly TextBlock _avatar = new() { FontSize = 22, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
     readonly Grid _nav = new() { Visibility = Visibility.Collapsed };
@@ -64,8 +64,9 @@ internal sealed partial class CompanyLoginWidget
     /// </summary>
     sealed class StatusIcon
     {
-        readonly FontIcon _icon;
-        readonly Border _badge;
+        readonly FontIcon? _icon;
+        readonly Border? _badge;
+        readonly AiOrb? _orb;
 
         internal StatusIcon(string glyph, double size)
         {
@@ -74,10 +75,29 @@ internal sealed partial class CompanyLoginWidget
             Set(ServiceLevel.Off, "checking…");
         }
 
-        internal FrameworkElement Root => _badge;
+        StatusIcon(AiOrb orb)
+        {
+            _orb = orb;
+            Set(ServiceLevel.Off, "checking…");
+        }
+
+        /// <summary>The symbol of the AI agent: the ring of the mark, glowing in turning colours while it runs.</summary>
+        internal static StatusIcon Orb(double size) => new(new AiOrb(size));
+
+        internal FrameworkElement Root => _orb?.Root ?? _badge!;
 
         internal void Set(ServiceLevel level, string tip)
         {
+            if (_orb != null)
+            {
+                _orb.SetState(level);
+                AutomationProperties.SetName(_orb.Root, tip);
+                ToolTipService.SetToolTip(_orb.Root, tip);
+                return;
+            }
+
+            var _badge = this._badge!;
+            var _icon = this._icon!;
             static Windows.UI.Color Res(string key) => (Windows.UI.Color)Application.Current.Resources[key];
             switch (level)
             {
@@ -237,7 +257,7 @@ internal sealed partial class CompanyLoginWidget
         IconOnly(_projectNew, "\uE710", "New project…");
         IconOnly(_projectRelease, "\uE711", "Close project");
 
-        _projectPickBox.Children.Add(new TextBlock { Text = "Project", Style = (Style)Application.Current.Resources["SectionTitleStyle"] });
+        _projectPickBox.Children.Add(new TextBlock { Text = "Project", Style = (Style)Application.Current.Resources["SectionTitleStyle"], FontFamily = O.Ui.SuiteFonts.Display });
         _projectPickBox.Children.Add(_projectState);
         _projectPickBox.Children.Add(_projectFilter);
         _projectPickBox.Children.Add(_projectBox);
@@ -267,14 +287,14 @@ internal sealed partial class CompanyLoginWidget
         inside.Children.Add(_projectPickBox);
         inside.Children.Add(_projectLoadedBox);
         _pageHome.Children.Add(Card(inside));
-        _pageHome.Children.Add(new TextBlock { Text = "Apps", Style = (Style)Application.Current.Resources["SectionTitleStyle"] });
+        _pageHome.Children.Add(new TextBlock { Text = "Apps", Style = (Style)Application.Current.Resources["SectionTitleStyle"], FontFamily = O.Ui.SuiteFonts.Display });
         _pageHome.Children.Add(BuildAppTiles());
     }
 
     // ---- Services: the AI agent, the database server and the company file
     void BuildServicesPage()
     {
-        _pageServices.Children.Add(new TextBlock { Text = "Services", Style = (Style)Application.Current.Resources["SectionTitleStyle"] });
+        _pageServices.Children.Add(new TextBlock { Text = "Services", Style = (Style)Application.Current.Resources["SectionTitleStyle"], FontFamily = O.Ui.SuiteFonts.Display });
         _pageServices.Children.Add(new TextBlock
         {
             Text = "These run in the launcher for as long as it is open.",

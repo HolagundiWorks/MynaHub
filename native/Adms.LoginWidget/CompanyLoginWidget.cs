@@ -32,7 +32,7 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
     readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true };
     readonly ProgressRing _ring = new() { Width = 18, Height = 18, IsActive = false };
     readonly TextBlock _status = new() { VerticalAlignment = VerticalAlignment.Center };
-    readonly StatusRow _aiRow = new("AI agent", "\uF4A5");
+    readonly StatusRow _aiRow = new("AI agent", "");
     readonly StatusRow _dbRow = new("Database server (cloud sync)", "\uEE94");
     readonly StatusRow _fileRow = new("Company file", "\uE8B7");
     readonly TextBlock _suiteStatus = new() { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true, Style = (Style)Application.Current.Resources["CaptionStyle"] };
@@ -48,7 +48,7 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
 
     readonly TextBox _usernameBox = new() { Header = "User name", PlaceholderText = "User name" };
     readonly PasswordBox _passwordBox = new() { Header = "Password", PlaceholderText = "Password" };
-    readonly TextBlock _loginHeading = new() { Style = (Style)Application.Current.Resources["SectionTitleStyle"] };
+    readonly TextBlock _loginHeading = new() { Style = (Style)Application.Current.Resources["SectionTitleStyle"], FontFamily = O.Ui.SuiteFonts.Display };
     readonly PasswordBox _setupPassword = new() { Header = "Admin password (12 or more characters)" };
     readonly PasswordBox _setupConfirm = new() { Header = "Confirm password" };
     readonly PasswordBox _unlockPassword = new() { Header = "Password" };
@@ -67,7 +67,7 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
     readonly Button _projectRelease = new() { Content = "Close project" };
     readonly Button _projectNew = new() { Content = "New project…" };
     IReadOnlyList<ProjectEntry> _projects = [];
-    readonly TextBlock _signedInCompany = new() { Style = (Style)Application.Current.Resources["SectionTitleStyle"], TextTrimming = TextTrimming.CharacterEllipsis };
+    readonly TextBlock _signedInCompany = new() { Style = (Style)Application.Current.Resources["SectionTitleStyle"], FontFamily = O.Ui.SuiteFonts.Display, TextTrimming = TextTrimming.CharacterEllipsis };
     readonly TextBlock _signedInSummary = new() { TextWrapping = TextWrapping.Wrap };
     readonly TextBlock _signedInPath = new() { Style = (Style)Application.Current.Resources["CaptionStyle"], TextTrimming = TextTrimming.CharacterEllipsis, Opacity = 0.75 };
 
@@ -228,7 +228,7 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
         _welcome.Children.Add(new TextBlock
         {
             Text = "Recent companies",
-            Style = (Style)Application.Current.Resources["SectionTitleStyle"],
+            Style = (Style)Application.Current.Resources["SectionTitleStyle"], FontFamily = O.Ui.SuiteFonts.Display,
             Margin = new Thickness(0, 8, 0, 0),
         });
         _welcome.Children.Add(_recent);
@@ -262,7 +262,7 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
         {
             Text = "Set up the administrator password for this company.",
             TextWrapping = TextWrapping.Wrap,
-            Style = (Style)Application.Current.Resources["SectionTitleStyle"],
+            Style = (Style)Application.Current.Resources["SectionTitleStyle"], FontFamily = O.Ui.SuiteFonts.Display,
         });
         _setup.Children.Add(_setupPassword);
         _setup.Children.Add(_setupConfirm);
@@ -275,7 +275,7 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
         _create.Children.Add(new TextBlock
         {
             Text = "Create a new company",
-            Style = (Style)Application.Current.Resources["SectionTitleStyle"],
+            Style = (Style)Application.Current.Resources["SectionTitleStyle"], FontFamily = O.Ui.SuiteFonts.Display,
         });
         _create.Children.Add(_createName);
         _create.Children.Add(_createUser);
@@ -311,7 +311,7 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
         _unlock.Children.Add(new TextBlock
         {
             Text = "Session locked",
-            Style = (Style)Application.Current.Resources["SectionTitleStyle"],
+            Style = (Style)Application.Current.Resources["SectionTitleStyle"], FontFamily = O.Ui.SuiteFonts.Display,
         });
         _unlock.Children.Add(_unlockPassword);
         _unlockButton.Click += Unlock;
@@ -522,7 +522,7 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
         internal StatusRow(string name, string glyph)
         {
             _name = name;
-            _icon = new StatusIcon(glyph, 36);
+            _icon = glyph.Length == 0 ? StatusIcon.Orb(36) : new StatusIcon(glyph, 36);
             var head = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
             head.Children.Add(_icon.Root);
             head.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center });
@@ -562,9 +562,9 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
         var specs = new (string Ticket, string Title, string Blurb, string Mark, bool NeedsProject)[]
         {
             ("O-Studio", "O-Studio", "Practice, people, billing", "mark-studio.png", false),
-            ("O-CoreOp", "O-CoreOp", "Estimates and bills", "mark-metra.png", true),
+            ("O-CoreOp", "O-CoreOp", "Estimates and bills", "mark-coreop.png", true),
             ("O-Draft", "O-Draft", "2D drafting", "mark-draft.png", true),
-            ("O-Form", "O-Form", "3D / BIM form (planned)", "", false),
+            ("O-Form", "O-Form", "3D / BIM form (planned)", "mark-form.png", false),
         };
         for (var i = 0; i < specs.Length; i++)
         {
@@ -621,7 +621,7 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
         }
 
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center, MaxWidth = 110 };
-        text.Children.Add(new TextBlock { Text = title, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        text.Children.Add(new TextBlock { Text = title, FontFamily = O.Ui.SuiteFonts.Names, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
         text.Children.Add(new TextBlock { Text = blurb, Style = (Style)Application.Current.Resources["CaptionStyle"], TextWrapping = TextWrapping.Wrap, MaxLines = 2, Opacity = 0.8 });
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
         row.Children.Add(icon);

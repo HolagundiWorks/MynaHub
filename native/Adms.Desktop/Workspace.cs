@@ -434,7 +434,7 @@ internal sealed class WorkspaceView : UserControl
     /// <summary>Suite app marks in the window status bar (see <see cref="WireBottomBar"/>).</summary>
     private static readonly Dictionary<string, string> AppMarks = new()
     {
-        ["O-CoreOp"] = "mark-metra.png",
+        ["O-CoreOp"] = "mark-coreop.png",
         ["O-Draft"] = "mark-draft.png",
     };
 
