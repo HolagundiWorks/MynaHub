@@ -28,6 +28,14 @@
                     </ResourceDictionary.MergedDictionaries>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+            <!-- Windows paints dialog buttons, selection bars and focus marks from the system accent; make that the suite orange. -->
+            <Color x:Key="SystemAccentColor">#FF6B00</Color>
+            <Color x:Key="SystemAccentColorLight1">#FF8A33</Color>
+            <Color x:Key="SystemAccentColorLight2">#FFA866</Color>
+            <Color x:Key="SystemAccentColorLight3">#FFC599</Color>
+            <Color x:Key="SystemAccentColorDark1">#E65F00</Color>
+            <Color x:Key="SystemAccentColorDark2">#B34A00</Color>
+            <Color x:Key="SystemAccentColorDark3">#803500</Color>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -67,7 +67,7 @@ Opened by **Company sign-in…**, by a second launch, or by an error.
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
-| LNC-WIN-01 | Opens | Choose Company sign-in… | A window "Company login", about 420x640, shows the welcome panel (create, open, recent) and, at the bottom, the three status lines | UIA tree, screenshot |
+| LNC-WIN-01 | Opens | Choose Company sign-in… | A window "Company login", about 440x640, shows the welcome panel (create, open, recent; the button for the remembered company is the accent one when there is one, else Create) and, at the bottom, the three status lines | UIA tree, screenshot |
 | LNC-WIN-02 | Status lines live | Change state (L4) with the window open | The three lines update without reopening | UIA text |
 | LNC-WIN-03 | Create a company | Create a company with name, owner, password of 12+ characters | The company opens; the recovery code is shown once; setup completes | UIA, `suite.json` |
 | LNC-WIN-04 | Password too short `[B]` | 11 characters | Refused with a clear message; nothing created | UIA |

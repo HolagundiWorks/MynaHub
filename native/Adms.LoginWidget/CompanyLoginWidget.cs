@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using Adms.Interop;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -55,14 +56,16 @@ internal sealed class CompanyLoginWidget : WidgetWindow
     readonly TextBox _recoverCode = new() { Header = "Recovery code" };
     readonly PasswordBox _recoverPassword = new() { Header = "New password (12 or more characters)" };
     readonly PasswordBox _recoverConfirm = new() { Header = "Confirm new password" };
-    readonly TextBox _projectFilter = new() { Header = "Project", PlaceholderText = "Search by code, name or client" };
+    readonly TextBox _projectFilter = new() { PlaceholderText = "Search by code, name or client" };
     readonly ComboBox _projectBox = new() { HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = "Choose a project" };
     readonly TextBlock _projectState = new() { TextWrapping = TextWrapping.Wrap, Opacity = 0.85, FontSize = 12 };
     readonly Button _projectLock = new() { Content = "Load project", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
     readonly Button _projectRelease = new() { Content = "Close project" };
     readonly Button _projectNew = new() { Content = "New project…" };
     IReadOnlyList<ProjectEntry> _projects = [];
-    readonly TextBlock _signedInSummary = new() { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
+    readonly TextBlock _signedInCompany = new() { Style = (Style)Application.Current.Resources["SectionTitleStyle"], TextTrimming = TextTrimming.CharacterEllipsis };
+    readonly TextBlock _signedInSummary = new() { TextWrapping = TextWrapping.Wrap };
+    readonly TextBlock _signedInPath = new() { Style = (Style)Application.Current.Resources["CaptionStyle"], TextTrimming = TextTrimming.CharacterEllipsis, Opacity = 0.75 };
 
     readonly Button _signInButton = new() { Content = "Sign in", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
     readonly Button _setupButton = new() { Content = "Create admin account", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
@@ -90,7 +93,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
             AppWindow.SetIcon(icon);
 
         AttachChrome(BuildChrome());
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(420, 640));
+        AppWindow.Resize(new Windows.Graphics.SizeInt32(440, 640));
         EnsureSession();
         ShowWelcome();
         UpdateCommands();
@@ -138,8 +141,15 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         host.Children.Add(_create);
         host.Children.Add(_recover);
         host.Children.Add(_signedInPanel);
-        body.Children.Add(host);
-        Grid.SetRow(host, 1);
+        var scroll = new ScrollViewer
+        {
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Content = host,
+            Padding = new Thickness(0, 0, 8, 0),
+        };
+        body.Children.Add(scroll);
+        Grid.SetRow(scroll, 1);
 
         var footer = new StackPanel
         {
@@ -184,8 +194,10 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         });
 
         var open = new Button { Content = "Open company file…" };
+        _welcomeCreate = new Button { Content = "Create a new company…" };
+        _welcomeFollow = new Button { Content = "Open remembered company" };
         open.Click += async (_, _) => await PickAndOpenAsync();
-        var follow = new Button { Content = "Open remembered company" };
+        var follow = _welcomeFollow;
         follow.Click += async (_, _) =>
         {
             if (SuiteJsonHub.CompanyPath() is { } path)
@@ -193,8 +205,10 @@ internal sealed class CompanyLoginWidget : WidgetWindow
             else
             ShowError("No company is remembered yet. Open a company file first.");
         };
-        var create = new Button { Content = "Create a new company…", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+        var create = _welcomeCreate;
         create.Click += (_, _) => ShowCreate();
+        foreach (var b in new[] { create, open, follow })
+            b.HorizontalAlignment = HorizontalAlignment.Stretch;
         _welcome.Children.Add(create);
         _welcome.Children.Add(open);
         _welcome.Children.Add(follow);
@@ -293,29 +307,25 @@ internal sealed class CompanyLoginWidget : WidgetWindow
 
     void BuildSignedInPanel()
     {
-        _signedInPanel.Children.Add(new TextBlock
-        {
-            Text = "Signed in",
-            Style = (Style)Application.Current.Resources["SectionTitleStyle"],
-        });
+        _signedInPanel.Children.Add(_signedInCompany);
         _signedInPanel.Children.Add(_signedInSummary);
+        _signedInPanel.Children.Add(_signedInPath);
         BuildProjectSection();
-        var studio = new Button
-        {
-            Content = "Open O-Studio…",
-            Style = (Style)Application.Current.Resources["AccentButtonStyle"],
-        };
+        var studio = new Button { Content = "Open O-Studio…", HorizontalAlignment = HorizontalAlignment.Stretch };
         studio.Click += async (_, _) => await HandOffToStudioAsync();
         _signedInPanel.Children.Add(studio);
-        var lockBtn = new Button { Content = "Lock" };
+        var lockBtn = new Button { Content = "Lock session" };
         lockBtn.Click += async (_, _) => await LockAsync();
         var logout = new Button { Content = "Sign out" };
         logout.Click += async (_, _) => await LogOutAsync();
         var close = new Button { Content = "Close company" };
         close.Click += (_, _) => _ = CloseCompanyAsync();
-        _signedInPanel.Children.Add(lockBtn);
-        _signedInPanel.Children.Add(logout);
-        _signedInPanel.Children.Add(close);
+        _signedInPanel.Children.Add(new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Children = { lockBtn, logout, close },
+        });
     }
 
     void BuildProjectSection()
@@ -324,15 +334,27 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         _projectLock.Click += async (_, _) => await LockSelectedProjectAsync();
         _projectRelease.Click += (_, _) => ReleaseProject();
         _projectNew.Click += async (_, _) => await NewProjectAsync();
-        _signedInPanel.Children.Add(_projectFilter);
-        _signedInPanel.Children.Add(_projectBox);
-        _signedInPanel.Children.Add(new StackPanel
+        AutomationProperties.SetName(_projectFilter, "Project");
+        AutomationProperties.SetName(_projectBox, "Project list");
+        var card = new StackPanel { Spacing = 8 };
+        card.Children.Add(new TextBlock { Text = "Project", Style = (Style)Application.Current.Resources["SectionTitleStyle"] });
+        card.Children.Add(_projectState);
+        card.Children.Add(_projectFilter);
+        card.Children.Add(_projectBox);
+        card.Children.Add(new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Spacing = 8,
             Children = { _projectLock, _projectRelease, _projectNew },
         });
-        _signedInPanel.Children.Add(_projectState);
+        _signedInPanel.Children.Add(new Border
+        {
+            BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(12),
+            Child = card,
+        });
     }
 
     async Task LoadProjectsAsync()
@@ -375,8 +397,8 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         _projectRelease.IsEnabled = loaded;
         _projectNew.IsEnabled = !loaded;
         _projectState.Text = loaded
-            ? $"Loaded: {locked!.Code} {locked.Name}. O-CoreOp and O-Draft open on it. Close the project to choose another."
-            : _projects.Count == 0 ? "No projects yet. Create one with New project…" : "No project loaded. Choose one in the list and load it; O-CoreOp and O-Draft need one.";
+            ? $"Loaded: {locked!.Code} {locked.Name}. O‑CoreOp and O‑Draft open on it. Close the project to choose another."
+            : _projects.Count == 0 ? "No projects yet. Create one with New project…" : "No project loaded. Choose one in the list and load it; O‑CoreOp and O‑Draft need one.";
     }
 
     async Task LockSelectedProjectAsync()
@@ -446,6 +468,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
             Title = "New project",
             Content = new StackPanel { Spacing = 10, Children = { clientBox, newClient, name, code, address } },
             PrimaryButtonText = "Create and load",
+            PrimaryButtonStyle = Accent,
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = Content.XamlRoot,
@@ -507,6 +530,8 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         }
     }
 
+    static Style Accent => (Style)Application.Current.Resources["AccentButtonStyle"];
+
     nint Hwnd => WindowNative.GetWindowHandle(this);
 
     void EnsureSession()
@@ -531,13 +556,23 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         SuiteLauncherHost.Instance.UnbindSession();
     }
 
+    string _idle = "";
+    Button _welcomeCreate = new();
+    Button _welcomeFollow = new();
+
     void ShowWelcome()
     {
         ShowOnly(_welcome);
+        // A remembered company is what most people want next; with none, creating one is.
+        var remembered = SuiteJsonHub.CompanyPath() != null;
+        _welcomeFollow.Style = remembered ? Accent : null;
+        _welcomeFollow.IsEnabled = remembered;
+        _welcomeCreate.Style = remembered ? null : Accent;
         _ = LoadRecentAsync();
-        _status.Text = SuiteJsonHub.CompanyPath() is { } p
+        _idle = SuiteJsonHub.CompanyPath() is { } p
             ? $"Remembered: {Path.GetFileName(p)}"
             : "No company remembered";
+        _status.Text = _idle;
     }
 
     void ShowOnly(UIElement panel)
@@ -610,6 +645,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
                     TextWrapping = TextWrapping.Wrap,
                 },
                 PrimaryButtonText = "Open",
+                PrimaryButtonStyle = Accent,
                 CloseButtonText = "Cancel",
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = Content.XamlRoot,
@@ -646,6 +682,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
                 Title = "Open protected company",
                 Content = stack,
                 PrimaryButtonText = "Open",
+                PrimaryButtonStyle = Accent,
                 CloseButtonText = "Cancel",
                 DefaultButton = ContentDialogButton.Primary,
                 XamlRoot = Content.XamlRoot,
@@ -971,12 +1008,14 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         if (setup)
         {
             ShowOnly(_setup);
+            _idle = "Set up the administrator password";
             return;
         }
 
         if (!status.TryGetProperty("user", out var user) || user.ValueKind != JsonValueKind.Object)
         {
             ShowOnly(_login);
+            _idle = "Sign in to continue";
             _loginHeading.Text = string.IsNullOrWhiteSpace(_companyName) ? "Sign in" : _companyName;
             if (string.IsNullOrWhiteSpace(_usernameBox.Text) && SuiteJsonHub.RememberedUsername() is { } remembered)
                 _usernameBox.Text = remembered;
@@ -992,6 +1031,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         if (locked)
         {
             ShowOnly(_unlock);
+            _idle = "Session locked";
             return;
         }
 
@@ -999,9 +1039,13 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         _signedIn = true;
         if (firstShow)
             _ = LoadProjectsAsync();
-        _signedInSummary.Text = $"{_username} ({_role})\n{_companyPath}\n\nLaunch suite apps from the notification area icon, or open full O-Studio below.";
+        _signedInCompany.Text = string.IsNullOrWhiteSpace(_companyName) ? Path.GetFileNameWithoutExtension(_companyPath) : _companyName;
+        _signedInSummary.Text = $"{_username} · {_role}";
+        _signedInPath.Text = _companyPath;
+        ToolTipService.SetToolTip(_signedInPath, _companyPath);
         ShowOnly(_signedInPanel);
-        _status.Text = "Signed in";
+        _idle = "Signed in";
+        _status.Text = _idle;
         _notice.IsOpen = false;
     }
 
@@ -1027,7 +1071,8 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         }
         finally
         {
-            SetBusy(false, _status.Text);
+            // Back to the state the window is in, not the name of the action that just ended.
+            SetBusy(false, _idle.Length > 0 ? _idle : _status.Text);
         }
     }
 
@@ -1035,6 +1080,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
     {
         _busy = busy;
         _ring.IsActive = busy;
+        _ring.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         if (!string.IsNullOrWhiteSpace(status))
             _status.Text = status;
         UpdateCommands();
