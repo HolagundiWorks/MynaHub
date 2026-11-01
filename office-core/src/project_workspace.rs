@@ -268,6 +268,36 @@ pub fn get(conn: &Connection, project_id: i64) -> Result<Option<WorkspaceInfo>, 
     }))
 }
 
+/// What the launcher needs to list a project and what an app checks before it opens one.
+#[derive(Debug, Clone, Serialize)]
+pub struct LaunchInfo {
+    pub id: i64,
+    pub code: String,
+    pub name: String,
+    pub client: String,
+    pub status: String,
+    pub archived: bool,
+    pub workspace: Option<WorkspaceInfo>,
+    /// The `.osp` is made by the app that first opens the project, so it may not exist yet.
+    pub osp_exists: bool,
+    /// Not archived and has a workspace folder: an app may open it.
+    pub launchable: bool,
+}
+
+pub fn launch_info(conn: &Connection, project_id: i64) -> Result<LaunchInfo, String> {
+    let (code, name, status, archived, client): (String, String, String, bool, String) = conn
+        .query_row(
+            "SELECT p.code, p.name, p.status, p.archived, c.name FROM projects p JOIN clients c ON c.id = p.client_id WHERE p.id = ?1",
+            params![project_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
+        )
+        .map_err(|_| "Project not found.".to_string())?;
+    let workspace = get(conn, project_id)?;
+    let osp_exists = workspace.as_ref().is_some_and(|w| Path::new(&w.osp).is_file());
+    let launchable = !archived && workspace.as_ref().is_some_and(|w| Path::new(&w.root).is_dir());
+    Ok(LaunchInfo { id: project_id, code, name, client, status, archived, workspace, osp_exists, launchable })
+}
+
 /// Copy an existing `.osp` into the project's workspace (`project.osp`).
 pub fn attach_osp(conn: &Connection, company_path: &Path, project_id: i64, source: &Path) -> Result<WorkspaceInfo, String> {
     if !source.is_file() {
@@ -330,6 +360,21 @@ mod tests {
         )
         .unwrap();
         (d, conn, company)
+    }
+
+    #[test]
+    fn launch_info_follows_the_workspace_and_the_archive_flag() {
+        let (d, conn, company) = setup();
+        let before = launch_info(&conn, 7).unwrap();
+        assert!(!before.launchable && before.workspace.is_none() && !before.osp_exists, "no folder yet");
+        assert_eq!((before.code.as_str(), before.client.as_str()), ("KS", "Client"));
+        scaffold(&conn, ScaffoldInput { company_path: &company, project_id: 7, code: "KS", name: "Kesar", floors: 2 }).unwrap();
+        let after = launch_info(&conn, 7).unwrap();
+        assert!(after.launchable && after.workspace.is_some());
+        conn.execute("UPDATE projects SET archived = 1 WHERE id = 7", []).unwrap();
+        assert!(!launch_info(&conn, 7).unwrap().launchable, "an archived project is not opened");
+        assert!(launch_info(&conn, 99).is_err());
+        let _ = fs::remove_dir_all(d);
     }
 
     #[test]

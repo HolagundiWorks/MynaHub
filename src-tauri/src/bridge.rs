@@ -183,6 +183,8 @@ pub fn invoke(state: &AppState, op: &str, args: &Value) -> Result<Option<Vec<u8>
         "client_save" => run(crate::clients::client_save(HostState::new(state), arg(args, "client")?)),
         "client_set_archived" => run(crate::clients::client_set_archived(HostState::new(state), arg(args, "id")?, arg(args, "archived")?)),
         "project_list" => run(crate::clients::project_list(HostState::new(state), arg(args, "client_id")?, arg(args, "include_archived")?)),
+        "project_launch_info" => run(crate::clients::project_launch_info(HostState::new(state), arg(args, "project_id")?)),
+        "project_workspace_ensure" => run(crate::clients::project_workspace_ensure(HostState::new(state), arg(args, "project_id")?)),
         "project_workspace_get" => run(crate::clients::project_workspace_get(HostState::new(state), arg(args, "project_id")?)),
         "project_next_code" => run(crate::clients::project_next_code(HostState::new(state))),
         "project_workspace_attach_osp" => run(crate::clients::project_workspace_attach_osp(HostState::new(state), arg(args, "project_id")?, arg(args, "osp_path")?)),

@@ -9,6 +9,8 @@ public static class SuiteWire
     public const string EnvTicket = "OSTUDIO_TICKET";
     public const string EnvUser = "OSTUDIO_USER";
     public const string EnvOfficeDll = "OSTUDIO_OFFICE_DLL";
+    public const string EnvProjectId = "OSTUDIO_PROJECT_ID";
+    public const string EnvProjectOsp = "OSTUDIO_PROJECT_OSP";
 
     public const string EnvAiRole = "OSTUDIO_AI_ROLE";
     public const string EnvAiHost = "OSTUDIO_AI_HOST";
@@ -20,6 +22,8 @@ public static class SuiteWire
 
     public const string ProjectFileFormat = "osp";
     public const string ActiveProjectFormat = "studio-active-project";
+    public const string SelectedProjectFormat = "studio-selected-project";
+    public const string SelectedProjectFile = "selected-project.json";
 
     public static string LocalDirectory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), LocalAppFolder);

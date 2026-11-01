@@ -264,6 +264,8 @@ public sealed class SuiteSettings
             env[SuiteWire.EnvTicket] = ticket.Ticket;
             env[SuiteWire.EnvUser] = ticket.Username;
         }
+        foreach (var (key, value) in SelectedProjectStore.EnvironmentFor(companyPath))
+            env[key] = value;
         return env;
     }
 }

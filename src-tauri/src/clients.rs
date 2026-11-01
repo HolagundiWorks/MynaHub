@@ -97,6 +97,12 @@ pub fn project_workspace_get(state: HostState<'_>, project_id: i64) -> Result<Op
     office_core::project_workspace::get(&conn, project_id)
 }
 
+pub fn project_launch_info(state: HostState<'_>, project_id: i64) -> Result<office_core::project_workspace::LaunchInfo, String> {
+    require(&state, Permission::View)?;
+    let conn = state.db.lock().map_err(|_| INTERNAL)?;
+    office_core::project_workspace::launch_info(&conn, project_id)
+}
+
 pub fn project_workspace_ensure(state: HostState<'_>, project_id: i64) -> Result<office_core::project_workspace::WorkspaceInfo, String> {
     let uid = require(&state, Permission::Edit)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
