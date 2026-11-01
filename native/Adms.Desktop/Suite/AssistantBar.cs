@@ -201,7 +201,6 @@ internal sealed class AssistantBar : UserControl
 
     private async Task LoadModels()
     {
-        SuiteAiCoordinator.StartHostIfNeeded();
         if (!LocalLlmHost.Installed)
         {
             _model = null;

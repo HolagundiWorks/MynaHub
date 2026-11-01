@@ -44,10 +44,10 @@ The file is `%LOCALAPPDATA%\O-Studio\launcher-status.txt`: four lines (time, AI 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
 | LNC-STA-01 | File written | Start the launcher | The file exists within 10 s with the four lines | file read |
-| LNC-STA-02 | AI agent, host down | Nothing on port 8742 | "AI agent: not running (starts when O-Studio is open and signed in)" | file |
-| LNC-STA-03 | AI agent, host up | Open O-Studio signed in (it starts the host); wait 20 s or choose Refresh status | "AI agent: ready (Olmo 3 7B on port 8742)" | file; `curl http://127.0.0.1:8742/v1/health` |
+| LNC-STA-02 | AI agent, host down | Nothing on port 8742 | "AI agent: not running (port 8742 is taken by another program)" when another program holds the port; with the launcher running and nothing else on the port the line is "ready" | file |
+| LNC-STA-03 | AI agent, host up | Start the launcher (it starts the host); wait 20 s or choose Refresh status | "AI agent: ready (Olmo 3 7B on port 8742)" | file; `curl http://127.0.0.1:8742/v1/health` |
 | LNC-STA-04 | AI agent, model missing | Temporarily rename the model file (restore afterwards!) and start the host | "model or runtime not installed" | file |
-| LNC-STA-05 | AI agent, token mismatch | Put a wrong token in `%LOCALAPPDATA%\OSAS\ai\auth.token` while the host runs (restore afterwards) | "token mismatch: close the suite apps and open O-Studio first" | file |
+| LNC-STA-05 | AI agent, token mismatch | Put a wrong token in `OSTUDIO_AI_TOKEN` for a client while the host runs (restore afterwards) | "token mismatch: close the suite apps and restart the launcher" | file |
 | LNC-STA-06 | Database, none | No remembered company | "no company file chosen" | file |
 | LNC-STA-07 | Database, closed | A remembered existing company, not open | "<file> (<size>), closed" | file |
 | LNC-STA-08 | Database, missing file `[B]` | Remembered path whose file was renamed | "<file> not found" | file |

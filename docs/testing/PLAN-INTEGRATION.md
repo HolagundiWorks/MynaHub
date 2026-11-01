@@ -10,7 +10,7 @@ Links under test:
 | Company file | `office.dll` (C interface), read-only details in O-CoreOp and O-Draft |
 | O-Draft to O-CoreOp | the same `.osp`; O-CoreOp polls `meta.revision` every 2 s |
 | Which `.osp` | active-project pointer file (path in `Office.Shared.SuiteWire`) |
-| AI | O-Studio hosts Olmo 3 7B on `127.0.0.1:8742`; O-CoreOp and O-Draft are clients |
+| AI | The launcher hosts Olmo 3 7B on `127.0.0.1:8742`; O-Studio, O-CoreOp and O-Draft are clients |
 | O-CoreOp to O-Studio | summaries and draft shares mirrored into the company file; approvals inbox |
 | O-Studio to cloud | Neon (Postgres, object storage, realtime), O-Studio only |
 
@@ -61,9 +61,9 @@ Links under test:
 
 | ID | Scenario | Steps | Expected |
 |---|---|---|---|
-| INT-AI-01 | Host starts | Open O-Studio signed in | `127.0.0.1:8742/v1/health` ready; launcher status "ready" |
+| INT-AI-01 | Host starts | Start the launcher (no sign-in needed) | `127.0.0.1:8742/v1/health` ready; launcher status "ready" |
 | INT-AI-02 | Clients | Ask from O-CoreOp and O-Draft | Both answer through the host; one model process |
-| INT-AI-03 | Host stops | Close O-Studio | Clients show the "host down" message; launcher shows "not running" |
+| INT-AI-03 | Host stops | Exit the launcher | Clients show the "host down" message; launcher shows "not running" |
 | INT-AI-04 | Token | Start with no token file | A token is created; a client without it is refused (401) |
 | INT-AI-05 | Local only | `netstat` | Listens on loopback only |
 | INT-AI-06 | Concurrency | Two questions at once | Both answered or the second waits; no crash |

@@ -15,6 +15,17 @@ public partial class App : Application
     static Mutex? _single;
     static EventWaitHandle? _show;
 
+    /// <summary>
+    /// The launcher hosts the suite's AI Core (Olmo 3 7B on 127.0.0.1:8742) for as long as it runs, so the assistant is there whether or not
+    /// O-Studio is open. The model itself loads on the first question. When another process already serves the port, the launcher leaves it alone.
+    /// </summary>
+    static void StartAiCore()
+    {
+        Environment.SetEnvironmentVariable(Osas.Core.SuiteWire.EnvAiRole, "host");
+        Office.Ai.SuiteAiCoordinator.StartHostIfNeeded();
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => Office.Ai.SuiteAiCoordinator.StopHost();
+    }
+
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         var request = LaunchRequest.FromArguments(Environment.GetCommandLineArgs());
@@ -52,6 +63,7 @@ public partial class App : Application
 
         Osas.Core.Suite.Engine.LookIn(AppContext.BaseDirectory, "architect_office_desktop_lib.dll");
         O.Ui.SuiteMotion.RespectSystemPreference();
+        StartAiCore();
         new SuiteLauncherWindow().Activate();
         if (request != null)
         {

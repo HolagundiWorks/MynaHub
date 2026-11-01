@@ -49,7 +49,7 @@ Neon (optional)                   ← O-Studio only: .osp snapshots + Postgres r
 | O-Studio → sibling apps | One-time **suite ticket** (120 s, single use, SHA-256 stored); `OSTUDIO_COMPANY` + `OSTUDIO_TICKET`; audited |
 | O-CoreOp ↔ O-Draft | Same `.osp`, `meta.revision`; no network |
 | Desktop ↔ Neon | **O-Studio only**; apps hold no cloud keys |
-| Assistant (Olmo) | O-Studio hosts; read-only `agent_*` tools; bank/UPI omitted from `company.details` |
+| Assistant (Olmo) | The launcher hosts; read-only `agent_*` tools; bank/UPI omitted from `company.details` |
 
 ## 4. Role-based access (company file)
 

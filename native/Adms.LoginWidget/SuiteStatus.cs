@@ -79,12 +79,12 @@ internal sealed class SuiteStatus
             if (text.Contains("not installed", StringComparison.OrdinalIgnoreCase))
                 return "model or runtime not installed";
             if (text.Contains("token", StringComparison.OrdinalIgnoreCase))
-                return "token mismatch: close the suite apps and open O-Studio first";
-            return "not running (starts when O-Studio is open and signed in)";
+                return "token mismatch: close the suite apps and restart the launcher";
+            return Office.Ai.SuiteAiCoordinator.IsHost ? "starting (the launcher hosts it)" : "not running (port 8742 is taken by another program)";
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
         {
-            return "not running (starts when O-Studio is open and signed in)";
+            return Office.Ai.SuiteAiCoordinator.IsHost ? "starting (the launcher hosts it)" : "not running (port 8742 is taken by another program)";
         }
     }
 

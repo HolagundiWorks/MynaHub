@@ -8,7 +8,7 @@ using Osas.Core;
 namespace Osas.Core.Agent;
 
 /// <summary>
-/// Calls the suite AI Core (<c>POST /v1/chat</c> on loopback) where O-Studio hosts Olmo 3 7B. Tool calling uses the same JSON-in-chat
+/// Calls the suite AI Core (<c>POST /v1/chat</c> on loopback) where the launcher hosts Olmo 3 7B. Tool calling uses the same JSON-in-chat
 /// pattern as <see cref="LlamaServerApi"/>.
 /// </summary>
 public sealed class OlmoAiCoreApi : IMessagesApi
@@ -31,7 +31,7 @@ public sealed class OlmoAiCoreApi : IMessagesApi
     {
         var env = Environment.GetEnvironmentVariable(SuiteWire.EnvAiToken)?.Trim();
         if (!string.IsNullOrEmpty(env)) return env;
-        var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OSAS", "ai", "auth.token");
+        var path = SuiteWire.LocalPath(Path.Combine("ai", "auth.token"));
         try
         {
             if (File.Exists(path) && File.ReadAllText(path).Trim() is { Length: > 0 } t) return t;
@@ -50,9 +50,9 @@ public sealed class OlmoAiCoreApi : IMessagesApi
                 http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             using var response = await http.GetAsync($"http://127.0.0.1:{port}/v1/health", cancel).ConfigureAwait(false);
             if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                return (false, "The assistant token on this computer does not match the host. Close every suite app and open O-Studio first.");
+                return (false, "The assistant token on this computer does not match the host. Close every suite app and restart the launcher.");
             if (!response.IsSuccessStatusCode)
-                return (false, "The assistant host is not reachable. Open O-Studio and sign in, then try again.");
+                return (false, "The assistant host is not reachable. Start the suite launcher (it hosts the assistant), then try again.");
             var text = await response.Content.ReadAsStringAsync(cancel).ConfigureAwait(false);
             using var doc = JsonDocument.Parse(text);
             if (doc.RootElement.TryGetProperty("status", out var st) && st.GetString() == "not_installed")
@@ -61,7 +61,7 @@ public sealed class OlmoAiCoreApi : IMessagesApi
         }
         catch (HttpRequestException)
         {
-            return (false, "Open O-Studio and sign in — the assistant model runs there on this computer.");
+            return (false, "Start the suite launcher — the assistant model runs there on this computer.");
         }
     }
 
@@ -85,7 +85,7 @@ public sealed class OlmoAiCoreApi : IMessagesApi
         }
         catch (HttpRequestException)
         {
-            throw new AssistantException("The assistant host is not running. Open O-Studio and sign in, then ask again.");
+            throw new AssistantException("The assistant host is not running. Start the suite launcher, then ask again.");
         }
         catch (TaskCanceledException) when (!cancel.IsCancellationRequested)
         {

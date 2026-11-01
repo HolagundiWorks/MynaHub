@@ -492,7 +492,6 @@ public sealed partial class MainWindow : Window
     private void OnClosing(AppWindow sender, AppWindowClosingEventArgs args)
     {
         SavePlacement();
-        Office.Ai.SuiteAiCoordinator.StopHost();
         if (_shuttingDown)
             return;
         if (_busy)
@@ -1288,7 +1287,6 @@ public sealed partial class MainWindow : Window
         _signedIn = true;
         _workspace = new WorkspaceView(new AppShell { Session = _session!, Window = this, Role = _role, User = username, CompanyName = _companyName, CompanyPath = _companyPath, CompanyUuid = _companyUuid });
         WorkspaceHost.Children.Add(_workspace);
-        Office.Ai.SuiteAiCoordinator.StartHostIfNeeded();
         _workspace.WireBottomBar(StatusStrip);
         ShowOnly(WorkspaceHost);
         Notice.IsOpen = false;
@@ -1302,7 +1300,6 @@ public sealed partial class MainWindow : Window
         WorkspaceHost.Children.Clear();
         if (_workspace is not null)
             _workspace.ClearBottomBar(StatusStrip);
-        Office.Ai.SuiteAiCoordinator.StopHost();
     }
 
     private void ClearSecrets()
