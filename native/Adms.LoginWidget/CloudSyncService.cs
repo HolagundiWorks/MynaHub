@@ -15,6 +15,11 @@ internal sealed class CloudSyncService
 {
     internal static CloudSyncService Instance { get; } = new();
 
+    /// <summary>Raised when what <see cref="Describe"/> says has changed, so the status markers do not wait for the next look.</summary>
+    internal event Action? Changed;
+
+    string _last = "";
+
     readonly object _gate = new();
     IReadOnlyList<OspSyncCoordinator.SyncTarget> _targets = [];
     DateTime _targetsAt = DateTime.MinValue;
@@ -43,7 +48,7 @@ internal sealed class CloudSyncService
     {
         _suppressed = true;
         _problem = "";
-        _ = StopAsync();
+        _ = StopAsync().ContinueWith(_ => Changed?.Invoke());
     }
 
     internal static void Stop() => _ = CloudSyncHub.StopAsync();
@@ -111,6 +116,12 @@ internal sealed class CloudSyncService
         finally
         {
             Interlocked.Exchange(ref _busy, 0);
+            var now = Describe();
+            if (now != _last)
+            {
+                _last = now;
+                Changed?.Invoke();
+            }
         }
     }
 

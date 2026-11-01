@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using O.Ui.Widgets;
 using Osas.Core;
+using Osas.Core.Suite;
 using WinRT.Interop;
 
 namespace Adms.LoginWidget;
@@ -15,7 +16,7 @@ namespace Adms.LoginWidget;
 /// <summary>
 /// Floating widget: pick a company file (.osas), sign in, write suite.json, optionally hand off to O-Studio.
 /// </summary>
-internal sealed class CompanyLoginWidget : WidgetWindow
+internal sealed partial class CompanyLoginWidget : WidgetWindow
 {
     static CompanyLoginWidget? _open;
 
@@ -31,6 +32,9 @@ internal sealed class CompanyLoginWidget : WidgetWindow
     readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true };
     readonly ProgressRing _ring = new() { Width = 18, Height = 18, IsActive = false };
     readonly TextBlock _status = new() { VerticalAlignment = VerticalAlignment.Center };
+    readonly StatusRow _aiRow = new("AI agent");
+    readonly StatusRow _dbRow = new("Database server (cloud sync)");
+    readonly StatusRow _fileRow = new("Company file");
     readonly TextBlock _suiteStatus = new() { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true, Style = (Style)Application.Current.Resources["CaptionStyle"] };
 
     readonly StackPanel _welcome = new() { Spacing = 12 };
@@ -76,8 +80,16 @@ internal sealed class CompanyLoginWidget : WidgetWindow
     public CompanyLoginWidget() : base("Company login")
     {
         void ShowSuiteStatus() => DispatcherQueue.TryEnqueue(() =>
-            _suiteStatus.Text = $"AI agent: {SuiteStatus.Instance.Ai}\nDatabase: {SuiteStatus.Instance.Database}\nCloud sync: {SuiteStatus.Instance.Cloud}\nProject: {SuiteStatus.Instance.Project}"
-            + (LaunchRequest.Read() is { App: var waiting } ? $"\nWaiting to start {waiting}: sign in and load a project." : ""));
+        {
+            var status = SuiteStatus.Instance;
+            _aiRow.Set(ServiceStatus.ForAi(status.Ai), status.Ai);
+            _dbRow.Set(ServiceStatus.ForCloud(status.Cloud), status.Cloud);
+            _fileRow.Set(ServiceStatus.ForCompanyFile(status.Database), status.Database);
+            ColourDots(ServiceStatus.ForAi(status.Ai), ServiceStatus.ForCloud(status.Cloud), status.Ai, status.Cloud);
+            _suiteStatus.Text = $"Project: {status.Project}"
+                + (LaunchRequest.Read() is { App: var waiting } ? $"\nWaiting to start {waiting}: sign in and load a project." : "");
+            UpdateApps();
+        });
         SuiteStatus.Instance.Changed += ShowSuiteStatus;
         ShowSuiteStatus();
         Closed += (_, _) =>
@@ -93,7 +105,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
             AppWindow.SetIcon(icon);
 
         AttachChrome(BuildChrome());
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(440, 640));
+        AppWindow.Resize(new Windows.Graphics.SizeInt32(400, 760));
         EnsureSession();
         ShowWelcome();
         UpdateCommands();
@@ -125,15 +137,23 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         BuildCreatePanel();
         BuildRecoverPanel();
         BuildSignedInPanel();
+        foreach (var b in new[] { _signInButton, _setupButton, _createButton, _recoverButton, _unlockButton })
+            Big(b);
 
-        var body = new Grid { MinWidth = 360 };
-        body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        body.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        body.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        body.Children.Add(_notice);
-        Grid.SetRow(_notice, 0);
+        var root = new Grid();
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        var host = new Grid();
+        var bar = BuildAppBar();
+        root.Children.Add(bar);
+        Grid.SetRow(bar, 0);
+        root.Children.Add(_notice);
+        Grid.SetRow(_notice, 1);
+
+        var host = new Grid { Margin = new Thickness(16, 16, 16, 12) };
         host.Children.Add(_welcome);
         host.Children.Add(_login);
         host.Children.Add(_setup);
@@ -146,30 +166,23 @@ internal sealed class CompanyLoginWidget : WidgetWindow
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             Content = host,
-            Padding = new Thickness(0, 0, 8, 0),
         };
-        body.Children.Add(scroll);
-        Grid.SetRow(scroll, 1);
+        root.Children.Add(scroll);
+        Grid.SetRow(scroll, 2);
 
-        var footer = new StackPanel
-        {
-            Spacing = 6,
-            Margin = new Thickness(0, 8, 0, 0),
-            Children =
-            {
-                _suiteStatus,
-                new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { _ring, _status } },
-            },
-        };
-        body.Children.Add(footer);
-        Grid.SetRow(footer, 2);
+        var strip = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(16, 4, 16, 6), Children = { _ring, _status } };
+        root.Children.Add(strip);
+        Grid.SetRow(strip, 3);
+
+        var nav = BuildNavBar();
+        root.Children.Add(nav);
+        Grid.SetRow(nav, 4);
 
         return new Border
         {
             Background = (Brush)Application.Current.Resources["SurfaceBackgroundBrush"],
             CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(14),
-            Child = body,
+            Child = root,
         };
     }
 
@@ -208,7 +221,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         var create = _welcomeCreate;
         create.Click += (_, _) => ShowCreate();
         foreach (var b in new[] { create, open, follow })
-            b.HorizontalAlignment = HorizontalAlignment.Stretch;
+            Big(b);
         _welcome.Children.Add(create);
         _welcome.Children.Add(open);
         _welcome.Children.Add(follow);
@@ -307,54 +320,14 @@ internal sealed class CompanyLoginWidget : WidgetWindow
 
     void BuildSignedInPanel()
     {
-        _signedInPanel.Children.Add(_signedInCompany);
-        _signedInPanel.Children.Add(_signedInSummary);
-        _signedInPanel.Children.Add(_signedInPath);
-        BuildProjectSection();
-        var studio = new Button { Content = "Open O-Studio…", HorizontalAlignment = HorizontalAlignment.Stretch };
-        studio.Click += async (_, _) => await HandOffToStudioAsync();
-        _signedInPanel.Children.Add(studio);
-        var lockBtn = new Button { Content = "Lock session" };
-        lockBtn.Click += async (_, _) => await LockAsync();
-        var logout = new Button { Content = "Sign out" };
-        logout.Click += async (_, _) => await LogOutAsync();
-        var close = new Button { Content = "Close company" };
-        close.Click += (_, _) => _ = CloseCompanyAsync();
-        _signedInPanel.Children.Add(new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            Children = { lockBtn, logout, close },
-        });
-    }
-
-    void BuildProjectSection()
-    {
-        _projectFilter.TextChanged += (_, _) => ShowProjects();
-        _projectLock.Click += async (_, _) => await LockSelectedProjectAsync();
-        _projectRelease.Click += (_, _) => ReleaseProject();
-        _projectNew.Click += async (_, _) => await NewProjectAsync();
-        AutomationProperties.SetName(_projectFilter, "Project");
-        AutomationProperties.SetName(_projectBox, "Project list");
-        var card = new StackPanel { Spacing = 8 };
-        card.Children.Add(new TextBlock { Text = "Project", Style = (Style)Application.Current.Resources["SectionTitleStyle"] });
-        card.Children.Add(_projectState);
-        card.Children.Add(_projectFilter);
-        card.Children.Add(_projectBox);
-        card.Children.Add(new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            Children = { _projectLock, _projectRelease, _projectNew },
-        });
-        _signedInPanel.Children.Add(new Border
-        {
-            BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(12),
-            Child = card,
-        });
+        BuildHomePage();
+        BuildServicesPage();
+        BuildAccountPage();
+        _signedInPanel.Spacing = 0;
+        _signedInPanel.Children.Add(_pageHome);
+        _signedInPanel.Children.Add(_pageServices);
+        _signedInPanel.Children.Add(_pageAccount);
+        ShowTab(0);
     }
 
     async Task LoadProjectsAsync()
@@ -389,16 +362,22 @@ internal sealed class CompanyLoginWidget : WidgetWindow
 
         if (pick != null)
             _projectBox.SelectedItem = pick;
-        // One project is loaded at a time. While it is, the list is inactive; closing the project makes the list active again.
+        // One project is loaded at a time: the card shows it with Close project, or the list to choose from.
         var loaded = locked != null;
-        _projectFilter.IsEnabled = !loaded;
-        _projectBox.IsEnabled = !loaded;
+        _projectPickBox.Visibility = loaded ? Visibility.Collapsed : Visibility.Visible;
+        _projectLoadedBox.Visibility = loaded ? Visibility.Visible : Visibility.Collapsed;
         _projectLock.IsEnabled = !loaded && _projects.Count > 0;
-        _projectRelease.IsEnabled = loaded;
-        _projectNew.IsEnabled = !loaded;
-        _projectState.Text = loaded
-            ? $"Loaded: {locked!.Code} {locked.Name}. O‑CoreOp and O‑Draft open on it. Close the project to choose another."
-            : _projects.Count == 0 ? "No projects yet. Create one with New project…" : "No project loaded. Choose one in the list and load it; O‑CoreOp and O‑Draft need one.";
+        if (loaded)
+        {
+            _projectTitle.Text = locked!.Name;
+            var client = _projects.FirstOrDefault(p => p.Id == locked.ProjectId)?.Client;
+            _projectMeta.Text = string.IsNullOrWhiteSpace(client) ? locked.Code : $"{locked.Code} · {client}";
+        }
+
+        UpdateApps();
+        _projectState.Text = _projects.Count == 0
+            ? "No projects yet. Create one with New project…"
+            : "Choose a project and load it. O‑CoreOp and O‑Draft open on it.";
     }
 
     async Task LockSelectedProjectAsync()
@@ -532,6 +511,165 @@ internal sealed class CompanyLoginWidget : WidgetWindow
 
     static Style Accent => (Style)Application.Current.Resources["AccentButtonStyle"];
 
+    /// <summary>One line of the status area: a coloured marker, the name, what it is doing in words, and the detail.</summary>
+    sealed class StatusRow
+    {
+        readonly Microsoft.UI.Xaml.Shapes.Ellipse _dot = new() { Width = 10, Height = 10, VerticalAlignment = VerticalAlignment.Center };
+        readonly TextBlock _state = new() { FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+        readonly TextBlock _detail = new() { Style = (Style)Application.Current.Resources["CaptionStyle"], TextWrapping = TextWrapping.Wrap, Opacity = 0.8 };
+        readonly string _name;
+
+        internal StatusRow(string name)
+        {
+            _name = name;
+            var head = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            head.Children.Add(_dot);
+            head.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center });
+            head.Children.Add(_state);
+            var column = new StackPanel { Spacing = 0 };
+            column.Children.Add(head);
+            _detail.Margin = new Thickness(18, 0, 0, 0);
+            column.Children.Add(_detail);
+            Root = column;
+            Set(ServiceLevel.Off, "checking…");
+        }
+
+        internal FrameworkElement Root { get; }
+
+        internal static Brush Colour(ServiceLevel level) => new SolidColorBrush(level switch
+        {
+            ServiceLevel.Running => Microsoft.UI.ColorHelper.FromArgb(255, 0x2E, 0xA0, 0x43),
+            ServiceLevel.Waiting => Microsoft.UI.ColorHelper.FromArgb(255, 0xD2, 0x99, 0x22),
+            ServiceLevel.Stopped => Microsoft.UI.ColorHelper.FromArgb(255, 0xD1, 0x24, 0x2F),
+            _ => Microsoft.UI.ColorHelper.FromArgb(255, 0x8B, 0x94, 0x9E),
+        });
+
+        internal void Set(ServiceLevel level, string detail)
+        {
+            _dot.Fill = Colour(level);
+            _state.Text = ServiceStatus.Word(level);
+            _detail.Text = detail;
+            AutomationProperties.SetName(Root, $"{_name}: {ServiceStatus.Word(level)}. {detail}");
+        }
+    }
+
+    sealed record AppTile(string TicketApp, Button Button, bool NeedsProject);
+
+    readonly List<AppTile> _tiles = [];
+
+    /// <summary>The apps of the suite, each with its mark. O-Studio, O-CoreOp and O-Draft start from here; O-Form is a placeholder for the app that is planned.</summary>
+    FrameworkElement BuildAppTiles()
+    {
+        var grid = new Grid { ColumnSpacing = 8, RowSpacing = 8 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition());
+        grid.ColumnDefinitions.Add(new ColumnDefinition());
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        var specs = new (string Ticket, string Title, string Blurb, string Mark, bool NeedsProject)[]
+        {
+            ("O-Studio", "O-Studio", "Practice, people, billing", "mark-studio.png", false),
+            ("O-CoreOp", "O-CoreOp", "Estimates and bills", "mark-metra.png", true),
+            ("O-Draft", "O-Draft", "2D drafting", "mark-draft.png", true),
+            ("O-Form", "O-Form", "3D / BIM form (planned)", "", false),
+        };
+        for (var i = 0; i < specs.Length; i++)
+        {
+            var (ticket, title, blurb, mark, needsProject) = specs[i];
+            var tile = new Button
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Padding = new Thickness(12, 10, 12, 10),
+                MinHeight = 72,
+                Content = TileContent(title, blurb, mark),
+            };
+            AutomationProperties.SetName(tile, title);
+            if (ticket == "O-Form")
+            {
+                tile.IsEnabled = false;
+                ToolTipService.SetToolTip(tile, "O-Form is planned and not built yet.");
+            }
+            else
+            {
+                var app = SuiteCatalog.FindByTicketApp(ticket);
+                tile.Click += async (_, _) => await StartAppAsync(ticket, app);
+                _tiles.Add(new AppTile(ticket, tile, needsProject));
+            }
+
+            Grid.SetColumn(tile, i % 2);
+            Grid.SetRow(tile, i / 2);
+            grid.Children.Add(tile);
+        }
+
+        UpdateApps();
+        return grid;
+    }
+
+    static FrameworkElement TileContent(string title, string blurb, string mark)
+    {
+        FrameworkElement icon;
+        var file = Path.Combine(AppContext.BaseDirectory, "Assets", mark);
+        if (mark.Length > 0 && File.Exists(file))
+        {
+            icon = new Image { Source = new BitmapImage(new Uri(file)), Width = 40, Height = 40, Stretch = Stretch.Uniform };
+        }
+        else
+        {
+            // A placeholder for an app that is not built: a grey square with its initial.
+            icon = new Border
+            {
+                Width = 40,
+                Height = 40,
+                CornerRadius = new CornerRadius(8),
+                Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(255, 0x8B, 0x94, 0x9E)),
+                Child = new TextBlock { Text = title[..1], Foreground = new SolidColorBrush(Microsoft.UI.Colors.White), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+            };
+        }
+
+        var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center, MaxWidth = 110 };
+        text.Children.Add(new TextBlock { Text = title, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        text.Children.Add(new TextBlock { Text = blurb, Style = (Style)Application.Current.Resources["CaptionStyle"], TextWrapping = TextWrapping.Wrap, MaxLines = 2, Opacity = 0.8 });
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+        row.Children.Add(icon);
+        row.Children.Add(text);
+        return row;
+    }
+
+    /// <summary>O-Studio needs a signed-in company; O-CoreOp and O-Draft also need the project loaded.</summary>
+    void UpdateApps()
+    {
+        var host = SuiteLauncherHost.Instance;
+        var signedIn = host.SignedIn || _signedIn;
+        var project = host.Project != null;
+        foreach (var tile in _tiles)
+        {
+            var ready = signedIn && (!tile.NeedsProject || project);
+            tile.Button.IsEnabled = ready && !_busy;
+            ToolTipService.SetToolTip(tile.Button, ready ? null : !signedIn ? "Sign in first." : "Load a project first.");
+        }
+    }
+
+    async Task StartAppAsync(string ticketApp, SuiteAppDescriptor? app)
+    {
+        if (ticketApp == "O-Studio")
+        {
+            await HandOffToStudioAsync();
+            return;
+        }
+
+        if (app == null)
+            return;
+        try
+        {
+            await SuiteLauncherHost.Instance.LaunchAppAsync(app, DispatcherQueue);
+            _notice.IsOpen = false;
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex.Message);
+        }
+    }
+
     nint Hwnd => WindowNative.GetWindowHandle(this);
 
     void EnsureSession()
@@ -584,6 +722,9 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         _create.Visibility = panel == _create ? Visibility.Visible : Visibility.Collapsed;
         _recover.Visibility = panel == _recover ? Visibility.Visible : Visibility.Collapsed;
         _signedInPanel.Visibility = panel == _signedInPanel ? Visibility.Visible : Visibility.Collapsed;
+        _nav.Visibility = panel == _signedInPanel ? Visibility.Visible : Visibility.Collapsed;
+        if (panel != _signedInPanel)
+            SetBar(_companyName.Length > 0 ? _companyName : "O-Studio suite", panel == _welcome ? "Choose a company" : "Sign in to continue");
         UpdateCommands();
     }
 
@@ -1041,6 +1182,8 @@ internal sealed class CompanyLoginWidget : WidgetWindow
             _ = LoadProjectsAsync();
         _signedInCompany.Text = string.IsNullOrWhiteSpace(_companyName) ? Path.GetFileNameWithoutExtension(_companyPath) : _companyName;
         _signedInSummary.Text = $"{_username} · {_role}";
+        _avatar.Text = string.IsNullOrWhiteSpace(_username) ? "?" : _username[..1].ToUpperInvariant();
+        SetBar(_signedInCompany.Text, _signedInSummary.Text);
         _signedInPath.Text = _companyPath;
         ToolTipService.SetToolTip(_signedInPath, _companyPath);
         ShowOnly(_signedInPanel);
@@ -1081,6 +1224,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         _busy = busy;
         _ring.IsActive = busy;
         _ring.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+        UpdateApps();
         if (!string.IsNullOrWhiteSpace(status))
             _status.Text = status;
         UpdateCommands();

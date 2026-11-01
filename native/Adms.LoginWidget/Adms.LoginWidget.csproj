@@ -29,6 +29,9 @@
   <ItemGroup>
     <Content Include="..\Adms.Desktop\Assets\app.ico" Link="Assets\app.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\Adms.Desktop\Assets\mark.png" Link="Assets\mark.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Adms.Desktop\Assets\mark-studio.png" Link="Assets\mark-studio.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Adms.Desktop\Assets\mark-metra.png" Link="Assets\mark-metra.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Adms.Desktop\Assets\mark-draft.png" Link="Assets\mark-draft.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />

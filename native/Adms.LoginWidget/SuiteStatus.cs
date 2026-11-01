@@ -31,6 +31,7 @@ internal sealed class SuiteStatus
         _timer.Tick += async (_, _) => await RefreshAsync();
         _timer.Start();
         SuiteLauncherHost.Instance.Changed += () => queue.TryEnqueue(async () => await RefreshAsync());
+        CloudSyncService.Instance.Changed += () => queue.TryEnqueue(async () => await RefreshAsync());
         _ = RefreshAsync();
     }
 

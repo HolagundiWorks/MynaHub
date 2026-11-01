@@ -67,8 +67,8 @@ Opened by **Company sign-in…**, by a second launch, or by an error.
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
-| LNC-WIN-01 | Opens | Choose Company sign-in… | A window "Company login", about 440x640, shows the welcome panel (create, open, recent; the button for the remembered company is the accent one when there is one, else Create) and, at the bottom, the three status lines | UIA tree, screenshot |
-| LNC-WIN-02 | Status lines live | Change state (L4) with the window open | The three lines update without reopening | UIA text |
+| LNC-WIN-01 | Opens (phone shell) | Choose Company sign-in… | A window "Company login", about 400x760, laid out as a phone: an **app bar** (logo, company or "O-Studio suite", user and role or a hint, and two status dots for the AI agent and the database server), the page in the middle, a thin status line, and, once signed in, a bar of three tabs **Home**, **Services**, **Account**. Before sign-in the welcome panel (create, open, recent) shows with the accent on "Open remembered company" when there is one, else on Create, and no tabs | UIA tree, screenshot |
+| LNC-WIN-02 | Status live | Change state (L4) with the window open | The dots in the app bar and the three rows on the **Services** tab update without reopening (within a few seconds of a change in the cloud sync, within 20 s for the rest) | UIA, screenshot |
 | LNC-WIN-03 | Create a company | Create a company with name, owner, password of 12+ characters | The company opens; the recovery code is shown once; setup completes | UIA, `suite.json` |
 | LNC-WIN-04 | Password too short `[B]` | 11 characters | Refused with a clear message; nothing created | UIA |
 | LNC-WIN-05 | Open an existing company | Pick a `.osas` file | Opens and asks for sign-in | UIA |
@@ -82,6 +82,10 @@ Opened by **Company sign-in…**, by a second launch, or by an error.
 | LNC-WIN-13 | Writes `suite.json` | Sign in | `%LOCALAPPDATA%\OSAS\suite.json` has the company path and user name, no password | file read |
 | LNC-WIN-14 | Close the window | Close with the X | The launcher keeps running in the tray | process |
 | LNC-WIN-15 | Forgotten password | Look for a recovery route | Record where it is (O-Studio has one: "Forgot password? Use recovery code"). A missing route in the launcher is not a bug if documented | doc |
+| LNC-WIN-16 | Tabs | Sign in, then choose Services, Account, Home | Each page shows alone; the chosen tab is accent-coloured; the pages stay until another tab is chosen; the tab bar is not shown before sign-in | UIA, screenshot |
+| LNC-WIN-17 | Home apps | On Home | Four tiles with their marks: O-Studio (orange), O-CoreOp (blue), O-Draft (black), O-Form (grey placeholder, disabled, "planned"). O-Studio is enabled once signed in; O-CoreOp and O-Draft only with a project loaded (tooltip says what is missing); a click starts the app | UIA, screenshot |
+| LNC-WIN-18 | Status markers | Look at the app-bar dots and the Services tab | AI agent: green Running when the host answers, amber Waiting while starting, red Not running when the port is taken or the model missing. Database server (cloud sync): green Running, amber Waiting before sign-in, red Not running when Neon cannot be reached, grey Off when not set up or signed out. Company file: green when signed in, amber when open and waiting for sign-in, grey when closed, red when not found | screenshot |
+| LNC-WIN-19 | Account page | Account tab | Avatar with the user's initial, user and role, company name, file path (trimmed, full path on hover), and Lock session, Sign out, Close company as full-width buttons | UIA |
 
 ## L6 Launching apps
 
@@ -102,13 +106,13 @@ Opened by **Company sign-in…**, by a second launch, or by an error.
 |---|---|---|---|---|
 | LNC-PRJ-01 | List `[N]` | Sign in; look at the Project section | Drop-down lists the company's projects as `code  name  (client)`; archived ones are absent | UIA |
 | LNC-PRJ-02 | Search `[N]` | Type part of a code, name or client in the filter | The list narrows; clearing the filter restores it | UIA |
-| LNC-PRJ-03 | Load `[N]` | Pick a project, Load project | State line says Loaded with code and name; the list, filter, Load project and New project… are inactive and Close project is active; `selected-project.json` has the project id, `.osp` path, company and user; status file `Project:` line shows it | file read |
+| LNC-PRJ-03 | Load `[N]` | Pick a project, Load project | On **Home** the project card shows "Current project", the project name, `code · client` and Close project; the list, search, Load project and New project… are hidden; `selected-project.json` has the project id, `.osp` path, company and user; status file `Project:` line shows it | file read |
 | LNC-PRJ-04 | Folder made on load `[N]` | Load a project that has no folder yet | The project folder with `osas.project.json` exists; the selection names `project.osp` inside it | file system |
 | LNC-PRJ-05 | Launch on the project `[N]` | Load, then Tray > O-CoreOp and O-Draft | Each starts with `OSTUDIO_PROJECT_ID` and `OSTUDIO_PROJECT_OSP` set (read from the process environment) | process env |
 | LNC-PRJ-06 | Launch without a project `[B]` | Close the project, Tray > O-Draft | Refused with "Load a project first" | message |
 | LNC-PRJ-07 | Switch refused while an app is open `[B]` | Load A, start O-Draft, try Close project | Refused: "O-Draft still has A open"; A stays loaded and the list stays inactive | message, file |
-| LNC-PRJ-08 | Close refused while an app is open `[B]` | O-Draft running, Close project | Refused naming O-Draft; after closing the app, Close project works, `selected-project.json` is gone and the list becomes active again | file |
-| LNC-PRJ-09 | Closed project re-opens `[R]` | Close project, pick the same project, Load project | Loads again; the list is inactive while it is loaded | UIA |
+| LNC-PRJ-08 | Close refused while an app is open `[B]` | O-Draft running, Close project | Refused naming O-Draft; after closing the app, Close project works, `selected-project.json` is gone and the card shows the list, search, Load project and New project… again | file |
+| LNC-PRJ-09 | Closed project re-opens `[R]` | Close project, pick the same project, Load project | Loads again; the card shows it as the current project | UIA |
 | LNC-PRJ-10 | Archived project `[B]` | Archive a project in O-Studio, refresh the list | Not listed; a stale lock on it is refused by `project_launch_info` (launchable false) | engine call |
 | LNC-PRJ-11 | New project `[N]` | New project…, existing client, name, accept the generated code | Project and its folder exist in the company file; it is loaded at once | O-Studio project list |
 | LNC-PRJ-12 | New project, new client `[N]` | New project…, New client…, enter the client name | Client and project created, project loaded | O-Studio |
