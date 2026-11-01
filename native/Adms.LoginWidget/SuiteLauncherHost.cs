@@ -92,7 +92,7 @@ internal sealed class SuiteLauncherHost
     /// <summary>The project locked for this company, or none.</summary>
     internal SelectedProject? Project => string.IsNullOrWhiteSpace(CompanyPath) ? null : SelectedProjectStore.Read(CompanyPath);
 
-    internal string ProjectLine() => Project is { } p ? $"{p.Code} {p.Name} (locked)" : "none locked";
+    internal string ProjectLine() => Project is { } p ? $"{p.Code} {p.Name} (loaded)" : "none loaded";
 
     /// <summary>The apps that work on the locked project and are running now, by name.</summary>
     internal static IReadOnlyList<string> AppsHoldingProject()
@@ -169,7 +169,7 @@ internal sealed class SuiteLauncherHost
     {
         var held = AppsHoldingProject();
         if (held.Count > 0)
-            throw new InvalidOperationException($"{string.Join(" and ", held)} still has {current.Name} open. Close it before changing the project.");
+            throw new InvalidOperationException($"{string.Join(" and ", held)} still {(held.Count == 1 ? "has" : "have")} {current.Name} open. Close {(held.Count == 1 ? "it" : "them")} before closing or changing the project.");
     }
 
     static bool HasWorkspace(JsonElement info) =>
@@ -205,7 +205,7 @@ internal sealed class SuiteLauncherHost
         if (!CanLaunchSiblingApps)
             throw new InvalidOperationException("Sign in to your company first (Company sign-in…).");
         if (Project == null)
-            throw new InvalidOperationException($"Choose and lock a project first (Company sign-in…, Project). {app.Title} opens on the locked project.");
+            throw new InvalidOperationException($"Load a project first (Company sign-in…, Project). {app.Title} opens on the loaded project.");
 
         var exe = SuiteCatalog.FindExecutable(app)
             ?? throw new InvalidOperationException($"{app.Title} is not installed.");

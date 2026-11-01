@@ -58,8 +58,8 @@ internal sealed class CompanyLoginWidget : WidgetWindow
     readonly TextBox _projectFilter = new() { Header = "Project", PlaceholderText = "Search by code, name or client" };
     readonly ComboBox _projectBox = new() { HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = "Choose a project" };
     readonly TextBlock _projectState = new() { TextWrapping = TextWrapping.Wrap, Opacity = 0.85, FontSize = 12 };
-    readonly Button _projectLock = new() { Content = "Lock project", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
-    readonly Button _projectRelease = new() { Content = "Unlock" };
+    readonly Button _projectLock = new() { Content = "Load project", Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
+    readonly Button _projectRelease = new() { Content = "Close project" };
     readonly Button _projectNew = new() { Content = "New project…" };
     IReadOnlyList<ProjectEntry> _projects = [];
     readonly TextBlock _signedInSummary = new() { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
@@ -74,7 +74,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
     {
         void ShowSuiteStatus() => DispatcherQueue.TryEnqueue(() =>
             _suiteStatus.Text = $"AI agent: {SuiteStatus.Instance.Ai}\nDatabase: {SuiteStatus.Instance.Database}\nCloud sync: {SuiteStatus.Instance.Cloud}\nProject: {SuiteStatus.Instance.Project}"
-            + (LaunchRequest.Read() is { App: var waiting } ? $"\nWaiting to start {waiting}: sign in and lock a project." : ""));
+            + (LaunchRequest.Read() is { App: var waiting } ? $"\nWaiting to start {waiting}: sign in and load a project." : ""));
         SuiteStatus.Instance.Changed += ShowSuiteStatus;
         ShowSuiteStatus();
         Closed += (_, _) =>
@@ -367,10 +367,16 @@ internal sealed class CompanyLoginWidget : WidgetWindow
 
         if (pick != null)
             _projectBox.SelectedItem = pick;
-        _projectState.Text = locked != null
-            ? $"Locked: {locked.Code} {locked.Name}. O-CoreOp and O-Draft open on it."
-            : _projects.Count == 0 ? "No projects yet. Create one with New project…" : "No project locked. O-CoreOp and O-Draft need one.";
-        _projectRelease.IsEnabled = locked != null;
+        // One project is loaded at a time. While it is, the list is inactive; closing the project makes the list active again.
+        var loaded = locked != null;
+        _projectFilter.IsEnabled = !loaded;
+        _projectBox.IsEnabled = !loaded;
+        _projectLock.IsEnabled = !loaded && _projects.Count > 0;
+        _projectRelease.IsEnabled = loaded;
+        _projectNew.IsEnabled = !loaded;
+        _projectState.Text = loaded
+            ? $"Loaded: {locked!.Code} {locked.Name}. O-CoreOp and O-Draft open on it. Close the project to choose another."
+            : _projects.Count == 0 ? "No projects yet. Create one with New project…" : "No project loaded. Choose one in the list and load it; O-CoreOp and O-Draft need one.";
     }
 
     async Task LockSelectedProjectAsync()
@@ -381,7 +387,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
             return;
         }
 
-        await RunEngineAsync("Locking the project…", () => SuiteLauncherHost.Instance.LockProjectAsync(entry).GetAwaiter().GetResult());
+        await RunEngineAsync("Loading the project…", () => SuiteLauncherHost.Instance.LockProjectAsync(entry).GetAwaiter().GetResult());
         ShowProjects();
     }
 
@@ -439,7 +445,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         {
             Title = "New project",
             Content = new StackPanel { Spacing = 10, Children = { clientBox, newClient, name, code, address } },
-            PrimaryButtonText = "Create and lock",
+            PrimaryButtonText = "Create and load",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = Content.XamlRoot,

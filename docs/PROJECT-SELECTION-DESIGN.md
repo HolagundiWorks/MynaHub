@@ -25,6 +25,9 @@ The company file already has the right model (a project owns a workspace folder 
 
 ## 3. Target flow
 
+**Wording and states (2026-11-01).** The launcher says *Load project* and *Close project* (not lock and unlock; the wire and files keep the name "locked project"). With no project loaded the list and its search are active, *Load project* and *New project…* are active and *Close project* is not. With a project loaded the list, search, *Load project* and *New project…* are inactive and *Close project* is active; it is refused, naming the app, while O-CoreOp or O-Draft is open. Closing the project makes the list active again.
+
+
 ```
 Launcher: sign in -> drop-down of projects (search, recent first)
         -> [New project...]  basic wizard (name, client, code, address) -> workspace + project.osp created now

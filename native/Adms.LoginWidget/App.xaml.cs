@@ -33,6 +33,7 @@ public partial class App : Application
         ThreadPool.RegisterWaitForSingleObject(_show, (_, _) => queue.TryEnqueue(() =>
         {
             CompanyLoginWidget.ShowOrFocus();
+            _ = SuiteStatus.Instance.RefreshAsync();
             _ = SuiteLauncherHost.Instance.RunPendingLaunchAsync(queue);
         }), null, Timeout.Infinite, false);
         SuiteLauncherHost.Instance.Changed += () => queue.TryEnqueue(async () => await SuiteLauncherHost.Instance.RunPendingLaunchAsync(queue));
