@@ -74,7 +74,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
     {
         void ShowSuiteStatus() => DispatcherQueue.TryEnqueue(() =>
             _suiteStatus.Text = $"AI agent: {SuiteStatus.Instance.Ai}\nDatabase: {SuiteStatus.Instance.Database}\nCloud sync: {SuiteStatus.Instance.Cloud}\nProject: {SuiteStatus.Instance.Project}"
-            + (LaunchRequest.Read() is { } waiting ? $"\nWaiting to start {waiting}: sign in and lock a project." : ""));
+            + (LaunchRequest.Read() is { App: var waiting } ? $"\nWaiting to start {waiting}: sign in and lock a project." : ""));
         SuiteStatus.Instance.Changed += ShowSuiteStatus;
         ShowSuiteStatus();
         Closed += (_, _) =>

@@ -6,13 +6,16 @@ O-CoreOp does quantity take-off, estimates, BOQ and billing (C# WinUI shell, C++
 
 Shell: two ribbons of text tabs. Main ribbon sections: Project, RCC steel, Civil BOQ, Schedule, Contracts, Stores, Outputs (Ctrl+1 to Ctrl+7 jump to a section's first page). Office, accounts and HR of the practice live in O-Studio.
 
+
+> **Project selection (2026-11-01).** The project is chosen and locked in the launcher; see [../PROJECT-SELECTION-DESIGN.md](../PROJECT-SELECTION-DESIGN.md). The app is started on a project with `OSTUDIO_PROJECT_ID` and `OSTUDIO_PROJECT_OSP` (a test folder with no `.osp` yet is fine: the first open makes it). Started with neither, the app asks the launcher and exits. Automation and tests start it with `OSTUDIO_STANDALONE=1`, `--control PORT` or a file on the command line instead. The cases below that name New, Open or Save as project are written for the locked flow.
+
 ## C1 Smoke
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
 | COP-SMK-01 | Start | Start `O-CoreOp.exe` | Main window opens, ribbons visible, no crash | UIA, event log |
 | COP-SMK-02 | Start from launcher | Launcher, **O-CoreOp** | Opens with the company's name and details shown read-only | UIA |
-| COP-SMK-03 | New project | Open with no project | An empty project with default name | UIA |
+| COP-SMK-03 | Locked project, no file yet | Start with `OSTUDIO_PROJECT_OSP` pointing into an existing folder where no `.osp` exists | An empty project named after the file; Save creates the `.osp` | UIA, file |
 | COP-SMK-04 | Close | Close | Asks to save if changed; process ends | UIA |
 | COP-SMK-05 | Suites | `dotnet test AQC.CadImport.Tests` and `Office.Shared.Tests` | 0 failed (88 and 91 at last run) | output |
 
@@ -20,12 +23,13 @@ Shell: two ribbons of text tabs. Main ribbon sections: Project, RCC steel, Civil
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
-| COP-PRJ-01 | Save as `.osp` | File, Save as | One `.osp` created holding the project record | `aad-odp inspect` |
-| COP-PRJ-02 | Open `.osp` | Open the file | Project loads equal to what was saved (compare key fields) | UIA |
-| COP-PRJ-03 | Open an older `.bbsproj` / `.json` | Open one | Opens; Save as puts it in an `.osp`; the old file is not rewritten | file hash |
+| COP-PRJ-01 | Save into the locked project | Edit, File, Save | The locked project's `.osp` holds the project record; there is no Save as, New or Open in the File menu | `aad-odp inspect`, UIA |
+| COP-PRJ-02 | Open the locked project | Start from the launcher with a project that has a saved `.osp` | Project loads equal to what was saved (compare key fields) | UIA |
+| COP-PRJ-03 | Older `.bbsproj` / `.json` | Start with `OSTUDIO_STANDALONE=1` and open one from the command line | Opens; Save refuses ("no project file to save to") because it is not an `.osp`; the old file is not rewritten | file hash |
 | COP-PRJ-04 | Save over `.osp` `[R]` | Edit, Save twice | `meta.revision` +1 per save; the drawing and take-off in the file are unchanged | `inspect` |
-| COP-PRJ-05 | Save As onto a new name | Save as from an `.osp` | New file contains the drawing and take-off too | `inspect` |
+| COP-PRJ-05 | No Save as | Look for Save as, New project, Open project, Open O-Draft's project | None of them exists in the File menu | UIA |
 | COP-PRJ-06 | Bad file `[B]` | Open a text file renamed `.osp` | Message "not a project file"; app usable | UIA |
+| COP-PRJ-07 | Started alone | Start `O-CoreOp.exe` with no project environment and no `OSTUDIO_STANDALONE` | The launcher starts or wakes with the request "Waiting to start O-CoreOp"; the app exits; after sign-in and Lock, O-CoreOp starts on the project | process list, launcher window |
 | COP-PRJ-07 | Recent and command line | Open from Explorer (double click / "Open in O-CoreOp") | Opens that project | Explorer |
 | COP-PRJ-08 | Project settings | Name, location, client, prepared-by, company, logo | Saved and printed on reports; logo shown | UIA, PDF |
 | COP-PRJ-09 | Engineering settings | Diameters, hooks, covers, civil yields | Changing a cover changes the steel weights in the next calculation | numbers |
@@ -61,7 +65,7 @@ Shell: two ribbons of text tabs. Main ribbon sections: Project, RCC steel, Civil
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
-| COP-TKO-01 | Page with no project | Open Take-off with no `.osp` | Message: open a project file | UIA |
+| COP-TKO-01 | Page before a take-off | Open Take-off on a locked project with no take-off | Message that O-Draft has not recorded one | UIA |
 | COP-TKO-02 | List drawings | Open an `.osp` that O-Draft recorded | Drawings listed with state (complete / recording), counts; refreshes every 2 s | UIA |
 | COP-TKO-03 | Read take-off | Select a complete drawing, **Read take-off** | Import preview lists the rows; nothing is written until accepted | UIA |
 | COP-TKO-04 | Accept import | Accept | Rows appear in the BOQ; one undo step reverts; importing again updates the same rows, no duplicates | numbers |

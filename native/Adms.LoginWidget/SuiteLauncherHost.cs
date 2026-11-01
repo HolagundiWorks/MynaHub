@@ -227,22 +227,45 @@ internal sealed class SuiteLauncherHost
     /// <summary>Start the app that asked for the launcher (<see cref="LaunchRequest"/>) once a company is signed in and a project is locked.</summary>
     internal async Task RunPendingLaunchAsync(DispatcherQueue queue)
     {
-        var app = LaunchRequest.Read();
-        if (app == null || !CanLaunchSiblingApps || Project == null)
+        var request = LaunchRequest.Read();
+        if (request == null || !CanLaunchSiblingApps)
+            return;
+        if (request.Osp == null && Project == null)
             return;
         var descriptor = SuiteCatalog.Apps.FirstOrDefault(a =>
-            string.Equals(a.Title, app, StringComparison.OrdinalIgnoreCase) || string.Equals(a.TicketApp, app, StringComparison.OrdinalIgnoreCase));
+            string.Equals(a.Title, request.App, StringComparison.OrdinalIgnoreCase) || string.Equals(a.TicketApp, request.App, StringComparison.OrdinalIgnoreCase));
         LaunchRequest.Clear();
         if (descriptor == null)
             return;
         try
         {
+            // A double-clicked project file: lock the project whose folder holds it, then start the app on it.
+            if (request.Osp != null)
+                await LockProjectOfFileAsync(request.Osp);
             await LaunchAppAsync(descriptor, queue);
         }
         catch (Exception ex)
         {
             CompanyLoginWidget.ShowError(ex.Message);
         }
+    }
+
+    /// <summary>Lock the project whose project file is <paramref name="osp"/>. Says so when no project of this company has that file.</summary>
+    internal async Task LockProjectOfFileAsync(string osp)
+    {
+        if (Session == null || !CanLaunchSiblingApps)
+            throw new InvalidOperationException("Sign in to your company first.");
+        var full = Path.GetFullPath(osp);
+        var entries = await ListProjectsAsync();
+        var match = await Task.Run(() => entries.FirstOrDefault(entry =>
+        {
+            var ws = Session.Call("project_workspace_get", new { project_id = entry.Id }).Clone();
+            return ws.ValueKind == JsonValueKind.Object
+                && string.Equals(Path.GetFullPath(Text(ws, "osp")), full, StringComparison.OrdinalIgnoreCase);
+        }));
+        if (match == null)
+            throw new InvalidOperationException($"{Path.GetFileName(osp)} is not the project file of a project in {CompanyName}. Add it to a project in O-Studio first.");
+        await LockProjectAsync(match);
     }
 
     internal async Task HandOffToStudioAsync(DispatcherQueue queue)

@@ -6,6 +6,9 @@ O-Draft is the 2D CAD (Rust engine, WinUI shell). Source of truth for what exist
 
 Every command case also checks **undo and redo** (`[R]`) unless the command is marked no-undo (`takeoff.record`).
 
+
+> **Project selection (2026-11-01).** The project is chosen and locked in the launcher; see [../PROJECT-SELECTION-DESIGN.md](../PROJECT-SELECTION-DESIGN.md). The app is started on a project with `OSTUDIO_PROJECT_ID` and `OSTUDIO_PROJECT_OSP` (a test folder with no `.osp` yet is fine: the first open makes it). Started with neither, the app asks the launcher and exits. Automation and tests start it with `OSTUDIO_STANDALONE=1`, `--control PORT` or a file on the command line instead. The cases below that name New, Open or Save as project are written for the locked flow.
+
 ## D1 Smoke
 
 | ID | Feature | Steps | Expected | How to check |
@@ -24,8 +27,8 @@ Every command case also checks **undo and redo** (`[R]`) unless the command is m
 | DRF-FIL-03 | Save DXF round trip | Save, close, reopen | Same entity count, layers, blocks, text; `<file>.aadrev.json` written beside it (SHA-256, bytes, time, count) | file, `drawing.revision` |
 | DRF-FIL-04 | Save DWG | Save as DWG, reopen | Round trips; what could not be kept is reported | message |
 | DRF-FIL-05 | `.bak` | Save over an existing file | A `.bak` copy of the previous file exists | folder |
-| DRF-FIL-06 | Save as project (`.osp`) | Save as, type **Project (drawing and take-off)** | One `.osp`; reopens as a drawing with the same entities; the original drawing bytes are kept; `inspect` shows `drawing` rows | `aad-odp inspect` |
-| DRF-FIL-07 | Open `.osp` | Open the file from DRF-FIL-06 | Opens in a tab titled with the project | UIA |
+| DRF-FIL-06 | First open of a locked project | Start on a project folder with no `.osp` | One `.osp` is created with an empty drawing; `inspect` shows `drawing` rows; the tab is titled with the project file | `aad-odp inspect` |
+| DRF-FIL-07 | No file or project commands | Open the File menu on a locked project | New, Open, Save As, New Project, Open Project are absent; Save, Close, Export, Print, History are present | UIA |
 | DRF-FIL-08 | Save unchanged drawing `[R]` | Save an `.osp` twice with no change | Second save writes no new drawing revision (revision unchanged) | `inspect` |
 | DRF-FIL-09 | Corrupt file `[B]` | Open a truncated DXF; open a zero-byte file; open a `.txt` renamed `.dxf` | Error message; the app stays usable; no crash | event log |
 | DRF-FIL-10 | Flatten on import | Open a DXF with 3D elevations | Flattened to 2D; report lists what was flattened | message |
@@ -147,7 +150,7 @@ Take-off tools show in the top strip only while **Take-off** is on (toggle in th
 | DRF-HIS-06 | Revision register | `revision.issue/list/set/void/table/codes/clouds`: issue updates the title block `REV` and draws the table; void keeps the number |
 | DRF-HIS-07 | Drawing revision | `drawing.revision` reports current / stale / missing for changed files |
 | DRF-PRJ-01 | `.osp` concurrency | Open the same `.osp` in O-Draft and O-CoreOp; save in each alternately | Revisions increase by one per save; no data lost; neither app shows an error |
-| DRF-PRJ-02 | Active-project pointer | Open an `.osp` | `%LOCALAPPDATA%\OSAS\active-project.json` (or the `SuiteWire` path) names it; closing the tab clears or updates it |
+| DRF-PRJ-02 | Active-project pointer | Start on a locked project | `%LOCALAPPDATA%\O-Studio\active-project.json` names the project file; closing the app deletes it | file read |
 | DRF-PRJ-03 | Company file details | `companyfile` command / project details | Company and project details shown read-only from the company file; nothing written back |
 
 ## D9 Scripting, automation and AI tools

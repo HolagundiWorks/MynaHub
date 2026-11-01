@@ -33,7 +33,7 @@ Links under test:
 | INT-LNC-01 | Sign-in once | Sign in in the launcher; start O-Studio, O-CoreOp and O-Draft in turn | None asks for a password; each shows the same company and user |
 | INT-LNC-02 | Role carries over | Sign in as Auditor; start each app | Each app shows read-only behaviour for that role |
 | INT-LNC-03 | Company details | Edit the firm profile in O-Studio | O-CoreOp and O-Draft show the new details after refresh/reopen, read-only |
-| INT-LNC-04 | No company chosen | Start O-CoreOp and O-Draft directly with no `suite.json` | They work without company details; message says to use the launcher |
+| INT-LNC-04 | App started alone | Start O-CoreOp and O-Draft directly (no environment, no `OSTUDIO_STANDALONE`) | Each starts or wakes the launcher with a request and exits; after sign-in and Lock the launcher starts it on the project. With no launcher installed the app runs without a company |
 | INT-LNC-05 | Company file in use by two apps | O-Studio and O-CoreOp open the same company | No corruption; both read; writes from O-Studio visible in O-CoreOp |
 | INT-LNC-06 | Lock and sign out | Lock or sign out in the launcher while apps run | Document the behaviour of running apps (they keep their ticket session). A missing re-check is logged as a finding, not assumed a bug |
 | INT-LNC-07 | Hand-off | Launcher, **O-Studio** | The launcher releases the file; O-Studio opens it signed in; closing O-Studio leaves the launcher usable |
@@ -44,13 +44,13 @@ Links under test:
 
 | ID | Scenario | Steps | Expected |
 |---|---|---|---|
-| INT-OSP-01 | Record and read | O-Draft: draw walls, Take-off, save as `house.osp`, Record. O-CoreOp: open `house.osp`, Take-off page | Drawing listed with the right counts; read, accept, quantities equal O-Draft's numbers |
+| INT-OSP-01 | Record and read | Lock `house` in the launcher. O-Draft (started from the launcher): draw walls, Take-off, Save, Record. O-CoreOp (started from the launcher): Take-off page | Both open the same `.osp`; drawing listed with the right counts; read, accept, quantities equal O-Draft's numbers |
 | INT-OSP-02 | Live notice | Keep O-CoreOp's Take-off page open; change a wall in O-Draft and Record | O-CoreOp shows "O-Draft updated the take-off" within about 2 s and the list refreshes |
 | INT-OSP-03 | Alternating saves | Alternate: O-CoreOp saves the project record; O-Draft records again; repeat 20 times | Revision rises by exactly the number of saves; the project record and the take-off both intact |
 | INT-OSP-04 | Simultaneous writers | Script 4 writers (O-Draft recording, O-CoreOp saving, two harness writers) | No lost update, no "database is locked" message beyond the 5 s wait, one revision per commit |
-| INT-OSP-05 | Active project pointer | Open `house.osp` in O-Draft; in O-CoreOp use "open O-Draft's project" | O-CoreOp opens the same file; closing it in O-Draft clears the pointer |
+| INT-OSP-05 | Same project in both apps | Lock a project, start O-Draft and O-CoreOp from the launcher | Both open the locked `.osp`; `active-project.json` names it; closing O-Draft deletes the pointer; O-CoreOp is unaffected |
 | INT-OSP-06 | Drawing preserved | After INT-OSP-03 | The drawing bytes in the `.osp` are identical to the originals unless O-Draft changed them (sha256 in `inspect`) |
-| INT-OSP-07 | Save As | O-CoreOp: Save As `copy.osp`; open in O-Draft | Drawing, take-off and project all present |
+| INT-OSP-07 | Copy a project | Copy the project folder in Explorer; add the copy to a project in O-Studio (attach the `.osp`); lock it | Drawing, take-off and project all present in the copy |
 | INT-OSP-08 | Take-off removed | Delete a measured wall in O-Draft, record | O-CoreOp's list shows one record less; re-import removes nothing already imported unless the importer says so (record the documented behaviour) |
 | INT-OSP-09 | Annotated PDF | Record with annotation | O-CoreOp fetches the PDF, stores it, report includes it |
 | INT-OSP-10 | Wrong versions `[B]` | Open an `.osp` with an unknown `format` or version 2 | Both apps refuse with a clear message |
@@ -102,3 +102,15 @@ Links under test:
 | INT-FLT-05 | Company file removed while the launcher is signed in | Launcher shows "not found"; apps handle it |
 | INT-FLT-06 | Locked files from antivirus | Retry or message, no crash |
 | INT-FLT-07 | Clock change | Revisions are counters, not times: sync unaffected |
+
+## I8 Choosing the project (launcher)
+
+| ID | Scenario | Steps | Expected |
+|---|---|---|---|
+| INT-PRJ-01 | Create, lock, open | New project in the launcher; start O-Draft, then O-CoreOp | The folder exists; O-Draft creates `project.osp` on first open; O-CoreOp opens the same file; both show the project name |
+| INT-PRJ-02 | Switch refused | Lock A, start O-Draft, try to lock B | Refused, naming O-Draft; after closing O-Draft the switch works |
+| INT-PRJ-03 | Double-click a project file | Double-click `project.osp` of a known project | Launcher opens (or wakes), signs in, locks that project, starts O-Draft on it. For a file outside every project: a message that names the file |
+| INT-PRJ-04 | Right-click, Open in O-CoreOp | Right-click the `.osp` | The same, starting O-CoreOp |
+| INT-PRJ-05 | Project folder missing | Rename the project folder, start an app | The app says the folder was not found and to choose the project again; nothing is created |
+| INT-PRJ-06 | Archived while locked | Archive the locked project in O-Studio, try to lock or start | Refused; the list no longer shows it |
+| INT-PRJ-07 | Second PC | Open the same company file on another PC | The project list is the same; the lock is local to each PC |
