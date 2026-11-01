@@ -105,7 +105,7 @@ internal sealed class SuiteStatus
         return host.SignedIn ? $"{file}, open, signed in as {host.Username}" : $"{file}, open, sign-in needed";
     }
 
-    /// <summary>The Neon credentials O-Studio syncs with are in <c>neon.env</c>; this only says whether they are set up, not whether the network answers.</summary>
+    /// <summary>Whether the Neon credentials in <c>neon.env</c> are set up and whether the launcher's sync is running (see <see cref="CloudSyncService"/>).</summary>
     static string DescribeCloud()
     {
         try
@@ -116,7 +116,7 @@ internal sealed class SuiteStatus
             if (!File.Exists(path))
                 return "not set up (no neon.env)";
             var set = File.ReadLines(path).Any(l => l.TrimStart().StartsWith("DATABASE_URL", StringComparison.Ordinal) && l.Contains('=') && l[(l.IndexOf('=') + 1)..].Trim().Length > 0);
-            return set ? "credentials found (sync runs inside O-Studio)" : "neon.env has no database address";
+            return set ? CloudSyncService.Instance.Describe() : "neon.env has no database address";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

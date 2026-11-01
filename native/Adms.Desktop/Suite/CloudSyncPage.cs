@@ -16,7 +16,6 @@ internal sealed class CloudSyncPage : UserControl
     readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, Style = Resource("BodyStyle") };
     readonly TextBlock _log = new() { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true, Style = Resource("SecondaryStyle") };
     readonly StackPanel _projects = new() { Spacing = 8 };
-    readonly ToggleSwitch _run = new() { OffContent = "Off", OnContent = "On" };
     readonly Action<string> _onLog;
 
     public CloudSyncPage(AppShell shell)
@@ -26,7 +25,6 @@ internal sealed class CloudSyncPage : UserControl
         var title = new TextBlock { Text = "Cloud sync (Neon)", Style = Resource("PageTitleStyle") };
         AutomationProperties.SetHeadingLevel(title, AutomationHeadingLevel.Level1);
 
-        _run.Toggled += async (_, _) => await OnRunToggledAsync();
         CloudSyncHub.LogLine += _onLog;
 
         var page = new StackPanel { Padding = O.Ui.SuiteScale.PageMargin, Spacing = O.Ui.SuiteScale.SectionGap };
@@ -51,8 +49,6 @@ internal sealed class CloudSyncPage : UserControl
         actions.Children.Add(loadEnv);
         actions.Children.Add(test);
         actions.Children.Add(refreshRev);
-        actions.Children.Add(new TextBlock { Text = "Background sync", VerticalAlignment = VerticalAlignment.Center, Style = Resource("CaptionStyle") });
-        actions.Children.Add(_run);
         page.Children.Add(actions);
 
         page.Children.Add(new TextBlock { Text = "Projects", Style = Resource("SectionTitleStyle") });
@@ -65,10 +61,7 @@ internal sealed class CloudSyncPage : UserControl
         {
             _ = ReloadProjectsAsync();
             RefreshLog();
-            _run.IsOn = CloudSyncHub.IsRunning;
-            _status.Text = CloudSyncHub.IsRunning
-                ? "Sync is running."
-                : DescribeConfigState();
+            _status.Text = LauncherLine();
         };
         Unloaded += (_, _) => CloudSyncHub.LogLine -= _onLog;
     }
@@ -229,7 +222,7 @@ internal sealed class CloudSyncPage : UserControl
 
     async Task PushProjectAsync(long projectId, string name, string osp, TextBlock revLine)
     {
-        var r = await CloudSyncHub.PushNowAsync(projectId, osp).ConfigureAwait(true);
+        var r = await CloudSyncHub.PushNowAsync(projectId, osp, Bridge()).ConfigureAwait(true);
         if (!r.Ok)
         {
             var resolved = await CloudSyncConflictDialog.TryResolveCloudAheadAsync(XamlRoot, projectId, name, osp, r.Message);
@@ -315,36 +308,22 @@ internal sealed class CloudSyncPage : UserControl
         }
     }
 
-    async Task OnRunToggledAsync()
+    /// <summary>The sync runs in the launcher; this page sets it up. The launcher writes its state to <c>launcher-status.txt</c>.</summary>
+    static string LauncherLine()
     {
+        const string head = "Background sync runs in the suite launcher, from sign-in on. ";
         try
         {
-            if (_run.IsOn)
-            {
-                _status.Text = "Connecting…";
-                if (!await CloudSyncHub.StartAsync(Bridge()).ConfigureAwait(true))
-                {
-                    _run.IsOn = false;
-                    _status.Text = DescribeConfigState();
-                    return;
-                }
-
-                _status.Text = "Sync is running.";
-            }
-            else
-            {
-                await CloudSyncHub.StopAsync().ConfigureAwait(true);
-                _status.Text = "Sync stopped.";
-            }
+            var file = Osas.Core.SuiteWire.LocalPath("launcher-status.txt");
+            if (File.Exists(file) && File.ReadLines(file).FirstOrDefault(l => l.StartsWith("Cloud sync:", StringComparison.Ordinal)) is { } line)
+                return head + line;
         }
-        catch (Exception ex)
+        catch (IOException)
         {
-            _run.IsOn = false;
-            _status.Text = "Sync error: " + ex.Message;
-            _shell.Problem(_status.Text);
         }
-    }
 
+        return head + "Start the launcher to see its state. " + DescribeConfigState();
+    }
     void RefreshLog()
     {
         _log.Text = CloudSyncHub.RecentLog.Count == 0

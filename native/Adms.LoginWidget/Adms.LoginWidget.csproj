@@ -42,6 +42,7 @@
       <Properties>EngineProfile=$(EngineProfile)</Properties>
     </ProjectReference>
     <ProjectReference Include="..\Osas.Core\Osas.Core.csproj" />
+    <ProjectReference Include="..\Adms.Cloud\Adms.Cloud.csproj" />
     <ProjectReference Include="..\..\..\O-COREOP\BBSDesktop\Office.Ai\Office.Ai.csproj" />
     <ProjectReference Include="..\..\..\o-ui\O.Ui\O.Ui.csproj" />
   </ItemGroup>

@@ -83,13 +83,18 @@ Links under test:
 
 | ID | Scenario | Steps | Expected |
 |---|---|---|---|
-| INT-CLD-01 | Connection | O-Studio, Cloud sync, Test connection with the test keys | Success; status in the launcher "credentials found" |
+| INT-CLD-01 | Connection | O-Studio, Cloud sync, Test connection with the test keys | Success; the launcher status line reads "running" once signed in |
 | INT-CLD-02 | Push | Enable sync for a project; save in O-Draft | The cloud revision equals the local `meta.revision` |
 | INT-CLD-03 | Pull | Edit the cloud copy; pull | The local `.osp` gets the change; O-CoreOp shows its notice |
 | INT-CLD-04 | Conflict | Edit both | Conflict surfaced; nothing silently lost |
 | INT-CLD-05 | Offline | Disable network, edit, reconnect | Edits queue and sync; no corruption |
 | INT-CLD-06 | Keys | Search `.osp`, logs, reports, evidence for the connection string | Absent |
 | INT-CLD-07 | Draft/CoreOp never hold keys | Inspect their folders and environment | No Neon values |
+| INT-CLD-08 | Sync runs in the launcher | Sign in to the launcher with Neon set up (test branch); do not open O-Studio | `launcher-status.txt` shows "running"; a project switched on in cloud-sync.json is pushed within seconds of a save |
+| INT-CLD-09 | Survives the window and O-Studio | Close the sign-in window, then start O-Studio from the launcher | Sync keeps running (status stays "running"); O-Studio's Cloud sync page shows the launcher's line and no toggle |
+| INT-CLD-10 | Sign out stops it | Sign out in the launcher | "stopped (signed out)"; no push after a save; signing in again restarts it |
+| INT-CLD-11 | Switch on / off while running | In O-Studio, switch a project on, then off | The launcher picks it up within about 5 s; the other projects' switches are not undone by the launcher's own saves |
+| INT-CLD-12 | Neon unreachable | Point `OSTUDIO_NEON_ENV_FILE` at an unreachable database | "could not connect ... retrying every 30 s"; the launcher stays usable |
 
 ## I7 Failure and recovery
 

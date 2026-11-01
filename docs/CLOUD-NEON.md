@@ -13,7 +13,7 @@ This document explains how to **create** a Neon project, **connect** it to the O
 | **Neon Console / CLI** | Org, project, branch, Postgres, Object Storage, Functions, Realtime |
 | **Repo root** | `neon.ts` (what to deploy), `.neon` (linked org/project/branch), `cloud/` (sync schema + verify) |
 | **`.env.local`** | Connection strings and secrets on **your machine only** (gitignored). Copy from [`.env.example`](../.env.example). |
-| **WinUI O-Studio** | **Suite → Cloud sync**: test connection, enable sync per project, background push + Postgres `LISTEN` pull. Credentials: `%LocalAppData%\\OSAS\\neon.env` (copy from repo `.env.local`). |
+| **Launcher + WinUI O-Studio** | The **launcher** runs the background sync (push every 2 s, Postgres `LISTEN` pull) from sign-in on. **O-Studio, Suite → Cloud sync**: test connection, enable sync per project, push or pull now. Credentials: `%LocalAppData%\\OSAS\\neon.env` (copy from repo `.env.local`). |
 
 **Testing credentials:** A shared test project/password is fine for experiments. Put values only in `.env.local` or a password manager — never commit them, paste them in issues, or check them into the company file.
 

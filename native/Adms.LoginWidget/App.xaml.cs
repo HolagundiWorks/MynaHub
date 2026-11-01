@@ -64,6 +64,8 @@ public partial class App : Application
         Osas.Core.Suite.Engine.LookIn(AppContext.BaseDirectory, "architect_office_desktop_lib.dll");
         O.Ui.SuiteMotion.RespectSystemPreference();
         StartAiCore();
+        CloudSyncService.Instance.Start(Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => CloudSyncService.Stop();
         new SuiteLauncherWindow().Activate();
         if (request != null)
         {

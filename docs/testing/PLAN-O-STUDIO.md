@@ -138,10 +138,11 @@ Money results are S1 when wrong.
 | STU-SUI-06 | Assistant, host down | Stop the AI host | A clear message, not a hang | UIA |
 | STU-CLD-01 | Cloud sync page, no keys | Open Cloud sync with no `neon.env` | "not configured" message with the path to create it | UIA |
 | STU-CLD-02 | Test connection | With the test branch keys, **Test connection** | Success message; with a wrong password a failure message that does not print the password | UIA |
-| STU-CLD-03 | Enable sync for a project | Enable on a project with an `.osp` | Push on save; revision shown; log lines appear | UIA, Neon row |
+| STU-CLD-03 | Enable sync for a project | Sign in through the launcher; in O-Studio enable a project with an `.osp` | The launcher (not O-Studio) pushes on save; revision shown; the page says background sync runs in the launcher and shows the launcher's Cloud sync line; there is no on/off toggle | UIA, Neon row |
 | STU-CLD-04 | Pull | Change the cloud copy from a second machine/profile; pull | Local `.osp` revision increases; conflict handled as documented | file inspect |
 | STU-CLD-05 | Conflict | Change both sides | The conflict is shown, nothing is silently overwritten | UIA |
-| STU-CLD-06 | Offline | Disconnect the network | App keeps working; sync waits; resumes later | UIA |
+| STU-CLD-06 | Offline | Disconnect the network | App keeps working; the launcher's sync retries and resumes later | UIA |
+| STU-CLD-07 | Push now / Pull now without the launcher | Quit the launcher's sync (sign out in the launcher), then press Push now on a project | The push goes through a short-lived connection and reports the result | UIA |
 
 ## S9 Shell and general
 

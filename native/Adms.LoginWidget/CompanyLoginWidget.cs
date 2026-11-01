@@ -885,6 +885,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
     {
         if (_busy || _session == null || !_signedIn)
             return;
+        CloudSyncService.Instance.StopForSignOut();
         await RunEngineAsync("Signing out…", () =>
         {
             _session!.Call("auth_logout");
@@ -898,6 +899,7 @@ internal sealed class CompanyLoginWidget : WidgetWindow
         if (_busy || !_companyOpen || _session == null)
             return;
         await Task.Yield();
+        CloudSyncService.Instance.StopForSignOut();
         try
         {
             _session.CloseCompany();

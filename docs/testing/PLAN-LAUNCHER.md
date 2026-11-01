@@ -54,7 +54,7 @@ The file is `%LOCALAPPDATA%\O-Studio\launcher-status.txt`: four lines (time, AI 
 | LNC-STA-09 | Database, open signed out / signed in / locked | Open the company in the sign-in window; sign in; lock | "open, sign-in needed", then "open, signed in as <user>", then "open, session locked" | file |
 | LNC-STA-10 | Size shown | Company file of about 1 MB and one under 1 KB | `MB` with one decimal; at least `1 KB` | file |
 | LNC-STA-11 | Cloud, no credentials | No `neon.env` | "not set up (no neon.env)" | file |
-| LNC-STA-12 | Cloud, credentials | `neon.env` with a `DATABASE_URL=` value | "credentials found (sync runs inside O-Studio)" | file |
+| LNC-STA-12 | Cloud, credentials | `neon.env` with a `DATABASE_URL=` value | "credentials found; starts at sign-in" before sign-in; after sign-in "running (n projects syncing)" (n = projects switched on in O-Studio > Cloud sync); "could not connect (...); retrying every 30 s" when Neon cannot be reached; after Sign out "stopped (signed out); starts again at the next sign-in" | file |
 | LNC-STA-13 | Cloud, empty value `[B]` | `DATABASE_URL=` with nothing after it | "neon.env has no database address" | file |
 | LNC-STA-14 | Refresh status | Change something, choose **Refresh status** | The file's first line (time) advances at once | file |
 | LNC-STA-15 | Auto refresh | Leave it for 60 s | The time line advances at least twice | file |

@@ -4,7 +4,7 @@ using Office.Shared;
 
 namespace Adms.Cloud;
 
-/// <summary>Process-wide Neon sync (started when O-Studio opens a company).</summary>
+/// <summary>Process-wide Neon sync. The launcher runs it from sign-in on; O-Studio only configures it and pushes or pulls a project on request.</summary>
 public static class CloudSyncHub
 {
     static OspSyncCoordinator? _coordinator;
@@ -36,8 +36,25 @@ public static class CloudSyncHub
             pushedBy: shell.UserName,
             targets: shell.ListSyncTargets,
             Emit);
-        if (!await _coordinator.ConnectAsync().ConfigureAwait(false))
+        bool connected;
+        try
+        {
+            connected = await _coordinator.ConnectAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Emit(DescribeConnectionFailure(ex));
+            connected = false;
+        }
+
+        if (!connected)
+        {
+            // A coordinator that never connected must not count as running.
+            await _coordinator.DisposeAsync().ConfigureAwait(false);
+            _coordinator = null;
             return false;
+        }
+
         _coordinator.Start();
         Emit("Cloud sync running (push every 2s, pull on Postgres NOTIFY).");
         return true;
@@ -130,15 +147,42 @@ public static class CloudSyncHub
         return head.LatestRevision;
     }
 
-    public static async Task<PushResult> PushNowAsync(long studioProjectId, string ospPath) =>
-        _coordinator is null
-            ? new PushResult(false, "Start cloud sync first.", null)
-            : await _coordinator.PushNowAsync(studioProjectId, ospPath).ConfigureAwait(false);
+    /// <summary>
+    /// Push one project now. The background sync runs in the launcher, so a window that asks for this (O-Studio's Cloud sync page) usually has no
+    /// running coordinator of its own: it then pushes through a short-lived connection, as the signed-in company and user in <paramref name="shell"/>.
+    /// </summary>
+    public static async Task<PushResult> PushNowAsync(long studioProjectId, string ospPath, AppShellBridge? shell = null)
+    {
+        if (_coordinator is not null)
+            return await _coordinator.PushNowAsync(studioProjectId, ospPath).ConfigureAwait(false);
+        var settings = NeonSettings.Load();
+        if (!settings.IsComplete)
+            return new PushResult(false, "Neon is not configured. See docs/CLOUD-NEON.md.", null);
+        if (shell is null)
+            return new PushResult(false, "Not connected.", null);
+        await using var client = new OspCloudClient(settings);
+        await client.EnsureSchemaAsync().ConfigureAwait(false);
+        return await client.PushAsync(ospPath, shell.CompanyUuid, shell.UserName, Store.Get(studioProjectId).LastKnownCloudRevision).ConfigureAwait(false);
+    }
 
-    public static async Task<PullResult> PullNowAsync(long studioProjectId, string ospPath) =>
-        _coordinator is null
-            ? new PullResult(false, "Start cloud sync first.", null)
-            : await _coordinator.PullNowAsync(studioProjectId, ospPath).ConfigureAwait(false);
+    public static async Task<PullResult> PullNowAsync(long studioProjectId, string ospPath)
+    {
+        if (_coordinator is not null)
+            return await _coordinator.PullNowAsync(studioProjectId, ospPath).ConfigureAwait(false);
+        var settings = NeonSettings.Load();
+        if (!settings.IsComplete)
+            return new PullResult(false, "Neon is not configured. See docs/CLOUD-NEON.md.", null);
+        long localRev = 0;
+        if (File.Exists(ospPath))
+        {
+            using var odp = OdpFile.Open(ospPath);
+            localRev = odp.Meta().Revision;
+        }
+
+        await using var client = new OspCloudClient(settings);
+        await client.EnsureSchemaAsync().ConfigureAwait(false);
+        return await client.PullAsync(ospPath, localRev).ConfigureAwait(false);
+    }
 
     static void Emit(string line)
     {

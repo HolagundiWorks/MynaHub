@@ -22,6 +22,7 @@ internal sealed class SuiteLauncherHost
     internal bool Locked { get; private set; }
     internal string CompanyName { get; private set; } = "";
     internal string CompanyPath { get; private set; } = "";
+    internal string CompanyUuid { get; private set; } = "";
     internal string Username { get; private set; } = "";
 
     internal event Action? Changed;
@@ -59,6 +60,7 @@ internal sealed class SuiteLauncherHost
         CompanyOpen = true;
         CompanyName = Text(company, "name");
         CompanyPath = Text(company, "path");
+        CompanyUuid = Text(company, "uuid");
         if (!string.IsNullOrWhiteSpace(CompanyPath))
             SuiteJsonHub.RememberCompany(CompanyPath, chosenBy: "O-Studio.Launcher");
 
