@@ -96,7 +96,9 @@ internal static class AppTheme
         _ = DwmSetWindowAttribute(hwnd, DwmUseImmersiveDarkMode, ref immersive, sizeof(int));
         var caption = dark ? ColorRef(27, 27, 27) : ColorRef(228, 234, 242);
         var text = dark ? ColorRef(243, 243, 243) : ColorRef(26, 35, 50);
-        var border = dark ? ColorRef(120, 120, 120) : ColorRef(138, 147, 163);
+        // Light border was #8A93A3 (138,147,163): 2.56:1 vs #E4EAF2 — fails WCAG 1.4.11 (3:1).
+        // Darkened to #707887 (112,120,135): 3.67:1.  Dark border unchanged (3.90:1 — passes).
+        var border = dark ? ColorRef(120, 120, 120) : ColorRef(112, 120, 135);
         _ = DwmSetWindowAttribute(hwnd, DwmCaptionColor, ref caption, sizeof(int));
         _ = DwmSetWindowAttribute(hwnd, DwmTextColor, ref text, sizeof(int));
         _ = DwmSetWindowAttribute(hwnd, DwmBorderColor, ref border, sizeof(int));

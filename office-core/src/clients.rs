@@ -440,7 +440,7 @@ fn clean_brief(input: &Value) -> Result<Value, String> {
         return Err("The project brief was not a form.".into());
     };
     let mut body = blank_brief();
-    let stored = body.as_object_mut().unwrap();
+    let stored = body.as_object_mut().expect("blank_brief always returns Object");
     for (key, value) in obj {
         if !BRIEF_FIELDS.contains(&key.as_str()) {
             return Err(format!("The project brief has no field {key}."));
@@ -468,7 +468,7 @@ pub fn get_brief(conn: &Connection, project_id: i64) -> Result<Value, String> {
     if let Some(text) = stored {
         if let Ok(value) = serde_json::from_str::<Value>(&text) {
             if let Some(obj) = value.as_object() {
-                let fields = body.as_object_mut().unwrap();
+                let fields = body.as_object_mut().expect("blank_brief always returns Object");
                 for key in BRIEF_FIELDS {
                     if let Some(item) = obj.get(*key).and_then(|v| v.as_str()) {
                         fields.insert((*key).to_string(), Value::String(item.to_string()));
