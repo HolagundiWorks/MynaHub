@@ -522,7 +522,7 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
         internal StatusRow(string name, string glyph)
         {
             _name = name;
-            _icon = glyph.Length == 0 ? StatusIcon.Orb(36) : new StatusIcon(glyph, 36);
+            _icon = glyph.Length == 0 ? StatusIcon.Orb(42) : new StatusIcon(glyph, 36);
             var head = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
             head.Children.Add(_icon.Root);
             head.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center });
