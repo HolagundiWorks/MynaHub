@@ -151,3 +151,7 @@ Saving: O-Draft writes the drawing back into the `.osp` only when its bytes chan
 - New project data goes in the `.osp` schema with a change-log row, not a sidecar file.
 - Apps do not call each other; they meet in the `.osp`, the company file, the active-project pointer, or the AI Core on loopback.
 - Cloud keys, Neon credentials, and the Olmo host process live only in the **launcher** and **O-Studio**; O-CoreOp and O-Draft hold none.
+
+## AI agent privacy
+
+The AI agent (Olmo 3 7B) runs on this computer and is hosted by the launcher. The launcher's Ask page has a **Privacy** panel whose choices are saved in `%LOCALAPPDATA%\O-Studioi-privacy.json` (`Osas.Core.Suite.AiPrivacy`): tell it which project is loaded (default off), remember the conversation while the window is open (default off), allow attaching files with the + button (default on), and Clear this conversation. Not done yet: a switch to stop the agent altogether, per-app permissions for O-Draft and O-CoreOp, and the same panel in those apps' prompt bars.

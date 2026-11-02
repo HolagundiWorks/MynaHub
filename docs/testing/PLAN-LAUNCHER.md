@@ -128,3 +128,9 @@ Opened by **Company sign-in…**, by a second launch, or by an error.
 | LNC-ASK-03 | Attach, too large `[B]` | Press +, pick a text file over 64 KB | A red message says the file is larger than 64 KB; nothing is attached | message |
 | LNC-ASK-04 | Ask with the AI agent stopped `[B]` | Stop the AI agent (or start without the model), ask | A red message says the assistant host is not running; the question is not kept in the history; Send works again | message |
 | LNC-ASK-05 | Keyboard `[N]` | Type a question and press Ctrl+Enter; with an empty box press Send | The question is sent; an empty question sends nothing | UIA |
+| LNC-ASK-06 | Privacy defaults `[N]` | First start, Ask tab, open Privacy | Tell it which project is loaded: Off; Remember this conversation: Off; Allow attaching files: On; the text says nothing leaves this computer | screenshot |
+| LNC-ASK-07 | Project name `[N]` | With a project loaded, switch the project switch On, ask "Which project is loaded?"; then Off and ask again | On: the assistant names the project; Off: it says it does not know | answers |
+| LNC-ASK-08 | Remember conversation `[N]` | Off: ask "My name is Asha", then "What is my name?"; On: repeat | Off: it does not know; On: it answers Asha | answers |
+| LNC-ASK-09 | Attachments off `[B]` | Switch Allow attaching files Off | The + button is disabled and any chip is removed | UIA |
+| LNC-ASK-10 | Choices persist `[R]` | Change the three switches, close and start the launcher | The same positions; `%LOCALAPPDATA%\O-Studioi-privacy.json` holds them; delete the file: defaults return | file |
+| LNC-ASK-11 | Clear conversation `[N]` | Ask twice, press Clear this conversation | The log is empty; the next question carries no earlier turns | screenshot |

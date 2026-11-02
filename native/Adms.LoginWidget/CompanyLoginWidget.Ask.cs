@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Osas.Core.Agent;
+using Osas.Core.Suite;
 
 namespace Adms.LoginWidget;
 
@@ -26,6 +27,7 @@ internal sealed partial class CompanyLoginWidget
     string? _attachName;
     string? _attachText;
     bool _asking;
+    readonly AiPrivacy _privacy = AiPrivacy.Load();
 
     void BuildAskPage()
     {
@@ -40,6 +42,7 @@ internal sealed partial class CompanyLoginWidget
             TextWrapping = TextWrapping.Wrap,
             Opacity = 0.8,
         });
+        _pageAsk.Children.Add(BuildPrivacy());
         _pageAsk.Children.Add(Card(_askLog));
 
         var chip = new Grid { ColumnSpacing = 6 };
@@ -59,6 +62,7 @@ internal sealed partial class CompanyLoginWidget
         IconOnly(_askAttach, "", "Attach a text file to this question");
         IconOnly(_askSend, "", "Send", accent: true);
         AutomationProperties.SetName(_askBox, "Question for the assistant");
+        _askAttach.IsEnabled = _privacy.AllowAttachments;
         _askAttach.Click += async (_, _) => await PickAttachment();
         _askSend.Click += async (_, _) => await Ask();
         _askBox.KeyDown += async (_, e) =>
@@ -81,6 +85,56 @@ internal sealed partial class CompanyLoginWidget
         Grid.SetColumn(hint, 1);
         row.Children.Add(hint);
         _pageAsk.Children.Add(row);
+    }
+
+    /// <summary>The privacy controls: what the assistant is given. Saved at once; the assistant always runs on this computer.</summary>
+    Expander BuildPrivacy()
+    {
+        ToggleSwitch Row(string header, bool on, Action<bool> set)
+        {
+            var t = new ToggleSwitch { Header = header, IsOn = on, OnContent = "On", OffContent = "Off" };
+            AutomationProperties.SetName(t, header);
+            t.Toggled += (_, _) =>
+            {
+                set(t.IsOn);
+                try { _privacy.Save(); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            };
+            return t;
+        }
+
+        var body = new StackPanel { Spacing = 8 };
+        body.Children.Add(new TextBlock
+        {
+            Text = "The assistant runs on this computer and nothing is sent anywhere. These choices decide what it is given.",
+            Style = (Style)Application.Current.Resources["CaptionStyle"],
+            TextWrapping = TextWrapping.Wrap,
+            Opacity = 0.8,
+        });
+        body.Children.Add(Row("Tell it which project is loaded", _privacy.ShareProjectName, v => _privacy.ShareProjectName = v));
+        body.Children.Add(Row("Remember this conversation while the window is open", _privacy.RememberConversation, v => _privacy.RememberConversation = v));
+        body.Children.Add(Row("Allow attaching files with +", _privacy.AllowAttachments, v =>
+        {
+            _privacy.AllowAttachments = v;
+            _askAttach.IsEnabled = v;
+            if (!v)
+                Attach(null, null);
+        }));
+        var clear = new Button { Content = "Clear this conversation" };
+        clear.Click += (_, _) =>
+        {
+            _askHistory.Clear();
+            _askLog.Children.Clear();
+            Attach(null, null);
+        };
+        body.Children.Add(clear);
+        return new Expander
+        {
+            Header = "Privacy",
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            Content = body,
+        };
     }
 
     void Attach(string? name, string? text)
@@ -152,9 +206,9 @@ internal sealed partial class CompanyLoginWidget
         try
         {
             var messages = new JsonArray();
-            foreach (var (role, text) in _askHistory.TakeLast(8))
+            foreach (var (role, text) in _askHistory.TakeLast(_privacy.RememberConversation ? 8 : 1))
                 messages.Add(new JsonObject { ["role"] = role, ["content"] = text });
-            var context = string.IsNullOrWhiteSpace(_projectTitle.Text) ? "No project is loaded." : $"The loaded project is: {_projectTitle.Text}.";
+            var context = !_privacy.ShareProjectName ? "" : string.IsNullOrWhiteSpace(_projectTitle.Text) ? "No project is loaded." : $"The loaded project is: {_projectTitle.Text}.";
             var request = new JsonObject
             {
                 ["system"] = "You are the assistant of the O-Studio suite (O-Studio, O-CoreOp, O-Draft, O-Form) for an architectural practice. Answer briefly and plainly. " + context,
