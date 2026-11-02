@@ -89,8 +89,53 @@ public static class SuiteCatalog
             start.Environment[key] = value;
     }
 
+    /// <summary>
+    /// True when the app at <paramref name="exePath"/> is already running (same executable file) and its window was brought to the front, so nothing
+    /// new needs starting. Each suite app is one window: a second click on its tile, or a second launch request, must not open a second copy.
+    /// </summary>
+    public static bool FocusRunning(string exePath)
+    {
+        try
+        {
+            var name = Path.GetFileNameWithoutExtension(exePath);
+            var full = Path.GetFullPath(exePath);
+            foreach (var p in Process.GetProcessesByName(name))
+            {
+                using (p)
+                {
+                    string? path = null;
+                    try { path = p.MainModule?.FileName; } catch { }
+                    if (path == null || !string.Equals(Path.GetFullPath(path), full, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    if (p.HasExited)
+                        continue;
+                    var h = p.MainWindowHandle;
+                    if (h != IntPtr.Zero)
+                    {
+                        if (IsIconic(h))
+                            ShowWindow(h, 9); // SW_RESTORE
+                        SetForegroundWindow(h);
+                    }
+
+                    return true;
+                }
+            }
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+        }
+
+        return false;
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int cmd);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool IsIconic(IntPtr hWnd);
+
     public static void StartWithTicket(string exePath, string companyPath, string ticket)
     {
+        if (FocusRunning(exePath))
+            return;
         var start = new ProcessStartInfo(exePath)
         {
             UseShellExecute = false,

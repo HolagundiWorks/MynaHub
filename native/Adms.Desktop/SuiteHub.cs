@@ -75,6 +75,8 @@ internal static class SuiteHub
             throw new InvalidOperationException("Open a company in Studio first.");
         var exe = FindExecutable(card)
             ?? throw new InvalidOperationException($"{card.Title} is not installed. Install it, then open it from Studio.");
+        if (SuiteCatalog.FocusRunning(exe))
+            return;
         var ticket = session.Call("auth.ticket", new { app = card.TicketApp });
         var secret = ticket.ValueKind == JsonValueKind.Object && ticket.TryGetProperty("ticket", out var t)
             ? t.GetString()
