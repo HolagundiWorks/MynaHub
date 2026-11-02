@@ -1,0 +1,3 @@
+Working tree: git status shows " D crates/aad-host/src/bin/dwg_worker.rs".
+cargo test --workspace fails: can't find bin aad-dwg-worker.
+File still present in HEAD; restore with git checkout to unblock ENV-01.

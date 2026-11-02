@@ -1,0 +1,12 @@
+﻿
+DRF-MOD-04	FAIL	{"handles":["12E","12F","130"]} invalid parameters for `group`: no objects to group
+DRF-MOD-06	FAIL	{"handles":["12E"]} {"copied":0} command `pasteclip` is not available right now: the clipboard is empty
+DRF-DIM-01	FAIL	{"handles":["12E"]} invalid parameters for `dimlinear`: `at` ([x, y]) is required
+DRF-PLT-06	PASS	{"bytes":199013,"layout":"Model","path":"C:/Temp/odraft-testrun-2026-11-01/empty-plot.pdf"}
+DRF-TKO-09	FAIL	pdf=False {"created":15,"layers":["MEASURE-LINEAR","MEASURE-FULLBRICK","MEASURE-HALFBRICK","MEASURE-BEAM","MEASURE-LINTEL","MEASURE-COLUMN","MEASURE-COUNT","MEASURE-DEDUCT","MEASURE-CEILING","MEASURE-FLOOR","ME
+DRF-TKO-14	FAIL	{"created":15,"layers":["MEASURE-LINEAR","MEASURE-FULLBRICK","MEASURE-HALFBRICK","MEASURE-BEAM","MEASURE-LINTEL","MEASURE-COLUMN","MEASURE-COUNT","MEASURE-DEDUCT","MEASURE-CEILING","MEASURE-FLOOR","ME
+DRF-PRJ-03	PASS	{"company":null,"connected":false,"details":null,"linked":false,"projects":null,"suite":{"company_from_file":false,"locked_details":[],"project_linked":false,"refresh_only":false}}
+DRF-HIS-05	PASS	unknown command `history.open`
+DRF-ARC-15	PASS	{"diagnostics":[],"graph":null,"revision":0}
+DRF-FIL-13-cli	PASS	{"handle":"191"}
+DRF-AUT-04b	PASS	commands takeoff listed

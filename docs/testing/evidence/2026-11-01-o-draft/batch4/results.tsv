@@ -1,0 +1,11 @@
+﻿
+DRF-FIL-06	FAIL	exists=False exit=1
+DRF-FIL-08	NOT RUN	rev1= rev2= invalid parameters for `save`: project files (.osp) are not available in this build
+DRF-FIL-04	PASS	{"bytes":12555,"path":"C:/Temp/odraft-testrun-2026-11-01/roundtrip.dwg"} History restore point not saved: invalid parameters for `history`: C:/Temp/odraft-testrun-2026-11-01/roundt
+DRF-DRW-02	PASS	{"handle":"12E"} {"handle":"12F"}
+DRF-DRW-04	FAIL	invalid parameters for `rectang`: `p1` ([x, y]) is required
+DRF-DRW-05	PASS	{"handle":"12E"}
+DRF-TKO-03	PASS	engine takeoff_record everything_is_in_millimetres_whatever_the_drawing_units
+DRF-ARC-02	PASS	csv=True
+DRF-AUT-02b	NOT RUN	1MiB control line needs live WinUI port (run with control batch)
+DRF-AUT-05	PASS	[]

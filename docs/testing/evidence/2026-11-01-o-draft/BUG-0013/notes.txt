@@ -1,0 +1,1 @@
+aad-cli info small-copy.osp -> project files (.osp) are not available in this build

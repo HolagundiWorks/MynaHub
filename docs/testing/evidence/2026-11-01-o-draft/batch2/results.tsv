@@ -1,0 +1,14 @@
+﻿
+DRF-MOD-02-copy	PASS	{"handles":["12E"]} {"handles":[]}
+DRF-MOD-02-rotate	FAIL	{"handle":"12E"} invalid parameters for `rotate`: `base` ([x, y]) is required
+DRF-MOD-03-zero-rows	PASS	{"handles":["12E"]} unknown command `array.rect`
+DRF-FIL-05	FAIL	bak exists=False; save2 exit=0
+DRF-FIL-18-same	PASS	{"identical":false,"matched":56,"message":"2 only in this drawing, 2 only in the other, 56 matched.","onlyHere":2,"onlyThere":2,"typeDiffs":[]} Flatten on import: 7 of 99 objects flattened to 2D.
+DRF-LAY-01	FAIL	unknown command `layer.list`
+DRF-LAY-08-purge	FAIL	{"blocks":0,"layers":0,"linetypes":17,"message":"No unreferenced blocks found.\nNo unreferenced groups found.\nNo unreferenced dimension styles found.\nNo unreferenced multileader styles found.\nNo unreferenced table sty
+DRF-PLT-04	PASS	pdf=True exit=0 {"bytes":199013,"layout":"Model","path":"C:/Temp/odraft-testrun-2026-11-01/plot-layout.pdf"}
+DRF-ARC-17-blocks	PASS	{"blocks":{"AC":["AC","AC-*","AC_*"],"CB":["CB","CB-*","CB_*"],"EF":["EF","EF-*","EF_*"],"FP":["FP","FP-*","FP_*"],"FR":["FR","FR-*","FR_*"],"GY":["GY","GY-*","GY_*"],"INV":["INV","INV-*","INV_*"],"LP
+DRF-AUT-01-lisp	FAIL	unknown command `(setq`
+DRF-HIS-07-engine-save	FAIL	sidecar=False; {"handles":["12E"]} unknown command `save`
+DRF-TKO-08	PASS	{"byKind":{},"skipped":0,"tagged":0}
+DRF-DRW-06	FAIL	{"handles":["12E"]} invalid parameters for `block`: no objects selected

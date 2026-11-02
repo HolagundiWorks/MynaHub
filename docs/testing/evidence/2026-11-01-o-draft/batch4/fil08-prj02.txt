@@ -1,0 +1,9 @@
+open={"id":1,"ok":true,"result":null}
+
+rev1={"error":"unknown method","id":2,"ok":false}
+
+save={"id":3,"ok":true,"result":null}
+
+rev2={"error":"unknown method","id":4,"ok":false}
+
+active=False

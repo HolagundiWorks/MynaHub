@@ -1,0 +1,2 @@
+﻿{"handles":["12E"]}
+{"blocks":[],"counts":{"Circle":7,"Dimension":6,"Hatch":4,"Line":17,"MText":1,"Polyline":6,"Text":6},"currentLayer":"Outline","dimStyles":["Standard"],"dirty":true,"entities":[{"color":"ByLayer","geometry":{"closed":true,"const_width":0.0,"elevation":0.0,"plinegen":false,"type":"lwPolyline","vertices":[{"bulge":0.0,"end_width":0.0,"p":{"x":1.5,"y":1.0},"start_width":0.0},{"bulge":0.41421356237309503,"end_width":0.0,"p":{"x":8.5,"y":1.0},"start_width":0.0},{"bulge":0.0,"end_wi

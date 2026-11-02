@@ -1,0 +1,333 @@
+﻿
+DRF-AUT-04a	PASS	version: aad-cli 0.6.0
+DRF-FIL-01	PASS	{   "blocks": [],   "counts": {     "Arc": 2,     "Circle": 8,     "Dimension": 7,     "Ellipse": 1,     "Hatch": 5,     "Leader": 1,     "Line": 7,     "MText": 4,     "Polyline": 22,     "Table": 1   },   "currentLayer": "0"
+DRF-DRW-01	PASS	saved bytes=34948; info: {   "blocks": [],   "counts": {     "Circle": 7,     "Dimension": 6,     "Hatch": 4,     "Line": 17,     "MText": 1,     "Polyline": 6,     "Text": 6 
+DRF-MOD-08	FAIL	silent accept exit 0: Command: LINE
+Point or option keyword required.
+DRF-FIL-09	FAIL	trunc.dxf: exit=0 {   "blocks": [],   "counts": {},   "currentLayer": "0",   "dimStyles": [     "Standard"   ],; empty.dxf: exit=1 invalid parameters for `open`: not a DXF file; not-dxf.dxf: exit=1 invalid parameters for `open`: line 1: bad group code `this is not a dxf`
+DRF-FIL-11	PASS	png=362465 svg=2788793 pdf=199013
+DRF-FIL-03	FAIL	info differed; rev=False; i1={
+  "blocks": [],
+  "counts": {
+    "Arc": 2,
+    "Circle": 8,
+    "Dimension": 7,
+    "Ellipse": 1,
+    "Hatch": 5,
+    "Leader": 1,
+    "Line": 7,
+    "MText": 4,
+    "Polyline": 22,
+    "Table": 1
+  },
+  "currentLayer": "0",
+  "dimStyles": [
+    "Standard",
+    "ISO-25"
+  ],
+  "dirty": true,
+  "entityCount": 58,
+  "extents": [
+    [
+      -1150.0,
+      -1624.5
+    ],
+    [
+      17000.0,
+      8350.0
+    ]
+  ],
+  "layers": [
+    {
+      "color": "White",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "0",
+      "on": true
+    },
+    {
+      "color": "White",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "Defpoints",
+      "on": true
+    },
+    {
+      "color": "Color 8",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "A-HATC",
+      "on": true
+    },
+    {
+      "color": "White",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "A-WALL",
+      "on": true
+    },
+    {
+      "color": "Blue",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "A-GLAZ",
+      "on": true
+    },
+    {
+      "color": "Green",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "A-DOOR",
+      "on": true
+    },
+    {
+      "color": "Color 8",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "A-FURN",
+      "on": true
+    },
+    {
+      "color": "Yellow",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "A-ANNO",
+      "on": true
+    },
+    {
+      "color": "Cyan",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "A-DIMS",
+      "on": true
+    }
+  ],
+  "layouts": [
+    "Layout1",
+    "Layout2"
+  ],
+  "linetypes": [
+    "ByBlock",
+    "ByLayer",
+    "Continuous"
+  ],
+  "path": "C:\\Temp\\odraft-testrun-2026-11-01\\rt1.dxf",
+  "selection": [],
+  "space": "Model",
+  "textStyles": [
+    "Standard"
+  ],
+  "title": "rt1.dxf",
+  "undo": [
+    "Flatten on import"
+  ],
+  "view": {
+    "center": [
+      7925.0,
+      3362.75
+    ],
+    "height": 13310.000000000002
+  }
+} || i2={
+  "blocks": [],
+  "counts": {
+    "Arc": 2,
+    "Circle": 8,
+    "Dimension": 7,
+    "Ellipse": 1,
+    "Hatch": 5,
+    "Leader": 1,
+    "Line": 7,
+    "MText": 4,
+    "Polyline": 22,
+    "Table": 1
+  },
+  "currentLayer": "0",
+  "dimStyles": [
+    "Standard",
+    "ISO-25"
+  ],
+  "dirty": true,
+  "entityCount": 58,
+  "extents": [
+    [
+      -1150.0,
+      -1624.5
+    ],
+    [
+      17000.0,
+      8350.0
+    ]
+  ],
+  "layers": [
+    {
+      "color": "White",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "0",
+      "on": true
+    },
+    {
+      "color": "White",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "Defpoints",
+      "on": true
+    },
+    {
+      "color": "Color 8",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "A-HATC",
+      "on": true
+    },
+    {
+      "color": "White",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "A-WALL",
+      "on": true
+    },
+    {
+      "color": "Blue",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "A-GLAZ",
+      "on": true
+    },
+    {
+      "color": "Green",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "A-DOOR",
+      "on": true
+    },
+    {
+      "color": "Color 8",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "A-FURN",
+      "on": true
+    },
+    {
+      "color": "Yellow",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "A-ANNO",
+      "on": true
+    },
+    {
+      "color": "Cyan",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "A-DIMS",
+      "on": true
+    }
+  ],
+  "layouts": [
+    "Layout1",
+    "Layout2"
+  ],
+  "linetypes": [
+    "ByBlock",
+    "ByLayer",
+    "Continuous"
+  ],
+  "path": "C:\\Temp\\odraft-testrun-2026-11-01\\rt2.dxf",
+  "selection": [],
+  "space": "Model",
+  "textStyles": [
+    "Standard"
+  ],
+  "title": "rt2.dxf",
+  "undo": [
+    "Flatten on import"
+  ],
+  "view": {
+    "center": [
+      7925.0,
+      3362.75
+    ],
+    "height": 13310.000000000002
+  }
+}
+DRF-ARC-16	FAIL	exit 1: --cmd line: key must be a string at line 1 column 2
+DRF-TKO-11	PASS	invalid parameters for `takeoff.record`: save the drawing as a project (.osp) first, or give `path`
+DRF-AUT-06	FAIL	exit 1: unknown auditor check `audit validate` (use audit,validate,parity,ui)
+DRF-FIL-12	FAIL	no csv; --cmd eattext: key must be a string at line 1 column 2
+DRF-AUT-01	PASS	CIRCLE script completed and saved
+DRF-LAY-08	PASS	{"errors":0,"fixed":0,"issues":[],"message":"Audit: 0 errors found, 0 fixed."}
+DRF-ARC-14	PASS	{"blocks":[{"description":"","discipline":"rcc","grips":[{"axis":"x","param":"width"},{"axis":"y","param":"depth"}],"id":"rcc.column.rect","layer":"S-RCC","params":[{"choices":[],"default":230.0,"inte
+DRF-TKO-16	FAIL	exit 1: --cmd bridge.export: key must be a string at line 1 column 2
+DRF-MOD-01	FAIL	exit 1: --cmd line: key must be a string at line 1 column 2
+DRF-FIL-02	FAIL	alloc-bomb unexpectedly clean: {
+  "blocks": [],
+  "counts": {},
+  "currentLayer": "0",
+  "dimStyles": [
+    "Standard"
+  ],
+  "dirty": false,
+  "entityCount": 0,
+  "extents": null,
+  "layers": [
+    {
+      "color": "White",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "0",
+      "on": true
+    },
+    {
+      "color": "White",
+      "frozen": false,
+      "linetype": "Continuous",
+      "locked": false,
+      "name": "Defpoints",
+      "on": true
+    }
+  ],
+  "layouts": [
+    "Layout1"
+  ],
+  "linetypes": [
+    "ByBlock",
+    "ByLayer",
+    "Continuous"
+  ],
+  "path": "C:\\Temp\\odraft-src\\apps\\aad-cli\\tests\\fixtures\\dwg\\alloc-bomb-ac18-section-size.dwg",
+  "selection": [],
+  "space": "Model",
+  "textStyles": [
+    "Standard"
+  ],
+  "title": "alloc-bomb-ac18-section-size.dwg",
+  "undo": [],
+  "view": {
+    "center": [
+      6.0,
+      4.5
+    ],
+    "height": 10.0
+  }
+}
+DRF-FIL-07	FAIL	info .osp exit 1: invalid parameters for `open`: project files (.osp) are not available in this build
