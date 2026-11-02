@@ -18,6 +18,7 @@ internal sealed partial class CompanyLoginWidget
 
     readonly StackPanel _pageAsk = new() { Spacing = 10, Visibility = Visibility.Collapsed };
     readonly StackPanel _askLog = new() { Spacing = 8 };
+    Border _askCard = null!;
     readonly TextBox _askBox = new() { AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 72, MaxHeight = 160, PlaceholderText = "Ask about your practice, projects or the suite" };
     readonly Button _askSend = new();
     readonly Button _askAttach = new();
@@ -43,7 +44,10 @@ internal sealed partial class CompanyLoginWidget
             Opacity = 0.8,
         });
         _pageAsk.Children.Add(BuildPrivacy());
-        _pageAsk.Children.Add(Card(_askLog));
+        // The conversation sits in a card that shows once there is something in it (an empty bar looks like a broken field).
+        _askCard = Card(_askLog);
+        _askCard.Visibility = Visibility.Collapsed;
+        _pageAsk.Children.Add(_askCard);
 
         var chip = new Grid { ColumnSpacing = 6 };
         chip.ColumnDefinitions.Add(new ColumnDefinition());
@@ -125,6 +129,7 @@ internal sealed partial class CompanyLoginWidget
         {
             _askHistory.Clear();
             _askLog.Children.Clear();
+            _askCard.Visibility = Visibility.Collapsed;
             Attach(null, null);
         };
         body.Children.Add(clear);
@@ -186,6 +191,7 @@ internal sealed partial class CompanyLoginWidget
             },
         };
         _askLog.Children.Add(bubble);
+        _askCard.Visibility = Visibility.Visible;
     }
 
     async Task Ask()
