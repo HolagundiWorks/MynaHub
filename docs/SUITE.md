@@ -100,7 +100,7 @@ Details: `docs/WINUI-SHELL.md`.
 
 | Region | Contents |
 |---|---|
-| Sign-in / company | New or open company file (`.osas`); sign in once; remember path in `suite.json`; admin password and **Users** |
+| Sign-in / company | New or open company file (`.osas`) **in the launcher**; sign in once; remember path in `suite.json`; admin password and **Users** (in O-Studio) |
 | Left pane | Practice (Pulse, Clients, Projects, enquiries, site records, permits, proposals, meetings); Documents (letters, templates); Billing (invoices, receipts, reconciliation); Books (expenses, income, salaries, assets, journals); Reports and tax; Office (firm profile, staff, leave, attendance, library, security, backup); **Suite** (dashboard, **Cloud sync**, approvals) |
 | Shortcuts | Ctrl+N new record, Ctrl+S save, Ctrl+P print, Ctrl+F search, Ctrl+K go to page |
 | Bottom shell | Same status row and Ask pill as O-Draft and O-CoreOp (`O.Ui`); **launch O-CoreOp, O-Draft, O-Form** from the status row |

@@ -17,7 +17,7 @@
 
 | Piece | State |
 |---|---|
-| Studio New / Open company (+ recent list) | **Implemented** |
+| Studio New / Open company (+ recent list) | **Moved to the launcher** (2026-11-03): Studio has no company chooser or creator; its File menu and welcome panel open the launcher |
 | Studio writes `%LOCALAPPDATA%\OSAS\suite.json` (path + username) | **Implemented** |
 | People: create / list / reset password / stop sign-in | **Implemented** |
 | Office → Suite apps cards | **Implemented** (scaffold) |

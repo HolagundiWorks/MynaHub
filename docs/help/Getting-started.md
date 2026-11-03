@@ -4,16 +4,18 @@
 
 ## Create a company
 
-1. Open O-Studio.
-2. Choose **Create a new company** (or **File → New company**).
-3. Enter the company's name and an admin password of 12 or more characters, twice.
-4. Choose a folder and file name. Studio adds `.osas` if you leave the extension off.
+Companies are created in the **O-Studio launcher**, not in the O-Studio window.
 
-Studio then shows a recovery code **once**. Store it somewhere you can find later. It is the way back into the owner's account if the password is forgotten.
+1. Open the launcher (the tray icon, or **Choose or create a company…** on O-Studio's File menu).
+2. Choose **Create a new company…**.
+3. Enter the company's name and an admin password of 12 or more characters, twice.
+4. Choose a folder and file name. The launcher adds `.osas` if you leave the extension off.
+
+The launcher then shows a recovery code **once**. Store it somewhere you can find later. It is the way back into the owner's account if the password is forgotten.
 
 ## Open a company and sign in
 
-Choose **Open an existing company**, pick the `.osas` file (files from earlier versions end in `.adms` and open the same way), then sign in with your user name and password. Studio remembers which file you chose (`%LOCALAPPDATA%\OSAS\suite.json`) so other suite apps can follow it. It never stores a password there.
+In the launcher choose **Open company file…** (or **Open remembered company**), pick the `.osas` file (files from earlier versions end in `.adms` and open the same way), then sign in with your user name and password. O-Studio, started from the launcher, opens on that company. The suite remembers which file you chose (`%LOCALAPPDATA%\OSAS\suite.json`) so other suite apps can follow it. It never stores a password there.
 
 ## Other apps (bottom bar)
 

@@ -7,7 +7,7 @@ Written 2026-10-19; **updated 2026-10-28** for the Studio↔OSAS merge ([studio-
 ## The model
 
 ```
-O-Studio  ── chooses/creates the company file ── signs in once ── edits company details + users
+Launcher  ── chooses/creates the company file ── signs in once ──▶ O-Studio: edits company details + users
   │
   ├─ card: O-CoreOp  ─┐  each gets: the company file path + a one-time sign-in ticket
   ├─ card: O-Draft   ─┤  and opens that company already signed in as the same person
@@ -70,7 +70,7 @@ The apps keep no copy of the company or project details. A document is made from
 | Piece | State |
 |---|---|
 | Engine: company details in `office-core` (`profile.rs`), tickets (`suite.rs`, migration 0030), operations on the office interface and on O-Studio's own interface | Built. 62 tests in `office-core`, 7 in `office-ffi`, and a ticket round trip in O-Studio's interface test |
-| Studio: choose/create the company file, sign in once, edit company details and users, write `suite.json`, launch sibling apps with tickets | **Implemented** in O-Studio. Separate OSAS.exe hub retired ([osas-deprecation.md](osas-deprecation.md)) |
+| Launcher: choose/create the company file and sign in once. Studio: edit company details and users, write `suite.json`, launch sibling apps with tickets. Studio no longer chooses or creates companies (2026-11-03) | **Implemented** in the launcher and O-Studio. Separate OSAS.exe hub retired ([osas-deprecation.md](osas-deprecation.md)) |
 | Approvals inbox (CoreOp draft → Studio approve → lock → revise) | **Implemented** (`docs/contracts/approvals.md`, Practice → Approvals) |
 | Assistant (governed `agent_tools` / `agent_call`, consent prefs) | **Implemented** local tool runner in Studio (Office → Assistant). Cloud Anthropic chat UI still thin vs the old OSAS page |
 | O-Studio opens `OSAS_COMPANY` and redeems `OSAS_TICKET` at start | Built |

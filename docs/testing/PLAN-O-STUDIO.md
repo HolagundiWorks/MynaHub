@@ -17,9 +17,9 @@ Sign-in is in the launcher. O-Studio's own login page is only a prompt to use th
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
-| STU-CMP-01 | Create company | Create a new company with name and owner | A `.osas` file is made; first-run setup asks for the admin password (12+ characters); the recovery code is shown once | UIA, file exists |
-| STU-CMP-02 | Open company | Open an existing `.osas` | Opens; asks for sign-in through the launcher | UIA |
-| STU-CMP-03 | Recent list | Open two companies, return to the welcome panel | Both listed with name and path; **Open** works; **Remove** removes only the list entry, not the file | UIA, file exists |
+| STU-CMP-01 | No company creation | Look in O-Studio (File menu, welcome panel) | There is no **New company** and no **Create a new company**; the welcome panel and **File → Choose or create a company…** open the launcher. Creating a company is LNC-WIN-03 in the launcher plan | UIA |
+| STU-CMP-02 | No company picker | Look in O-Studio | There is no **Open company** and no file picker for companies; O-Studio opens on the company the launcher chose, signed in | UIA |
+| STU-CMP-03 | No recent list | Start O-Studio with no company open | The welcome panel shows only **Open the launcher** (and **Open the company last chosen** when the suite has one); no recent list | UIA |
 | STU-CMP-04 | Missing recent file `[B]` | Delete a recent file outside the app | Row shown with **Open** disabled | UIA |
 | STU-CMP-05 | Last chosen | **Open the company last chosen** | Opens the company in `suite.json` | UIA |
 | STU-CMP-06 | Earlier file format | Open an `.adms` company | Opens (earlier files still open) | UIA |
@@ -28,7 +28,7 @@ Sign-in is in the launcher. O-Studio's own login page is only a prompt to use th
 | STU-CMP-09 | File lock | Open the same company in a second O-Studio, and in O-CoreOp | Defined behaviour: O-Studio and O-CoreOp may have it open together; two O-Studio windows on one file do not corrupt it. Record the actual behaviour | both apps |
 | STU-CMP-10 | Protected file | Create a protected (encrypted) company; reopen | File starts with `AOSENC1`; asks for the file password; wrong one refused; recovery code works; losing both is documented as unrecoverable | file header, UIA |
 | STU-CMP-11 | Backup before upgrade | Open a company made by an older schema | A copy is kept before the schema upgrade | folder listing |
-| STU-CMP-12 | Switch company | **Close company**, open another | No data from the first remains on screen | UIA |
+| STU-CMP-12 | Switch company | In the launcher choose another company; O-Studio, **Choose another company** | The launcher opens; once another company is chosen no data from the first remains on screen | UIA |
 
 ## S3 Session, users and roles
 
@@ -51,7 +51,7 @@ Roles: Owner, Principal, Accounts, Document editor, Auditor.
 | STU-USR-13 | Sign out | **Sign out** | Back to the launcher prompt | UIA |
 | STU-USR-14 | Recovery | Login prompt, **Forgot password? Use recovery code**: user, code, new password | Password reset; a new recovery code shown once; the old code stops working | UIA |
 | STU-USR-15 | Recovery, wrong code `[B]` | Wrong code | Refused; nothing changed | UIA |
-| STU-USR-16 | No login page | Start without a ticket and a company open | A prompt to use the launcher, a button **Open the launcher**, **Switch company**, recovery link; no username or password boxes; the launcher opens once | UIA |
+| STU-USR-16 | No login page | Start without a ticket and a company open | A prompt to use the launcher, a button **Open the launcher**, **Choose another company** (opens the launcher), recovery link; no username or password boxes; the launcher opens once | UIA |
 
 ## S4 Practice
 
