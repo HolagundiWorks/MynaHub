@@ -66,6 +66,7 @@ public class SelectedProjectTests : IDisposable
         var env = SelectedProjectStore.EnvironmentFor(Company, File);
         Assert.Equal("17", env[SuiteWire.EnvProjectId]);
         Assert.Equal(Project().OspPath, env[SuiteWire.EnvProjectOsp]);
+        Assert.Equal("Rao Residence", env[SuiteWire.EnvProjectName]);
         SelectedProjectStore.Clear(File);
         Assert.Empty(SelectedProjectStore.EnvironmentFor(Company, File));
     }

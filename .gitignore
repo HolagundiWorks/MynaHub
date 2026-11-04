@@ -31,6 +31,7 @@ native/**/obj/
 
 # WinUI installer build output
 installer/stage/
+installer/stage-test/
 installer/*.exe
 
 # suite installer outputs

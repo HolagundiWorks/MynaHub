@@ -11,6 +11,7 @@ public static class SuiteWire
     public const string EnvOfficeDll = "OSTUDIO_OFFICE_DLL";
     public const string EnvProjectId = "OSTUDIO_PROJECT_ID";
     public const string EnvProjectOsp = "OSTUDIO_PROJECT_OSP";
+    public const string EnvProjectName = "OSTUDIO_PROJECT_NAME";
 
     public const string EnvAiRole = "OSTUDIO_AI_ROLE";
     public const string EnvAiHost = "OSTUDIO_AI_HOST";

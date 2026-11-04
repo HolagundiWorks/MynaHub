@@ -89,6 +89,8 @@ public static class SelectedProjectStore
         {
             env[SuiteWire.EnvProjectId] = p.ProjectId.ToString(System.Globalization.CultureInfo.InvariantCulture);
             env[SuiteWire.EnvProjectOsp] = p.OspPath;
+            if (!string.IsNullOrWhiteSpace(p.Name))
+                env[SuiteWire.EnvProjectName] = p.Name;
         }
 
         return env;

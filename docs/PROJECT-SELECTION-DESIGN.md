@@ -48,7 +48,7 @@ The lock is a file of its own, `%LOCALAPPDATA%\O-Studio\selected-project.json` (
 
 A selection made for another company reads as none. Code: `Osas.Core.SelectedProjectStore`.
 
-Apps are started with `OSTUDIO_PROJECT_ID` and `OSTUDIO_PROJECT_OSP` beside the existing variables. The active-project pointer stays for one release (O-CoreOp's live notice) and is then retired. Constants go in `Office.Shared.SuiteWire`, `Osas.Core.SuiteWire` and `aad-office::wire` (the three copies already kept equal).
+Apps are started with `OSTUDIO_PROJECT_ID`, `OSTUDIO_PROJECT_OSP`, and `OSTUDIO_PROJECT_NAME` beside the existing variables. The active-project pointer stays for one release (O-CoreOp's live notice) and is then retired. Constants go in `Office.Shared.SuiteWire`, `Osas.Core.SuiteWire` and `aad-office::wire` (the three copies already kept equal).
 
 An app **verifies** what it is given: the project exists in the company file, is not archived, and the path is the recorded workspace path. It never trusts the path alone.
 

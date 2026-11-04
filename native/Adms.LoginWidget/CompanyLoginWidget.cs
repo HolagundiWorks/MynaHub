@@ -444,34 +444,46 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
         var name = new TextBox { Header = "Project name" };
         var code = new TextBox { Header = "Project code", Text = nextCode };
         var address = new TextBox { Header = "Site address", AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, Height = 72 };
+        var inlineError = new TextBlock
+        {
+            Visibility = Visibility.Collapsed,
+            TextWrapping = TextWrapping.WrapWholeWords,
+        };
         var dialog = new ContentDialog
         {
             Title = "New project",
-            Content = new StackPanel { Spacing = 10, Children = { clientBox, newClient, name, code, address } },
+            Content = new StackPanel { Spacing = 10, Children = { clientBox, newClient, name, code, address, inlineError } },
             PrimaryButtonText = "Create and load",
             PrimaryButtonStyle = Accent,
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = Content.XamlRoot,
         };
+        dialog.PrimaryButtonClick += (_, args) =>
+        {
+            inlineError.Visibility = Visibility.Collapsed;
+            if (name.Text.Trim().Length == 0)
+            {
+                args.Cancel = true;
+                inlineError.Text = "Enter the project name.";
+                inlineError.Visibility = Visibility.Visible;
+                return;
+            }
+
+            var clientIdCheck = ids[Math.Max(0, clientBox.SelectedIndex)];
+            if (clientIdCheck == null && newClient.Text.Trim().Length == 0)
+            {
+                args.Cancel = true;
+                inlineError.Text = "Choose a client or enter a new client name.";
+                inlineError.Visibility = Visibility.Visible;
+            }
+        };
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
             return;
 
         var projectName = name.Text.Trim();
-        if (projectName.Length == 0)
-        {
-            ShowError("Enter the project name.");
-            return;
-        }
-
         var clientId = ids[Math.Max(0, clientBox.SelectedIndex)];
         var clientName = newClient.Text.Trim();
-        if (clientId == null && clientName.Length == 0)
-        {
-            ShowError("Choose a client or enter a new client name.");
-            return;
-        }
-
         var projectCode = code.Text.Trim();
         var site = address.Text.Trim();
         long createdId = 0;
@@ -503,6 +515,7 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
         }))
             return;
 
+        _notice.IsOpen = false;
         await LoadProjectsAsync();
         if (_projects.FirstOrDefault(p => p.Id == createdId) is { } created)
         {
