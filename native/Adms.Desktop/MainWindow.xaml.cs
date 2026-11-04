@@ -165,6 +165,209 @@ public sealed partial class MainWindow : Window
         });
     }
 
+    private async void OpenCompany(object sender, RoutedEventArgs e) => await PickAndOpenAsync();
+
+    private async Task PickAndOpenAsync()
+    {
+        if (_busy || _companyOpen || _session == null)
+            return;
+        string? path;
+        try
+        {
+            path = await FileDialogs.PickCompanyFile(Hwnd);
+        }
+        catch (Exception ex)
+        {
+            ShowError("The file picker could not be opened. " + ex.Message);
+            return;
+        }
+        if (path != null)
+            await OpenPathAsync(path);
+    }
+
+    private async void OpenRecent(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: RecentCompany row } && row.Exists)
+            await OpenPathAsync(row.Path);
+    }
+
+    private async void RemoveRecent(object sender, RoutedEventArgs e)
+    {
+        if (_busy || _session == null || sender is not Button { Tag: RecentCompany row })
+            return;
+        var removed = await RunEngineAsync("Updating recent companies…", () =>
+            _session.Call("company_recent_remove", new { uuid = row.Uuid }));
+        if (removed)
+            await LoadWelcomeAsync();
+    }
+
+    private async void CreateCompany(object sender, RoutedEventArgs e) => await CreateCompanyAsync();
+
+    private async Task CreateCompanyAsync()
+    {
+        if (_session == null)
+        {
+            ShowError("The accounting engine is not loaded. Rebuild O-Studio with the Rust engine (src-tauri, cargo build --release) and ensure architect_office_desktop_lib.dll is beside O-Studio.exe.");
+            return;
+        }
+        if (_busy)
+        {
+            ShowError("Wait for the current operation to finish, then try again.");
+            return;
+        }
+        if (_companyOpen)
+        {
+            ShowError("Close the current company before creating a new one.");
+            return;
+        }
+        var nameBox = new TextBox { Header = "Company name" };
+        var fileBox = new TextBox { Header = "File name", Text = "Company.osas" };
+        var folderText = new TextBlock { Text = "No folder chosen", TextWrapping = TextWrapping.Wrap };
+        string? folder = null;
+        nameBox.TextChanged += (_, _) =>
+        {
+            if (!fileBox.FocusState.Equals(FocusState.Unfocused) || fileBox.Text.Length == 0)
+                return;
+            fileBox.Text = FileNameFor(nameBox.Text);
+        };
+        var choose = new Button { Content = "Choose folder…" };
+        choose.Click += async (_, _) =>
+        {
+            try
+            {
+                folder = await FileDialogs.PickFolder(Hwnd);
+            }
+            catch (Exception ex)
+            {
+                ShowError("The folder picker could not be opened. " + ex.Message);
+                return;
+            }
+            if (folder != null)
+            {
+                if (string.IsNullOrWhiteSpace(fileBox.Text))
+                    fileBox.Text = FileNameFor(nameBox.Text);
+                folderText.Text = folder;
+            }
+        };
+        var error = new TextBlock { TextWrapping = TextWrapping.Wrap, Foreground = Flow.Ink("TextSecondaryBrush") };
+        var password = new PasswordBox { Header = "Admin password (12 or more characters)" };
+        var confirm = new PasswordBox { Header = "Confirm password" };
+        var review = new TextBlock { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
+
+        // Three steps in one dialog: the company and where it is kept, the administrator's password, then a review before anything is made.
+        var step = 0;
+        var titles = new[] { "Step 1 of 3: the company", "Step 2 of 3: the administrator", "Step 3 of 3: review and create" };
+        var pages = new StackPanel[]
+        {
+            new() { Spacing = 8, Children = { new TextBlock { Text = "Name the company and choose the folder that will hold its file.", TextWrapping = TextWrapping.Wrap }, nameBox, fileBox, choose, folderText } },
+            new() { Spacing = 8, Children = { new TextBlock { Text = "The administrator signs in first and manages the other users. Choose a strong password; you will get a recovery code next.", TextWrapping = TextWrapping.Wrap }, password, confirm } },
+            new() { Spacing = 8, Children = { review, new TextBlock { Text = "After the company is created a recovery code is shown once. Save it: it is the only way back in if the password is forgotten.", TextWrapping = TextWrapping.Wrap } } },
+        };
+        var form = new StackPanel { Spacing = 12, MinWidth = 420 };
+        var heading = new TextBlock { Style = (Style)Application.Current.Resources["SectionTitleStyle"] };
+        form.Children.Add(heading);
+        foreach (var page in pages)
+            form.Children.Add(page);
+        form.Children.Add(error);
+        var dialog = new ContentDialog
+        {
+            Title = "Create a new company",
+            Content = form,
+            PrimaryButtonText = "Next",
+            SecondaryButtonText = "Back",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = Content.XamlRoot,
+            RequestedTheme = Root.ActualTheme,
+        };
+        string FullName()
+        {
+            var fileName = fileBox.Text.Trim();
+            if (!fileName.EndsWith(".osas", StringComparison.OrdinalIgnoreCase) && !fileName.EndsWith(".adms", StringComparison.OrdinalIgnoreCase))
+                fileName += ".osas";
+            return fileName;
+        }
+        void Show()
+        {
+            for (var n = 0; n < pages.Length; n++)
+                pages[n].Visibility = n == step ? Visibility.Visible : Visibility.Collapsed;
+            heading.Text = titles[step];
+            dialog.PrimaryButtonText = step == pages.Length - 1 ? "Create company" : "Next";
+            dialog.IsSecondaryButtonEnabled = step > 0;
+            error.Text = "";
+            if (step == pages.Length - 1)
+                review.Text = string.Join(Environment.NewLine, $"Company: {nameBox.Text.Trim()}", $"File: {(folder == null ? "" : Path.Combine(folder, FullName()))}", "Administrator: admin");
+        }
+        Show();
+        string? pendingPath = null;
+        string? pendingName = null;
+        string? pendingPassword = null;
+        dialog.SecondaryButtonClick += (_, args) =>
+        {
+            args.Cancel = true;
+            if (step > 0)
+                step--;
+            Show();
+        };
+        dialog.PrimaryButtonClick += (_, args) =>
+        {
+            var deferral = args.GetDeferral();
+            error.Text = "";
+            try
+            {
+                if (step == 0)
+                {
+                    args.Cancel = true;
+                    if (nameBox.Text.Trim().Length == 0 || fileBox.Text.Trim().Length == 0 || folder == null)
+                        error.Text = "Enter the company's name, a file name, and choose a folder.";
+                    else
+                    {
+                        step = 1;
+                        Show();
+                    }
+                    return;
+                }
+                if (step == 1)
+                {
+                    args.Cancel = true;
+                    if (password.Password.Length < 12)
+                        error.Text = "The password needs 12 or more characters.";
+                    else if (password.Password != confirm.Password)
+                        error.Text = "The two passwords do not match.";
+                    else
+                    {
+                        step = 2;
+                        Show();
+                    }
+                    return;
+                }
+                pendingPath = Path.Combine(folder!, FullName());
+                pendingName = nameBox.Text.Trim();
+                pendingPassword = password.Password;
+                password.Password = "";
+                confirm.Password = "";
+            }
+            finally
+            {
+                deferral.Complete();
+            }
+        };
+        await dialog.ShowAsync();
+        if (pendingPath == null || pendingName == null || pendingPassword == null || _shuttingDown)
+            return;
+
+        string? recovery = null;
+        var createdOk = await RunEngineAsync("Creating company…", () =>
+        {
+            var created = _session!.CreateCompany(pendingPath, pendingName, "admin", pendingPassword, pendingPassword);
+            recovery = created.Recovery;
+        });
+        if (!createdOk || recovery == null || _shuttingDown)
+            return;
+        await ShowRecoveryAsync(recovery, "Save your recovery code", "This code is shown once. It is the only way to recover the owner account if the password is forgotten.");
+        await RefreshStatusAsync();
+    }
+
     private nint Hwnd => WindowNative.GetWindowHandle(this);
 
     internal nint Handle => Hwnd;
@@ -280,6 +483,7 @@ public sealed partial class MainWindow : Window
     private void OnClosing(AppWindow sender, AppWindowClosingEventArgs args)
     {
         SavePlacement();
+        Office.Ai.SuiteAiCoordinator.StopHost();
         if (_shuttingDown)
             return;
         if (_busy)
@@ -912,6 +1116,7 @@ public sealed partial class MainWindow : Window
         var loaded = await RunEngineAsync("Looking for earlier data…", () =>
         {
             legacy = _session.Call("company_legacy_info");
+            recent = _session.Call("company_recent_list");
         });
         if (!loaded || _companyOpen)
             return;
