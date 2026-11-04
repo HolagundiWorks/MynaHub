@@ -110,11 +110,73 @@ begin
   Dir := Expand('{localappdata}\Programs\O-Draft');
   if DirExists(Dir) then
     DelTree(Dir, True, True, True);
-  if RegKeyExists(HKCU, 'Software\Classes\.osp') then
-    RegDeleteKeyIncludingSubkeys(HKCU, 'Software\Classes\.osp');
-  if RegKeyExists(HKCU, 'Software\Classes\OSAS.Project') then
-    RegDeleteKeyIncludingSubkeys(HKCU, 'Software\Classes\OSAS.Project');
+  // The .osp association is shared: O-CoreOp adds its own "Open in O-CoreOp" verb to the same ProgId. While O-CoreOp stays
+  // installed only O-Draft's verb goes; the file type and the other app's verb are left alone.
+  if IsCoreOpInstalled then
+  begin
+    if RegKeyExists(HKCU, 'Software\Classes\OSAS.Project\shell\open') then
+      RegDeleteKeyIncludingSubkeys(HKCU, 'Software\Classes\OSAS.Project\shell\open');
+  end
+  else
+  begin
+    if RegKeyExists(HKCU, 'Software\Classes\.osp') then
+      RegDeleteKeyIncludingSubkeys(HKCU, 'Software\Classes\.osp');
+    if RegKeyExists(HKCU, 'Software\Classes\OSAS.Project') then
+      RegDeleteKeyIncludingSubkeys(HKCU, 'Software\Classes\OSAS.Project');
+  end;
   DeleteFile(Expand('{userprograms}\O-Draft.lnk'));
+end;
+
+{ Names of the apps chosen for removal, one per line, for the confirmation. }
+function RemoveSelectionText: String;
+begin
+  Result := '';
+  if RemoveStudio then Result := Result + '  - O-Studio' + #13#10;
+  if RemoveCoreOp then Result := Result + '  - O-CoreOp' + #13#10;
+  if RemoveDraft then Result := Result + '  - O-Draft' + #13#10;
+end;
+
+{ O-CoreOp and O-Draft use O-Studio (the suite hub: launcher, sign-in, the assistant host). Removing it while one of them stays installed
+  needs a decision. Returns False to stay on the page. Silent setups keep the other apps and log it. }
+function ResolveStudioDependents: Boolean;
+var
+  Stay: String;
+  Answer: Integer;
+begin
+  Result := True;
+  if not RemoveStudio then
+    Exit;
+  Stay := '';
+  if IsCoreOpInstalled and (not RemoveCoreOp) then Stay := Stay + '  - O-CoreOp' + #13#10;
+  if IsDraftInstalled and (not RemoveDraft) then Stay := Stay + '  - O-Draft' + #13#10;
+  if Stay = '' then
+    Exit;
+  if IsSilentSetup then
+  begin
+    Log('O-Studio is removed while these stay installed: ' + Stay);
+    Exit;
+  end;
+  Answer := MsgBox('These applications use O-Studio (the suite launcher, sign-in and assistant host) and are still installed:' + #13#10#13#10 + Stay + #13#10 +
+    'Yes: remove them as well.' + #13#10 + 'No: keep them (they run without the suite launcher until O-Studio is installed again).' + #13#10 +
+    'Cancel: go back and change the selection.', mbConfirmation, MB_YESNOCANCEL);
+  if Answer = IDCANCEL then
+  begin
+    Result := False;
+    Exit;
+  end;
+  if Answer = IDYES then
+  begin
+    if IsCoreOpInstalled then
+    begin
+      RemoveCoreOp := True;
+      RemoveList.Checked[1] := True;
+    end;
+    if IsDraftInstalled then
+    begin
+      RemoveDraft := True;
+      RemoveList.Checked[2] := True;
+    end;
+  end;
 end;
 
 function RunSelectedRemovals(var Summary: String): Boolean;
@@ -305,13 +367,16 @@ begin
     begin
       MsgBox('Select at least one application to remove, or switch back to Install mode.', mbError, MB_OK);
       Result := False;
-    end;
+    end
+    else if not ResolveStudioDependents then
+      Result := False;
   end;
 
   if (CurPageID = RemoveConfirmPage.ID) and (not SuiteModeInstall) then
   begin
     InitRemoveFlagsFromList;
-    if MsgBox('Remove the selected applications now?', mbConfirmation, MB_YESNO) = IDNO then
+    if MsgBox('Remove these applications now?' + #13#10#13#10 + RemoveSelectionText + #13#10 +
+      'Other applications, company files, projects and the assistant model are kept.', mbConfirmation, MB_YESNO) = IDNO then
     begin
       Result := False;
       Exit;

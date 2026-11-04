@@ -17,9 +17,10 @@
 1. Run the **same** `O-Suite-Setup-<version>.exe`.
 2. On **Setup mode**, choose **Remove applications** (enabled when at least one suite app is detected on disk).
 3. Select one or more installed applications (or tick every listed app to remove the whole suite).
-4. Confirm on the **Confirm removal** page.
-5. Progress runs each app’s uninstaller (O-Draft folder and `.osp` association are removed when O-Draft is selected).
-6. The **Removal complete** page summarizes what was removed. **Company files (`.osas`), projects (`.osp`), and the assistant model are not deleted.**
+4. If **O-Studio** is selected while **O-CoreOp** or **O-Draft** stays installed, Setup asks what to do, because those apps use O-Studio (the suite launcher, sign-in and assistant host): **Yes** removes them as well, **No** keeps them (they run without the launcher until O-Studio is installed again), **Cancel** returns to the selection. A silent setup keeps them and logs it.
+5. Confirm on the **Confirm removal** page, which lists the applications about to be removed.
+6. Progress runs each app’s uninstaller. Removing O-Draft deletes its folder and its "Open in O-Draft" verb; the `.osp` file type is deleted only when O-CoreOp is not installed, so O-CoreOp's own verb and association stay.
+7. The **Removal complete** page summarizes what was removed. **Company files (`.osas`), projects (`.osp`), and the assistant model are not deleted.**
 
 ## Windows Settings uninstall
 
