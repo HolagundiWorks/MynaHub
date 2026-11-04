@@ -27,7 +27,7 @@ Build order and commands (full detail in each repository's packaging doc):
 
 | Step | Command | Output |
 |---|---|---|
-| 1 | `O-STUDIO\installer\build.ps1` | `O-STUDIO\installer\O-Studio-Setup-0.1.0.exe` (includes the launcher in a `launcher` folder) |
+| 1 | `O-STUDIO\installer\build.ps1` | `O-STUDIO\installer\O-Studio-Setup-0.1.0.exe` (`O-Studio.exe` and `O-Studio.Launcher.exe` in one folder) |
 | 2 | `O-COREOP\BBSDesktop\installer\build-installer.ps1 -OfficeDllDir O-STUDIO\office-ffi\target\release` (build `office-ffi` first: `cargo build --release`) | `O-COREOP\BBSDesktop\artifacts\installer\O-CoreOp-Setup-<v>.exe` |
 | 3 | `O-DRAFT-main\packaging\windows\package.ps1 -Arch x64` | `O-DRAFT-main\dist\release\o-draft-<v>-windows-x64.msi` and `...-portable.zip` |
 | 4 | `O-STUDIO\installer\suite\build-single.ps1 -Version <v>` | `O-STUDIO\installer\suite\out\O-Suite-Setup-<v>.exe` |
@@ -38,7 +38,7 @@ Install for testing with the suite installer, per user, no model download (the m
 O-Suite-Setup-<v>.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /COMPONENTS="studio,coreop,draft" /TASKS="" /LOG="%TEMP%\suite-install.log"
 ```
 
-Installed locations (per user): `%LOCALAPPDATA%\Programs\O-Studio` (launcher in its `launcher` subfolder), `...\O-CoreOp`, `...\O-Draft`, `...\O-Suite` (uninstaller).
+Installed locations (per user): `%LOCALAPPDATA%\Programs\O-Studio` (`O-Studio.Launcher.exe` beside `O-Studio.exe`), `...\O-CoreOp`, `...\O-Draft`, `...\O-Suite` (uninstaller).
 
 Record in every run report: the installer file name and SHA-256, the commit of each repository, the Windows build number.
 

@@ -1,6 +1,6 @@
 # Test plan: the O-Studio launcher
 
-The launcher (`O-Studio.Launcher.exe`, in the `launcher` folder beside O-Studio) is a tray app. It holds the company sign-in, shows the status of the AI agent, the database and cloud sync, and starts the other apps with a one-time ticket. Source: `O-STUDIO\native\Adms.LoginWidget`.
+The launcher (`O-Studio.Launcher.exe`, beside `O-Studio.exe` in the O-Studio install folder) is a tray app. It holds the company sign-in, shows the status of the AI agent, the database and cloud sync, and starts the other apps with a one-time ticket. Source: `O-STUDIO\native\Adms.LoginWidget`.
 
 Case format and rules: [README.md](README.md). `[N]` normal, `[B]` boundary or bad input, `[R]` repeat or undo.
 
@@ -8,7 +8,7 @@ Case format and rules: [README.md](README.md). `[N]` normal, `[B]` boundary or b
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
-| LNC-SMK-01 | Start | Start `launcher\O-Studio.Launcher.exe` | The process stays running for 30 s; a tray icon appears (it may be in the hidden-icons area); no window opens by itself | `Get-Process O-Studio.Launcher`; UIA tray overflow item named like "O-Studio suite" |
+| LNC-SMK-01 | Start | Start `O-Studio.Launcher.exe` from the O-Studio install folder | The process stays running for 30 s; a tray icon appears (it may be in the hidden-icons area); no window opens by itself | `Get-Process O-Studio.Launcher`; UIA tray overflow item named like "O-Studio suite" |
 | LNC-SMK-02 | No crash events | After LNC-SMK-01 read the Application event log | No `Application Error` for `O-Studio.Launcher.exe` | `Get-WinEvent` |
 | LNC-SMK-03 | Exit | Tray menu, **Exit** | The process ends; the tray icon disappears | process list |
 

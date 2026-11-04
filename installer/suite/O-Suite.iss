@@ -85,7 +85,7 @@ Name: "{userprograms}\O-Draft"; Filename: "{localappdata}\Programs\O-Draft\ODraf
 Root: HKCU; Subkey: "Software\Classes\.osp"; ValueType: string; ValueName: ""; ValueData: "OSAS.Project"; Flags: uninsdeletevalue; Components: draft
 Root: HKCU; Subkey: "Software\Classes\OSAS.Project"; ValueType: string; ValueName: ""; ValueData: "O-Suite project"; Components: draft
 Root: HKCU; Subkey: "Software\Classes\OSAS.Project\shell\open"; ValueType: string; ValueName: ""; ValueData: "Open in O-Draft"; Flags: uninsdeletekey; Components: draft
-Root: HKCU; Subkey: "Software\Classes\OSAS.Project\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{localappdata}\Programs\O-Studio\launcher\O-Studio.Launcher.exe"" --open ""%1"" --app O-Draft"; Components: draft
+Root: HKCU; Subkey: "Software\Classes\OSAS.Project\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{localappdata}\Programs\O-Studio\O-Studio.Launcher.exe"" --open ""%1"" --app O-Draft"; Components: draft
 
 [Run]
 Filename: "{tmp}\O-Studio-Setup.exe"; Parameters: "/S"; StatusMsg: "Installing O-Studio..."; Flags: waituntilterminated; Components: studio

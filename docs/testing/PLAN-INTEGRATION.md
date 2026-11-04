@@ -18,7 +18,7 @@ Links under test:
 
 | ID | Scenario | Steps | Expected | How to check |
 |---|---|---|---|---|
-| INT-INS-01 | Fresh install | Clean profile or VM; run the suite Setup with all components | Exit 0; three app folders; Start menu entries; launcher in `...\O-Studio\launcher`; `.osp` registered | folders, registry `HKCU\Software\Classes\.osp` |
+| INT-INS-01 | Fresh install | Clean profile or VM; run the suite Setup with all components | Exit 0; three app folders; Start menu entries; `O-Studio.Launcher.exe` beside `O-Studio.exe`; `.osp` registered | folders, registry `HKCU\Software\Classes\.osp` |
 | INT-INS-02 | Component choice | Install only O-Studio, then add O-Draft | Only chosen apps installed; adding works | folders |
 | INT-INS-03 | Upgrade over an older suite | Install 1.0.x over 1.0.y | Apps replaced; company files, projects, settings, model kept | file hashes |
 | INT-INS-04 | Uninstall | Apps and features, "O-Suite" | Apps removed; company files, projects, `%LOCALAPPDATA%\HumanCentricWorks\models` stay; file association removed | folders, registry |

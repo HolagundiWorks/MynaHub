@@ -50,8 +50,7 @@
     <ProjectReference Include="..\..\..\O-COREOP\BBSDesktop\Office.Ai\Office.Ai.csproj" />
     <ProjectReference Include="..\..\..\o-ui\O.Ui\O.Ui.csproj" />
   </ItemGroup>
-  <!-- The launcher is a build-order reference only. Its own Windows App SDK payload would repeat Studio's, so it is left out of Studio's publish list
-       (installer/build.ps1 publishes the launcher into the same folder). -->
+  <!-- The launcher is a build-order reference only. installer/build.ps1 publishes it beside O-Studio.exe with a shared WinUI payload (BUG-0005). -->
   <Target Name="DropLauncherPayloadFromPublish" BeforeTargets="_HandleFileConflictsForPublish">
     <ItemGroup>
       <_LauncherPublishFile Include="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(ResolvedFileToPublish.FullPath)').Contains('Adms.LoginWidget'))" />
