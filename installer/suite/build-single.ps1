@@ -4,8 +4,7 @@
   Builds O-Suite-Setup-<version>.exe, one Setup for every suite app, from the apps' finished installers and packages.
 
 .DESCRIPTION
-  Does not build the apps: build-suite.ps1 (this folder's parent) and each app's own script do that. This stages what they made and compiles
-  O-Suite.iss (Inno Setup 6). Defaults are the files in ..\suite-dist; the CoreOp default is the one BBSDesktop\installer\build-installer.ps1 makes.
+  Does not build the apps: use **`build-all.ps1`** when the suite must match current source. This script only wraps existing Setup.exe / zip files (whichever is newest on disk), which is often stale.
 
     O-Studio  : its NSIS Setup (run with /S)
     O-CoreOp  : its Inno Setup (run with /VERYSILENT; the model task is passed on)

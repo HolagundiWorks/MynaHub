@@ -42,7 +42,17 @@ powershell -File installer\sign.ps1 installer\O-Studio-Setup-0.1.0.exe
 # Do not ship self-signed builds
 ```
 
-## Suite glue
+## Suite installer (O-Suite)
+
+One **O-Suite-Setup-<version>.exe** installs or removes **O-Studio**, **O-CoreOp**, and **O-Draft** from a single wizard (component checkboxes, install and remove modes, shared assistant model task). Build order and silent flags: [installer/suite/README.md](installer/suite/README.md) and [docs/testing/TEST-ENVIRONMENT.md](testing/TEST-ENVIRONMENT.md).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File installer\suite\build-single.ps1 -Version 1.3.0
+```
+
+Output: `installer/suite/out/O-Suite-Setup-<version>.exe` (per user, no administrator). O-Studio’s own NSIS Setup is embedded and run silently; O-CoreOp’s Inno Setup likewise; O-Draft is copied from the portable zip (the per-machine MSI is not used).
+
+## Suite glue (legacy)
 
 `installer/install-suite.ps1 -ArtifactsDir …` (in this repo; migrated from the OSAS hub)
 picks up `O-Studio-Setup-*.exe` and optional sibling Setup.exe files. Sibling apps still

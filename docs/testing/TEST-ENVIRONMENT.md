@@ -16,10 +16,10 @@ Environment variables for builds on this machine:
 ```
 AppxMSBuildToolsPath = C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\
 PATH += C:\Users\<you>\AppData\Local\tauri\NSIS
-AAD_FONTS_DIR = (empty for packaging)
+AAD_FONTS_DIR = (empty for packaging; unset the variable if it points at a missing folder)
 ```
 
-Run build scripts inside `vcvars64.bat` (MSVC environment).
+Run build scripts inside `vcvars64.bat` (MSVC environment). The suite pipeline also needs **`makensis.exe`** on `PATH` (for example `%LOCALAPPDATA%\tauri\NSIS` or NSIS 3 under Program Files).
 
 ## 2. Build and install
 
@@ -28,14 +28,20 @@ Build order and commands (full detail in each repository's packaging doc):
 | Step | Command | Output |
 |---|---|---|
 | 1 | `O-STUDIO\installer\build.ps1` | `O-STUDIO\installer\O-Studio-Setup-0.1.0.exe` (`O-Studio.exe` and `O-Studio.Launcher.exe` in one folder) |
-| 2 | `O-COREOP\BBSDesktop\installer\build-installer.ps1 -OfficeDllDir O-STUDIO\office-ffi\target\release` (build `office-ffi` first: `cargo build --release`) | `O-COREOP\BBSDesktop\artifacts\installer\O-CoreOp-Setup-<v>.exe` |
+| 2 | `O-COREOP\BBSDesktop\installer\build-installer.ps1 -OfficeDllDir <folder with office.dll>` (build `office-ffi` first: `cargo build --release` in `O-STUDIO\office-ffi`; when `CARGO_TARGET_DIR` is set, use `<CARGO_TARGET_DIR>\release`) | `O-COREOP\BBSDesktop\artifacts\installer\O-CoreOp-Setup-<v>.exe` |
 | 3 | `O-DRAFT-main\packaging\windows\package.ps1 -Arch x64` | `O-DRAFT-main\dist\release\o-draft-<v>-windows-x64.msi` and `...-portable.zip` |
-| 4 | `O-STUDIO\installer\suite\build-single.ps1 -Version <v>` | `O-STUDIO\installer\suite\out\O-Suite-Setup-<v>.exe` |
+| 4 | `O-STUDIO\installer\suite\build-single.ps1 -Version <v>` (after steps 1–3; use `installer\suite\resume-build.ps1` if only step 1 finished) | `O-STUDIO\installer\suite\out\O-Suite-Setup-<v>.exe` |
 
 Install for testing with the suite installer, per user, no model download (the model is shared and already present):
 
 ```
 O-Suite-Setup-<v>.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /COMPONENTS="studio,coreop,draft" /TASKS="" /LOG="%TEMP%\suite-install.log"
+```
+
+Partial or full removal with the same package:
+
+```
+O-Suite-Setup-<v>.exe /VERYSILENT /MODE=uninstall /REMOVE="draft"
 ```
 
 Installed locations (per user): `%LOCALAPPDATA%\Programs\O-Studio` (`O-Studio.Launcher.exe` beside `O-Studio.exe`), `...\O-CoreOp`, `...\O-Draft`, `...\O-Suite` (uninstaller).

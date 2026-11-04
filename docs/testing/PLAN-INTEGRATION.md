@@ -19,9 +19,11 @@ Links under test:
 | ID | Scenario | Steps | Expected | How to check |
 |---|---|---|---|---|
 | INT-INS-01 | Fresh install | Clean profile or VM; run the suite Setup with all components | Exit 0; three app folders; Start menu entries; `O-Studio.Launcher.exe` beside `O-Studio.exe`; `.osp` registered | folders, registry `HKCU\Software\Classes\.osp` |
-| INT-INS-02 | Component choice | Install only O-Studio, then add O-Draft | Only chosen apps installed; adding works | folders |
+| INT-INS-02 | Component choice | Install only O-Studio, then run Setup again and add O-Draft | Only chosen apps installed; adding works | folders |
+| INT-INS-02b | Partial remove | Run Setup, **Remove applications**, uninstall O-Draft only | O-Draft folder gone; O-Studio and O-CoreOp remain; model and `.osas` stay | folders, registry |
+| INT-INS-02c | Remove via Setup | Run Setup, **Remove applications**, select all installed apps | Same outcome as full suite uninstall for selected apps | folders |
 | INT-INS-03 | Upgrade over an older suite | Install 1.0.x over 1.0.y | Apps replaced; company files, projects, settings, model kept | file hashes |
-| INT-INS-04 | Uninstall | Apps and features, "O-Suite" | Apps removed; company files, projects, `%LOCALAPPDATA%\HumanCentricWorks\models` stay; file association removed | folders, registry |
+| INT-INS-04 | Uninstall | Apps and features, "O-Suite" (confirms full component removal) or Setup **Remove applications** for a subset | Chosen apps removed; company files, projects, `%LOCALAPPDATA%\HumanCentricWorks\models` stay; `.osp` association removed when O-Draft is removed | folders, registry |
 | INT-INS-05 | Running apps during install | Leave an app open while installing | A clear result (retry/close message), no corrupt install | log |
 | INT-INS-06 | Silent install log | `/LOG` | Log ends with exit 0 and lists three app installers | log |
 | INT-INS-07 | Model task | Install with the model task on a machine without the model | 4.26 GB file downloaded, SHA-256 `0de0bc63...c5c4` verified, placed in `%LOCALAPPDATA%\HumanCentricWorks\models` | hash |

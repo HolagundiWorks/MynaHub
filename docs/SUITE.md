@@ -1,6 +1,6 @@
 # O-Studio suite: names, roles, files, links and how it works live
 
-**Canonical copy:** the O-Studio repository, `docs/SUITE.md`. Each app repository carries an identical copy at `docs/SUITE.md` so a developer in any one repo knows what the others are, what they are called, what their toolbars hold and how they connect. If you change one, change all four. Updated 2026-10-31.
+**Canonical copy:** the O-Studio repository, `docs/SUITE.md`. Each app repository carries an identical copy at `docs/SUITE.md` so a developer in any one repo knows what the others are, what they are called, what their toolbars hold and how they connect. If you change one, change all four. Updated 2026-11-04.
 
 ## 1. Names
 
@@ -136,7 +136,7 @@ Saving: O-Draft writes the drawing back into the `.osp` only when its bytes chan
 | O-Studio assistant and Neon sync | O-Studio `docs/AI_RUNTIME.md`, `docs/CLOUD-NEON.md`, `docs/ODP-PROJECT-FILE-AND-SYNC.md` |
 | Shared WinUI chrome | O-UI (`O.Ui`) — `SuiteBottomStatusBar`, `SuiteAskBar`, theme tokens |
 | ShilpiDB → `.osp` migration (historical) | Each app repo `docs/MIGRATION-OSP.md` — do not use **ShilpiDB** in new user text |
-| Installers | O-Studio `installer/suite/README.md`; O-CoreOp `docs/PACKAGING.md`, `docs/SUITE-PACKAGING.md` |
+| Installers | **Unified:** O-Studio `installer/suite/README.md` (`O-Suite-Setup-<version>.exe`, install and remove modes). Per-app: O-Studio `docs/packaging.md`, O-CoreOp `docs/PACKAGING.md`, O-Draft `docs/RELEASE_AND_PACKAGING.md` |
 | Testing | O-Studio `docs/testing/README.md` (plans for every app, the connected apps, bug process and log) |
 | Brand (palette, the mark, the AI agent orb, type) | O-Studio `docs/BRANDING.md`; artwork and colour files in `o-ui` (`brand/`, `Themes/SuiteAccent.*.xaml`) |
 

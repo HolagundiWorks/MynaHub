@@ -40,7 +40,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 | 2.4 | Estimates ↔ fee proposals: `project_estimate_summary` + Fee proposals “Use O-CoreOp estimate as cost”; `project_ra_summary` shows O-CoreOp running-bill (RA) totals beside fee/invoices. Still to do: E2E click-through, optional invoice ArtifactRef column | Both | Checked: office-core estimate/RA summary + proposal link tests |
 | 2.5 | An MCP tool server for O-CoreOp, with the same descriptor shape as O-Studio's | CoreOp | Checked: only O-Studio has one (`office-agent`) |
 | 2.6 | Write tools for the agent, with approval and an audit trail | Studio | Checked: every tool is read-only today |
-| 2.7 | The OSAS launcher: an installer for the suite, update check, open a company file from the launcher | OSAS | Suite glue + update-check stub landed in OSAS (`install-suite.ps1`, channel JSON); signed single Setup.exe and open-company-from-launcher still open |
+| 2.7 | Unified **O-Suite** installer: one Setup for install/remove of O-Studio, O-CoreOp, and O-Draft; update check stub; launcher opens `.osp` via O-Studio.Launcher | O-Studio | **Checked 2026-11-04:** `installer/suite/O-Suite.iss` + `O-Suite-Wizard.iss`, `build-single.ps1`; signed single Setup and hosted channel still open (3.1) |
 
 ## Phase 3: depth
 

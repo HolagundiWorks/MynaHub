@@ -57,7 +57,7 @@ cargo test --manifest-path src-tauri/Cargo.toml   # engine, accounting, company 
 cargo test --manifest-path office-core/Cargo.toml
 ```
 
-The installer is built with `installer/build.ps1` (release engine, self-contained publish, NSIS) and is named `O-Studio-Setup-<version>.exe`. It stays unsigned unless signing secrets are set (`installer/sign.ps1`). Help → **Check for updates…** is a channel stub. Packaging notes: [docs/packaging.md](docs/packaging.md). What is open and planned is in [docs/roadmap.md](docs/roadmap.md).
+The installer is built with `installer/build.ps1` (release engine, self-contained publish, NSIS) and is named `O-Studio-Setup-<version>.exe`. **`O-Studio.Launcher.exe` is published beside `O-Studio.exe` with one shared Windows App SDK payload** (see [docs/packaging.md](docs/packaging.md)). For all suite apps together, build **`installer/suite/build-single.ps1`** → `O-Suite-Setup-<version>.exe` ([installer/suite/README.md](installer/suite/README.md)). It stays unsigned unless signing secrets are set (`installer/sign.ps1`). Help → **Check for updates…** is a channel stub. What is open and planned is in [docs/roadmap.md](docs/roadmap.md).
 
 ### Cloud sync (Neon)
 

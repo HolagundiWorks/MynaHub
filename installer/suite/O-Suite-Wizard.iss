@@ -1,0 +1,451 @@
+// Pascal script for O-Suite.iss: unified install and remove flows in one Setup package.
+
+var
+  SuiteModePage: TWizardPage;
+  SuiteModeInstall: Boolean;
+  RemoveSelectPage: TWizardPage;
+  RemoveConfirmPage: TWizardPage;
+  RemoveSummaryPage: TWizardPage;
+  RemoveList: TNewCheckListBox;
+  RemoveStudio, RemoveCoreOp, RemoveDraft: Boolean;
+  RemoveSummaryText: String;
+  ModelPage: TDownloadWizardPage;
+  RemoveSummaryMemo: TNewStaticText;
+
+function Expand(const S: String): String;
+begin
+  Result := ExpandConstant(S);
+end;
+
+function FileExistsExpanded(const PathConst: String): Boolean;
+begin
+  Result := FileExists(Expand(PathConst));
+end;
+
+function IsStudioInstalled: Boolean;
+begin
+  Result := FileExistsExpanded('{localappdata}\Programs\O-Studio\O-Studio.exe');
+end;
+
+function IsCoreOpInstalled: Boolean;
+begin
+  Result := FileExistsExpanded('{localappdata}\Programs\O-CoreOp\unins000.exe');
+end;
+
+function IsDraftInstalled: Boolean;
+begin
+  Result := FileExistsExpanded('{localappdata}\Programs\O-Draft\ODraft.WinUi.exe');
+end;
+
+function AnySuiteAppInstalled: Boolean;
+begin
+  Result := IsStudioInstalled or IsCoreOpInstalled or IsDraftInstalled;
+end;
+
+function ParamValue(const Name: String): String;
+begin
+  Result := ExpandConstant('{param:' + Name + '|}');
+end;
+
+function IsSilentSetup: Boolean;
+begin
+  Result := WizardSilent;
+end;
+
+function ParseRemoveList(const List: String): Boolean;
+var
+  S: String;
+begin
+  Result := True;
+  RemoveStudio := False;
+  RemoveCoreOp := False;
+  RemoveDraft := False;
+  S := LowerCase(List);
+  if S = '' then
+    Exit;
+  if (Pos('studio', S) > 0) or (Pos('all', S) > 0) or (Pos('full', S) > 0) then
+    RemoveStudio := True;
+  if (Pos('coreop', S) > 0) or (Pos('all', S) > 0) or (Pos('full', S) > 0) then
+    RemoveCoreOp := True;
+  if (Pos('draft', S) > 0) or (Pos('all', S) > 0) or (Pos('full', S) > 0) then
+    RemoveDraft := True;
+end;
+
+procedure InitRemoveFlagsFromList;
+begin
+  RemoveStudio := RemoveList.Checked[0];
+  RemoveCoreOp := RemoveList.Checked[1];
+  RemoveDraft := RemoveList.Checked[2];
+end;
+
+function CountRemoveSelected: Integer;
+begin
+  Result := 0;
+  if RemoveStudio then Inc(Result);
+  if RemoveCoreOp then Inc(Result);
+  if RemoveDraft then Inc(Result);
+end;
+
+procedure SetProgress(Pct: Integer; const Msg: String);
+begin
+  if Assigned(WizardForm) then
+  begin
+    WizardForm.StatusLabel.Caption := Msg;
+    WizardForm.ProgressGauge.Position := Pct;
+  end;
+end;
+
+function ExecAndWait(const Filename, Params, Status: String): Boolean;
+var
+  ResultCode: Integer;
+begin
+  SetProgress(WizardForm.ProgressGauge.Position, Status);
+  Result := Exec(Filename, Params, '', SW_SHOW, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
+end;
+
+procedure RemoveDraftLayout;
+var
+  Dir: String;
+begin
+  Dir := Expand('{localappdata}\Programs\O-Draft');
+  if DirExists(Dir) then
+    DelTree(Dir, True, True, True);
+  if RegKeyExists(HKCU, 'Software\Classes\.osp') then
+    RegDeleteKeyIncludingSubkeys(HKCU, 'Software\Classes\.osp');
+  if RegKeyExists(HKCU, 'Software\Classes\OSAS.Project') then
+    RegDeleteKeyIncludingSubkeys(HKCU, 'Software\Classes\OSAS.Project');
+  DeleteFile(Expand('{userprograms}\O-Draft.lnk'));
+end;
+
+function RunSelectedRemovals(var Summary: String): Boolean;
+var
+  Ok: Boolean;
+  Lines: String;
+begin
+  Ok := True;
+  Lines := '';
+  if Assigned(WizardForm) then
+    WizardForm.ProgressGauge.Style := npbstNormal;
+  SetProgress(5, 'Preparing removal…');
+
+  if RemoveStudio then
+  begin
+    if FileExistsExpanded('{localappdata}\Programs\O-Studio\Uninstall.exe') then
+    begin
+      if not ExecAndWait(Expand('{localappdata}\Programs\O-Studio\Uninstall.exe'), '/S', 'Removing O-Studio…') then
+      begin
+        Ok := False;
+        Lines := Lines + '- O-Studio: uninstaller reported an error.' + #13#10;
+      end
+      else
+        Lines := Lines + '- O-Studio removed.' + #13#10;
+    end
+    else
+      Lines := Lines + '- O-Studio was not installed (skipped).' + #13#10;
+    SetProgress(40, 'O-Studio step finished.');
+  end;
+
+  if RemoveCoreOp then
+  begin
+    if FileExistsExpanded('{localappdata}\Programs\O-CoreOp\unins000.exe') then
+    begin
+      if not ExecAndWait(Expand('{localappdata}\Programs\O-CoreOp\unins000.exe'), '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', 'Removing O-CoreOp…') then
+      begin
+        Ok := False;
+        Lines := Lines + '- O-CoreOp: uninstaller reported an error.' + #13#10;
+      end
+      else
+        Lines := Lines + '- O-CoreOp removed.' + #13#10;
+    end
+    else
+      Lines := Lines + '- O-CoreOp was not installed (skipped).' + #13#10;
+    SetProgress(70, 'O-CoreOp step finished.');
+  end;
+
+  if RemoveDraft then
+  begin
+    SetProgress(80, 'Removing O-Draft…');
+    RemoveDraftLayout;
+    Lines := Lines + '- O-Draft removed.' + #13#10;
+  end;
+
+  Lines := Lines + #13#10 +
+    'The assistant model in %LocalAppData%\HumanCentricWorks\models, company files (.osas), and project files (.osp) were not deleted.';
+  Summary := Lines;
+  SetProgress(100, 'Removal finished.');
+  Result := Ok;
+end;
+
+procedure DeselectAllInstallComponents;
+begin
+  WizardSelectComponents('');
+end;
+
+procedure EnsureInstallDependencies;
+var
+  Names: String;
+begin
+  if (WizardIsComponentSelected('coreop') or WizardIsComponentSelected('draft')) and
+     (not WizardIsComponentSelected('studio')) then
+  begin
+    Names := 'studio';
+    if WizardIsComponentSelected('coreop') then
+      Names := Names + ',coreop';
+    if WizardIsComponentSelected('draft') then
+      Names := Names + ',draft';
+    WizardSelectComponents(Names);
+  end;
+end;
+
+function ModelPath: String;
+begin
+  Result := Expand('{localappdata}\HumanCentricWorks\models\{#ModelFile}');
+end;
+
+procedure SuiteModePageClick(Sender: TObject);
+begin
+  SuiteModeInstall := (TNewRadioButton(Sender).Tag = 0);
+end;
+
+procedure CreateSuiteWizardPages;
+var
+  Top: Integer;
+  RInstall, RRemove: TNewRadioButton;
+  Lbl: TNewStaticText;
+begin
+  SuiteModePage := CreateCustomPage(wpWelcome, 'Setup mode', 'Install new applications or remove ones you no longer need.');
+  Top := 0;
+  RInstall := TNewRadioButton.Create(SuiteModePage);
+  RInstall.Parent := SuiteModePage.Surface;
+  RInstall.Caption := 'Install or add applications';
+  RInstall.Top := Top;
+  RInstall.Width := SuiteModePage.SurfaceWidth;
+  RInstall.Tag := 0;
+  RInstall.Checked := True;
+  RInstall.OnClick := @SuiteModePageClick;
+  Top := Top + RInstall.Height + ScaleY(8);
+
+  RRemove := TNewRadioButton.Create(SuiteModePage);
+  RRemove.Parent := SuiteModePage.Surface;
+  RRemove.Caption := 'Remove applications';
+  RRemove.Top := Top;
+  RRemove.Width := SuiteModePage.SurfaceWidth;
+  RRemove.Tag := 1;
+  RRemove.OnClick := @SuiteModePageClick;
+  if not AnySuiteAppInstalled then
+    RRemove.Enabled := False;
+
+  RemoveSelectPage := CreateCustomPage(SuiteModePage.ID, 'Remove applications', 'Select the applications to remove. Shared data (company files, projects, assistant model) is kept.');
+  RemoveList := TNewCheckListBox.Create(RemoveSelectPage);
+  RemoveList.Parent := RemoveSelectPage.Surface;
+  RemoveList.Top := 0;
+  RemoveList.Width := RemoveSelectPage.SurfaceWidth;
+  RemoveList.Height := ScaleY(140);
+  RemoveList.AddCheckBox('O-Studio (office and suite hub)', '', 0, IsStudioInstalled, True, True, False, nil);
+  RemoveList.AddCheckBox('O-CoreOp (quantities and billing)', '', 0, IsCoreOpInstalled, True, True, False, nil);
+  RemoveList.AddCheckBox('O-Draft (drafting and take-off)', '', 0, IsDraftInstalled, True, True, False, nil);
+
+  RemoveConfirmPage := CreateCustomPage(RemoveSelectPage.ID, 'Confirm removal', 'Review your choices before anything is deleted.');
+  Lbl := TNewStaticText.Create(RemoveConfirmPage);
+  Lbl.Parent := RemoveConfirmPage.Surface;
+  Lbl.AutoSize := False;
+  Lbl.WordWrap := True;
+  Lbl.Width := RemoveConfirmPage.SurfaceWidth;
+  Lbl.Height := ScaleY(120);
+  Lbl.Caption :=
+    'The selected applications will be uninstalled. ' +
+    'The Olmo assistant model, company files, and project files are not removed. ' +
+    'If you remove O-Studio while O-CoreOp or O-Draft stay installed, use those apps without the suite launcher until you install O-Studio again.';
+
+  RemoveSummaryPage := CreateCustomPage(RemoveConfirmPage.ID, 'Removal complete', 'Summary of what was removed.');
+  RemoveSummaryMemo := TNewStaticText.Create(RemoveSummaryPage);
+  RemoveSummaryMemo.Parent := RemoveSummaryPage.Surface;
+  RemoveSummaryMemo.AutoSize := False;
+  RemoveSummaryMemo.WordWrap := True;
+  RemoveSummaryMemo.Top := 0;
+  RemoveSummaryMemo.Width := RemoveSummaryPage.SurfaceWidth;
+  RemoveSummaryMemo.Height := ScaleY(200);
+  RemoveSummaryMemo.Caption := '';
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+  if not SuiteModeInstall then
+  begin
+    if (PageID = wpSelectComponents) or (PageID = wpSelectTasks) or (PageID = wpReady) or (PageID = wpFinished) then
+      Result := True;
+  end
+  else
+  begin
+    if (PageID = RemoveSelectPage.ID) or (PageID = RemoveConfirmPage.ID) or (PageID = RemoveSummaryPage.ID) then
+      Result := True;
+  end;
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+var
+  ModeParam: String;
+begin
+  Result := True;
+
+  ModeParam := LowerCase(ParamValue('mode'));
+  if (CurPageID = SuiteModePage.ID) and (not SuiteModeInstall) then
+  begin
+    DeselectAllInstallComponents;
+  end;
+
+  if CurPageID = wpSelectComponents then
+    EnsureInstallDependencies;
+
+  if (CurPageID = RemoveSelectPage.ID) and (not SuiteModeInstall) then
+  begin
+    InitRemoveFlagsFromList;
+    if CountRemoveSelected = 0 then
+    begin
+      MsgBox('Select at least one application to remove, or switch back to Install mode.', mbError, MB_OK);
+      Result := False;
+    end;
+  end;
+
+  if (CurPageID = RemoveConfirmPage.ID) and (not SuiteModeInstall) then
+  begin
+    InitRemoveFlagsFromList;
+    if MsgBox('Remove the selected applications now?', mbConfirmation, MB_YESNO) = IDNO then
+    begin
+      Result := False;
+      Exit;
+    end;
+    if Assigned(WizardForm) then
+      WizardForm.ProgressGauge.Style := npbstNormal;
+    RunSelectedRemovals(RemoveSummaryText);
+  end;
+
+  if (CurPageID = wpReady) and WizardIsTaskSelected('model') and (not FileExists(ModelPath)) then
+  begin
+    ModelPage.Clear;
+    ModelPage.Add('{#ModelUrl}', '{#ModelFile}', '{#ModelSha256}');
+    ModelPage.Show;
+    try
+      try
+        ModelPage.Download;
+        ForceDirectories(ExtractFileDir(ModelPath));
+        if not RenameFile(ExpandConstant('{tmp}\{#ModelFile}'), ModelPath) then
+        begin
+          CopyFile(ExpandConstant('{tmp}\{#ModelFile}'), ModelPath, False);
+          DeleteFile(ExpandConstant('{tmp}\{#ModelFile}'));
+        end;
+      except
+        if ModelPage.AbortedByUser then
+          Log('Model download aborted by the user.')
+        else
+          SuppressibleMsgBox(AddPeriod(GetExceptionMessage) + #13#10 +
+            'The assistant will not work until {#ModelFile} is in ' + ExtractFileDir(ModelPath) + '.', mbError, MB_OK, IDOK);
+      end;
+    finally
+      ModelPage.Hide;
+    end;
+  end;
+
+  if ModeParam = 'uninstall' then
+    ; { silent remove handled in InitializeSetup }
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  NeedsRestart := False;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+var
+  Memo: String;
+begin
+  if (CurPageID = RemoveSummaryPage.ID) and (not SuiteModeInstall) then
+  begin
+    Memo := RemoveSummaryText;
+    if Memo = '' then
+      Memo := 'No applications were removed.';
+    RemoveSummaryMemo.Caption := Memo;
+  end;
+
+  if (CurPageID = wpFinished) and (not SuiteModeInstall) then
+    WizardForm.FinishedLabel.Caption := RemoveSummaryText;
+
+  if (CurPageID = wpFinished) and SuiteModeInstall then
+  begin
+    Memo := 'Installation finished.' + #13#10#13#10;
+    if WizardIsComponentSelected('studio') then Memo := Memo + '- O-Studio' + #13#10;
+    if WizardIsComponentSelected('coreop') then Memo := Memo + '- O-CoreOp' + #13#10;
+    if WizardIsComponentSelected('draft') then Memo := Memo + '- O-Draft' + #13#10;
+#ifdef HasForm
+    if WizardIsComponentSelected('form') then Memo := Memo + '- O-Form' + #13#10;
+#endif
+#ifdef HasDynamo
+    if WizardIsComponentSelected('dynamo') then Memo := Memo + '- O-Dynamo' + #13#10;
+#endif
+    Memo := Memo + #13#10 + 'Open O-Studio or the tray launcher to sign in and start sibling apps.';
+    WizardForm.FinishedLabel.Caption := Memo;
+  end;
+end;
+
+function InitializeSetup(): Boolean;
+var
+  ModeParam, RemoveParam: String;
+begin
+  ModeParam := LowerCase(ParamValue('mode'));
+  RemoveParam := LowerCase(ParamValue('remove'));
+  SuiteModeInstall := True;
+
+  if (ModeParam = 'uninstall') or (ModeParam = 'remove') then
+  begin
+    SuiteModeInstall := False;
+    if IsSilentSetup then
+    begin
+      if not ParseRemoveList(RemoveParam) then
+      begin
+        Result := False;
+        Exit;
+      end;
+      if CountRemoveSelected = 0 then
+      begin
+        { default silent remove: everything installed }
+        RemoveStudio := IsStudioInstalled;
+        RemoveCoreOp := IsCoreOpInstalled;
+        RemoveDraft := IsDraftInstalled;
+      end;
+      if not RunSelectedRemovals(RemoveSummaryText) then
+        Log(RemoveSummaryText);
+      Result := False;
+      Exit;
+    end;
+  end;
+
+  Result := True;
+end;
+
+procedure InitializeWizard;
+begin
+  ModelPage := CreateDownloadPage(SetupMessage(msgWizardPreparing), SetupMessage(msgPreparingDesc), nil);
+  CreateSuiteWizardPages;
+
+  if LowerCase(ParamValue('mode')) = 'uninstall' then
+  begin
+    SuiteModeInstall := False;
+    DeselectAllInstallComponents;
+  end;
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  Result := True;
+  if UninstallSilent then
+    Exit;
+  if MsgBox(
+    'This removes every suite application that was installed through O-Suite Setup (respecting the components originally chosen).' + #13#10#13#10 +
+    'To remove only some applications, run O-Suite-Setup.exe again and choose "Remove applications".' + #13#10#13#10 +
+    'Company files, projects, and the assistant model are not deleted.' + #13#10#13#10 +
+    'Continue?',
+    mbConfirmation, MB_YESNO) = IDNO then
+    Result := False;
+end;

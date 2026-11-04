@@ -33,7 +33,7 @@ Compression=lzma2/fast
 SolidCompression=no
 WizardStyle=modern
 LicenseFile={#Stage}\LICENSE
-UninstallDisplayName={#MyAppName} (uninstalls the apps it installed)
+UninstallDisplayName={#MyAppName} (choose apps to remove in Setup, or use Apps and features for full removal)
 VersionInfoVersion={#SuiteVersion}.0
 VersionInfoCompany={#MyPublisher}
 VersionInfoProductName={#MyAppName}
@@ -89,8 +89,8 @@ Root: HKCU; Subkey: "Software\Classes\OSAS.Project\shell\open\command"; ValueTyp
 
 [Run]
 Filename: "{tmp}\O-Studio-Setup.exe"; Parameters: "/S"; StatusMsg: "Installing O-Studio..."; Flags: waituntilterminated; Components: studio
-Filename: "{tmp}\O-CoreOp-Setup.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /TASKS=""model"""; StatusMsg: "Installing O-CoreOp (and downloading the assistant model)..."; Flags: waituntilterminated; Components: coreop; Tasks: model
-Filename: "{tmp}\O-CoreOp-Setup.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"; StatusMsg: "Installing O-CoreOp..."; Flags: waituntilterminated; Components: coreop; Tasks: not model
+Filename: "{tmp}\O-CoreOp-Setup.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /TASKS=""model"""; StatusMsg: "Installing O-CoreOp (assistant model via O-Suite task)..."; Flags: waituntilterminated; Components: coreop; Tasks: model
+Filename: "{tmp}\O-CoreOp-Setup.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /TASKS=""!model"""; StatusMsg: "Installing O-CoreOp..."; Flags: waituntilterminated; Components: coreop; Tasks: not model
 #ifdef HasForm
 Filename: "{tmp}\O-Form-Setup.exe"; Parameters: "/S"; StatusMsg: "Installing O-Form..."; Flags: waituntilterminated; Components: form
 #endif
@@ -98,51 +98,13 @@ Filename: "{tmp}\O-Form-Setup.exe"; Parameters: "/S"; StatusMsg: "Installing O-F
 Filename: "{tmp}\O-Dynamo-Setup.exe"; Parameters: "/S"; StatusMsg: "Installing O-Dynamo..."; Flags: waituntilterminated; Components: dynamo
 #endif
 
+[UninstallDelete]
+Type: filesandordirs; Name: "{localappdata}\Programs\O-Draft"; Components: draft
+
 [UninstallRun]
 ; each app removes itself the way it was installed; the model in %LocalAppData%\HumanCentricWorks and the projects are left alone
-Filename: "{localappdata}\Programs\O-CoreOp\unins000.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"; Flags: waituntilterminated skipifdoesntexist; RunOnceId: "RemoveCoreOp"
-Filename: "{localappdata}\Programs\O-Studio\Uninstall.exe"; Parameters: "/S"; Flags: waituntilterminated skipifdoesntexist; RunOnceId: "RemoveStudio"
+Filename: "{localappdata}\Programs\O-CoreOp\unins000.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"; Flags: waituntilterminated skipifdoesntexist; RunOnceId: "RemoveCoreOp"; Components: coreop
+Filename: "{localappdata}\Programs\O-Studio\Uninstall.exe"; Parameters: "/S"; Flags: waituntilterminated skipifdoesntexist; RunOnceId: "RemoveStudio"; Components: studio
 
 [Code]
-var
-  ModelPage: TDownloadWizardPage;
-
-function ModelPath: String;
-begin
-  Result := ExpandConstant('{localappdata}\HumanCentricWorks\models\{#ModelFile}');
-end;
-
-procedure InitializeWizard;
-begin
-  ModelPage := CreateDownloadPage(SetupMessage(msgWizardPreparing), SetupMessage(msgPreparingDesc), nil);
-end;
-
-{ The model is fetched here once, checked against its SHA-256 and put where both apps look. O-CoreOp's own Setup then finds it and skips its download. }
-function NextButtonClick(CurPageID: Integer): Boolean;
-begin
-  Result := True;
-  if (CurPageID = wpReady) and WizardIsTaskSelected('model') and (not FileExists(ModelPath)) then
-  begin
-    ModelPage.Clear;
-    ModelPage.Add('{#ModelUrl}', '{#ModelFile}', '{#ModelSha256}');
-    ModelPage.Show;
-    try
-      try
-        ModelPage.Download;
-        ForceDirectories(ExtractFileDir(ModelPath));
-        if not RenameFile(ExpandConstant('{tmp}\{#ModelFile}'), ModelPath) then
-        begin
-          CopyFile(ExpandConstant('{tmp}\{#ModelFile}'), ModelPath, False);
-          DeleteFile(ExpandConstant('{tmp}\{#ModelFile}'));
-        end;
-      except
-        if ModelPage.AbortedByUser then
-          Log('Model download aborted by the user.')
-        else
-          SuppressibleMsgBox(AddPeriod(GetExceptionMessage) + #13#10 + 'The assistant will not work until {#ModelFile} is in ' + ExtractFileDir(ModelPath) + '.', mbError, MB_OK, IDOK);
-      end;
-    finally
-      ModelPage.Hide;
-    end;
-  end;
-end;
+#include "O-Suite-Wizard.iss"
