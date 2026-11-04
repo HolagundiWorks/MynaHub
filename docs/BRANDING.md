@@ -98,7 +98,7 @@ Rules: the name of an app is always written with a capital O and a hyphen (O-Cor
 | Part | State |
 |---|---|
 | Light Conditions palette (Ember / Midnight / Grove / Dusk), WCAG 2.2 AA audit | done |
-| The four marks, ICO and tiles, lockups, brand sheet | done: `o-ui` `feat/brand` |
+| The four marks, ICO and tiles, lockups, brand sheet | done: `o-ui` `master` |
 | Accent colour files per app (`SuiteAccent.Orange / Mirage / Sea / Sand`, values updated to Light Conditions) | done |
 | `SuiteFonts` (Names, Display with fallbacks), `SuiteApp.Form` | done; the font files are not added |
 | AI orb — four-colour sphere from the design file (`o-ui/brand/ai/ai-orb.html`) | done |

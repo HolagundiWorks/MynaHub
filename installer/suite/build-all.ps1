@@ -8,9 +8,9 @@
   build-single.ps1 only wraps whatever Setup.exe / zip files already exist (often stale).
 
   Expected sibling repos (names are fixed):
-    O-STUDIO   branch feat/launcher-services (hub + suite iss)
-    O-COREOP   branch feat/project-selection-step3
-    O-DRAFT-main on main (only committed work is packaged; uncommitted edits are not included)
+    O-STUDIO   branch master (hub + suite iss)
+    O-COREOP   branch main
+    O-DRAFT-main on main (the working tree is packaged: commit or stash edits you do not want in the build)
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File installer\suite\build-all.ps1 -Version 1.3.1
