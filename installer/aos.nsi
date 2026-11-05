@@ -67,6 +67,9 @@ Section "Install"
   CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\Assets\app.ico" 0
   CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk" "$INSTDIR\Uninstall.exe"
   CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\Assets\app.ico" 0
+  ; the suite launcher: signs in, chooses the project and starts O-CoreOp and O-Draft on it
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}\O-Suite Launcher.lnk" "$INSTDIR\O-Studio.Launcher.exe" "" "$INSTDIR\Assets\app.ico" 0
+  CreateShortcut "$DESKTOP\O-Suite Launcher.lnk" "$INSTDIR\O-Studio.Launcher.exe" "" "$INSTDIR\Assets\app.ico" 0
 
   ; the entry in Settings > Apps
   WriteRegStr HKCU "Software\${PUBLISHER}\${APP_ID}" "InstallDir" "$INSTDIR"
@@ -87,8 +90,10 @@ SectionEnd
 Section "Uninstall"
   Delete "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk"
   Delete "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk"
+  Delete "$SMPROGRAMS\${APP_NAME}\O-Suite Launcher.lnk"
   RMDir "$SMPROGRAMS\${APP_NAME}"
   Delete "$DESKTOP\${APP_NAME}.lnk"
+  Delete "$DESKTOP\O-Suite Launcher.lnk"
   ; the install folder is fixed and holds only the program, never company files; it is removed only if it is the app's own folder
   IfFileExists "$INSTDIR\${EXE}" 0 +2
     RMDir /r "$INSTDIR"
