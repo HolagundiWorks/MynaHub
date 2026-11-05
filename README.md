@@ -25,6 +25,26 @@ Sign-in uses the admin password. The password needs 12 or more characters. A rec
 
 Shortcuts: Ctrl+N new record, Ctrl+S save, Ctrl+P print, Ctrl+F search, Ctrl+K go to a page.
 
+## The suite launcher
+
+![The O-Studio launcher: choose a company, open a company file or the remembered one, recent companies, and the state of the AI and cloud services](docs/images/launcher-company-login.png)
+
+The launcher (`O-Studio.Launcher.exe`, in the Start menu as **O-Suite Launcher**) is the front door of the suite. It stays in the tray, signs you in, locks one project and starts O-CoreOp and O-Draft on it. An app started on its own, or a double-clicked `.osp`, asks the launcher first.
+
+| Part of the window | What it does |
+|---|---|
+| Header | The suite name and the step ("Choose a company"). The round mark on the right is the AI assistant's state; the database icon is the cloud-sync state. |
+| **Create a new company...** / **Open company file...** | Make a company file or open an existing one, then sign in. |
+| **Open remembered company** | Opens the company chosen last time (greyed out until one is remembered). |
+| **Recent companies** | The company files opened before. |
+| Footer | Which company is remembered. |
+
+After sign-in the launcher lists the company's projects (search by code, name or client) with **Load project**, **Close project** and **New project...**. Loading a project locks it for the suite and starts the app that asked for it; the other apps follow the same choice. The launcher also hosts the shared AI assistant (Olmo 3 7B, on this computer) and the cloud sync.
+
+## Install and remove
+
+One setup, `O-Suite-Setup-<version>.exe`, installs and removes O-Studio, O-CoreOp and O-Draft. **Install:** pick everything or individual apps (O-Studio is added automatically when O-CoreOp or O-Draft is chosen), watch the progress, read the summary. **Remove:** run the same setup, choose *Remove applications*, select the apps, confirm; the setup asks what to do about apps that depend on a removed O-Studio and keeps shared files such as the `.osp` file type while another app still uses it. Company files, projects and the assistant model are never deleted. Details and the silent command line: [installer/suite/README.md](installer/suite/README.md).
+
 ## The suite
 
 O-Studio is one of several apps that share an office's records. The pieces in this repository:
