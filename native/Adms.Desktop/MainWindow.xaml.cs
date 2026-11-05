@@ -185,22 +185,6 @@ public sealed partial class MainWindow : Window
             await OpenPathAsync(path);
     }
 
-    private async void OpenRecent(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button { Tag: RecentCompany row } && row.Exists)
-            await OpenPathAsync(row.Path);
-    }
-
-    private async void RemoveRecent(object sender, RoutedEventArgs e)
-    {
-        if (_busy || _session == null || sender is not Button { Tag: RecentCompany row })
-            return;
-        var removed = await RunEngineAsync("Updating recent companies…", () =>
-            _session.Call("company_recent_remove", new { uuid = row.Uuid }));
-        if (removed)
-            await LoadWelcomeAsync();
-    }
-
     private async void CreateCompany(object sender, RoutedEventArgs e) => await CreateCompanyAsync();
 
     private async Task CreateCompanyAsync()
@@ -1116,7 +1100,6 @@ public sealed partial class MainWindow : Window
         var loaded = await RunEngineAsync("Looking for earlier data…", () =>
         {
             legacy = _session.Call("company_legacy_info");
-            recent = _session.Call("company_recent_list");
         });
         if (!loaded || _companyOpen)
             return;
