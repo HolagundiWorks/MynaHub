@@ -23,11 +23,11 @@ dotnet publish native\Adms.Desktop\Adms.Desktop.csproj -c Release -r win-x64 --s
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 if (-not (Test-Path (Join-Path $stage "architect_office_desktop_lib.dll"))) { throw "The engine DLL was not copied beside the app." }
 
-# Launcher shares O-Studio's self-contained Windows App SDK and .NET payload (BUG-0005); do not publish a second copy under launcher\.
+# The launcher is published self-contained into the same folder as O-Studio.exe: the runtime and Windows App SDK files are the same version, so they overwrite each other
+# instead of being duplicated (BUG-0005). A framework-dependent launcher cannot start here: the folder's hostfxr is the self-contained one and finds no shared .NET.
 Write-Host "2b/3 Publishing launcher beside O-Studio.exe (shared runtime)"
 dotnet publish native\Adms.LoginWidget\Adms.LoginWidget.csproj -c Release -r win-x64 `
-    --self-contained false `
-    -p:WindowsAppSDKSelfContained=false `
+    --self-contained true `
     -o $stage
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish (launcher) failed" }
 if (-not (Test-Path (Join-Path $stage "O-Studio.Launcher.exe"))) { throw "O-Studio.Launcher.exe was not published." }
