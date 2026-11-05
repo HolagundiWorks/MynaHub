@@ -120,6 +120,8 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
         }
 
         _open = new CompanyLoginWidget();
+        // A WinUI window made in code stays hidden until it is activated.
+        _open.Activate();
     }
 
     internal static void ShowError(string message)
