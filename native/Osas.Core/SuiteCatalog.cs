@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Microsoft.Win32;
 
 namespace Osas.Core;
 
@@ -33,11 +34,45 @@ public static class SuiteCatalog
         return null;
     }
 
+    static string? FindInstallLocationFromRegistry(string productHint)
+    {
+        const string root = @"Software\Microsoft\Windows\CurrentVersion\Uninstall";
+        using var uninstall = Registry.CurrentUser.OpenSubKey(root);
+        if (uninstall == null)
+            return null;
+        foreach (var sub in uninstall.GetSubKeyNames())
+        {
+            using var key = Registry.CurrentUser.OpenSubKey($@"{root}\{sub}");
+            var name = key?.GetValue("DisplayName") as string;
+            var loc = key?.GetValue("InstallLocation") as string;
+            if (string.IsNullOrWhiteSpace(loc) || string.IsNullOrWhiteSpace(name))
+                continue;
+            if (name.Contains(productHint, StringComparison.OrdinalIgnoreCase))
+                return loc.TrimEnd('\\');
+        }
+
+        return null;
+    }
+
     public static string? FindExecutable(SuiteAppDescriptor app)
     {
+        foreach (var hint in app.ProductNames)
+        {
+            var folder = FindInstallLocationFromRegistry(hint);
+            if (!string.IsNullOrWhiteSpace(folder))
+            {
+                foreach (var exe in app.ExeNames)
+                {
+                    var path = Path.Combine(folder, exe);
+                    if (File.Exists(path))
+                        return path;
+                }
+            }
+        }
+
         foreach (var name in app.ProductNames)
         {
-            var folder = Microsoft.Win32.Registry.GetValue(
+            var folder = Registry.GetValue(
                 $@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\{name}",
                 "InstallLocation",
                 null) as string;

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -746,7 +747,7 @@ internal static class Ledgers
         var page = form.Body;
         page.Children.Add(Flow.SheetMark("05.01", "Admin", "Firm settings"));
         page.Children.Add(Flow.Heading("Firm settings"));
-        page.Children.Add(Flow.Secondary("The name, registration and tax scheme printed on letters and invoices. Studio owns these details for the suite; CoreOp, Draft and Form read them."));
+        page.Children.Add(Flow.Secondary("The name, registration and tax scheme printed on letters and invoices. Export a company-details file for O-Draft title blocks. O-Draft does not open this company file."));
         var fields = new Dictionary<string, TextBox>();
         foreach (var (key, label) in new[]
         {
@@ -953,7 +954,48 @@ internal static class Ledgers
             LoadProfile();
         };
         // Edit, Save and Cancel sit at the top, under the description, where the page is read.
-        page.Children.Insert(3, new StackPanel { Orientation = Orientation.Horizontal, Spacing = O.Ui.SuiteScale.StackGap, Margin = new Thickness(0, O.Ui.SuiteScale.Space1, 0, O.Ui.SuiteScale.Space2), Children = { edit, save, cancel } });
+        var exportPack = new Button { Content = "Export for O-Draft" };
+        exportPack.Click += async (_, _) =>
+        {
+            var file = await FileDialogs.PickCompanyPackDestination(shell.Window.Handle, "company-details.json");
+            if (file is null)
+                return;
+            var company = new JsonObject
+            {
+                ["name"] = fields["name"].Text.Trim(),
+                ["address"] = fields["address"].Text.Trim(),
+                ["phone"] = fields["phone"].Text.Trim(),
+                ["email"] = fields["email"].Text.Trim(),
+                ["pan"] = fields["pan"].Text.Trim(),
+                ["gstin"] = fields["gstin"].Text.Trim(),
+                ["coa_registration"] = fields["coa_registration"].Text.Trim(),
+                ["architect_name"] = fields["architect_name"].Text.Trim(),
+            };
+            var pack = new JsonObject
+            {
+                ["format"] = "osas-company-pack",
+                ["version"] = 1,
+                ["exported_utc"] = DateTime.UtcNow.ToString("yyyy-MM-dd"),
+                ["company"] = company,
+            };
+            try
+            {
+                await Windows.Storage.FileIO.WriteTextAsync(file, pack.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                shell.Problem(ex.Message);
+                return;
+            }
+            await new ContentDialog
+            {
+                Title = "Export for O-Draft",
+                Content = new TextBlock { Text = "Wrote " + file.Path + ". Import it in O-Draft for title blocks and documentation.", TextWrapping = TextWrapping.Wrap },
+                CloseButtonText = "Close",
+                XamlRoot = (shell.Window.Content as FrameworkElement)?.XamlRoot,
+            }.ShowAsync();
+        };
+        page.Children.Insert(3, new StackPanel { Orientation = Orientation.Horizontal, Spacing = O.Ui.SuiteScale.StackGap, Margin = new Thickness(0, O.Ui.SuiteScale.Space1, 0, O.Ui.SuiteScale.Space2), Children = { edit, save, cancel, exportPack } });
         form.SaveAction = SaveProfile;
         if (shell.CanManage)
             form.Watch([.. fields.Values, scheme, letterhead, codeFormat, ospOnCreate, codeLock]);

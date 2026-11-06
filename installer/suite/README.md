@@ -20,6 +20,8 @@
 4. If **O-Studio** is selected while **O-CoreOp** or **O-Draft** stays installed, Setup asks what to do, because those apps use O-Studio (the suite launcher, sign-in and assistant host): **Yes** removes them as well, **No** keeps them (they run without the launcher until O-Studio is installed again), **Cancel** returns to the selection. A silent setup keeps them and logs it.
 5. Confirm on the **Confirm removal** page, which lists the applications about to be removed.
 6. Progress runs each app’s uninstaller. Removing O-Draft deletes its folder and its "Open in O-Draft" verb; the `.osp` file type is deleted only when O-CoreOp is not installed, so O-CoreOp's own verb and association stay.
+
+Double-clicking a project file (`.osp`) starts O-Draft with that path. The right-click verb **Open in O-CoreOp** starts O-CoreOp with that path. Neither command starts the launcher.
 7. The **Removal complete** page summarizes what was removed. **Company files (`.osas`), projects (`.osp`), and the assistant model are not deleted.**
 
 ## Windows Settings uninstall
@@ -44,7 +46,7 @@ O-Suite-Setup-<v>.exe /VERYSILENT /MODE=uninstall /REMOVE="studio,coreop,draft"
 
 ## Build inputs
 
-**Release build (recommended):** `build-all.ps1` rebuilds O-Studio, O-CoreOp, and O-Draft from the sibling repos, then compiles O-Suite and writes `out/O-Suite-Setup-<version>.manifest.json` (git commits + SHA-256). Only **committed** O-Draft changes on `main` are included; local uncommitted edits are not.
+**Release build (recommended):** `build-all.ps1` rebuilds O-Studio, O-CoreOp, and O-Draft from the sibling working trees, then compiles O-Suite and writes `out/O-Suite-Setup-<version>.manifest.json` (git commits + SHA-256). Uncommitted edits in those trees are packaged; the manifest marks that revision `+dirty`.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File installer\suite\build-all.ps1 -Version 1.3.1

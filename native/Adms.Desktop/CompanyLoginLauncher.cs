@@ -8,9 +8,9 @@ internal static class CompanyLoginLauncher
     internal static bool TryLaunch(out string? error)
     {
         error = null;
-        var exe = Path.Combine(AppContext.BaseDirectory, "O-Studio.Launcher.exe");
+        var exe = Path.Combine(AppContext.BaseDirectory, "launcher", "O-Studio.Launcher.exe");
         if (!File.Exists(exe))
-            exe = Path.Combine(AppContext.BaseDirectory, "launcher", "O-Studio.Launcher.exe");
+            exe = Path.Combine(AppContext.BaseDirectory, "O-Studio.Launcher.exe");
         if (!File.Exists(exe))
             exe = Path.Combine(AppContext.BaseDirectory, "O-Studio.CompanyLogin.exe");
         if (!File.Exists(exe))

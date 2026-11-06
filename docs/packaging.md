@@ -8,7 +8,7 @@ NSIS per-user Setup.exe (no admin):
 powershell -ExecutionPolicy Bypass -File installer\build.ps1
 ```
 
-Output: `installer/O-Studio-Setup-<version>.exe` → `%LOCALAPPDATA%\Programs\O-Studio\` (`O-Studio.exe` and `O-Studio.Launcher.exe` in the same folder; one shared Windows App SDK payload).
+Output: `installer/O-Studio-Setup-<version>.exe` → `%LOCALAPPDATA%\Programs\O-Studio\` (`O-Studio.exe` at the root; `O-Studio.Launcher.exe` under `launcher\` with its own WinUI `resources.pri` so the two exes do not overwrite each other).
 
 ### SQLite (no separate install)
 

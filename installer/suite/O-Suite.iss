@@ -80,12 +80,12 @@ Source: "{#Stage}\draft\*"; DestDir: "{localappdata}\Programs\O-Draft"; Flags: i
 Name: "{userprograms}\O-Draft"; Filename: "{localappdata}\Programs\O-Draft\ODraft.WinUi.exe"; WorkingDir: "{localappdata}\Programs\O-Draft"; Components: draft
 
 [Registry]
-; The O-Suite project file (.osp): double-click goes to the launcher, which signs in, locks the project that holds the file and opens it in O-Draft;
-; the right-click menu also has O-CoreOp (registered by its own Setup).
+; The O-Suite project file (.osp): double-click opens the file in O-Draft. O-CoreOp's own Setup adds "Open in O-CoreOp".
+; Neither verb starts the launcher.
 Root: HKCU; Subkey: "Software\Classes\.osp"; ValueType: string; ValueName: ""; ValueData: "OSAS.Project"; Flags: uninsdeletevalue; Components: draft
 Root: HKCU; Subkey: "Software\Classes\OSAS.Project"; ValueType: string; ValueName: ""; ValueData: "O-Suite project"; Components: draft
 Root: HKCU; Subkey: "Software\Classes\OSAS.Project\shell\open"; ValueType: string; ValueName: ""; ValueData: "Open in O-Draft"; Flags: uninsdeletekey; Components: draft
-Root: HKCU; Subkey: "Software\Classes\OSAS.Project\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{localappdata}\Programs\O-Studio\O-Studio.Launcher.exe"" --open ""%1"" --app O-Draft"; Components: draft
+Root: HKCU; Subkey: "Software\Classes\OSAS.Project\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{localappdata}\Programs\O-Draft\ODraft.WinUi.exe"" ""%1"""; Components: draft
 
 [Run]
 Filename: "{tmp}\O-Studio-Setup.exe"; Parameters: "/S"; StatusMsg: "Installing O-Studio..."; Flags: waituntilterminated; Components: studio

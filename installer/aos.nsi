@@ -56,9 +56,11 @@ Section "Install"
   SetOutPath "$INSTDIR"
   ; the program was called Adms.Desktop before; remove those files so an upgrade leaves one program behind
   Delete "$INSTDIR\Adms.Desktop.*"
-  ; an older install duplicated the WinUI payload under launcher\ (BUG-0005) or left a broken launcher exe here (BUG-0019)
+  ; remove a broken copy of the launcher from the install root (BUG-0019); keep launcher\ as the real payload (BUG-0033)
   Delete "$INSTDIR\O-Studio.Launcher.*"
-  RMDir /r "$INSTDIR\launcher"
+  ; force WinUI PRI refresh on upgrade (BUG-0033: a shared-folder publish left the wrong resources.pri at the root)
+  Delete "$INSTDIR\resources.pri"
+  Delete "$INSTDIR\launcher\resources.pri"
   File /r "${SOURCE}\*.*"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
@@ -68,8 +70,8 @@ Section "Install"
   CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk" "$INSTDIR\Uninstall.exe"
   CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\Assets\app.ico" 0
   ; the suite launcher: signs in, chooses the project and starts O-CoreOp and O-Draft on it
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\O-Suite Launcher.lnk" "$INSTDIR\O-Studio.Launcher.exe" "" "$INSTDIR\Assets\app.ico" 0
-  CreateShortcut "$DESKTOP\O-Suite Launcher.lnk" "$INSTDIR\O-Studio.Launcher.exe" "" "$INSTDIR\Assets\app.ico" 0
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}\O-Suite Launcher.lnk" "$INSTDIR\launcher\O-Studio.Launcher.exe" "" "$INSTDIR\Assets\app.ico" 0
+  CreateShortcut "$DESKTOP\O-Suite Launcher.lnk" "$INSTDIR\launcher\O-Studio.Launcher.exe" "" "$INSTDIR\Assets\app.ico" 0
 
   ; the entry in Settings > Apps
   WriteRegStr HKCU "Software\${PUBLISHER}\${APP_ID}" "InstallDir" "$INSTDIR"
