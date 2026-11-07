@@ -18,9 +18,9 @@ internal static class SuiteHub
     /// <summary>Known suite apps launched from Studio cards. Discovery is best-effort.</summary>
     internal static IReadOnlyList<SuiteCard> Cards { get; } =
     [
-        new("O-CoreOp", "Quantities, estimates and billing", "O-CoreOp", ["O-CoreOp", "AQCCore"], "O-CoreOp.exe", "AQCCore.exe"),
-        new("O-Draft", "Drafting", "O-Draft", ["O-Draft", "AAD"], "O-Draft.exe", "aad-host.exe"),
-        new("O-Form", "3D / BIM form", "O-Form", ["O-Form"], "O-Form.exe"),
+        new("Falcon", "Quantities, estimates and billing", "O-CoreOp", ["O-CoreOp", "AQCCore"], "O-CoreOp.exe", "AQCCore.exe"),
+        new("Tren", "Drafting", "O-Draft", ["O-Draft", "AAD"], "O-Draft.exe", "aad-host.exe"),
+        new("Finch", "3D / BIM form", "O-Form", ["O-Form"], "O-Form.exe"),
     ];
 
     internal static string? CompanyPath() => SuiteJsonHub.CompanyPath();

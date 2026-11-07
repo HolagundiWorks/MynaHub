@@ -54,7 +54,7 @@ Record in every run report: the installer file name and SHA-256, the commit of e
 |---|---|---|
 | Test company `TestCo-<date>.osas` | run `dotnet run --project native/Adms.TestSeed -c Release` (creates company under `D:\Work Development\TestRuns\<date>\`, role users, demo client/project, copies `small.osp`; passwords in `docs/testing/.local/credentials.txt`) | all |
 | Re-link Documents `001-1` + DEMO drawing to TC-01 without re-seeding | `dotnet run --project native/Adms.TestSeed -c Release -- "D:\Work Development\TestRuns\<date>" --wire-only` | all |
-| Test users, one per role | create in O-Studio (Owner, Principal, Accounts, Document editor, Auditor) | role tests |
+| Test users, one per role | create in Kivo (Owner, Principal, Accounts, Document editor, Auditor) | role tests |
 | Small DXF/DWG | `Adms.TestSeed` copies `OneDrive\Documents\OSAS TEST\DEMO.dwg` (and `D1.dwg`) into `<test folder>\cad\`, and into `projects\tc-01-1\draft\`; also copies `drawing.osp` and `projects\001-1\` into `<test folder>\from-documents\`. Paths are listed in `docs/testing/.local/credentials.txt`. Plus `O-DRAFT-main\crates\engine\tests\fixtures` and `docs/qa` files | Draft |
 | `small.osp` | `O-COREOP\BBSDesktop\Office.Shared.Tests\Fixtures\small.osp` (copy; never test on the fixture itself) | CoreOp, Draft |
 | Empty `.osp` | `cargo run -p aad-odp --example pack -- test.osp Test --drawing demo.dxf` | Draft, CoreOp |
@@ -69,10 +69,10 @@ Test folder: `D:\Work Development\TestRuns\<yyyy-mm-dd>\` (outside every reposit
 | Need | Tool |
 |---|---|
 | Drive and read WinUI windows | UI Automation (PowerShell `System.Windows.Automation`), or the repository's UIA scripts: `O-COREOP\BBSDesktop\tests\e2e\*.ps1` (`run-e2e.ps1`, `uia-smoke.ps1`, `uia-osp-takeoff.ps1`, `e2e-draft-coreop-takeoff.ps1`). Prefer UIA element names to screen coordinates. Verify what is under a click point before clicking |
-| Drive O-Draft without the mouse | `aad-cli` (`aad-cli run --script file.scr`), the JSON control channel on `127.0.0.1`, or the MCP server ([control-protocol.md](../../../O-DRAFT-main/docs/control-protocol.md)); every command in the menus is also a command |
-| Read the launcher's state | `%LOCALAPPDATA%\O-Studio\launcher-status.txt` (AI agent, database, cloud sync; rewritten at least every 20 s) and `%LOCALAPPDATA%\OSAS\suite.json` |
+| Drive Tren without the mouse | `aad-cli` (`aad-cli run --script file.scr`), the JSON control channel on `127.0.0.1`, or the MCP server ([control-protocol.md](../../../O-DRAFT-main/docs/control-protocol.md)); every command in the menus is also a command |
+| Read Myna's state | `%LOCALAPPDATA%\O-Studio\launcher-status.txt` (AI agent, database, cloud sync; rewritten at least every 20 s) and `%LOCALAPPDATA%\OSAS\suite.json` |
 | Read the project file | `cargo run -p aad-odp --example inspect -- file.osp` |
-| Unit and integration suites (run first, they are the baseline) | `cargo test --workspace` (O-Draft); `dotnet test AQC.CadImport.Tests` and `dotnet test Office.Shared.Tests` (O-CoreOp); `cargo test` in each O-Studio crate (`office-core`, `office-ffi`, `office-agent`) and `dotnet test native\Osas.Core.Tests` |
+| Unit and integration suites (run first, they are the baseline) | `cargo test --workspace` (Tren); `dotnet test AQC.CadImport.Tests` and `dotnet test Office.Shared.Tests` (Falcon); `cargo test` in each Kivo crate (`office-core`, `office-ffi`, `office-agent`) and `dotnet test native\Osas.Core.Tests` |
 | Screenshots | `System.Drawing` `CopyFromScreen` of the window rectangle only |
 | Crashes | Windows Application event log (`Application Error`, `.NET Runtime`): copy the faulting module and exception code into the bug |
 
@@ -82,8 +82,8 @@ Record, and fix or log, any failure here first:
 
 | ID | Check | Expected |
 |---|---|---|
-| ENV-01 | `cargo test --workspace` in O-Draft | 0 failed (last known: 1652 passed) |
+| ENV-01 | `cargo test --workspace` in Tren | 0 failed (last known: 1652 passed) |
 | ENV-02 | `dotnet test` AQC.CadImport.Tests, Office.Shared.Tests | 0 failed (last known: 88 and 91) |
-| ENV-03 | `dotnet test native\Osas.Core.Tests` in O-Studio | note any failures; `SuiteCompanyTests.The_environment_an_app_is_started_with_names_the_company_and_the_ticket` is a known failure (BUG-0001) |
+| ENV-03 | `dotnet test native\Osas.Core.Tests` in Kivo | note any failures; `SuiteCompanyTests.The_environment_an_app_is_started_with_names_the_company_and_the_ticket` is a known failure (BUG-0001) |
 | ENV-04 | all four installers build and the suite installer installs silently | exit code 0, three app folders exist |
 | ENV-05 | uninstall through "O-Suite" in Apps and features | the apps are removed; the model, company files and projects stay |

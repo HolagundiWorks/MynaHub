@@ -16,7 +16,7 @@ internal sealed partial class CompanyLoginWidget
 {
     const double Touch = 48;
 
-    readonly TextBlock _barTitle = new() { Text = "O-Studio suite", Style = (Style)Application.Current.Resources["SectionTitleStyle"], FontFamily = O.Ui.SuiteFonts.Names, TextTrimming = TextTrimming.CharacterEllipsis };
+    readonly TextBlock _barTitle = new() { Text = "Myna", Style = (Style)Application.Current.Resources["SectionTitleStyle"], FontFamily = O.Ui.SuiteFonts.Names, TextTrimming = TextTrimming.CharacterEllipsis };
     readonly TextBlock _barSub = new() { Style = (Style)Application.Current.Resources["CaptionStyle"], TextTrimming = TextTrimming.CharacterEllipsis, Opacity = 0.8 };
     readonly StatusIcon _barAi = StatusIcon.Orb(42);
     readonly StatusIcon _barDb = new("\uEE94", 36);

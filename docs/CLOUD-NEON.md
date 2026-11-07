@@ -1,8 +1,8 @@
-# O-Studio and Neon (cloud sync)
+# Kivo and Neon (cloud sync)
 
-Cloud sync for `.osp` project files is **O-Studio only** — see [ODP-PROJECT-FILE-AND-SYNC.md](ODP-PROJECT-FILE-AND-SYNC.md). O-Draft and O-CoreOp keep opening the local `.osp`; they never store Neon keys.
+Cloud sync for `.osp` project files is **Kivo only** — see [ODP-PROJECT-FILE-AND-SYNC.md](ODP-PROJECT-FILE-AND-SYNC.md). Tren and Falcon keep opening the local `.osp`; they never store Neon keys.
 
-This document explains how to **create** a Neon project, **connect** it to the O-Studio repository, and **smoke-test** the four services before any WinUI “Cloud sync” UI exists.
+This document explains how to **create** a Neon project, **connect** it to the Kivo repository, and **smoke-test** the four services before any WinUI “Cloud sync” UI exists.
 
 ---
 
@@ -13,7 +13,7 @@ This document explains how to **create** a Neon project, **connect** it to the O
 | **Neon Console / CLI** | Org, project, branch, Postgres, Object Storage, Functions, Realtime |
 | **Repo root** | `neon.ts` (what to deploy), `.neon` (linked org/project/branch), `cloud/` (sync schema + verify) |
 | **`.env.local`** | Connection strings and secrets on **your machine only** (gitignored). Copy from [`.env.example`](../.env.example). |
-| **Launcher + WinUI O-Studio** | The **launcher** runs the background sync (push every 2 s, Postgres `LISTEN` pull) from sign-in on. **O-Studio, Suite → Cloud sync**: test connection, enable sync per project, push or pull now. Credentials: `%LocalAppData%\\OSAS\\neon.env` (copy from repo `.env.local`). |
+| **Launcher + WinUI Kivo** | **Myna** runs the background sync (push every 2 s, Postgres `LISTEN` pull) from sign-in on. **Kivo, Suite → Cloud sync**: test connection, enable sync per project, push or pull now. Credentials: `%LocalAppData%\\OSAS\\neon.env` (copy from repo `.env.local`). |
 
 **Testing credentials:** A shared test project/password is fine for experiments. Put values only in `.env.local` or a password manager — never commit them, paste them in issues, or check them into the company file.
 
@@ -78,7 +78,7 @@ That writes:
 
 The repo’s [`neon.ts`](../neon.ts) tells Neon what to provision on **`neon deploy`**:
 
-| Declaration | Purpose for O-Studio |
+| Declaration | Purpose for Kivo |
 | --- | --- |
 | Postgres (always) | Sync metadata: `osp_project`, `osp_project_revision`, `osp_markup` ([`cloud/src/schema.ts`](../cloud/src/schema.ts)) |
 | `buckets.uploads` | Private bucket for `.osp` snapshots (`S3_BUCKET=uploads`) |
@@ -106,7 +106,7 @@ npm install
 
 You should get (names may vary slightly by CLI version):
 
-| Variable | Use in O-Studio |
+| Variable | Use in Kivo |
 | --- | --- |
 | `DATABASE_URL` / `DATABASE_URL_UNPOOLED` | Direct Postgres (migrations, Realtime DB name) |
 | `DATABASE_URL_POOLED` | App traffic (pooler host) — preferred in `cloud/` verify |
@@ -151,15 +151,15 @@ This runs [`cloud/src/verify.ts`](../cloud/src/verify.ts): creates sync tables i
 
 ---
 
-## 5. How O-Studio the **app** connects
+## 5. How Kivo the **app** connects
 
 Built in WinUI (**Suite → Cloud sync**). Architecture: [SUITE.md](SUITE.md) and [ODP-PROJECT-FILE-AND-SYNC.md](ODP-PROJECT-FILE-AND-SYNC.md).
 
-1. **Only O-Studio** holds Neon credentials (`%LocalAppData%\\O-Studio\\neon.env` or `OSTUDIO_NEON_ENV_FILE`).
+1. **Only Kivo** holds Neon credentials (`%LocalAppData%\\O-Studio\\neon.env` or `OSTUDIO_NEON_ENV_FILE`).
 2. **Suite → Cloud sync:** list company projects that have a `project.osp` path, turn sync on per project, **Push now** / **Pull now**, background push every 2s and pull on Postgres `NOTIFY osp_revision`.
 3. **Test connection** checks Postgres schema and Object Storage (`S3_BUCKET`, default **`uploads`** from [`neon.ts`](../neon.ts)).
 4. **Cloud ahead:** when push fails because another device uploaded first, Studio offers **Take cloud copy** or **Back up local, then pull** (sibling `.osp` backup file).
-5. **O-Draft / O-CoreOp** unchanged: local `.osp` only; they detect new revisions via existing polls.
+5. **Tren / Falcon** unchanged: local `.osp` only; they detect new revisions via existing polls.
 
 Developers without WinUI can still run **`npm run verify`** (same services as the app connector uses).
 

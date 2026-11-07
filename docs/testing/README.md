@@ -1,8 +1,8 @@
 # Suite test program
 
 **Audience:** the Cursor agent that runs the suite's tests, and the people who read its reports.
-**Scope:** every feature of O-Studio, O-CoreOp, O-Draft and the O-Studio launcher, one by one; then the apps working together; then bug reports, fixes and re-tests.
-**Canonical copy:** O-Studio repository, `docs/testing/`. O-Draft and O-CoreOp keep a short pointer (`docs/TEST-PROGRAM.md`).
+**Scope:** every feature of Kivo, Falcon, Tren and Myna, one by one; then the apps working together; then bug reports, fixes and re-tests.
+**Canonical copy:** Kivo repository, `docs/testing/`. Tren and Falcon keep a short pointer (`docs/TEST-PROGRAM.md`).
 **Terms:** names, files and links are in [../SUITE.md](../SUITE.md). Use the names in that file in every report.
 
 ## 1. What the agent must produce
@@ -68,8 +68,8 @@ Every plan lists cases as rows: `ID | Feature | Steps | Expected | How to check`
 
 | App | Plan | Areas |
 |---|---|---|
-| O-Studio launcher | [PLAN-LAUNCHER.md](PLAN-LAUNCHER.md) | tray icon and menu, status lines and status file, single instance, company sign-in window, ticket launch, hand-off to O-Studio |
-| O-Studio | [PLAN-O-STUDIO.md](PLAN-O-STUDIO.md) | company file, users and roles, practice register, documents, billing, books, reports and tax, office, tasks, approvals, suite and cloud sync pages, help, shell |
-| O-Draft | [PLAN-O-DRAFT.md](PLAN-O-DRAFT.md) | files, drawing, modify, dimensions, layers, layouts, architecture tools, levels and sheet sets, take-off, electrical, smart blocks, PDF, history and revisions, project file, colour dialog, scripting and automation, AI tools, shell |
-| O-CoreOp | [PLAN-O-COREOP.md](PLAN-O-COREOP.md) | project settings, levels, RCC, civil BOQ, openings, take-off page, CAD bridge, item links, rate book, estimate, PO and reports, personas, schedule, contracts, accounts, stores, HR, assistant, project file, shell |
+| Myna | [PLAN-LAUNCHER.md](PLAN-LAUNCHER.md) | tray icon and menu, status lines and status file, single instance, company sign-in window, ticket launch, hand-off to Kivo |
+| Kivo | [PLAN-O-STUDIO.md](PLAN-O-STUDIO.md) | company file, users and roles, practice register, documents, billing, books, reports and tax, office, tasks, approvals, suite and cloud sync pages, help, shell |
+| Tren | [PLAN-O-DRAFT.md](PLAN-O-DRAFT.md) | files, drawing, modify, dimensions, layers, layouts, architecture tools, levels and sheet sets, take-off, electrical, smart blocks, PDF, history and revisions, project file, colour dialog, scripting and automation, AI tools, shell |
+| Falcon | [PLAN-O-COREOP.md](PLAN-O-COREOP.md) | project settings, levels, RCC, civil BOQ, openings, take-off page, CAD bridge, item links, rate book, estimate, PO and reports, personas, schedule, contracts, accounts, stores, HR, assistant, project file, shell |
 | Connected | [PLAN-INTEGRATION.md](PLAN-INTEGRATION.md) | launcher to apps, company file sharing, `.osp` live sync, assistant hosting, cloud sync, approvals share, install, upgrade and uninstall |

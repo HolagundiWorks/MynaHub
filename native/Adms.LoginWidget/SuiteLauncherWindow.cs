@@ -8,7 +8,7 @@ internal sealed class SuiteLauncherWindow : Window
 {
     public SuiteLauncherWindow()
     {
-        Title = "O-Studio suite";
+        Title = "Myna";
         Content = new Grid { Width = 1, Height = 1 };
         try
         {

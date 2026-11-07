@@ -1,6 +1,6 @@
 # Contract: suite project folder (version 1)
 
-When O-Studio creates a project it also creates an on-disk workspace so O-Draft and O-Form share one root with the `.osp` project file.
+When Kivo creates a project it also creates an on-disk workspace so Tren and Finch share one root with the `.osp` project file.
 
 ## Layout
 
@@ -42,11 +42,11 @@ Root is `<company_file_parent>/projects/…`. Path is stored on `projects.worksp
 
 | Op | App | Does |
 |----|-----|------|
-| `project_save` (create) | O-Studio | Inserts row + scaffolds folder |
-| `project_workspace_ensure` | O-Studio | Re-scaffolds / repairs |
-| `project_workspace_get` | O-Studio | Returns paths + drawing_id |
-| Open Project Folder | O-Form | Binds manifest |
-| `project.open` / open DXF | O-Draft | Uses `draft/` and `project.osp` |
+| `project_save` (create) | Kivo | Inserts row + scaffolds folder |
+| `project_workspace_ensure` | Kivo | Re-scaffolds / repairs |
+| `project_workspace_get` | Kivo | Returns paths + drawing_id |
+| Open Project Folder | Finch | Binds manifest |
+| `project.open` / open DXF | Tren | Uses `draft/` and `project.osp` |
 
 ## Code
 

@@ -2,7 +2,7 @@
 
 Written 2026-10-19; **updated 2026-10-28** for the Studio↔OSAS merge ([studio-osas-merge.md](studio-osas-merge.md)).
 
-**Decision (2026-10-28):** **O-Studio** is the user-facing suite shell. It holds the company details, the admin password, users, and the launcher cards. The suite brand remains **OSAS**; env vars and `suite.json` keep the `OSAS_*` names so CoreOp, Draft and Form do not need a rename. A separate OSAS.exe hub is retired (2026-11-01) once Studio ships these duties.
+**Decision (2026-10-28):** **Kivo** is the user-facing suite shell. It holds the company details, the admin password, users, and Myna cards. The suite brand remains **OSAS**; env vars and `suite.json` keep the `OSAS_*` names so CoreOp, Draft and Form do not need a rename. A separate OSAS.exe hub is retired (2026-11-01) once Studio ships these duties.
 
 ## The model
 
@@ -52,16 +52,16 @@ When an app is started by OSAS without a valid ticket (it expired, or the person
 
 | Data | Owned and edited in | Read by |
 |---|---|---|
-| **Company details**: name, address, registrations, bank, letterhead, accent | **O-Studio** | every app, for reports, title plates, letters, invoices |
-| **Users and sign-in** | **O-Studio** | every app |
-| **Project details**: code, name, site, client, service, floors, brief | **O-Studio** | O-CoreOp and O-Draft, for reports, title plates and other documents |
-| Quantities, estimates, billing | O-CoreOp (full data in `.osp`; **abstracts** in company `aqc.project` when linked) | O-Studio dashboards, fee proposals, Approvals |
-| Drawings and take-off geometry | O-Draft (records in the `.osp`) | O-CoreOp reads the take-off |
+| **Company details**: name, address, registrations, bank, letterhead, accent | **Kivo** | every app, for reports, title plates, letters, invoices |
+| **Users and sign-in** | **Kivo** | every app |
+| **Project details**: code, name, site, client, service, floors, brief | **Kivo** | Falcon and Tren, for reports, title plates and other documents |
+| Quantities, estimates, billing | Falcon (full data in `.osp`; **abstracts** in company `aqc.project` when linked) | Kivo dashboards, fee proposals, Approvals |
+| Drawings and take-off geometry | Tren (records in the `.osp`) | Falcon reads the take-off |
 | **The AI assistant** | **Studio hosts it** (was OSAS) | it reads the other apps through the suite's own connection |
 
-The apps keep no copy of the company or project details. A document is made from one read of the company file, `document_context { project_id? }` (permission: view). It returns the company profile, today's date in the file's clock, and, when a project is named, the project, its client, its brief, the Council of Architecture service in words, and its `ProjectRef`. A change in OSAS or O-Studio shows in the next document any app makes. Apps must not edit what they only read: O-CoreOp and O-Draft do not save company or project details.
+The apps keep no copy of the company or project details. A document is made from one read of the company file, `document_context { project_id? }` (permission: view). It returns the company profile, today's date in the file's clock, and, when a project is named, the project, its client, its brief, the Council of Architecture service in words, and its `ProjectRef`. A change in OSAS or Kivo shows in the next document any app makes. Apps must not edit what they only read: Falcon and Tren do not save company or project details.
 
-**Status.** The engine call `document_context` is built and tested (4 tests). O-Studio already keeps projects in the company file. **O-CoreOp** now reads it (2026-10-19): for a project linked to the company file, the company name, address, contacts, GSTIN and PAN come from OSAS, and the project name, site and client from O-Studio, on opening, on reload, and whenever another app changes the file; the PM party on reports follows the company; those Settings fields are read-only and say where to change them. CIN, the logo and the signatory stay in O-CoreOp. A project not linked to the company file keeps using its own saved details. Run in the app: not yet (it builds and the library is tested). **O-Draft** (branch `feat/o-draft-company-file`, 2026-10-19, not merged): `aad-office` loads `office.dll` and the `companyfile` command sets the drawing's project details from it; `bplttitleblock` prints the company, client, site and date. No project chooser or automatic refresh yet; run in the installed app: not yet.
+**Status.** The engine call `document_context` is built and tested (4 tests). Kivo already keeps projects in the company file. **Falcon** now reads it (2026-10-19): for a project linked to the company file, the company name, address, contacts, GSTIN and PAN come from OSAS, and the project name, site and client from Kivo, on opening, on reload, and whenever another app changes the file; the PM party on reports follows the company; those Settings fields are read-only and say where to change them. CIN, the logo and the signatory stay in Falcon. A project not linked to the company file keeps using its own saved details. Run in the app: not yet (it builds and the library is tested). **Tren** (branch `feat/o-draft-company-file`, 2026-10-19, not merged): `aad-office` loads `office.dll` and the `companyfile` command sets the drawing's project details from it; `bplttitleblock` prints the company, client, site and date. No project chooser or automatic refresh yet; run in the installed app: not yet.
 
 **The assistant runs in the suite.** OSAS, not a separate program the user configures, would host the assistant: it opens the company with the signed-in person's own session, so it can use only what that person's role allows, and its tools are the governed, read-only tools in `office-agent` (and later `aqc.*`, `cad.*`). Changes would be proposals the person approves, written to the audit log. Built 2026-10-19: the assistant inside OSAS, on Claude Sonnet 5.5 by default (Haiku 5.5 and Opus 5.5 selectable), using the person's own API key kept encrypted for their Windows account, and only after they agree to send their questions and the records looked up to Anthropic. It uses the engine operations `agent_tools` and `agent_call`, which run the read-only tools of `office-agent` as the signed-in person and write the audit entry. The tool `company.details` leaves out bank and UPI details. Not yet run against the live service.
 
@@ -69,13 +69,13 @@ The apps keep no copy of the company or project details. A document is made from
 
 | Piece | State |
 |---|---|
-| Engine: company details in `office-core` (`profile.rs`), tickets (`suite.rs`, migration 0030), operations on the office interface and on O-Studio's own interface | Built. 62 tests in `office-core`, 7 in `office-ffi`, and a ticket round trip in O-Studio's interface test |
-| Launcher: choose/create the company file and sign in once. Studio: edit company details and users, write `suite.json`, launch sibling apps with tickets. Studio no longer chooses or creates companies (2026-11-03) | **Implemented** in the launcher and O-Studio. Separate OSAS.exe hub retired ([osas-deprecation.md](osas-deprecation.md)) |
+| Engine: company details in `office-core` (`profile.rs`), tickets (`suite.rs`, migration 0030), operations on the office interface and on Kivo's own interface | Built. 62 tests in `office-core`, 7 in `office-ffi`, and a ticket round trip in Kivo's interface test |
+| Launcher: choose/create the company file and sign in once. Studio: edit company details and users, write `suite.json`, launch sibling apps with tickets. Studio no longer chooses or creates companies (2026-11-03) | **Implemented** in Myna and Kivo. Separate OSAS.exe hub retired ([osas-deprecation.md](osas-deprecation.md)) |
 | Approvals inbox (CoreOp draft → Studio approve → lock → revise) | **Implemented** (`docs/contracts/approvals.md`, Practice → Approvals) |
 | Assistant (governed `agent_tools` / `agent_call`, consent prefs) | **Implemented** local tool runner in Studio (Office → Assistant). Cloud Anthropic chat UI still thin vs the old OSAS page |
-| O-Studio opens `OSAS_COMPANY` and redeems `OSAS_TICKET` at start | Built |
-| O-CoreOp does the same, then shows its company projects | Built |
-| O-Draft | Ticket/companyfile path in progress in Draft; not blocked by this merge |
+| Kivo opens `OSAS_COMPANY` and redeems `OSAS_TICKET` at start | Built |
+| Falcon does the same, then shows its company projects | Built |
+| Tren | Ticket/companyfile path in progress in Draft; not blocked by this merge |
 
 ## Not done
 - **Protected (encrypted) files.** A protected file opens through a decrypted working copy that only one program can hold. While OSAS is signed in to one, the apps cannot open it (they say it is already open); sign out of OSAS first, and each app then asks for the file password itself. Plain files, which most offices use, are shared by all of them.
@@ -83,4 +83,4 @@ The apps keep no copy of the company or project details. A document is made from
 - **Idle lock.** OSAS's own session locks after sitting idle like any other. A ticket can then not be issued, the apps are started with the file only, and each asks for the sign-in. OSAS says so.
 - **Standalone start.** Run without OSAS, an app has no file picker: it offers to start OSAS, or to open the company OSAS last chose and sign in there.
 - **Switching company while apps are open.** An app keeps the company it opened until it is closed; choosing another in OSAS does not move apps that are already open.
-- **Earlier-version data.** O-Studio still offers to convert data from the first release (a one-off migration) on its start screen.
+- **Earlier-version data.** Kivo still offers to convert data from the first release (a one-off migration) on its start screen.

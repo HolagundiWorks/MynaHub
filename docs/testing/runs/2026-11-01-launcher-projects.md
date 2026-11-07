@@ -1,7 +1,7 @@
-﻿# Test run: launcher project selection, installer 1.0.9, 2026-11-01
+# Test run: launcher project selection, installer 1.0.9, 2026-11-01
 
 Agent: Claude (UI Automation against the installed launcher, test company `TestCo-2026-10-31`, owner account)
-Build under test: O-Suite-Setup-1.0.9.exe (O-Studio `feat/project-selection-wire`, O-Draft `feat/project-selection-wire`, O-CoreOp `feat/project-selection-step3` at 397da22)
+Build under test: O-Suite-Setup-1.0.9.exe (Kivo `feat/project-selection-wire`, Tren `feat/project-selection-wire`, Falcon `feat/project-selection-step3` at 397da22)
 
 | Case | Result | Observed |
 |---|---|---|
@@ -9,12 +9,12 @@ Build under test: O-Suite-Setup-1.0.9.exe (O-Studio `feat/project-selection-wire
 | LNC-PRJ-02 search | PASS | `villa` narrows to one; `zzzz` gives none; clearing restores |
 | LNC-PRJ-03 load | PASS | `selected-project.json` holds company, project id, code, name, `.osp` path, user; the list, search, Load and New go inactive and Close project active; `launcher-status.txt` shows `Project: ... (loaded)` |
 | LNC-PRJ-04 folder | PASS | A project without a folder gets the folder and `osas.project.json` when created; the `.osp` itself is made by the app on first open |
-| LNC-PRJ-05 launch | PASS | O-Draft started by the launcher on the loaded project (ODraft.WinUi.exe, BUG-0020 fixed) and created the `.osp`, `active-project.json` names it; O-CoreOp started on the loaded project after BUG-0021 was fixed. Process environment not read directly |
-| LNC-PRJ-06 no project | PASS | `--launch O-Draft` with nothing loaded starts nothing and leaves the request pending; it ran when the project was loaded |
+| LNC-PRJ-05 launch | PASS | Tren started by Myna on the loaded project (ODraft.WinUi.exe, BUG-0020 fixed) and created the `.osp`, `active-project.json` names it; Falcon started on the loaded project after BUG-0021 was fixed. Process environment not read directly |
+| LNC-PRJ-06 no project | PASS | `--launch Tren` with nothing loaded starts nothing and leaves the request pending; it ran when the project was loaded |
 | LNC-PRJ-07 switch while open | PASS | Close project refused with both apps open, naming them; project stays loaded |
 | LNC-PRJ-08 close | PASS | Refused while an app is open; after closing the apps it works, the file is gone and the list is active again |
 | LNC-PRJ-09 reload | PASS | The same project loads again |
-| LNC-PRJ-10 archived | NOT RUN | Needs an archive step in O-Studio |
+| LNC-PRJ-10 archived | NOT RUN | Needs an archive step in Kivo |
 | LNC-PRJ-11 new project | PASS | Created for an existing client, folder made, loaded at once |
 | LNC-PRJ-12 new client | PASS | Client and project created, project loaded |
 | LNC-PRJ-13 bad input | PASS | Empty name, duplicate name for the same client and duplicate code each refused; nothing created, load unchanged |

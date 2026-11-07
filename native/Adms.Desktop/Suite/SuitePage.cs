@@ -74,7 +74,7 @@ internal sealed class SuitePage : UserControl
         var heading = new TextBlock { Text = "Other apps", Style = Resource("SectionTitleStyle") };
         AutomationProperties.SetHeadingLevel(heading, AutomationHeadingLevel.Level2);
         stack.Children.Add(heading);
-        stack.Children.Add(new TextBlock { Text = "Open O-CoreOp, O-Draft and O-Form from the bar at the bottom of the window.", Style = Resource("SecondaryStyle"), TextWrapping = TextWrapping.Wrap });
+        stack.Children.Add(new TextBlock { Text = "Open Falcon, Tren and Finch from the bar at the bottom of the window.", Style = Resource("SecondaryStyle"), TextWrapping = TextWrapping.Wrap });
         return stack;
     }
 }

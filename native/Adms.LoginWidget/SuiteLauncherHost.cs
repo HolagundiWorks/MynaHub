@@ -184,13 +184,13 @@ internal sealed class SuiteLauncherHost
     internal string TrayTooltip()
     {
         if (SignedIn && !string.IsNullOrWhiteSpace(CompanyName))
-            return $"{CompanyName} — {Username} (O-Studio suite)";
+            return $"{CompanyName} — {Username} (Myna)";
         if (CompanyOpen)
-            return $"{CompanyName} — sign in (O-Studio suite)";
+            return $"{CompanyName} — sign in (Myna)";
         var remembered = SuiteJsonHub.CompanyPath();
         return remembered != null
-            ? "O-Studio suite — company remembered, not signed in"
-            : "O-Studio suite launcher";
+            ? "Myna — company remembered, not signed in"
+            : "Myna";
     }
 
     internal async Task LaunchAppAsync(SuiteAppDescriptor app, DispatcherQueue queue)

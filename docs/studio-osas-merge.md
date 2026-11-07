@@ -8,16 +8,16 @@
 | Choice | Value |
 |---|---|
 | Surviving repository | This one (`HolagundiWorks/O-STUDIO` / `holagundiworks/o-studio`) |
-| User-facing shell | **O-Studio** WinUI — company, admin password, users, firm, suite cards, approvals, assistant |
+| User-facing shell | **Kivo** WinUI — company, admin password, users, firm, suite cards, approvals, assistant |
 | Source of truth | Company file via `office-core` / `office-ffi` (`office.dll`) |
-| Suite brand | User-facing hub is **O-Studio**; wire env vars keep the `OSAS_*` contract |
+| Suite brand | User-facing hub is **Kivo**; wire env vars keep the `OSAS_*` contract |
 | Secondary OSAS.exe | **Retired** — see [osas-deprecation.md](osas-deprecation.md) |
 
 ## Implemented vs proposed
 
 | Piece | State |
 |---|---|
-| Studio New / Open company (+ recent list) | **Moved to the launcher** (2026-11-03): Studio has no company chooser or creator; its File menu and welcome panel open the launcher |
+| Studio New / Open company (+ recent list) | **Moved to Myna** (2026-11-03): Studio has no company chooser or creator; its File menu and welcome panel open Myna |
 | Studio writes `%LOCALAPPDATA%\OSAS\suite.json` (path + username) | **Implemented** |
 | People: create / list / reset password / stop sign-in | **Implemented** |
 | Office → Suite apps cards | **Implemented** (scaffold) |

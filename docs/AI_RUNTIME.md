@@ -1,8 +1,8 @@
 # Suite assistant model (Olmo 3 7B)
 
-O-Studio **hosts** the shared Olmo 3 7B Instruct model (`Office.Ai` + `AiCoreListener` on `127.0.0.1:8742`). O-CoreOp and O-Draft connect as clients when launched from O-Studio (`OSAS_AI_ROLE=client`). Install paths, llama.cpp runtime, and the HTTP contract are documented in **O-CoreOp** `docs/LOCAL-MODEL.md`.
+Kivo **hosts** the shared Olmo 3 7B Instruct model (`Office.Ai` + `AiCoreListener` on `127.0.0.1:8742`). Falcon and Tren connect as clients when launched from Kivo (`OSAS_AI_ROLE=client`). Install paths, llama.cpp runtime, and the HTTP contract are documented in **Falcon** `docs/LOCAL-MODEL.md`.
 
-## What O-Studio adds
+## What Kivo adds
 
 | Part | Where |
 |---|---|
@@ -20,7 +20,7 @@ The older **Tulu 3 8B** bundle under `%LOCALAPPDATA%\O-Studio` and `LocalRuntime
 
 ## Lifecycle
 
-1. Sign in to O-Studio → `SuiteAiCoordinator.StartHostIfNeeded()` binds `:8742`.
-2. First question (O-Studio, O-CoreOp, or O-Draft) loads `llama-server` and the GGUF from `%LOCALAPPDATA%\HumanCentricWorks\models\`.
-3. Sign out, close the workspace, or exit O-Studio → listener stops and `LocalLlmHost.Shutdown()` unloads the model.
-4. Launch O-CoreOp or O-Draft from O-Studio → those processes do not load weights; they use the host.
+1. Sign in to Kivo → `SuiteAiCoordinator.StartHostIfNeeded()` binds `:8742`.
+2. First question (Kivo, Falcon, or Tren) loads `llama-server` and the GGUF from `%LOCALAPPDATA%\HumanCentricWorks\models\`.
+3. Sign out, close the workspace, or exit Kivo → listener stops and `LocalLlmHost.Shutdown()` unloads the model.
+4. Launch Falcon or Tren from Kivo → those processes do not load weights; they use the host.

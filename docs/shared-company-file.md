@@ -1,18 +1,18 @@
 # The shared company file
 
-Written 2026-10-19. O-Studio and O-CoreOp work in the same company file (`.adms`) at the same time. Clients and projects are the office's records and exist once. O-CoreOp keeps each project's quantities and estimates in the same file, as a document on that project.
+Written 2026-10-19. Kivo and Falcon work in the same company file (`.adms`) at the same time. Clients and projects are the office's records and exist once. Falcon keeps each project's quantities and estimates in the same file, as a document on that project.
 
-This is roadmap item 2.2. It is built in `office-core` (`company.rs`, `share.rs`), exposed through the office interface (`office-ffi`, [office-abi.md](office-abi.md)), and used by O-CoreOp through `Office.Shared` and the File menu.
+This is roadmap item 2.2. It is built in `office-core` (`company.rs`, `share.rs`), exposed through the office interface (`office-ffi`, [office-abi.md](office-abi.md)), and used by Falcon through `Office.Shared` and the File menu.
 
 ## What is shared
 
 | What | Where it lives | Who writes it |
 |---|---|---|
-| Clients, projects, the project brief, staff, leave, library | The shared tables of the company file | O-Studio, and O-CoreOp through the office interface |
-| A project's quantities, estimates and settings | `project_documents`, kind `aqc.project` (**summary mirror**: `project_ref`, `last_estimate`, `accounts.bills` only — enforced by `validate_body_for_put`) | O-CoreOp on save/calculate when linked to Studio |
-| Invoices, letters, accounts | The company file | O-Studio |
+| Clients, projects, the project brief, staff, leave, library | The shared tables of the company file | Kivo, and Falcon through the office interface |
+| A project's quantities, estimates and settings | `project_documents`, kind `aqc.project` (**summary mirror**: `project_ref`, `last_estimate`, `accounts.bills` only — enforced by `validate_body_for_put`) | Falcon on save/calculate when linked to Studio |
+| Invoices, letters, accounts | The company file | Kivo |
 
-O-CoreOp keeps the content of a project as one JSON document. The relational tables for quantities and estimates are a later step: they would let O-Studio query a BOQ line, and they need O-CoreOp's model (`.bbsproj` version 17, dozens of lists) normalised and migrated. The document store already gives one place for the data, one project identity, revisions and history.
+Falcon keeps the content of a project as one JSON document. The relational tables for quantities and estimates are a later step: they would let Kivo query a BOQ line, and they need Falcon's model (`.bbsproj` version 17, dozens of lists) normalised and migrated. The document store already gives one place for the data, one project identity, revisions and history.
 
 ## Two apps at the same time
 
@@ -31,8 +31,8 @@ Both apps poll every two seconds:
 
 | App | When it sees a change |
 |---|---|
-| O-CoreOp | If the other app saved the open project and nothing is unsaved, the project reloads and a notice says so. With unsaved changes it warns once, and the next save is refused with an offer to reload. |
-| O-Studio | The page being shown refreshes itself if it has nothing unsaved: Pulse, Projects, Clients and the record pages. A page being edited is left alone and refreshes once the edit is finished or saved. |
+| Falcon | If the other app saved the open project and nothing is unsaved, the project reloads and a notice says so. With unsaved changes it warns once, and the next save is refused with an offer to reload. |
+| Kivo | The page being shown refreshes itself if it has nothing unsaved: Pulse, Projects, Clients and the record pages. A page being edited is left alone and refreshes once the edit is finished or saved. |
 
 ## Not overwriting each other
 
@@ -51,11 +51,11 @@ The last ten revisions of each document are kept in `project_document_history`. 
 | `doc_revision` `{ project_id, kind, revision }` | View | A revision from the current one or the history |
 | `doc_put` `{ project_id, kind, expected_revision, body }` | Edit | `{ revision, checksum_sha256 }`, or the conflict message |
 
-A kind is lower-case letters, digits, dots and underscores, starting with a letter. O-CoreOp uses `aqc.project`. A document can be up to 64 MB.
+A kind is lower-case letters, digits, dots and underscores, starting with a letter. Falcon uses `aqc.project`. A document can be up to 64 MB.
 
-## In O-CoreOp
+## In Falcon
 
-- **File > Open the company OSAS chose…** opens the company file remembered in `%LOCALAPPDATA%\OSAS\suite.json` (written by Studio) and asks for the user name and password (and the file password for a protected file). O-CoreOp has no company create of its own: the company is chosen and created in Studio.
+- **File > Open the company OSAS chose…** opens the company file remembered in `%LOCALAPPDATA%\OSAS\suite.json` (written by Studio) and asks for the user name and password (and the file password for a protected file). Falcon has no company create of its own: the company is chosen and created in Studio.
 - **File > Company projects…** lists the projects; Open loads the project's document, or starts a new project filled in from the office's record when it has none; New project creates the client and project in the company file.
 - **File > Save to company file…** puts the project that is open (for example one opened from a `.bbsproj` file) into the company file, as a new project or over an existing one.
 - **Save** writes to the company file for a project that lives there. A conflict offers to reload.
@@ -64,11 +64,11 @@ A kind is lower-case letters, digits, dots and underscores, starting with a lett
 
 ## System of record
 
-The company file is the system of record for clients and projects. O-CoreOp and O-Draft identify a project by `ProjectRef` (`company_uuid` + `project_id`). Fee proposals can copy the O-CoreOp estimate grand total (`project_estimate_summary`) and store its `ArtifactRef`; fee and invoice screens also show O-CoreOp running-bill (RA) totals via `project_ra_summary`.
+The company file is the system of record for clients and projects. Falcon and Tren identify a project by `ProjectRef` (`company_uuid` + `project_id`). Fee proposals can copy the Falcon estimate grand total (`project_estimate_summary`) and store its `ArtifactRef`; fee and invoice screens also show Falcon running-bill (RA) totals via `project_ra_summary`.
 
 ## What is not done
 
-- O-Studio refreshes its Pulse, Projects, Clients and record pages when the other app writes. Its other pages (invoices, letters, books) do not watch; only O-Studio writes those. Quantities stay in the O-CoreOp document (fee proposals and invoices show the estimate summary, not line items).
+- Kivo refreshes its Pulse, Projects, Clients and record pages when the other app writes. Its other pages (invoices, letters, books) do not watch; only Kivo writes those. Quantities stay in the Falcon document (fee proposals and invoices show the estimate summary, not line items).
 - The quantities are one document, not tables (above).
 - The conflict dialog offers reload or keep-mine; there is no merge.
-- O-CoreOp's other stores (rate books, parties, schedules) are inside the project document today.
+- Falcon's other stores (rate books, parties, schedules) are inside the project document today.

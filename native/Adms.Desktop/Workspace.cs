@@ -100,7 +100,7 @@ internal sealed class WorkspaceView : UserControl
     {
         _shell = shell;
         StartLiveSync();
-        AutomationProperties.SetName(_paneLogo, "O-Studio");
+        AutomationProperties.SetName(_paneLogo, "Kivo");
         _shell.RefreshPaneLogo = LoadPaneLogo;
         LoadPaneLogo();
         BuildMenu();
@@ -236,7 +236,7 @@ internal sealed class WorkspaceView : UserControl
                 CornerRadius = new CornerRadius(O.Ui.SuiteScale.CornerControl.TopLeft),
                 Background = Flow.Ink("SelectedFillBrush"),
                 Opacity = installed ? 1 : 0.4,
-                Child = new TextBlock { Text = card.Title[2..3], FontSize = O.Ui.SuiteScale.FontCaption, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+                Child = new TextBlock { Text = card.Title.Length > 0 ? card.Title[..1] : "?", FontSize = O.Ui.SuiteScale.FontCaption, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
             };
         }
         var button = new Button { Content = face, MinHeight = O.Ui.SuiteScale.ControlMinHeight, MinWidth = O.Ui.SuiteScale.ControlMinHeight, Padding = new Thickness(O.Ui.SuiteScale.Space2, 2, O.Ui.SuiteScale.Space2, 2), IsEnabled = installed };
@@ -434,8 +434,8 @@ internal sealed class WorkspaceView : UserControl
     /// <summary>Suite app marks in the window status bar (see <see cref="WireBottomBar"/>).</summary>
     private static readonly Dictionary<string, string> AppMarks = new()
     {
-        ["O-CoreOp"] = "mark-coreop.png",
-        ["O-Draft"] = "mark-draft.png",
+        ["Falcon"] = "mark-coreop.png",
+        ["Tren"] = "mark-draft.png",
     };
 
     private void AddTab(string title, string glyph) => _tabs.Add(new RibbonTab(title, glyph));

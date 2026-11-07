@@ -1,6 +1,6 @@
-# How to use O-Studio
+# How to use Kivo
 
-O-Studio — O-Studio is the office app for one architectural practice. Everything for that practice is stored in a single company file.
+Kivo — Kivo is the office app for one architectural practice. Everything for that practice is stored in a single company file.
 
 ## Start here
 

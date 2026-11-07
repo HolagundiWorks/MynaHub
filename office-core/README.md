@@ -1,6 +1,6 @@
 # Office Core
 
-The shared company file for the architecture office apps: O-Studio (the office app), O-CoreOp (quantities, bar bending, estimation and billing) and O-Draft (CAD).
+The shared company file for the architecture office apps: Kivo (the office app), Falcon (quantities, bar bending, estimation and billing) and Tren (CAD).
 
 Office Core holds the office's clients, projects, staff and library and the company file that holds them.
 
@@ -12,12 +12,12 @@ The crate owns:
 - **The audit log.** `audit` writes to a table that the schema makes append-only.
 - **The shared records.** `clients` (clients, representatives, projects, project brief) and `office` (staff, leave, library), with the checks in `check`.
 
-An app adds its own session, permissions and commands on top, as O-Studio does in `src-tauri/src/clients.rs` and `office.rs`. Apps never write each other's tables. They share these records and refer to each other's records by id.
+An app adds its own session, permissions and commands on top, as Kivo does in `src-tauri/src/clients.rs` and `office.rs`. Apps never write each other's tables. They share these records and refer to each other's records by id.
 
 Test it on its own with `cargo test` in this folder.
 
 ## Schema tracks
-The `core` chain (the migrations in this crate) holds the shared records and the original O-Studio tables, and is versioned by `user_version`. Every other app adds its own tables through a **track** (`track::Track`, applied with `track::migrate`). Each track has its own list of migrations and its own version, kept in the `schema_tracks` table, so each app can ship migrations independently and open the same file in any order.
+The `core` chain (the migrations in this crate) holds the shared records and the original Kivo tables, and is versioned by `user_version`. Every other app adds its own tables through a **track** (`track::Track`, applied with `track::migrate`). Each track has its own list of migrations and its own version, kept in the `schema_tracks` table, so each app can ship migrations independently and open the same file in any order.
 
 Rules, checked on every migration and rolled back if broken:
 - A track creates only objects named `<track>_...` (for example `aqc_schedules`, and its indexes and triggers).
@@ -33,7 +33,7 @@ office_core::track::migrate(&mut conn, &O-CoreOp)?; // this app's tables
 ```
 
 ## Not moved yet
-O-Studio-specific tables (billing, the books, bank, templates, documents) are still in the core chain, because every existing company file has them there in that order. New O-Studio tables should go on an `aos` track rather than the core chain.
+Kivo-specific tables (billing, the books, bank, templates, documents) are still in the core chain, because every existing company file has them there in that order. New Kivo tables should go on an `aos` track rather than the core chain.
 
 ## Using it from an app
 ```rust

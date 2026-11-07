@@ -578,10 +578,10 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         var specs = new (string Ticket, string Title, string Blurb, string Mark, bool NeedsProject)[]
         {
-            ("O-Studio", "O-Studio", "Practice, people, billing", "mark-studio.png", false),
-            ("O-CoreOp", "O-CoreOp", "Estimates and bills", "mark-coreop.png", true),
-            ("O-Draft", "O-Draft", "2D drafting", "mark-draft.png", true),
-            ("O-Form", "O-Form", "3D / BIM form (planned)", "mark-form.png", false),
+            ("O-Studio", "Kivo", "Practice, people, billing", "mark-studio.png", false),
+            ("O-CoreOp", "Falcon", "Estimates and bills", "mark-coreop.png", true),
+            ("O-Draft", "Tren", "2D drafting", "mark-draft.png", true),
+            ("O-Form", "Finch", "3D / BIM form (planned)", "mark-form.png", false),
         };
         for (var i = 0; i < specs.Length; i++)
         {
@@ -598,7 +598,7 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
             if (ticket == "O-Form")
             {
                 tile.IsEnabled = false;
-                ToolTipService.SetToolTip(tile, "O-Form is planned and not built yet.");
+                ToolTipService.SetToolTip(tile, "Finch is planned and not built yet.");
             }
             else
             {
@@ -735,7 +735,7 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
         _signedInPanel.Visibility = panel == _signedInPanel ? Visibility.Visible : Visibility.Collapsed;
         _nav.Visibility = panel == _signedInPanel ? Visibility.Visible : Visibility.Collapsed;
         if (panel != _signedInPanel)
-            SetBar(_companyName.Length > 0 ? _companyName : "O-Studio suite", panel == _welcome ? "Choose a company" : "Sign in to continue");
+            SetBar(_companyName.Length > 0 ? _companyName : "Myna", panel == _welcome ? "Choose a company" : "Sign in to continue");
         UpdateCommands();
     }
 

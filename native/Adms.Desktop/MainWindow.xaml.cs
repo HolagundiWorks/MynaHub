@@ -38,7 +38,7 @@ public sealed partial class MainWindow : Window
     private PrintDocument? _printDocument;
     private IPrintDocumentSource? _printSource;
     private IReadOnlyList<UIElement> _printPages = [];
-    private string _printJob = "O-Studio";
+    private string _printJob = "Kivo";
     private readonly ProgressRing _busyRing = new() { Width = 20, Height = 20, IsActive = false };
     private readonly O.Ui.Controls.SuiteThemeSwitch _suiteTheme = new();
 
@@ -650,7 +650,7 @@ public sealed partial class MainWindow : Window
             _companyPath = "";
             _companyUuid = "";
             _role = "";
-            Title = "O-Studio";
+            Title = "Kivo";
             ClearSecrets();
             ClearWorkspace();
             ShowWelcome();
@@ -1127,7 +1127,7 @@ public sealed partial class MainWindow : Window
         _companyUuid = Text(company, "uuid");
         if (!string.IsNullOrWhiteSpace(_companyPath))
             SuiteHub.RememberCompany(_companyPath);
-        Title = string.IsNullOrWhiteSpace(_companyName) ? "O-Studio" : $"{_companyName} — O-Studio";
+        Title = string.IsNullOrWhiteSpace(_companyName) ? "Kivo" : $"{_companyName} — Kivo";
         var setup = status.TryGetProperty("setup_required", out var setupFlag) && setupFlag.ValueKind == JsonValueKind.True;
         if (setup)
         {
@@ -1331,7 +1331,7 @@ public sealed partial class MainWindow : Window
         var invalid = Path.GetInvalidFileNameChars();
         var cleaned = new string(company.Select(ch => invalid.Contains(ch) ? '-' : ch).ToArray()).Trim();
         if (cleaned.Length == 0)
-            cleaned = "O-Studio";
+            cleaned = "Kivo";
         return cleaned + " preview";
     }
 

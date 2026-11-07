@@ -217,7 +217,7 @@ internal sealed partial class CompanyLoginWidget
             var context = !_privacy.ShareProjectName ? "" : string.IsNullOrWhiteSpace(_projectTitle.Text) ? "No project is loaded." : $"The loaded project is: {_projectTitle.Text}.";
             var request = new JsonObject
             {
-                ["system"] = "You are the assistant of the O-Studio suite (O-Studio, O-CoreOp, O-Draft, O-Form) for an architectural practice. Answer briefly and plainly. " + context,
+                ["system"] = "You are the assistant of Myna (Kivo, Falcon, Tren, Finch) for an architectural practice. Answer briefly and plainly. " + context,
                 ["messages"] = messages,
                 ["max_tokens"] = 600,
             };

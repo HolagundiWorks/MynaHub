@@ -79,7 +79,7 @@ internal sealed class SuiteTrayIcon : IDisposable
             LpszClassName = className,
         };
         RegisterClassEx(ref wc);
-        return CreateWindowEx(0, className, "O-Studio suite", 0, 0, 0, 0, 0, (nint)HwndMessage, 0, wc.HInstance, 0);
+        return CreateWindowEx(0, className, "Myna", 0, 0, 0, 0, 0, (nint)HwndMessage, 0, wc.HInstance, 0);
     }
 
     void LoadIcon()

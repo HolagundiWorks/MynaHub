@@ -954,7 +954,7 @@ internal static class Ledgers
             LoadProfile();
         };
         // Edit, Save and Cancel sit at the top, under the description, where the page is read.
-        var exportPack = new Button { Content = "Export for O-Draft" };
+        var exportPack = new Button { Content = "Export for Tren" };
         exportPack.Click += async (_, _) =>
         {
             var file = await FileDialogs.PickCompanyPackDestination(shell.Window.Handle, "company-details.json");
@@ -989,7 +989,7 @@ internal static class Ledgers
             }
             await new ContentDialog
             {
-                Title = "Export for O-Draft",
+                Title = "Export for Tren",
                 Content = new TextBlock { Text = "Wrote " + file.Path + ". Import it in O-Draft for title blocks and documentation.", TextWrapping = TextWrapping.Wrap },
                 CloseButtonText = "Close",
                 XamlRoot = (shell.Window.Content as FrameworkElement)?.XamlRoot,

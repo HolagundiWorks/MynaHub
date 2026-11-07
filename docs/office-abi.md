@@ -1,6 +1,6 @@
 # The office C interface (version 1)
 
-`office.dll` lets a native app, such as O-CoreOp, share the office company file with O-Studio. It is built from `office-ffi/` with `cargo build --release` there. `native/Office.Interop` is a small .NET wrapper and `native/Office.Smoke` shows it in use; an app that prefers its own wrapper only needs the contract below.
+`office.dll` lets a native app, such as Falcon, share the office company file with Kivo. It is built from `office-ffi/` with `cargo build --release` there. `native/Office.Interop` is a small .NET wrapper and `native/Office.Smoke` shows it in use; an app that prefers its own wrapper only needs the contract below.
 
 This interface is for the office's records: clients, projects, staff, leave and the library.
 
@@ -46,8 +46,8 @@ Every other operation needs a signed-in, unlocked session. Reading needs View. A
 | `data_version` | | `{version, schema_ok}`; the version goes up when another app writes |
 | `doc_get` / `doc_list` / `doc_revision` | project_id, kind [, revision] | a project's document, its documents without bodies, or one revision |
 | `doc_put` | project_id, kind, expected_revision, body | `{revision, checksum_sha256}`, or a refusal if the revision is stale. Kind ≤ 80 chars (fits CoreOp `aqc.ra.draft.<guid>`) |
-| `project_estimate_summary` | project_id | O-CoreOp `last_estimate` totals and refs from kind `aqc.project`, or `{ present: false, reason }` |
-| `project_ra_summary` | project_id | O-CoreOp running-bill (RA) totals from project documents, or `{ present: false, reason }` |
+| `project_estimate_summary` | project_id | Falcon `last_estimate` totals and refs from kind `aqc.project`, or `{ present: false, reason }` |
+| `project_ra_summary` | project_id | Falcon running-bill (RA) totals from project documents, or `{ present: false, reason }` |
 | `studio_draft_list` / `studio_draft_get` | filters / project_id+kind | CoreOp draft envelopes (`aqc.estimate.draft`, `aqc.ra.draft.*`). See [contracts/approvals.md](contracts/approvals.md) |
 | `studio_draft_approve` / `studio_draft_mark_pending` / `studio_draft_mark_superseded` | project_id, kind, expected_revision | envelope state transitions (Issue). Product Approvals path |
 | `approval_submit` | project_id, kind (`estimate`\|`running_bill`), title, body [, supersedes_id] | draft row in `suite_approvals` (Edit). Parallel ABI — CoreOp product share uses `doc_put` kinds instead |
@@ -74,5 +74,5 @@ An app keeps its data in the same file on its own **schema track**, applied with
 
 ## Licensing
 
-O-Studio and O-CoreOp are each dual-licensed AGPL-3.0 or commercial. Do not copy
+Kivo and Falcon are each dual-licensed AGPL-3.0 or commercial. Do not copy
 source between them and permissive suite repos; this contract is what they share.
