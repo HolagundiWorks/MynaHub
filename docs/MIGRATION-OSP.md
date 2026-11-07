@@ -1,6 +1,6 @@
 # Migration: ShilpiDB / `.vdb` → project file (`.osp`)
 
-**Status date:** 2026-10-30 (updated after doc/E2E cleanup). **Canonical suite terms:** [SUITE.md](SUITE.md). **Format spec:** Kivo `docs/ODP-PROJECT-FILE-AND-SYNC.md`. **Falcon behaviour:** [PROJECT-FILE.md](PROJECT-FILE.md).
+**Status date:** 2026-10-30 (updated after doc/E2E cleanup). **Canonical suite terms:** [SUITE.md](SUITE.md). **Format spec:** Kivo `docs/ODP-PROJECT-FILE-AND-SYNC.md`. **Falcon behaviour:** [PROJECT-FILE.md](https://github.com/HolagundiWorks/O-COREOP/blob/main/docs/PROJECT-FILE.md).
 
 This page is the living checklist for retiring the old take-off store (ShilpiDB, `shilpid`, sidecar `.vdb` files) and standardising on **one `.osp` per project**. Keep a copy of this file in sync in each app repo (`docs/MIGRATION-OSP.md`) when you change it.
 
