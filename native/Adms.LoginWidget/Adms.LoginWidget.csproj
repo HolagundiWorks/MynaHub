@@ -6,7 +6,7 @@
     <RootNamespace>Adms.LoginWidget</RootNamespace>
     <AssemblyName>O-Studio.Launcher</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>..\Adms.Desktop\Assets\app.ico</ApplicationIcon>
+    <ApplicationIcon>..\Adms.Desktop\Assets\myna.ico</ApplicationIcon>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -27,7 +27,7 @@
     <EngineProfile Condition="'$(EngineProfile)' == ''">release</EngineProfile>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="..\Adms.Desktop\Assets\app.ico" Link="Assets\app.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Adms.Desktop\Assets\myna.ico" Link="Assets\app.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\Adms.Desktop\Assets\mark.png" Link="Assets\mark.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\Adms.Desktop\Assets\mark-studio.png" Link="Assets\mark-studio.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\Adms.Desktop\Assets\mark-coreop.png" Link="Assets\mark-coreop.png" CopyToOutputDirectory="PreserveNewest" />
