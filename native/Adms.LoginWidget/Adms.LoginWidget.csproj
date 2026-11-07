@@ -27,7 +27,7 @@
     <EngineProfile Condition="'$(EngineProfile)' == ''">release</EngineProfile>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="..\Adms.Desktop\Assets\myna.ico" Link="Assets\app.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\Adms.Desktop\Assets\myna.ico" Link="Assets\myna.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\Adms.Desktop\Assets\mark.png" Link="Assets\mark.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\Adms.Desktop\Assets\mark-studio.png" Link="Assets\mark-studio.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\Adms.Desktop\Assets\mark-coreop.png" Link="Assets\mark-coreop.png" CopyToOutputDirectory="PreserveNewest" />

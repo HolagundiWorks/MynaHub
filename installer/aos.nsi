@@ -70,8 +70,8 @@ Section "Install"
   CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk" "$INSTDIR\Uninstall.exe"
   CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\Assets\app.ico" 0
   ; the suite launcher: signs in, chooses the project and starts O-CoreOp and O-Draft on it
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\O-Suite Launcher.lnk" "$INSTDIR\launcher\O-Studio.Launcher.exe" "" "$INSTDIR\Assets\app.ico" 0
-  CreateShortcut "$DESKTOP\O-Suite Launcher.lnk" "$INSTDIR\launcher\O-Studio.Launcher.exe" "" "$INSTDIR\Assets\app.ico" 0
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}\O-Suite Launcher.lnk" "$INSTDIR\launcher\O-Studio.Launcher.exe" "" "$INSTDIR\launcher\O-Studio.Launcher.exe" 0
+  CreateShortcut "$DESKTOP\O-Suite Launcher.lnk" "$INSTDIR\launcher\O-Studio.Launcher.exe" "" "$INSTDIR\launcher\O-Studio.Launcher.exe" 0
 
   ; the entry in Settings > Apps
   WriteRegStr HKCU "Software\${PUBLISHER}\${APP_ID}" "InstallDir" "$INSTDIR"

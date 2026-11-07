@@ -84,7 +84,7 @@ internal sealed class SuiteTrayIcon : IDisposable
 
     void LoadIcon()
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
+        var path = Path.Combine(AppContext.BaseDirectory, "Assets", "myna.ico");
         if (File.Exists(path))
             _icon = LoadImage(0, path, 1, 0, 0, 0x00000010 | 0x00000040);
     }

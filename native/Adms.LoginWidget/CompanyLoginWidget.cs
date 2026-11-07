@@ -100,7 +100,7 @@ internal sealed partial class CompanyLoginWidget : WidgetWindow
                 _open = null;
         };
 
-        var icon = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
+        var icon = Path.Combine(AppContext.BaseDirectory, "Assets", "myna.ico");
         if (File.Exists(icon))
             AppWindow.SetIcon(icon);
 
