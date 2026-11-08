@@ -7,7 +7,7 @@ namespace Osas.Core;
 public sealed record SelectedProject(string CompanyPath, long ProjectId, string Code, string Name, string OspPath, string LockedBy, DateTimeOffset LockedAt);
 
 /// <summary>
-/// <c>%LOCALAPPDATA%\O-Studio\selected-project.json</c>: the launcher (or O-Studio) writes the locked project, O-CoreOp and O-Draft start on it.
+/// <c>%LOCALAPPDATA%\O-Studio\selected-project.json</c>: the launcher (or Kivo) writes the locked project, Falcon and Tren start on it.
 /// It is a file of its own so that writing the company choice in <c>suite.json</c> never drops it. A selection made for another company reads as none.
 /// </summary>
 public static class SelectedProjectStore

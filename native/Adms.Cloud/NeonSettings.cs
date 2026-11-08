@@ -2,7 +2,7 @@ using Osas.Core;
 
 namespace Adms.Cloud;
 
-/// <summary>Neon credentials for O-Studio only (see docs/CLOUD-NEON.md). Never pass to O-Draft or O-CoreOp.</summary>
+/// <summary>Neon credentials for Kivo only (see docs/CLOUD-NEON.md). Never pass to Tren or Falcon.</summary>
 public sealed class NeonSettings
 {
     public string DatabaseUrl { get; init; } = "";

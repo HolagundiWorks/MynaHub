@@ -26,9 +26,9 @@ public sealed record ModelManifest(string Name, string File, string Sha256, stri
 public sealed record TuluProfile(double Temperature = 0.3, double TopP = 0.9, int MaxNewTokens = 768, int ContextTokens = 8192);
 
 /// <summary>
-/// O-Studio's own local inference component. It finds a bundled llama.cpp server and the Tulu model package, checks the model file
+/// Kivo's own local inference component. It finds a bundled llama.cpp server and the Tulu model package, checks the model file
 /// against its checksum, starts the server on a free loopback port the first time it is needed, waits until it answers, and stops it
-/// when O-Studio closes or the person unloads the assistant. It depends on no other suite app and makes no network call outside this
+/// when Kivo closes or the person unloads the assistant. It depends on no other suite app and makes no network call outside this
 /// computer.
 /// </summary>
 public sealed class LocalRuntime : IDisposable

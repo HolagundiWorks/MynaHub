@@ -4,7 +4,7 @@ using Microsoft.Win32;
 
 namespace Osas.Core;
 
-/// <summary>One installable app in the O-Studio suite (launcher cards and tray menu).</summary>
+/// <summary>One installable app in the Kivo suite (launcher cards and tray menu).</summary>
 public sealed record SuiteAppDescriptor(
     string Title,
     string Blurb,

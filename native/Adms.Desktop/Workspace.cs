@@ -296,7 +296,7 @@ internal sealed class WorkspaceView : UserControl
     }
 
     /// <summary>
-    /// The company file can be open in another app (O-CoreOp) at the same time. Every two seconds this asks the engine whether anyone else
+    /// The company file can be open in another app (Falcon) at the same time. Every two seconds this asks the engine whether anyone else
     /// has written; if so, the page being shown refreshes itself, unless it has unsaved changes, in which case it refreshes once they are gone.
     /// Asking does not count as activity, so an idle session still locks.
     /// </summary>

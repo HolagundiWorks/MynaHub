@@ -7,7 +7,7 @@ This document ties together **where project data lives**, **who may change it**,
 ## 1. Hierarchy (systems of record)
 
 ```
-O-Studio (hub)
+Kivo (hub)
 ├── Company file (.osas)          ← practice identity, RBAC, audit, billing records
 │   ├── Clients, projects, brief, stages, workspace paths
 │   ├── project_documents         ← cross-app mirrors & approval drafts (not full BOQ)
@@ -15,12 +15,12 @@ O-Studio (hub)
 │
 └── Per project
     └── Project file (.osp)       ← drawing, take-off, full estimate / BOQ / RA (SQLite)
-        ├── drawing, drawing_state     (O-Draft writes)
-        ├── takeoff_*                  (O-Draft writes)
-        ├── project_doc                (O-CoreOp writes — authoritative quantities & money)
+        ├── drawing, drawing_state     (Tren writes)
+        ├── takeoff_*                  (Tren writes)
+        ├── project_doc                (Falcon writes — authoritative quantities & money)
         └── meta.revision              (conflict detection)
 
-Neon (optional)                   ← O-Studio only: .osp snapshots + Postgres revision index
+Neon (optional)                   ← Kivo only: .osp snapshots + Postgres revision index
 ```
 
 **Rules**

@@ -1,4 +1,4 @@
-; Installer for O-Studio (the WinUI app and its Rust engine).
+; Installer for Kivo (the WinUI app and its Rust engine).
 ; Build with installer\build.ps1, or:  makensis /DSOURCE=<publish folder> installer\aos.nsi
 ;
 ; Installs for the current user only (no administrator rights), into a fixed folder, so the uninstaller can remove exactly what
@@ -8,7 +8,9 @@ Unicode true
 !include "FileFunc.nsh"
 !insertmacro GetSize
 
-!define APP_NAME "O-Studio"
+!define APP_NAME "Kivo"
+; The install folder, the registry keys and the uninstall id keep the earlier name so an upgrade finds the old install.
+!define APP_DIR "O-Studio"
 !define APP_ID "OStudio"
 !define PUBLISHER "Human Centric Works"
 !define EXE "O-Studio.exe"
@@ -26,7 +28,7 @@ Unicode true
 
 Name "${APP_NAME}"
 OutFile "${OUT}"
-InstallDir "$LOCALAPPDATA\Programs\${APP_NAME}"
+InstallDir "$LOCALAPPDATA\Programs\${APP_DIR}"
 InstallDirRegKey HKCU "Software\${PUBLISHER}\${APP_ID}" "InstallDir"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
@@ -64,14 +66,22 @@ Section "Install"
   File /r "${SOURCE}\*.*"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
+  ; earlier Setups used the old names for the Start menu folder and the launcher shortcuts
+  Delete "$SMPROGRAMS\O-Studio\O-Studio.lnk"
+  Delete "$SMPROGRAMS\O-Studio\Uninstall O-Studio.lnk"
+  Delete "$SMPROGRAMS\O-Studio\O-Suite Launcher.lnk"
+  RMDir "$SMPROGRAMS\O-Studio"
+  Delete "$DESKTOP\O-Studio.lnk"
+  Delete "$DESKTOP\O-Suite Launcher.lnk"
+
   ; shortcuts carry the application icon, so the Start menu, the desktop and the taskbar all show it
   CreateDirectory "$SMPROGRAMS\${APP_NAME}"
   CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\Assets\app.ico" 0
   CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk" "$INSTDIR\Uninstall.exe"
   CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\Assets\app.ico" 0
-  ; the suite launcher: signs in, chooses the project and starts O-CoreOp and O-Draft on it
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\O-Suite Launcher.lnk" "$INSTDIR\launcher\O-Studio.Launcher.exe" "" "$INSTDIR\launcher\O-Studio.Launcher.exe" 0
-  CreateShortcut "$DESKTOP\O-Suite Launcher.lnk" "$INSTDIR\launcher\O-Studio.Launcher.exe" "" "$INSTDIR\launcher\O-Studio.Launcher.exe" 0
+  ; Myna: hosts the assistant and the database service, and chooses the project. Company sign-in is in Kivo.
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}\Myna.lnk" "$INSTDIR\launcher\O-Studio.Launcher.exe" "" "$INSTDIR\launcher\O-Studio.Launcher.exe" 0
+  CreateShortcut "$DESKTOP\Myna.lnk" "$INSTDIR\launcher\O-Studio.Launcher.exe" "" "$INSTDIR\launcher\O-Studio.Launcher.exe" 0
 
   ; the entry in Settings > Apps
   WriteRegStr HKCU "Software\${PUBLISHER}\${APP_ID}" "InstallDir" "$INSTDIR"
@@ -92,10 +102,10 @@ SectionEnd
 Section "Uninstall"
   Delete "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk"
   Delete "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk"
-  Delete "$SMPROGRAMS\${APP_NAME}\O-Suite Launcher.lnk"
+  Delete "$SMPROGRAMS\${APP_NAME}\Myna.lnk"
   RMDir "$SMPROGRAMS\${APP_NAME}"
   Delete "$DESKTOP\${APP_NAME}.lnk"
-  Delete "$DESKTOP\O-Suite Launcher.lnk"
+  Delete "$DESKTOP\Myna.lnk"
   ; the install folder is fixed and holds only the program, never company files; it is removed only if it is the app's own folder
   IfFileExists "$INSTDIR\${EXE}" 0 +2
     RMDir /r "$INSTDIR"

@@ -1,11 +1,11 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Suite glue installer: installs O-Studio (and sibling Setup.exe files when present).
+  Suite glue installer: installs Kivo (and sibling Setup.exe files when present).
 
 .DESCRIPTION
-  Migrated into O-Studio as the surviving OSAS hub (Phase 1 merge). Looks in
-  -ArtifactsDir for O-Studio-Setup-*.exe (and optional O-CoreOp / O-Draft setups)
+  Migrated into Kivo as the surviving OSAS hub (Phase 1 merge). Looks in
+  -ArtifactsDir for O-Studio-Setup-*.exe (and optional Falcon / Tren setups)
   and runs each silently for the current user. Does not create a separate hub app (OSAS.exe is retired, see docs/osas-deprecation.md).
 
 .PARAMETER ArtifactsDir
@@ -47,5 +47,5 @@ foreach ($setup in $found | Sort-Object Name -Unique) {
     }
 }
 
-Write-Host "Suite install finished. Open O-Studio to choose the company file and launch sibling apps."
+Write-Host "Suite install finished. Open Kivo to choose the company file and launch sibling apps."
 exit 0

@@ -1,7 +1,7 @@
 //! Schema tracks: how an app adds its own tables to a shared company file.
 //!
-//! The shared records and the original O-Studio tables are the `core` chain, versioned by `user_version`. Every other app (O-CoreOp, and
-//! later O-Studio additions) has its own track with its own list of migrations and its own version, kept in `schema_tracks`. Two apps
+//! The shared records and the original Kivo tables are the `core` chain, versioned by `user_version`. Every other app (Falcon, and
+//! later Kivo additions) has its own track with its own list of migrations and its own version, kept in `schema_tracks`. Two apps
 //! can therefore ship migrations independently and open the same file in any order.
 //!
 //! A track may only create objects named `<track>_...` and may not alter anything that already exists. It can still refer to the

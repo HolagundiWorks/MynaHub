@@ -4,7 +4,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace Adms.Desktop;
 
-/// <summary>O-CoreOp BOQ, estimate and running-bill abstracts on the project dashboard.</summary>
+/// <summary>Falcon BOQ, estimate and running-bill abstracts on the project dashboard.</summary>
 internal static class ProjectCoreOpDashboard
 {
     public static void PaintHeader(StackPanel host, AppShell shell, long? projectId, Action reload)
@@ -19,7 +19,7 @@ internal static class ProjectCoreOpDashboard
         refresh.Click += (_, _) => reload();
         row.Children.Add(refresh);
         host.Children.Add(row);
-        host.Children.Add(Flow.Secondary("Reads O-CoreOp data saved in this company file (same ProjectRef). Reload after sharing from O-CoreOp."));
+        host.Children.Add(Flow.Secondary("Reads Falcon data saved in this company file (same ProjectRef). Reload after sharing from Falcon."));
         host.Tag = id;
     }
 
@@ -31,7 +31,7 @@ internal static class ProjectCoreOpDashboard
         while (host.Children.Count > 2)
             host.Children.RemoveAt(host.Children.Count - 1);
 
-        host.Children.Add(Flow.Secondary("Loading O-CoreOp abstracts…"));
+        host.Children.Add(Flow.Secondary("Loading Falcon abstracts…"));
         _ = shell.Run("Loading project dashboard…", () =>
         {
             JsonElement boq;

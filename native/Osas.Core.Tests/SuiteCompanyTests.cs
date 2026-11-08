@@ -6,7 +6,7 @@ using Xunit;
 namespace Osas.Core.Tests;
 
 /// <summary>
-/// These talk to the real office engine. They need office.dll (build office-ffi in the O-Studio repository in release mode) and the
+/// These talk to the real office engine. They need office.dll (build office-ffi in the Kivo repository in release mode) and the
 /// environment variable OFFICE_DLL_DIR set to its folder. Without it they do nothing, and one test says so when the variable is set but wrong.
 /// </summary>
 public class SuiteCompanyTests : IDisposable

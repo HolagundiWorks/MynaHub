@@ -19,7 +19,7 @@
 | Active project | `active-project.json`, written by Tren, read by Falcon | the apps decide, not the user |
 | Project wizard | Tren `ProjectWizardWindow` (project details, team, floors and heights, layer sets, tabs, symbols), engine `project.wizard` | mixes project identity with drawing setup |
 | New/Open project | Tren `project.setup`, `project.open`, File > Open/Save As `.osp`; Falcon project settings and open/new | each app has its own |
-| Start-up | launcher/O-Studio pass `OSTUDIO_COMPANY`, `OSTUDIO_TICKET`, `OSTUDIO_USER` | no project in the hand-off |
+| Start-up | launcher/Kivo pass `OSTUDIO_COMPANY`, `OSTUDIO_TICKET`, `OSTUDIO_USER` | no project in the hand-off |
 
 The company file already has the right model (a project owns a workspace folder with one `.osp`). The change is **who chooses**, not where data lives.
 
@@ -32,7 +32,7 @@ The company file already has the right model (a project owns a workspace folder 
 Launcher: sign in -> drop-down of projects (search, recent first)
         -> [New project...]  basic wizard (name, client, code, address) -> workspace + project.osp created now
         -> pick one -> [Lock]   (selection saved in suite.json)
-Start O-Draft / O-CoreOp -> env OSTUDIO_PROJECT_ID + path -> app opens that project.osp, title shows "Project name"
+Start Tren / Falcon -> env OSTUDIO_PROJECT_ID + path -> app opens that project.osp, title shows "Project name"
 Change project -> only in the launcher, refused while an app holds the project (shows which)
 ```
 

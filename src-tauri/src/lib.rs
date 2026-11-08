@@ -1,4 +1,4 @@
-//! O-Studio company-file engine (library / cdylib for the WinUI host).
+//! Kivo company-file engine (library / cdylib for the WinUI host).
 //!
 //! The production window is WinUI 3 (`native/Adms.Desktop`), which loads
 //! `architect_office_desktop_lib` and calls through the C ABI in `ffi`.

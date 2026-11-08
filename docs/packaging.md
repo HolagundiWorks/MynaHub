@@ -42,15 +42,15 @@ powershell -File installer\sign.ps1 installer\O-Studio-Setup-0.1.0.exe
 # Do not ship self-signed builds
 ```
 
-## Suite installer (O-Suite)
+## Suite installer (Kivo Suite)
 
-One **O-Suite-Setup-<version>.exe** installs or removes **Kivo**, **Falcon**, and **Tren** from a single wizard (component checkboxes, install and remove modes, shared assistant model task). Build order and silent flags: [installer/suite/README.md](../installer/suite/README.md) and [docs/testing/TEST-ENVIRONMENT.md](testing/TEST-ENVIRONMENT.md).
+One **Kivo-Suite-Setup-<version>.exe** installs or removes **Kivo**, **Falcon**, and **Tren** from a single wizard (component checkboxes, install and remove modes, shared assistant model task). Build order and silent flags: [installer/suite/README.md](../installer/suite/README.md) and [docs/testing/TEST-ENVIRONMENT.md](testing/TEST-ENVIRONMENT.md).
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File installer\suite\build-single.ps1 -Version 1.3.0
 ```
 
-Output: `installer/suite/out/O-Suite-Setup-<version>.exe` (per user, no administrator). Kivo’s own NSIS Setup is embedded and run silently; Falcon’s Inno Setup likewise; Tren is copied from the portable zip (the per-machine MSI is not used).
+Output: `installer/suite/out/Kivo-Suite-Setup-<version>.exe` (per user, no administrator). Kivo’s own NSIS Setup is embedded and run silently; Falcon’s Inno Setup likewise; Tren is copied from the portable zip (the per-machine MSI is not used).
 
 ## Suite glue (legacy)
 

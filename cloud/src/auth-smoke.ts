@@ -18,7 +18,7 @@ async function main(): Promise<void> {
   const password = process.env.AUTH_TEST_PASSWORD ?? `O-Studio!${randomBytes(12).toString("base64url")}`;
 
   console.log("[auth] Managed Better Auth email sign-up smoke…");
-  const result = await runAuthEmailSmoke(baseUrl, email, password, "O-Studio Auth Smoke");
+  const result = await runAuthEmailSmoke(baseUrl, email, password, "Kivo Auth Smoke");
   console.log("[auth] sign-up/sign-in OK");
   console.log(`[auth] user id: ${result.userId}`);
   console.log(`[auth] email: ${result.email}`);

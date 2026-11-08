@@ -27,9 +27,9 @@ Rules, checked on every migration and rolled back if broken:
 - Track names are lower-case letters and digits, start with a letter, and are not `core`.
 
 ```rust
-const O-CoreOp: Track = Track { name: "aqc", migrations: &[include_str!("../migrations/0001_schedules.sql")] };
+const Falcon: Track = Track { name: "aqc", migrations: &[include_str!("../migrations/0001_schedules.sql")] };
 office_core::migrate(&mut conn)?;          // the core chain
-office_core::track::migrate(&mut conn, &O-CoreOp)?; // this app's tables
+office_core::track::migrate(&mut conn, &Falcon)?; // this app's tables
 ```
 
 ## Not moved yet

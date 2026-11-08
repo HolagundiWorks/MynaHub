@@ -338,7 +338,7 @@ static void EnsureManifestMatchesCompany(string companyFile, long projectId, str
         var draftProject = new
         {
             schema_version = 1,
-            project = new { id = $"prj-{projectId}", code, name, type = "building", description = "Scaffolded by O-Studio", units = new { length = "mm", area = "m2" } },
+            project = new { id = $"prj-{projectId}", code, name, type = "building", description = "Scaffolded by Kivo", units = new { length = "mm", area = "m2" } },
             floors = new[] { new { id = "fl-ground", name = "Ground", code = "GF", kind = "floor", sequence = 0, elevation = 0.0, floor_to_floor = 3000.0 } },
             suite = new { osas_project = "../osas.project.json", drawing_id = drawingId, floors_hint = 1, project_ref = new { v = 1, company_uuid = companyUuid, project_id = projectId } },
         };

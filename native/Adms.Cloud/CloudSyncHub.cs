@@ -4,7 +4,7 @@ using Office.Shared;
 
 namespace Adms.Cloud;
 
-/// <summary>Process-wide Neon sync. The launcher runs it from sign-in on; O-Studio only configures it and pushes or pulls a project on request.</summary>
+/// <summary>Process-wide Neon sync. The launcher runs it from sign-in on; Kivo only configures it and pushes or pulls a project on request.</summary>
 public static class CloudSyncHub
 {
     static OspSyncCoordinator? _coordinator;
@@ -162,7 +162,7 @@ public static class CloudSyncHub
     }
 
     /// <summary>
-    /// Push one project now. The background sync runs in the launcher, so a window that asks for this (O-Studio's Cloud sync page) usually has no
+    /// Push one project now. The background sync runs in the launcher, so a window that asks for this (Kivo's Cloud sync page) usually has no
     /// running coordinator of its own: it then pushes through a short-lived connection, as the signed-in company and user in <paramref name="shell"/>.
     /// </summary>
     public static async Task<PushResult> PushNowAsync(long studioProjectId, string ospPath, AppShellBridge? shell = null)

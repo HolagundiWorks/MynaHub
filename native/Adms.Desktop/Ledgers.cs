@@ -747,7 +747,7 @@ internal static class Ledgers
         var page = form.Body;
         page.Children.Add(Flow.SheetMark("05.01", "Admin", "Firm settings"));
         page.Children.Add(Flow.Heading("Firm settings"));
-        page.Children.Add(Flow.Secondary("The name, registration and tax scheme printed on letters and invoices. Export a company-details file for O-Draft title blocks. O-Draft does not open this company file."));
+        page.Children.Add(Flow.Secondary("The name, registration and tax scheme printed on letters and invoices. Export a company-details file for Tren title blocks. Tren does not open this company file."));
         var fields = new Dictionary<string, TextBox>();
         foreach (var (key, label) in new[]
         {
@@ -990,7 +990,7 @@ internal static class Ledgers
             await new ContentDialog
             {
                 Title = "Export for Tren",
-                Content = new TextBlock { Text = "Wrote " + file.Path + ". Import it in O-Draft for title blocks and documentation.", TextWrapping = TextWrapping.Wrap },
+                Content = new TextBlock { Text = "Wrote " + file.Path + ". Import it in Tren for title blocks and documentation.", TextWrapping = TextWrapping.Wrap },
                 CloseButtonText = "Close",
                 XamlRoot = (shell.Window.Content as FrameworkElement)?.XamlRoot,
             }.ShowAsync();

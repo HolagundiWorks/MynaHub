@@ -1,13 +1,13 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Authenticode-sign O-Studio Setup.exe when signing material exists.
+  Authenticode-sign Kivo Setup.exe when signing material exists.
 
 .DESCRIPTION
   Same contract as the OSAS launcher installer\sign.ps1 — never invents a production cert.
     1. WINDOWS_CERTIFICATE (+ optional WINDOWS_CERTIFICATE_PASSWORD)
     2. Azure Trusted Signing env vars + Microsoft.Trusted.Signing.Client dlib
-    3. SIGN_SELF_SIGNED=1 → %LOCALAPPDATA%\O-Studio\dev-codesign\ (SmartScreen still warns)
+    3. SIGN_SELF_SIGNED=1 → %LOCALAPPDATA%\Kivo\dev-codesign\ (SmartScreen still warns)
   Otherwise warns and exits 0 (unsigned).
 
 .EXAMPLE
@@ -51,7 +51,7 @@ function Assert-HasSignature([string[]] $Paths) {
 }
 
 function Ensure-SelfSignedPfx {
-    $dir = Join-Path $env:LOCALAPPDATA "O-Studio\dev-codesign"
+    $dir = Join-Path $env:LOCALAPPDATA "Kivo\dev-codesign"
     New-Item -ItemType Directory -Force -Path $dir | Out-Null
     $pfxPath = Join-Path $dir "o-studio-dev.pfx"
     $pwdFile = Join-Path $dir "pfx.password"
@@ -59,8 +59,8 @@ function Ensure-SelfSignedPfx {
         Write-Output "Creating self-signed code-signing certificate at $pfxPath"
         $cert = New-SelfSignedCertificate `
             -Type CodeSigningCert `
-            -Subject "CN=O-Studio Development (self-signed)" `
-            -FriendlyName "O-Studio development code signing" `
+            -Subject "CN=Kivo Development (self-signed)" `
+            -FriendlyName "Kivo development code signing" `
             -CertStoreLocation "Cert:\CurrentUser\My" `
             -KeyExportPolicy Exportable `
             -KeySpec Signature `

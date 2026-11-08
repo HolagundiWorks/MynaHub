@@ -63,7 +63,7 @@ internal static class FileDialogs
         return await picker.PickSaveFileAsync();
     }
 
-    /// <summary>Firm details for O-Draft title blocks. Not the company file and not a password.</summary>
+    /// <summary>Firm details for Tren title blocks. Not the company file and not a password.</summary>
     public static async Task<StorageFile?> PickCompanyPackDestination(nint window, string suggestedName)
     {
         var picker = new FileSavePicker
@@ -72,7 +72,7 @@ internal static class FileDialogs
             SuggestedFileName = suggestedName,
             DefaultFileExtension = ".json",
         };
-        picker.FileTypeChoices.Add("O-Studio company details", new List<string> { ".json" });
+        picker.FileTypeChoices.Add("Kivo company details", new List<string> { ".json" });
         InitializeWithWindow.Initialize(picker, window);
         return await picker.PickSaveFileAsync();
     }

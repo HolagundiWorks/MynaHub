@@ -1,15 +1,15 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Builds O-Suite-Setup-<version>.exe, one Setup for every suite app, from the apps' finished installers and packages.
+  Builds Kivo-Suite-Setup-<version>.exe, one Setup for every suite app, from the apps' finished installers and packages.
 
 .DESCRIPTION
   Does not build the apps: use **`build-all.ps1`** when the suite must match current source. This script only wraps existing Setup.exe / zip files (whichever is newest on disk), which is often stale.
 
-    O-Studio  : its NSIS Setup (run with /S)
-    O-CoreOp  : its Inno Setup (run with /VERYSILENT; the model task is passed on)
-    O-Draft   : the portable zip (ODraft.WinUi.exe, o-draft.exe, aad-cli.exe), unpacked into %LocalAppData%\Programs\O-Draft
-    O-Form / O-Dynamo : only when -FormSetup / -DynamoSetup name a finished Setup; they get a checkbox then, and none otherwise
+    Kivo  : its NSIS Setup (run with /S)
+    Falcon  : its Inno Setup (run with /VERYSILENT; the model task is passed on)
+    Tren   : the portable zip (ODraft.WinUi.exe, o-draft.exe, aad-cli.exe), unpacked into %LocalAppData%\Programs\O-Draft
+    Finch / O-Dynamo : only when -FormSetup / -DynamoSetup name a finished Setup; they get a checkbox then, and none otherwise
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File installer\suite\build-single.ps1 -Version 1.0.0
@@ -41,7 +41,7 @@ if (-not $DraftZip) { $DraftZip = (Get-ChildItem @((Join-Path $repos "O-DRAFT-ma
 if (-not $LicenseFile) { $LicenseFile = Join-Path $repos "O-COREOP\LICENSE" }
 
 function Need([string] $Path, [string] $What) { if (-not $Path -or -not (Test-Path -LiteralPath $Path)) { throw "$What not found ($Path). Build it first, or pass its path." } }
-Need $StudioSetup "O-Studio Setup"; Need $CoreOpSetup "O-CoreOp Setup"; Need $DraftZip "O-Draft portable zip"; Need $LicenseFile "licence file"
+Need $StudioSetup "Kivo Setup"; Need $CoreOpSetup "Falcon Setup"; Need $DraftZip "Tren portable zip"; Need $LicenseFile "licence file"
 
 $iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe", "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $iscc) { throw "Inno Setup 6 (ISCC.exe) not found." }
@@ -53,10 +53,10 @@ Copy-Item $StudioSetup (Join-Path $stage "O-Studio-Setup.exe")
 Copy-Item $CoreOpSetup (Join-Path $stage "O-CoreOp-Setup.exe")
 Copy-Item $LicenseFile (Join-Path $stage "LICENSE")
 $defines = @("/DSuiteVersion=$Version", "/DStage=$stage")
-if ($FormSetup) { Need $FormSetup "O-Form Setup"; Copy-Item $FormSetup (Join-Path $stage "O-Form-Setup.exe"); $defines += "/DHasForm" }
+if ($FormSetup) { Need $FormSetup "Finch Setup"; Copy-Item $FormSetup (Join-Path $stage "O-Form-Setup.exe"); $defines += "/DHasForm" }
 if ($DynamoSetup) { Need $DynamoSetup "O-Dynamo Setup"; Copy-Item $DynamoSetup (Join-Path $stage "O-Dynamo-Setup.exe"); $defines += "/DHasDynamo" }
 
-Write-Host "O-Draft : $DraftZip"
+Write-Host "Tren : $DraftZip"
 $draft = Join-Path $stage "draft"
 Expand-Archive -LiteralPath $DraftZip -DestinationPath $draft -Force
 # the zip may hold one top-level folder; flatten it so the exe sits in the root
@@ -67,6 +67,6 @@ if (-not (Test-Path (Join-Path $draft "ODraft.WinUi.exe"))) { throw "ODraft.WinU
 Write-Host "Compiling ..." -ForegroundColor Yellow
 & $iscc @defines (Join-Path $here "O-Suite.iss")
 if ($LASTEXITCODE -ne 0) { throw "ISCC failed ($LASTEXITCODE)" }
-$out = Join-Path $here "out\O-Suite-Setup-$Version.exe"
+$out = Join-Path $here "out\Kivo-Suite-Setup-$Version.exe"
 Get-Item $out | Format-List FullName, Length, LastWriteTime
 Get-FileHash $out -Algorithm SHA256 | Format-List Hash

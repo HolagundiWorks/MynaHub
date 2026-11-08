@@ -1,7 +1,7 @@
-//! What every document needs to print: the company's own details (owned by OSAS), and the project's details (owned by O-Studio),
-//! read together. O-CoreOp reports, O-Draft title plates and O-Studio's own letters read this one answer instead of keeping copies,
+//! What every document needs to print: the company's own details (owned by OSAS), and the project's details (owned by Kivo),
+//! read together. Falcon reports, Tren title plates and Kivo's own letters read this one answer instead of keeping copies,
 //! so a change to the address, the registration number or a project's site shows up in every app's next document.
-//! It only reads. The company's details are changed in OSAS, a project's in O-Studio.
+//! It only reads. The company's details are changed in OSAS, a project's in Kivo.
 
 use crate::clients::{self, Client, Project};
 use crate::profile::{self, CompanyProfile};

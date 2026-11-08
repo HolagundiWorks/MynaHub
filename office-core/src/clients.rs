@@ -72,7 +72,7 @@ pub struct Project {
     /// The first stage that has not been marked, or Complete. Derived, not stored.
     #[serde(default)]
     pub phase: String,
-    /// Short description every suite app can print (title plate, estimate cover, O-Form sheet).
+    /// Short description every suite app can print (title plate, estimate cover, Finch sheet).
     #[serde(default)]
     pub summary: String,
     #[serde(default)]

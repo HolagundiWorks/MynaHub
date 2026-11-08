@@ -110,8 +110,8 @@ begin
   Dir := Expand('{localappdata}\Programs\O-Draft');
   if DirExists(Dir) then
     DelTree(Dir, True, True, True);
-  // The .osp association is shared: O-CoreOp adds its own "Open in O-CoreOp" verb to the same ProgId. While O-CoreOp stays
-  // installed only O-Draft's verb goes; the file type and the other app's verb are left alone.
+  // The .osp association is shared: Falcon adds its own "Open in Falcon" verb to the same ProgId. While Falcon stays
+  // installed only Tren's verb goes; the file type and the other app's verb are left alone.
   if IsCoreOpInstalled then
   begin
     if RegKeyExists(HKCU, 'Software\Classes\OSAS.Project\shell\open') then
@@ -125,18 +125,19 @@ begin
       RegDeleteKeyIncludingSubkeys(HKCU, 'Software\Classes\OSAS.Project');
   end;
   DeleteFile(Expand('{userprograms}\O-Draft.lnk'));
+  DeleteFile(Expand('{userprograms}\Tren.lnk'));
 end;
 
 { Names of the apps chosen for removal, one per line, for the confirmation. }
 function RemoveSelectionText: String;
 begin
   Result := '';
-  if RemoveStudio then Result := Result + '  - O-Studio' + #13#10;
-  if RemoveCoreOp then Result := Result + '  - O-CoreOp' + #13#10;
-  if RemoveDraft then Result := Result + '  - O-Draft' + #13#10;
+  if RemoveStudio then Result := Result + '  - Kivo' + #13#10;
+  if RemoveCoreOp then Result := Result + '  - Falcon' + #13#10;
+  if RemoveDraft then Result := Result + '  - Tren' + #13#10;
 end;
 
-{ O-CoreOp and O-Draft use O-Studio (the suite hub: launcher, sign-in, the assistant host). Removing it while one of them stays installed
+{ Falcon and Tren use Kivo (the suite hub: company sign-in, approvals and revisions; it starts Myna, which hosts the assistant and the database service). Removing it while one of them stays installed
   needs a decision. Returns False to stay on the page. Silent setups keep the other apps and log it. }
 function ResolveStudioDependents: Boolean;
 var
@@ -147,17 +148,17 @@ begin
   if not RemoveStudio then
     Exit;
   Stay := '';
-  if IsCoreOpInstalled and (not RemoveCoreOp) then Stay := Stay + '  - O-CoreOp' + #13#10;
-  if IsDraftInstalled and (not RemoveDraft) then Stay := Stay + '  - O-Draft' + #13#10;
+  if IsCoreOpInstalled and (not RemoveCoreOp) then Stay := Stay + '  - Falcon' + #13#10;
+  if IsDraftInstalled and (not RemoveDraft) then Stay := Stay + '  - Tren' + #13#10;
   if Stay = '' then
     Exit;
   if IsSilentSetup then
   begin
-    Log('O-Studio is removed while these stay installed: ' + Stay);
+    Log('Kivo is removed while these stay installed: ' + Stay);
     Exit;
   end;
-  Answer := MsgBox('These applications use O-Studio (the suite launcher, sign-in and assistant host) and are still installed:' + #13#10#13#10 + Stay + #13#10 +
-    'Yes: remove them as well.' + #13#10 + 'No: keep them (they run without the suite launcher until O-Studio is installed again).' + #13#10 +
+  Answer := MsgBox('These applications use Kivo (company sign-in, and Myna, which hosts the assistant and the database service) and are still installed:' + #13#10#13#10 + Stay + #13#10 +
+    'Yes: remove them as well.' + #13#10 + 'No: keep them (they cannot sign in to a company or reach the shared database until Kivo is installed again).' + #13#10 +
     'Cancel: go back and change the selection.', mbConfirmation, MB_YESNOCANCEL);
   if Answer = IDCANCEL then
   begin
@@ -194,41 +195,41 @@ begin
   begin
     if FileExistsExpanded('{localappdata}\Programs\O-Studio\Uninstall.exe') then
     begin
-      if not ExecAndWait(Expand('{localappdata}\Programs\O-Studio\Uninstall.exe'), '/S', 'Removing O-Studio…') then
+      if not ExecAndWait(Expand('{localappdata}\Programs\O-Studio\Uninstall.exe'), '/S', 'Removing Kivo…') then
       begin
         Ok := False;
-        Lines := Lines + '- O-Studio: uninstaller reported an error.' + #13#10;
+        Lines := Lines + '- Kivo: uninstaller reported an error.' + #13#10;
       end
       else
-        Lines := Lines + '- O-Studio removed.' + #13#10;
+        Lines := Lines + '- Kivo removed.' + #13#10;
     end
     else
-      Lines := Lines + '- O-Studio was not installed (skipped).' + #13#10;
-    SetProgress(40, 'O-Studio step finished.');
+      Lines := Lines + '- Kivo was not installed (skipped).' + #13#10;
+    SetProgress(40, 'Kivo step finished.');
   end;
 
   if RemoveCoreOp then
   begin
     if FileExistsExpanded('{localappdata}\Programs\O-CoreOp\unins000.exe') then
     begin
-      if not ExecAndWait(Expand('{localappdata}\Programs\O-CoreOp\unins000.exe'), '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', 'Removing O-CoreOp…') then
+      if not ExecAndWait(Expand('{localappdata}\Programs\O-CoreOp\unins000.exe'), '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', 'Removing Falcon…') then
       begin
         Ok := False;
-        Lines := Lines + '- O-CoreOp: uninstaller reported an error.' + #13#10;
+        Lines := Lines + '- Falcon: uninstaller reported an error.' + #13#10;
       end
       else
-        Lines := Lines + '- O-CoreOp removed.' + #13#10;
+        Lines := Lines + '- Falcon removed.' + #13#10;
     end
     else
-      Lines := Lines + '- O-CoreOp was not installed (skipped).' + #13#10;
-    SetProgress(70, 'O-CoreOp step finished.');
+      Lines := Lines + '- Falcon was not installed (skipped).' + #13#10;
+    SetProgress(70, 'Falcon step finished.');
   end;
 
   if RemoveDraft then
   begin
-    SetProgress(80, 'Removing O-Draft…');
+    SetProgress(80, 'Removing Tren…');
     RemoveDraftLayout;
-    Lines := Lines + '- O-Draft removed.' + #13#10;
+    Lines := Lines + '- Tren removed.' + #13#10;
   end;
 
   Lines := Lines + #13#10 +
@@ -303,9 +304,9 @@ begin
   RemoveList.Top := 0;
   RemoveList.Width := RemoveSelectPage.SurfaceWidth;
   RemoveList.Height := ScaleY(140);
-  RemoveList.AddCheckBox('O-Studio (office and suite hub)', '', 0, IsStudioInstalled, True, True, False, nil);
-  RemoveList.AddCheckBox('O-CoreOp (quantities and billing)', '', 0, IsCoreOpInstalled, True, True, False, nil);
-  RemoveList.AddCheckBox('O-Draft (drafting and take-off)', '', 0, IsDraftInstalled, True, True, False, nil);
+  RemoveList.AddCheckBox('Kivo (office and suite hub)', '', 0, IsStudioInstalled, True, True, False, nil);
+  RemoveList.AddCheckBox('Falcon (quantities and billing)', '', 0, IsCoreOpInstalled, True, True, False, nil);
+  RemoveList.AddCheckBox('Tren (drafting and take-off)', '', 0, IsDraftInstalled, True, True, False, nil);
 
   RemoveConfirmPage := CreateCustomPage(RemoveSelectPage.ID, 'Confirm removal', 'Review your choices before anything is deleted.');
   Lbl := TNewStaticText.Create(RemoveConfirmPage);
@@ -317,7 +318,7 @@ begin
   Lbl.Caption :=
     'The selected applications will be uninstalled. ' +
     'The Olmo assistant model, company files, and project files are not removed. ' +
-    'If you remove O-Studio while O-CoreOp or O-Draft stay installed, use those apps without the suite launcher until you install O-Studio again.';
+    'If you remove Kivo while Falcon or Tren stay installed, those apps cannot sign in to a company or reach the shared database until you install Kivo again.';
 
   RemoveSummaryPage := CreateCustomPage(RemoveConfirmPage.ID, 'Removal complete', 'Summary of what was removed.');
   RemoveSummaryMemo := TNewStaticText.Create(RemoveSummaryPage);
@@ -440,16 +441,16 @@ begin
   if (CurPageID = wpFinished) and SuiteModeInstall then
   begin
     Memo := 'Installation finished.' + #13#10#13#10;
-    if WizardIsComponentSelected('studio') then Memo := Memo + '- O-Studio' + #13#10;
-    if WizardIsComponentSelected('coreop') then Memo := Memo + '- O-CoreOp' + #13#10;
-    if WizardIsComponentSelected('draft') then Memo := Memo + '- O-Draft' + #13#10;
+    if WizardIsComponentSelected('studio') then Memo := Memo + '- Kivo' + #13#10;
+    if WizardIsComponentSelected('coreop') then Memo := Memo + '- Falcon' + #13#10;
+    if WizardIsComponentSelected('draft') then Memo := Memo + '- Tren' + #13#10;
 #ifdef HasForm
-    if WizardIsComponentSelected('form') then Memo := Memo + '- O-Form' + #13#10;
+    if WizardIsComponentSelected('form') then Memo := Memo + '- Finch' + #13#10;
 #endif
 #ifdef HasDynamo
     if WizardIsComponentSelected('dynamo') then Memo := Memo + '- O-Dynamo' + #13#10;
 #endif
-    Memo := Memo + #13#10 + 'Open O-Studio or the tray launcher to sign in and start sibling apps.';
+    Memo := Memo + #13#10 + 'Open Kivo to sign in to your company, then start Falcon and Tren from it. Myna runs in the tray and hosts the assistant and the database service.';
     WizardForm.FinishedLabel.Caption := Memo;
   end;
 end;
@@ -507,8 +508,8 @@ begin
   if UninstallSilent then
     Exit;
   if MsgBox(
-    'This removes every suite application that was installed through O-Suite Setup (respecting the components originally chosen).' + #13#10#13#10 +
-    'To remove only some applications, run O-Suite-Setup.exe again and choose "Remove applications".' + #13#10#13#10 +
+    'This removes every suite application that was installed through Kivo Suite Setup (respecting the components originally chosen).' + #13#10#13#10 +
+    'To remove only some applications, run Kivo-Suite-Setup.exe again and choose "Remove applications".' + #13#10#13#10 +
     'Company files, projects, and the assistant model are not deleted.' + #13#10#13#10 +
     'Continue?',
     mbConfirmation, MB_YESNO) = IDNO then

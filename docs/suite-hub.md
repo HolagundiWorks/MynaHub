@@ -7,11 +7,11 @@ Written 2026-10-19; **updated 2026-10-28** for the Studio↔OSAS merge ([studio-
 ## The model
 
 ```
-Launcher  ── chooses/creates the company file ── signs in once ──▶ O-Studio: edits company details + users
+Launcher  ── chooses/creates the company file ── signs in once ──▶ Kivo: edits company details + users
   │
-  ├─ card: O-CoreOp  ─┐  each gets: the company file path + a one-time sign-in ticket
-  ├─ card: O-Draft   ─┤  and opens that company already signed in as the same person
-  └─ card: O-Form    ─┘
+  ├─ card: Falcon  ─┐  each gets: the company file path + a one-time sign-in ticket
+  ├─ card: Tren   ─┤  and opens that company already signed in as the same person
+  └─ card: Finch    ─┘
 ```
 
 - **The company file** is the `.osas` file (earlier `.adms` files open too). It is **chosen and created in Studio** (merge decision 2026-10-28). Studio remembers the choice (`%LOCALAPPDATA%\OSAS\suite.json`) so sibling apps can follow it. CoreOp/Draft started alone still redeem `OSAS_COMPANY` / `OSAS_TICKET` or offer to open the remembered company.

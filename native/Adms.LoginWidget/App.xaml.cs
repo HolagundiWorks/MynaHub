@@ -16,7 +16,7 @@ public partial class App : Application
 
     /// <summary>
     /// The launcher hosts the suite's AI Core (Olmo 3 7B on 127.0.0.1:8742) for as long as it runs, so the assistant is there whether or not
-    /// O-Studio is open. The model itself loads on the first question. When another process already serves the port, the launcher leaves it alone.
+    /// Kivo is open. The model itself loads on the first question. When another process already serves the port, the launcher leaves it alone.
     /// </summary>
     static void StartAiCore()
     {

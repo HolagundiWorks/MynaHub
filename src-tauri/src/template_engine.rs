@@ -469,7 +469,7 @@ pub fn check_css(css: &str, out: &mut Vec<Diagnostic>) {
         out.push(diag("error", "css", css, p, "@import is blocked: templates cannot load other files."));
     }
     if let Some(p) = find("@font-face") {
-        out.push(diag("error", "css", css, p, "@font-face is blocked. O-Studio bundles IBM Plex; choose a bundled family instead."));
+        out.push(diag("error", "css", css, p, "@font-face is blocked. Kivo bundles IBM Plex; choose a bundled family instead."));
     }
     for bad in ["expression(", "behavior:", "-moz-binding", "javascript:"] {
         if let Some(p) = find(bad) {
@@ -791,7 +791,7 @@ pub fn missing_required(html: &str, data: &Value) -> Vec<String> {
     out
 }
 
-/// The complete HTML handed to the PDF renderer: the fixed O-Studio type system first, then the template's own CSS.
+/// The complete HTML handed to the PDF renderer: the fixed Kivo type system first, then the template's own CSS.
 pub fn full_document(fragment: &str, css: &str) -> String {
     format!("<html><head><style>{}\n{}</style></head><body>{}</body></html>", crate::typography::css(), css, fragment)
 }

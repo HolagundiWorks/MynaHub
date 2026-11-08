@@ -1,6 +1,6 @@
 namespace Osas.Core;
 
-/// <summary>Suite launch and shared local state (O-Studio hub).</summary>
+/// <summary>Suite launch and shared local state (Kivo hub).</summary>
 public static class SuiteWire
 {
     public const string LocalAppFolder = "O-Studio";

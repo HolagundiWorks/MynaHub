@@ -560,7 +560,7 @@ public sealed partial class MainWindow : Window
         {
             args.Cancel = true;
             _closeAfterBusy = true;
-            ShowError("O-Studio will close after the current operation finishes. Nothing is written until you confirm a save.");
+            ShowError("Kivo will close after the current operation finishes. Nothing is written until you confirm a save.");
             return;
         }
         if (!_allowClose && _signedIn && _workspace != null)
@@ -979,7 +979,7 @@ public sealed partial class MainWindow : Window
         }
         var dialog = new ContentDialog
         {
-            Title = "About O-Studio",
+            Title = "About Kivo",
             Content = new StackPanel
             {
                 Spacing = 8,

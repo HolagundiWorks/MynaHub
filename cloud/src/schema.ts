@@ -1,4 +1,4 @@
-/** O-Studio `.osp` sync metadata in Lakebase Postgres (step 3). */
+/** Kivo `.osp` sync metadata in Lakebase Postgres (step 3). */
 export const SYNC_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS osp_project (
   id TEXT PRIMARY KEY,

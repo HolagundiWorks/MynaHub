@@ -7,7 +7,7 @@ When Kivo creates a project it also creates an on-disk workspace so Tren and Fin
 ```text
 projects/<slug>-<project_id>/
   osas.project.json
-  project.osp          # created on first save by O-Draft or O-CoreOp
+  project.osp          # created on first save by Tren or Falcon
   draft/model.dxf
   draft/project.json
   form/model.blend

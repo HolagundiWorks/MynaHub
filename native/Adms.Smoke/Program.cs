@@ -111,7 +111,7 @@ try
         again.CloseCompany();
     }
 
-    Console.WriteLine("O-Studio native smoke test passed.");
+    Console.WriteLine("Kivo native smoke test passed.");
 }
 finally
 {

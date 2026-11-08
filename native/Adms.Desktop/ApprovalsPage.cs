@@ -9,7 +9,7 @@ namespace Adms.Desktop;
 /// <summary>
 /// Studio inbox for CoreOp draft documents (<c>aqc.estimate.draft</c> / <c>aqc.ra.draft.*</c>).
 /// Approve locks the envelope state; corrections require a new CoreOp share (revise-version).
-/// Contract: O-CoreOp <c>docs/STUDIO-DRAFT-SHARE.md</c>; Studio <c>docs/contracts/approvals.md</c>.
+/// Contract: Falcon <c>docs/STUDIO-DRAFT-SHARE.md</c>; Studio <c>docs/contracts/approvals.md</c>.
 /// </summary>
 internal static class ApprovalsPage
 {

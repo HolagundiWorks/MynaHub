@@ -40,7 +40,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 | 2.4 | Estimates ↔ fee proposals: `project_estimate_summary` + Fee proposals “Use Falcon estimate as cost”; `project_ra_summary` shows Falcon running-bill (RA) totals beside fee/invoices. Still to do: E2E click-through, optional invoice ArtifactRef column | Both | Checked: office-core estimate/RA summary + proposal link tests |
 | 2.5 | An MCP tool server for Falcon, with the same descriptor shape as Kivo's | CoreOp | Checked: only Kivo has one (`office-agent`) |
 | 2.6 | Write tools for the agent, with approval and an audit trail | Studio | Checked: every tool is read-only today |
-| 2.7 | Unified **O-Suite** installer: one Setup for install/remove of Kivo, Falcon, and Tren; update check stub; launcher opens `.osp` via O-Studio.Launcher | Kivo | **Checked 2026-11-04:** `installer/suite/O-Suite.iss` + `O-Suite-Wizard.iss`, `build-single.ps1`; signed single Setup and hosted channel still open (3.1) |
+| 2.7 | Unified **Kivo Suite** installer: one Setup for install/remove of Kivo, Falcon, and Tren; update check stub; launcher opens `.osp` via O-Studio.Launcher | Kivo | **Checked 2026-11-04:** `installer/suite/O-Suite.iss` + `O-Suite-Wizard.iss`, `build-single.ps1`; signed single Setup and hosted channel still open (3.1) |
 
 ## Phase 3: depth
 

@@ -32,7 +32,7 @@ async function main(): Promise<void> {
   requireEnv("AWS_SECRET_ACCESS_KEY");
   requireEnv("S3_BUCKET");
 
-  console.log("Verifying Neon services for O-Studio cloud sync…");
+  console.log("Verifying Neon services for Kivo cloud sync…");
   await verifyPostgres(dbUrl);
   await verifyObjectStorage(createStorageClient());
 

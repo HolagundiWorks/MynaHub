@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace Osas.Core;
 
 /// <summary>
-/// Shared suite.json read/write for O-Studio and the company login widget. Never stores passwords or tickets.
+/// Shared suite.json read/write for Kivo and the company login widget. Never stores passwords or tickets.
 /// </summary>
 public static class SuiteJsonHub
 {

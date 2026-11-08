@@ -20,21 +20,21 @@ pub fn proposal_list_records(state: HostState<'_>, client_id: Option<i64>) -> Re
     practice::proposal_list(&conn, client_id)
 }
 
-/// O-CoreOp estimate totals saved on the company-file project (for fee proposals and invoices).
+/// Falcon estimate totals saved on the company-file project (for fee proposals and invoices).
 pub fn project_estimate_summary(state: HostState<'_>, project_id: i64) -> Result<Value, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     office_core::share::estimate_summary(&conn, project_id)
 }
 
-/// O-CoreOp running-bill (RA) totals saved on the company-file project.
+/// Falcon running-bill (RA) totals saved on the company-file project.
 pub fn project_ra_summary(state: HostState<'_>, project_id: i64) -> Result<Value, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;
     office_core::share::ra_summary(&conn, project_id)
 }
 
-/// O-CoreOp BOQ base total saved on the company-file project.
+/// Falcon BOQ base total saved on the company-file project.
 pub fn project_boq_summary(state: HostState<'_>, project_id: i64) -> Result<Value, String> {
     require(&state, Permission::View)?;
     let conn = state.db.lock().map_err(|_| INTERNAL)?;

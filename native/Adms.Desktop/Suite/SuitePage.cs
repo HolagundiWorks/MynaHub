@@ -51,7 +51,7 @@ internal sealed class SuitePage : UserControl
         var heading = new TextBlock { Text = "Assistant", Style = Resource("SectionTitleStyle") };
         AutomationProperties.SetHeadingLevel(heading, AutomationHeadingLevel.Level2);
         stack.Children.Add(heading);
-        stack.Children.Add(new TextBlock { Text = "The glowing logo at the bottom of every page. Olmo 3 7B runs on this computer from O-Studio; O-CoreOp and O-Draft connect to the same model. Read-only, nothing sent anywhere.", Style = Resource("SecondaryStyle"), TextWrapping = TextWrapping.Wrap });
+        stack.Children.Add(new TextBlock { Text = "The glowing logo at the bottom of every page. Olmo 3 7B runs on this computer from Kivo; Falcon and Tren connect to the same model. Read-only, nothing sent anywhere.", Style = Resource("SecondaryStyle"), TextWrapping = TextWrapping.Wrap });
         stack.Children.Add(_assistantState);
         stack.Children.Add(new TextBlock { Text = $"Works as {shell.User} ({shell.Role})", Style = Resource("CaptionStyle") });
         return stack;
@@ -61,7 +61,7 @@ internal sealed class SuitePage : UserControl
     {
         if (!Office.Ai.LocalLlmHost.Installed)
         {
-            _assistantState.Text = $"Olmo is not installed (see docs/LOCAL-MODEL.md in O-CoreOp).";
+            _assistantState.Text = $"Olmo is not installed (see docs/LOCAL-MODEL.md in Falcon).";
             return;
         }
         var (ready, problem) = await OlmoAiCoreApi.VerifyAsync();

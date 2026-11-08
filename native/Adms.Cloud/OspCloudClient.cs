@@ -98,7 +98,7 @@ public sealed class OspCloudClient : IAsyncDisposable
         CancellationToken ct = default)
     {
         if (!File.Exists(ospPath))
-            return new PushResult(false, "The project file does not exist yet. Save it from O-Draft or O-CoreOp first.", null);
+            return new PushResult(false, "The project file does not exist yet. Save it from Tren or Falcon first.", null);
         if (!OdpFile.LooksLikeOdp(ospPath))
             return new PushResult(false, "Not a valid .osp project file.", null);
 
@@ -247,7 +247,7 @@ public sealed class OspCloudClient : IAsyncDisposable
         File.Move(tmp, ospPath, overwrite: true);
         return new PullResult(
             true,
-            $"Pulled revision {head.LatestRevision}. O-Draft and O-CoreOp will notice on their next revision poll.",
+            $"Pulled revision {head.LatestRevision}. Tren and Falcon will notice on their next revision poll.",
             head.LatestRevision);
     }
 

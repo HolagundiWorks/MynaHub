@@ -1,6 +1,6 @@
 # Workflow: Kivo is the office, the launcher is the engine room
 
-Status: **proposal, 2026-11-08**, decisions taken with the owner. Nothing here is built yet; the 1.4.1 suite installer still has company login in the launcher.
+Status: **first slices built and shipped in suite 1.5.0 (2026-11-08)**: the Kivo session broker and company sign-in, the slimmed Myna (AI Core and database service only), Falcon's CSV export and Kivo's CSV import. **Still to build:** Tren and Falcon connecting to the database service from their `.osp`, and approvals and revisions stored fully in Kivo. Open questions: approval roles, locking measured-to-date, whether `item_code` is Falcon's library code or Kivo's price list, one company or several per PC.
 
 ## The workflow in one line
 

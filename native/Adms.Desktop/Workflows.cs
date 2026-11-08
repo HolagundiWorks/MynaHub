@@ -116,12 +116,12 @@ internal static class Flow
     {
         var mark = new TextBlock
         {
-            Text = $"O-Studio {sheet}  ·  {section}",
+            Text = $"Kivo {sheet}  ·  {section}",
             Style = Look("CaptionStyle"),
         };
         var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 2) };
         panel.Children.Add(mark);
-        AutomationProperties.SetName(panel, $"O-Studio {sheet}, {section}, {page}");
+        AutomationProperties.SetName(panel, $"Kivo {sheet}, {section}, {page}");
         return panel;
     }
 
@@ -1182,8 +1182,8 @@ internal sealed class ProjectsPage : UserControl, IPageCommands, ILiveRefresh
         _ospHelp.Text = forNew
             ? (_ospOnCreate == "choose"
                 ? "Select an ODP project file (.osp) before you create this project (required in Firm settings)."
-                : "Optional: link an existing .osp now, or leave empty and O-Draft will create project.osp later.")
-            : "Link or replace the suite project file (.osp) in this project's folder. O-CoreOp and O-Draft use this copy.";
+                : "Optional: link an existing .osp now, or leave empty and Tren will create project.osp later.")
+            : "Link or replace the suite project file (.osp) in this project's folder. Falcon and Tren use this copy.";
         _ospPath.Text = forNew ? "No project file selected yet." : "Loading…";
     }
 

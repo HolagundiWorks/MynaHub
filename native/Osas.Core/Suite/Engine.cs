@@ -8,7 +8,7 @@ namespace Osas.Core.Suite;
 public sealed class EngineException(string message) : Exception(message);
 
 /// <summary>
-/// One session with the office engine (office.dll). The contract is the office interface written out in the O-Studio repository
+/// One session with the office engine (office.dll). The contract is the office interface written out in the Kivo repository
 /// (docs/office-abi.md): start a session, call operations by name with a JSON object, end the session. One session holds one company
 /// file. OSAS uses it to sign in, read and edit the company details, and ask for the one-time tickets it hands to the apps.
 /// </summary>
@@ -60,7 +60,7 @@ public sealed class Engine : IDisposable
     }
 
     /// <summary>
-    /// Makes the loader look for the office engine in a folder, for tests and for builds where it is not beside the program. O-Studio
+    /// Makes the loader look for the office engine in a folder, for tests and for builds where it is not beside the program. Kivo
     /// carries the office interface inside its own engine library, so it passes that file name; the standalone office.dll is the default.
     /// </summary>
     public static void LookIn(string folder, string fileName = "office.dll")

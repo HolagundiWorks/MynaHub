@@ -16,7 +16,7 @@ using Windows.UI;
 namespace Adms.Desktop;
 
 /// <summary>
-/// The tools the assistant may use, run through the session this person is signed in to in O-Studio. The engine checks their role for
+/// The tools the assistant may use, run through the session this person is signed in to in Kivo. The engine checks their role for
 /// every call, writes the audit entry, and only reads: the assistant sees what this person can see and changes nothing.
 /// </summary>
 internal sealed class StudioToolHost(AppShell shell) : IToolHost
@@ -41,8 +41,8 @@ internal sealed class StudioToolHost(AppShell shell) : IToolHost
 }
 
 /// <summary>
-/// The AI assistant, floating over every page of O-Studio. Its orb glows with a halo that moves through the four app colours. Olmo 3 7B runs on this
-/// computer from O-Studio (shared with O-CoreOp and O-Draft over loopback). Read-only tools only; nothing leaves the machine.
+/// The AI assistant, floating over every page of Kivo. Its orb glows with a halo that moves through the four app colours. Olmo 3 7B runs on this
+/// computer from Kivo (shared with Falcon and Tren over loopback). Read-only tools only; nothing leaves the machine.
 /// </summary>
 internal sealed class AssistantBar : UserControl
 {
@@ -204,7 +204,7 @@ internal sealed class AssistantBar : UserControl
         if (!LocalLlmHost.Installed)
         {
             _model = null;
-            _problem = $"Olmo is not installed. Put {LocalModel.FileName} in {LocalModel.SharedDirectory} and unpack llama.cpp {LocalModel.RuntimeRelease} into {LocalModel.RuntimeDirectory} (see docs/LOCAL-MODEL.md in O-CoreOp).";
+            _problem = $"Olmo is not installed. Put {LocalModel.FileName} in {LocalModel.SharedDirectory} and unpack llama.cpp {LocalModel.RuntimeRelease} into {LocalModel.RuntimeDirectory} (see docs/LOCAL-MODEL.md in Falcon).";
         }
         else
         {

@@ -99,8 +99,8 @@ Amber and orange on white are not used for small text. The orange fill against w
 
 ```powershell
 cd tools\a11y
-.\uia-audit.ps1 -Exe "<path to O-Studio>\O-Studio.exe" -Company "<a demo company>.adms" -User owner -Password $env:AUDIT_PASSWORD -Pages Pulse,Clients,"Fee proposals" -Out studio.json
-.\uia-audit.ps1 -Exe "<path to O-CoreOp>\AQCCore.exe" -Pages Dashboard,Columns -Out metra.json
+.\uia-audit.ps1 -Exe "<path to Kivo>\O-Studio.exe" -Company "<a demo company>.adms" -User owner -Password $env:AUDIT_PASSWORD -Pages Pulse,Clients,"Fee proposals" -Out studio.json
+.\uia-audit.ps1 -Exe "<path to Falcon>\AQCCore.exe" -Pages Dashboard,Columns -Out metra.json
 node analyse.mjs studio.json
 node analyse.mjs metra.json
 node contrast.mjs

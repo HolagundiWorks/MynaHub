@@ -43,7 +43,7 @@ After sign-in Myna lists the company's projects (search by code, name or client)
 
 ## Install and remove
 
-One setup, `O-Suite-Setup-<version>.exe`, installs and removes Kivo, Falcon and Tren. **Install:** pick everything or individual apps (Kivo is added automatically when Falcon or Tren is chosen), watch the progress, read the summary. **Remove:** run the same setup, choose *Remove applications*, select the apps, confirm; the setup asks what to do about apps that depend on a removed Kivo and keeps shared files such as the `.osp` file type while another app still uses it. Company files, projects and the assistant model are never deleted. Details and the silent command line: [installer/suite/README.md](installer/suite/README.md).
+One setup, `Kivo-Suite-Setup-<version>.exe`, installs and removes Kivo, Falcon and Tren. **Install:** pick everything or individual apps (Kivo is added automatically when Falcon or Tren is chosen), watch the progress, read the summary. **Remove:** run the same setup, choose *Remove applications*, select the apps, confirm; the setup asks what to do about apps that depend on a removed Kivo and keeps shared files such as the `.osp` file type while another app still uses it. Company files, projects and the assistant model are never deleted. Details and the silent command line: [installer/suite/README.md](installer/suite/README.md).
 
 ## The suite
 
@@ -77,7 +77,7 @@ cargo test --manifest-path src-tauri/Cargo.toml   # engine, accounting, company 
 cargo test --manifest-path office-core/Cargo.toml
 ```
 
-The installer is built with `installer/build.ps1` (release engine, self-contained publish, NSIS) and is named `Kivo-Setup-<version>.exe`. **`O-Studio.Launcher.exe` lives under `launcher\` beside `O-Studio.exe`** (see [docs/packaging.md](docs/packaging.md)). For all suite apps together, build **`installer/suite/build-all.ps1`** → `O-Suite-Setup-<version>.exe` ([installer/suite/README.md](installer/suite/README.md)). It stays unsigned unless signing secrets are set (`installer/sign.ps1`). Help → **Check for updates…** is a channel stub. What is open and planned is in [docs/roadmap.md](docs/roadmap.md).
+The installer is built with `installer/build.ps1` (release engine, self-contained publish, NSIS) and is named `Kivo-Setup-<version>.exe`. **`O-Studio.Launcher.exe` lives under `launcher\` beside `O-Studio.exe`** (see [docs/packaging.md](docs/packaging.md)). For all suite apps together, build **`installer/suite/build-all.ps1`** → `Kivo-Suite-Setup-<version>.exe` ([installer/suite/README.md](installer/suite/README.md)). It stays unsigned unless signing secrets are set (`installer/sign.ps1`). Help → **Check for updates…** is a channel stub. What is open and planned is in [docs/roadmap.md](docs/roadmap.md).
 
 ### Cloud sync (Neon)
 

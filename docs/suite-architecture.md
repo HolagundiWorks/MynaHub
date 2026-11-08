@@ -32,11 +32,11 @@ The product descriptions in the suite plan you shared are targets. Kivo keeps pr
 ## 2. How the pieces connect today (verified)
 
 ```
-        O-Draft (CAD)  ---- hcw-aqc-bridge JSON / .osp take-off ----  O-CoreOp (quantities)
+        Tren (CAD)  ---- hcw-aqc-bridge JSON / .osp take-off ----  Falcon (quantities)
            |                                                      |
            \____________ offline company file (office.dll) _______/
                                     |
-                              O-Studio (office)
+                              Kivo (office)
 ```
 
 - **Sign-in:** Each app signs in to the local company file (OSAS ticket / `office.dll`). There is no shared portal credential store in the OSS trees.

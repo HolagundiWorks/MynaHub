@@ -1,6 +1,6 @@
-; One Setup for the whole suite: O-Studio, O-CoreOp, O-Draft (and O-Form / O-Dynamo when their payloads are given to build-single.ps1).
+; One Setup for the whole suite: Kivo, Falcon, Tren (and Finch / O-Dynamo when their payloads are given to build-single.ps1).
 ; Per-user, no administrator. Each app keeps its own folder, Start menu entry and Settings > Apps entry exactly as when installed on its own:
-; O-CoreOp and O-Studio are installed by their own Setup run silently, O-Draft is copied from its portable layout (the MSI is per-machine).
+; Falcon and Kivo are installed by their own Setup run silently, Tren is copied from its portable layout (the MSI is per-machine).
 ; Build with build-single.ps1, which stages the payloads and calls ISCC with the defines below.
 
 #ifndef SuiteVersion
@@ -9,7 +9,7 @@
 #ifndef Stage
   #define Stage "stage"
 #endif
-#define MyAppName "O-Suite"
+#define MyAppName "Kivo Suite"
 #define MyPublisher "Human Centric Works"
 #define ModelFile "Olmo-3-7B-Instruct-Q4_K_M.gguf"
 #define ModelSha256 "0de0bc63fae8a73a48e167be48f149c9544bd4af61d223cd3f331c6ea664c5c4"
@@ -21,14 +21,14 @@ AppName={#MyAppName}
 AppVersion={#SuiteVersion}
 AppPublisher={#MyPublisher}
 DefaultDirName={localappdata}\Programs\O-Suite
-DefaultGroupName=O-Suite
+DefaultGroupName=Kivo Suite
 DisableProgramGroupPage=yes
 UsePreviousAppDir=yes
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#Stage}\..\out
-OutputBaseFilename=O-Suite-Setup-{#SuiteVersion}
+OutputBaseFilename=Kivo-Suite-Setup-{#SuiteVersion}
 Compression=lzma2/fast
 SolidCompression=no
 WizardStyle=modern
@@ -46,22 +46,22 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Types]
 Name: "full"; Description: "Everything"
-Name: "compact"; Description: "O-Studio only"
+Name: "compact"; Description: "Kivo only"
 Name: "custom"; Description: "Choose the apps"; Flags: iscustom
 
 [Components]
-Name: "studio"; Description: "O-Studio: office and project management (the suite hub)"; Types: full compact custom; Flags: checkablealone
-Name: "coreop"; Description: "O-CoreOp: quantities, estimates and billing"; Types: full custom; Flags: checkablealone
-Name: "draft"; Description: "O-Draft: drafting and take-off"; Types: full custom; Flags: checkablealone
+Name: "studio"; Description: "Kivo: office and project management (the suite hub)"; Types: full compact custom; Flags: checkablealone
+Name: "coreop"; Description: "Falcon: quantities, estimates and billing"; Types: full custom; Flags: checkablealone
+Name: "draft"; Description: "Tren: drafting and take-off"; Types: full custom; Flags: checkablealone
 #ifdef HasForm
-Name: "form"; Description: "O-Form: 3D modelling"; Types: full custom; Flags: checkablealone
+Name: "form"; Description: "Finch: 3D modelling"; Types: full custom; Flags: checkablealone
 #endif
 #ifdef HasDynamo
 Name: "dynamo"; Description: "O-Dynamo: visual programming"; Types: full custom; Flags: checkablealone
 #endif
 
 [Tasks]
-Name: "model"; Description: "Download the assistant model (Olmo 3 7B, 4.5 GB; runs on this computer only, O-CoreOp and O-Draft share it)"; GroupDescription: "Assistant:"; Components: coreop draft
+Name: "model"; Description: "Download the assistant model (Olmo 3 7B, 4.5 GB; runs on this computer only, Falcon and Tren share it)"; GroupDescription: "Assistant:"; Components: coreop draft
 
 [Files]
 ; sub-installers: extracted to the temp folder, run in [Run], deleted afterwards
@@ -73,26 +73,29 @@ Source: "{#Stage}\O-Form-Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 #ifdef HasDynamo
 Source: "{#Stage}\O-Dynamo-Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Components: dynamo
 #endif
-; O-Draft: the portable layout
+; Tren: the portable layout
 Source: "{#Stage}\draft\*"; DestDir: "{localappdata}\Programs\O-Draft"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: draft
 
+[InstallDelete]
+Type: files; Name: "{userprograms}\O-Draft.lnk"; Components: draft
+
 [Icons]
-Name: "{userprograms}\O-Draft"; Filename: "{localappdata}\Programs\O-Draft\ODraft.WinUi.exe"; WorkingDir: "{localappdata}\Programs\O-Draft"; Components: draft
+Name: "{userprograms}\Tren"; Filename: "{localappdata}\Programs\O-Draft\ODraft.WinUi.exe"; WorkingDir: "{localappdata}\Programs\O-Draft"; Components: draft
 
 [Registry]
-; The O-Suite project file (.osp): double-click opens the file in O-Draft. O-CoreOp's own Setup adds "Open in O-CoreOp".
-; Neither verb starts the launcher.
+; The Kivo Suite project file (.osp): double-click opens the file in Tren. Falcon's own Setup adds "Open in Falcon".
+; Neither verb starts Myna.
 Root: HKCU; Subkey: "Software\Classes\.osp"; ValueType: string; ValueName: ""; ValueData: "OSAS.Project"; Flags: uninsdeletevalue; Components: draft
-Root: HKCU; Subkey: "Software\Classes\OSAS.Project"; ValueType: string; ValueName: ""; ValueData: "O-Suite project"; Components: draft
-Root: HKCU; Subkey: "Software\Classes\OSAS.Project\shell\open"; ValueType: string; ValueName: ""; ValueData: "Open in O-Draft"; Flags: uninsdeletekey; Components: draft
+Root: HKCU; Subkey: "Software\Classes\OSAS.Project"; ValueType: string; ValueName: ""; ValueData: "Kivo Suite project"; Components: draft
+Root: HKCU; Subkey: "Software\Classes\OSAS.Project\shell\open"; ValueType: string; ValueName: ""; ValueData: "Open in Tren"; Flags: uninsdeletekey; Components: draft
 Root: HKCU; Subkey: "Software\Classes\OSAS.Project\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{localappdata}\Programs\O-Draft\ODraft.WinUi.exe"" ""%1"""; Components: draft
 
 [Run]
-Filename: "{tmp}\O-Studio-Setup.exe"; Parameters: "/S"; StatusMsg: "Installing O-Studio..."; Flags: waituntilterminated; Components: studio
-Filename: "{tmp}\O-CoreOp-Setup.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /TASKS=""model"""; StatusMsg: "Installing O-CoreOp (assistant model via O-Suite task)..."; Flags: waituntilterminated; Components: coreop; Tasks: model
-Filename: "{tmp}\O-CoreOp-Setup.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /TASKS=""!model"""; StatusMsg: "Installing O-CoreOp..."; Flags: waituntilterminated; Components: coreop; Tasks: not model
+Filename: "{tmp}\O-Studio-Setup.exe"; Parameters: "/S"; StatusMsg: "Installing Kivo..."; Flags: waituntilterminated; Components: studio
+Filename: "{tmp}\O-CoreOp-Setup.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /TASKS=""model"""; StatusMsg: "Installing Falcon (assistant model via Kivo Suite task)..."; Flags: waituntilterminated; Components: coreop; Tasks: model
+Filename: "{tmp}\O-CoreOp-Setup.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /TASKS=""!model"""; StatusMsg: "Installing Falcon..."; Flags: waituntilterminated; Components: coreop; Tasks: not model
 #ifdef HasForm
-Filename: "{tmp}\O-Form-Setup.exe"; Parameters: "/S"; StatusMsg: "Installing O-Form..."; Flags: waituntilterminated; Components: form
+Filename: "{tmp}\O-Form-Setup.exe"; Parameters: "/S"; StatusMsg: "Installing Finch..."; Flags: waituntilterminated; Components: form
 #endif
 #ifdef HasDynamo
 Filename: "{tmp}\O-Dynamo-Setup.exe"; Parameters: "/S"; StatusMsg: "Installing O-Dynamo..."; Flags: waituntilterminated; Components: dynamo

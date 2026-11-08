@@ -17,7 +17,7 @@ public class ServiceStatusTests
 
     [Theory]
     [InlineData("running (2 projects syncing)", ServiceLevel.Running)]
-    [InlineData("running, no project is switched on (O-Studio > Cloud sync)", ServiceLevel.Running)]
+    [InlineData("running, no project is switched on (Kivo > Cloud sync)", ServiceLevel.Running)]
     [InlineData("could not connect (14:40:23 Postgres: Failed to connect); retrying every 30 s", ServiceLevel.Stopped)]
     [InlineData("error: boom", ServiceLevel.Stopped)]
     [InlineData("credentials found; starts at sign-in", ServiceLevel.Waiting)]

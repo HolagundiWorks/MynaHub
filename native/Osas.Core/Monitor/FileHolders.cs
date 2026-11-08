@@ -5,7 +5,7 @@ using System.Text;
 namespace Osas.Core.Monitor;
 
 /// <summary>A program that has a company file open.</summary>
-/// <param name="App">O-Studio, O-CoreOp, O-Draft or OSAS; otherwise the program's own name.</param>
+/// <param name="App">Kivo, Falcon, Tren or OSAS; otherwise the program's own name.</param>
 public sealed record Holder(string App, string Program, int ProcessId);
 
 /// <summary>Finds which programs have a set of files open. A test supplies its own.</summary>
