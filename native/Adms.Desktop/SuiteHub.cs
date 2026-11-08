@@ -6,8 +6,8 @@ using Osas.Core;
 namespace Adms.Desktop;
 
 /// <summary>
-/// Studio as the suite hub: remembers the chosen company for sibling apps and launches them
-/// with <c>OSTUDIO_COMPANY</c> + a one-time <c>OSTUDIO_TICKET</c>.
+/// Kivo as the suite hub: remembers the chosen company and starts Falcon, Tren and Finch. They are independent of Kivo: no sign-in ticket,
+/// no company path and no locked project are passed; they only learn where the AI Core is.
 /// </summary>
 internal static class SuiteHub
 {
@@ -65,37 +65,22 @@ internal static class SuiteHub
         return null;
     }
 
-    /// <summary>
-    /// Issues a suite ticket and starts the app with company path + ticket in the environment.
-    /// Does not put the password on the command line.
-    /// </summary>
-    internal static void Launch(AdmsSession session, SuiteCard card, string companyPath)
+    /// <summary>Starts the app. Nothing about the company or a person is passed to it.</summary>
+    internal static void Launch(SuiteCard card)
     {
-        if (string.IsNullOrWhiteSpace(companyPath) || !File.Exists(companyPath))
-            throw new InvalidOperationException("Open a company in Studio first.");
         var exe = FindExecutable(card)
             ?? throw new InvalidOperationException($"{card.Title} is not installed. Install it, then open it from Studio.");
         if (SuiteCatalog.FocusRunning(exe))
             return;
-        var ticket = session.Call("auth.ticket", new { app = card.TicketApp });
-        var secret = ticket.ValueKind == JsonValueKind.Object && ticket.TryGetProperty("ticket", out var t)
-            ? t.GetString()
-            : null;
-        if (string.IsNullOrWhiteSpace(secret))
-            throw new InvalidOperationException("Studio could not issue a sign-in ticket. Sign in again and retry.");
 
         var start = new ProcessStartInfo(exe)
         {
             UseShellExecute = false,
             WorkingDirectory = Path.GetDirectoryName(exe) ?? Environment.CurrentDirectory,
         };
-        start.Environment[SuiteWire.EnvCompany] = companyPath;
-        start.Environment[SuiteWire.EnvTicket] = secret;
         start.Environment[SuiteWire.EnvAiRole] = "client";
         start.Environment[SuiteWire.EnvAiHost] = "127.0.0.1";
         start.Environment[SuiteWire.EnvAiPort] = "8742";
-        foreach (var (key, value) in SelectedProjectStore.EnvironmentFor(companyPath))
-            start.Environment[key] = value;
         Process.Start(start);
     }
 }

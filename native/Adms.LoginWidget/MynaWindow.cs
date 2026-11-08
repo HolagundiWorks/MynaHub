@@ -19,11 +19,7 @@ internal sealed class MynaWindow : WidgetWindow
 
     readonly InfoBar _notice = new() { IsOpen = false, IsClosable = true };
     readonly StatusIcon _aiIcon = StatusIcon.Orb(42);
-    readonly StatusIcon _dbIcon = new("", 36);
     readonly TextBlock _aiText = new() { TextWrapping = TextWrapping.Wrap };
-    readonly TextBlock _dbText = new() { TextWrapping = TextWrapping.Wrap };
-    readonly TextBlock _dbDetail = new() { Style = (Style)Application.Current.Resources["CaptionStyle"], TextWrapping = TextWrapping.Wrap, Opacity = 0.8 };
-    readonly Button _signIn = new() { Content = "Open Kivo to sign in", HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = 48, Style = (Style)Application.Current.Resources["AccentButtonStyle"] };
 
     public MynaWindow() : base("Myna")
     {
@@ -40,7 +36,6 @@ internal sealed class MynaWindow : WidgetWindow
         if (File.Exists(icon))
             AppWindow.SetIcon(icon);
 
-        _signIn.Click += (_, _) => Run(SuiteLauncherHost.Instance.OpenKivoToSignIn);
         AttachChrome(BuildChrome());
         AppWindow.Resize(new Windows.Graphics.SizeInt32(400, 640));
         Apply();
@@ -85,14 +80,8 @@ internal sealed class MynaWindow : WidgetWindow
     {
         var s = SuiteStatus.Instance;
         var ai = ServiceStatus.ForAi(s.Ai);
-        var db = ServiceStatus.ForDatabase(s.Database);
         _aiIcon.Set(ai, $"AI: {SuiteLauncherHost.Word(s.Ai)} ({s.Ai})");
-        _dbIcon.Set(db, $"Database: {s.Database}");
         _aiText.Text = "AI: " + SuiteLauncherHost.Word(s.Ai);
-        _dbText.Text = "Database: " + s.Database;
-        _dbDetail.Text = s.DatabaseDetail;
-        _dbDetail.Visibility = s.DatabaseDetail.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-        _signIn.Visibility = string.Equals(s.Database, "signed out", StringComparison.Ordinal) ? Visibility.Visible : Visibility.Collapsed;
     }
 
     FrameworkElement BuildChrome()
@@ -110,13 +99,11 @@ internal sealed class MynaWindow : WidgetWindow
 
         var body = new StackPanel { Spacing = 14, Margin = new Thickness(16, 16, 16, 12) };
         body.Children.Add(ServiceCard(_aiIcon, _aiText, null));
-        body.Children.Add(ServiceCard(_dbIcon, _dbText, _dbDetail));
-        body.Children.Add(_signIn);
         body.Children.Add(new TextBlock { Text = "Apps", Style = (Style)Application.Current.Resources["SectionTitleStyle"], FontFamily = O.Ui.SuiteFonts.Display, Margin = new Thickness(0, 6, 0, 0) });
         body.Children.Add(BuildAppTiles());
         body.Children.Add(new TextBlock
         {
-            Text = "Sign in once in Kivo. Tren and Falcon ask Kivo for the database when you connect a project.",
+            Text = "Myna hosts the AI assistant. Tren, Falcon and Kivo use it when it runs.",
             Style = (Style)Application.Current.Resources["CaptionStyle"],
             TextWrapping = TextWrapping.Wrap,
             Opacity = 0.8,

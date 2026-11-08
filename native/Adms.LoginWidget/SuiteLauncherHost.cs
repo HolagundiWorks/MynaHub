@@ -17,17 +17,6 @@ internal sealed class SuiteLauncherHost
         SuiteCatalog.StartApp(exe, ospPath is null ? null : new Dictionary<string, string> { [SuiteWire.EnvProjectOsp] = ospPath });
     }
 
-    /// <summary>
-    /// "Open Kivo to sign in": starts Kivo with <c>--broker --signin</c>. Kivo shows its sign-in, creates the session pipe, and the database service picks the
-    /// session up at its next look (within 5 seconds).
-    /// </summary>
-    internal void OpenKivoToSignIn()
-    {
-        var kivo = SuiteCatalog.Apps.First(a => string.Equals(a.Title, "Kivo", StringComparison.Ordinal));
-        var exe = SuiteCatalog.FindExecutable(kivo) ?? throw new InvalidOperationException("Kivo is not installed.");
-        SuiteCatalog.StartApp(exe, null, "--broker", "--signin");
-    }
-
     /// <summary>Start the app that asked for the launcher (<see cref="LaunchRequest"/>): at once, since nothing has to be signed in here first.</summary>
     internal void RunPendingLaunch()
     {
@@ -52,7 +41,7 @@ internal sealed class SuiteLauncherHost
     internal static string TrayTooltip()
     {
         var s = SuiteStatus.Instance;
-        return $"Myna — AI: {Word(s.Ai)}, Database: {s.Database}";
+        return $"Myna — AI: {Word(s.Ai)}";
     }
 
     /// <summary>The first word of an AI line (<c>ready</c>, <c>starting</c>, …); <c>stopped</c> for anything that is not up.</summary>

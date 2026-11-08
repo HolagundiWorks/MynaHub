@@ -1,6 +1,6 @@
 # Workflow: Kivo is the office, the launcher is the engine room
 
-Status update 2026-11-08 (later): **Tren and Falcon are independent of Kivo.** They share the local `.osp` as their database and no longer sign in to Kivo or call Myna's database service (decision 2 below, "each app asks Kivo on demand", is withdrawn). Kivo receives project data only through Falcon's exported CSV. The broker and the database service remain in Kivo and Myna but have no client.
+Status update 2026-11-08 (later): **Tren and Falcon are independent of Kivo.** They share the local `.osp` as their database and no longer sign in to Kivo or call Myna's database service (decision 2 below, "each app asks Kivo on demand", is withdrawn). Kivo receives project data only through Falcon's exported CSV. The broker, the database service, the sign-in ticket and the locked project were then removed from Kivo, Myna, Tren and Falcon (same day).
 
 Status: **first slices built and shipped in suite 1.5.0 (2026-11-08)**: the Kivo session broker and company sign-in, the slimmed Myna (AI Core and database service only), Falcon's CSV export and Kivo's CSV import. Tren and Falcon now connect the open `.osp` to the database service (built after 1.5.5, next suite build). **Still to build:** approvals and revisions stored fully in Kivo, and pulling a newer shared revision into an open file. Open questions: approval roles, locking measured-to-date, whether `item_code` is Falcon's library code or Kivo's price list, one company or several per PC.
 

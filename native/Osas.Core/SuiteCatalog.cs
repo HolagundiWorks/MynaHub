@@ -120,7 +120,6 @@ public static class SuiteCatalog
         start.Environment[SuiteWire.EnvAiRole] = "client";
         start.Environment[SuiteWire.EnvAiHost] = "127.0.0.1";
         start.Environment[SuiteWire.EnvAiPort] = "8742";
-        start.Environment[SuiteWire.EnvDbUrl] = SuiteWire.DbUrl;
         foreach (var (key, value) in SelectedProjectStore.EnvironmentFor(companyPath))
             start.Environment[key] = value;
     }
@@ -174,7 +173,6 @@ public static class SuiteCatalog
         start.Environment[SuiteWire.EnvAiRole] = "client";
         start.Environment[SuiteWire.EnvAiHost] = "127.0.0.1";
         start.Environment[SuiteWire.EnvAiPort] = "8742";
-        start.Environment[SuiteWire.EnvDbUrl] = SuiteWire.DbUrl;
     }
 
     /// <summary>

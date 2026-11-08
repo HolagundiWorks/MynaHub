@@ -1,3 +1,5 @@
+> **Retired 2026-11-08.** Tren and Falcon are independent of Kivo, so the broker and the database service described below were removed from Kivo and Myna. This file is kept as history only.
+
 # Session broker and database service (contract v1)
 
 Status: **proposal v1, 2026-11-08.** Part of [WORKFLOW-KIVO-HUB.md](../WORKFLOW-KIVO-HUB.md). Two parties build against this file at the same time: the **Kivo broker** (server of section 1) and the **launcher database service** (server of section 2, client of section 1). Change it only by editing this file in the same commit as the code.

@@ -122,23 +122,9 @@ public sealed partial class MainWindow : Window
         TasksWidget.ShowOrFocus(shell);
     }
 
-    // ----- Kivo is the sign-in for the suite: Tren and Falcon ask for a session over the broker pipe (docs/contracts/session-broker.md). -----
-
-    private bool _hiddenForBroker;
-
-    /// <summary>A caller of the broker needs the person to sign in: come to the front, open the remembered company if none is open.</summary>
-    internal void ShowForBroker()
-    {
-        _hiddenForBroker = _hiddenForBroker || !AppWindow.IsVisible;
-        BringToFront();
-        if (!_companyOpen && !_busy && _session != null && SuiteHub.CompanyPath() is { } path && File.Exists(path))
-            _ = OpenPathAsync(path);
-    }
-
     /// <summary>The person started Kivo again while it was running in the background.</summary>
     internal void ShowForUser()
     {
-        _hiddenForBroker = false;
         BringToFront();
     }
 
@@ -153,26 +139,6 @@ public sealed partial class MainWindow : Window
 
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(nint hwnd);
-
-    /// <summary>Tells the broker who is signed in, or that no one is. Only a sign-in that completes the wait of a caller may hide the window again.</summary>
-    private void TellBroker(string? username, string role)
-    {
-        var broker = App.Broker;
-        if (broker == null)
-            return;
-        if (username == null)
-        {
-            broker.SignedOut();
-            return;
-        }
-        var waited = broker.SignInPending;
-        broker.SignedIn(new Osas.Core.Broker.BrokerIdentity(username, _companyUuid, _companyName, [role.Trim().ToLowerInvariant()]));
-        if (waited && _hiddenForBroker)
-        {
-            _hiddenForBroker = false;
-            AppWindow.Hide();
-        }
-    }
 
     private async void SignIn(object sender, RoutedEventArgs e)
     {
@@ -543,15 +509,6 @@ public sealed partial class MainWindow : Window
 
     private void OnClosing(AppWindow sender, AppWindowClosingEventArgs args)
     {
-        if (!_shuttingDown && _hiddenForBroker && !_signedIn)
-        {
-            // Closed the sign-in a caller asked for: tell the caller, and go back to the background rather than ending the broker.
-            args.Cancel = true;
-            _hiddenForBroker = false;
-            AppWindow.Hide();
-            App.Broker?.CancelSignIn();
-            return;
-        }
         SavePlacement();
         Office.Ai.SuiteAiCoordinator.StopHost();
         if (_shuttingDown)
@@ -572,8 +529,6 @@ public sealed partial class MainWindow : Window
         _shuttingDown = true;
         _ = CloudSyncHub.StopAsync();
         ReleaseSession();
-        App.Broker?.SignedOut();
-        App.Broker?.Dispose();
     }
 
     private async Task ConfirmClose()
@@ -739,7 +694,6 @@ public sealed partial class MainWindow : Window
             _companyUuid = "";
             _role = "";
             Title = "Kivo";
-            TellBroker(null, "");
             ClearSecrets();
             ClearWorkspace();
             ShowWelcome();
@@ -1205,7 +1159,6 @@ public sealed partial class MainWindow : Window
         {
             _companyOpen = false;
             _signedIn = false;
-            TellBroker(null, "");
             ClearWorkspace();
             ShowWelcome();
             _ = LoadWelcomeAsync();
@@ -1221,14 +1174,12 @@ public sealed partial class MainWindow : Window
         var setup = status.TryGetProperty("setup_required", out var setupFlag) && setupFlag.ValueKind == JsonValueKind.True;
         if (setup)
         {
-            TellBroker(null, "");
             ClearWorkspace();
             ShowSetup();
             return;
         }
         if (!status.TryGetProperty("user", out var user) || user.ValueKind != JsonValueKind.Object)
         {
-            TellBroker(null, "");
             ClearWorkspace();
             ShowLogin(_companyName);
             return;
@@ -1240,13 +1191,11 @@ public sealed partial class MainWindow : Window
         var locked = status.TryGetProperty("locked", out var lockedFlag) && lockedFlag.ValueKind == JsonValueKind.True;
         if (locked)
         {
-            App.Broker?.Locked();
             ClearWorkspace();
             ShowUnlock(username);
             return;
         }
         ShowWorkspace(username, _role);
-        TellBroker(username, Text(user, "role"));
     }
 
     private void FinishClose()

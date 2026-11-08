@@ -245,7 +245,7 @@ internal sealed class WorkspaceView : UserControl
         var target = card;
         button.Click += (_, _) =>
         {
-            try { SuiteHub.Launch(_shell.Session, target, _shell.CompanyPath); }
+            try { SuiteHub.Launch(target); }
             catch (Exception ex) { _shell.Problem(ex.Message); }
         };
         return button;

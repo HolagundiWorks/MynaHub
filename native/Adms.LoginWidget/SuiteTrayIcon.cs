@@ -13,7 +13,6 @@ internal sealed class SuiteTrayIcon : IDisposable
     const int WmLButtonUp = 0x0202;
     const int WmContextMenu = 0x007B;
 
-    const uint IdSignIn = 1001;
     const uint IdExit = 1002;
     const uint IdRefresh = 1003;
     const uint IdShow = 1004;
@@ -124,11 +123,8 @@ internal sealed class SuiteTrayIcon : IDisposable
         var menu = CreatePopupMenu();
         var suite = SuiteStatus.Instance;
         AppendMenu(menu, MfString | MfDisabled, 0, Clip("AI: " + SuiteLauncherHost.Word(suite.Ai)));
-        AppendMenu(menu, MfString | MfDisabled, 0, Clip("Database: " + suite.Database));
         AppendMenu(menu, MfString, IdRefresh, "Refresh status");
         AppendMenu(menu, MfSeparator, 0, null);
-        if (string.Equals(suite.Database, "signed out", StringComparison.Ordinal))
-            AppendMenu(menu, MfString, IdSignIn, "Open Kivo to sign in");
         AppendMenu(menu, MfString, IdShow, "Show Myna");
         AppendMenu(menu, MfSeparator, 0, null);
 
@@ -151,12 +147,6 @@ internal sealed class SuiteTrayIcon : IDisposable
 
     async Task HandleCommandAsync(uint cmd)
     {
-        if (cmd == IdSignIn)
-        {
-            RunOrShowError(SuiteLauncherHost.Instance.OpenKivoToSignIn);
-            return;
-        }
-
         if (cmd == IdShow)
         {
             MynaWindow.ShowOrFocus();

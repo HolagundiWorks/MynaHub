@@ -29,7 +29,6 @@ public partial class App : Application
     /// The launcher also hosts the suite's database service (loopback 127.0.0.1:8743): a local database that syncs to Neon in the background, only while
     /// Kivo has a session. It never opens a window and never asks for a password.
     /// </summary>
-    static void StartDatabaseService() => DatabaseServiceHost.Instance.Start();
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
@@ -55,7 +54,6 @@ public partial class App : Application
 
         O.Ui.SuiteMotion.RespectSystemPreference();
         StartAiCore();
-        StartDatabaseService();
         new SuiteLauncherWindow().Activate();
         if (request != null)
         {

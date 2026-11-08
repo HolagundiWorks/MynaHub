@@ -5,19 +5,13 @@ using Osas.Core.Agent;
 namespace Adms.LoginWidget;
 
 /// <summary>
-/// What the launcher shows: the AI Core (the Olmo host on loopback, hosted by the launcher) and the database service (loopback, hosted by the launcher;
-/// the words come from its <c>/v1/health</c>). It looks again every 5 seconds, when the database service changes state, and on request.
+/// What the launcher shows: the AI Core (the Olmo host on loopback, hosted by the launcher). It looks again every 5 seconds and on request.
 /// </summary>
 internal sealed class SuiteStatus
 {
     internal static SuiteStatus Instance { get; } = new();
 
     internal string Ai { get; private set; } = "checking…";
-
-    /// <summary><c>connected</c>, <c>offline</c>, <c>signed out</c>, <c>starting</c> or <c>stopped (reason)</c>.</summary>
-    internal string Database { get; private set; } = "checking…";
-
-    internal string DatabaseDetail { get; private set; } = "";
 
     internal event Action? Changed;
 
@@ -33,7 +27,6 @@ internal sealed class SuiteStatus
         _timer.Interval = TimeSpan.FromSeconds(5);
         _timer.Tick += async (_, _) => await RefreshAsync();
         _timer.Start();
-        DatabaseServiceHost.Instance.Changed += () => queue.TryEnqueue(async () => await RefreshAsync());
         _ = RefreshAsync();
     }
 
@@ -43,12 +36,9 @@ internal sealed class SuiteStatus
             return;
         try
         {
-            // The database check is a local call every time; the AI check is heavier, so a ready AI is looked at about every 20 seconds.
+            // The AI check is heavy, so a ready AI is looked at about every 20 seconds.
             if (!Ai.StartsWith("ready", StringComparison.Ordinal) || _round++ % 4 == 0)
                 Ai = await ProbeAiAsync().ConfigureAwait(true);
-            var (word, detail, _) = await DatabaseServiceHost.Instance.DescribeAsync().ConfigureAwait(true);
-            Database = word;
-            DatabaseDetail = detail;
             WriteLog();
             Changed?.Invoke();
         }
@@ -68,8 +58,7 @@ internal sealed class SuiteStatus
         {
             var path = SuiteWire.LocalPath("launcher-status.txt");
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var cloud = DatabaseDetail.Length > 0 ? $"{Database} ({DatabaseDetail})" : Database;
-            File.WriteAllText(path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}{Environment.NewLine}AI agent: {Ai}{Environment.NewLine}Database: {Database}{Environment.NewLine}Cloud sync: {cloud}{Environment.NewLine}");
+            File.WriteAllText(path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}{Environment.NewLine}AI agent: {Ai}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
