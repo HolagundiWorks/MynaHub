@@ -1,6 +1,6 @@
 # Workflow: Kivo is the office, the launcher is the engine room
 
-Status: **first slices built and shipped in suite 1.5.0 (2026-11-08)**: the Kivo session broker and company sign-in, the slimmed Myna (AI Core and database service only), Falcon's CSV export and Kivo's CSV import. **Still to build:** Tren and Falcon connecting to the database service from their `.osp`, and approvals and revisions stored fully in Kivo. Open questions: approval roles, locking measured-to-date, whether `item_code` is Falcon's library code or Kivo's price list, one company or several per PC.
+Status: **first slices built and shipped in suite 1.5.0 (2026-11-08)**: the Kivo session broker and company sign-in, the slimmed Myna (AI Core and database service only), Falcon's CSV export and Kivo's CSV import. Tren and Falcon now connect the open `.osp` to the database service (built after 1.5.5, next suite build). **Still to build:** approvals and revisions stored fully in Kivo, and pulling a newer shared revision into an open file. Open questions: approval roles, locking measured-to-date, whether `item_code` is Falcon's library code or Kivo's price list, one company or several per PC.
 
 ## The workflow in one line
 
