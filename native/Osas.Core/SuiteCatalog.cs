@@ -120,6 +120,7 @@ public static class SuiteCatalog
         start.Environment[SuiteWire.EnvAiRole] = "client";
         start.Environment[SuiteWire.EnvAiHost] = "127.0.0.1";
         start.Environment[SuiteWire.EnvAiPort] = "8742";
+        start.Environment[SuiteWire.EnvDbUrl] = SuiteWire.DbUrl;
         foreach (var (key, value) in SelectedProjectStore.EnvironmentFor(companyPath))
             start.Environment[key] = value;
     }
@@ -166,6 +167,37 @@ public static class SuiteCatalog
     [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
     [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int cmd);
     [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool IsIconic(IntPtr hWnd);
+
+    /// <summary>The environment every app the launcher starts gets: the AI Core and the database service on loopback. No company, no ticket, no password.</summary>
+    public static void ApplyServiceEnvironment(ProcessStartInfo start)
+    {
+        start.Environment[SuiteWire.EnvAiRole] = "client";
+        start.Environment[SuiteWire.EnvAiHost] = "127.0.0.1";
+        start.Environment[SuiteWire.EnvAiPort] = "8742";
+        start.Environment[SuiteWire.EnvDbUrl] = SuiteWire.DbUrl;
+    }
+
+    /// <summary>
+    /// Start an app with the service environment and optional arguments, no sign-in: each app asks Kivo for a session itself when it needs the database.
+    /// An app that is already running is brought to the front instead (unless it is started with arguments, for example Kivo's <c>--broker --signin</c>, which
+    /// must reach the running copy through its own single-instance handling).
+    /// </summary>
+    public static void StartApp(string exePath, IReadOnlyDictionary<string, string>? extraEnvironment = null, params string[] arguments)
+    {
+        if (arguments.Length == 0 && FocusRunning(exePath))
+            return;
+        var start = new ProcessStartInfo(exePath)
+        {
+            UseShellExecute = false,
+            WorkingDirectory = Path.GetDirectoryName(exePath) ?? Environment.CurrentDirectory,
+        };
+        foreach (var a in arguments)
+            start.ArgumentList.Add(a);
+        ApplyServiceEnvironment(start);
+        foreach (var (key, value) in extraEnvironment ?? new Dictionary<string, string>())
+            start.Environment[key] = value;
+        Process.Start(start);
+    }
 
     public static void StartWithTicket(string exePath, string companyPath, string ticket)
     {

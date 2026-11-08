@@ -5,33 +5,35 @@ using Osas.Core.Agent;
 namespace Adms.LoginWidget;
 
 /// <summary>
-/// What the launcher shows besides the company session: the AI agent (the Olmo host on loopback, started by O-Studio), the company database
-/// (the open company file) and the cloud sync setup. It looks again every 20 seconds, when the company session changes, and on request.
+/// What the launcher shows: the AI Core (the Olmo host on loopback, hosted by the launcher) and the database service (loopback, hosted by the launcher;
+/// the words come from its <c>/v1/health</c>). It looks again every 5 seconds, when the database service changes state, and on request.
 /// </summary>
 internal sealed class SuiteStatus
 {
     internal static SuiteStatus Instance { get; } = new();
 
     internal string Ai { get; private set; } = "checking…";
+
+    /// <summary><c>connected</c>, <c>offline</c>, <c>signed out</c>, <c>starting</c> or <c>stopped (reason)</c>.</summary>
     internal string Database { get; private set; } = "checking…";
-    internal string Cloud { get; private set; } = "checking…";
-    internal string Project => SuiteLauncherHost.Instance.ProjectLine();
+
+    internal string DatabaseDetail { get; private set; } = "";
 
     internal event Action? Changed;
 
     DispatcherQueueTimer? _timer;
     int _running;
+    int _round;
 
     internal void Start(DispatcherQueue queue)
     {
         if (_timer != null)
             return;
         _timer = queue.CreateTimer();
-        _timer.Interval = TimeSpan.FromSeconds(20);
+        _timer.Interval = TimeSpan.FromSeconds(5);
         _timer.Tick += async (_, _) => await RefreshAsync();
         _timer.Start();
-        SuiteLauncherHost.Instance.Changed += () => queue.TryEnqueue(async () => await RefreshAsync());
-        CloudSyncService.Instance.Changed += () => queue.TryEnqueue(async () => await RefreshAsync());
+        DatabaseServiceHost.Instance.Changed += () => queue.TryEnqueue(async () => await RefreshAsync());
         _ = RefreshAsync();
     }
 
@@ -41,10 +43,12 @@ internal sealed class SuiteStatus
             return;
         try
         {
-            var ai = await ProbeAiAsync().ConfigureAwait(true);
-            Ai = ai;
-            Database = DescribeDatabase();
-            Cloud = DescribeCloud();
+            // The database check is a local call every time; the AI check is heavier, so a ready AI is looked at about every 20 seconds.
+            if (!Ai.StartsWith("ready", StringComparison.Ordinal) || _round++ % 4 == 0)
+                Ai = await ProbeAiAsync().ConfigureAwait(true);
+            var (word, detail, _) = await DatabaseServiceHost.Instance.DescribeAsync().ConfigureAwait(true);
+            Database = word;
+            DatabaseDetail = detail;
             WriteLog();
             Changed?.Invoke();
         }
@@ -54,14 +58,18 @@ internal sealed class SuiteStatus
         }
     }
 
-    /// <summary>The latest status as plain text, <c>launcher-status.txt</c> in the suite's local folder, so it can be read without opening the menu. It is overwritten each time.</summary>
+    /// <summary>
+    /// The latest status as plain text, <c>launcher-status.txt</c> in the suite's local folder, so it can be read without opening the menu. It is overwritten
+    /// each time. The <c>Cloud sync:</c> line is kept for Kivo's Cloud sync page, which shows it.
+    /// </summary>
     void WriteLog()
     {
         try
         {
             var path = SuiteWire.LocalPath("launcher-status.txt");
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllText(path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}{Environment.NewLine}AI agent: {Ai}{Environment.NewLine}Database: {Database}{Environment.NewLine}Cloud sync: {Cloud}{Environment.NewLine}Project: {Project}{Environment.NewLine}");
+            var cloud = DatabaseDetail.Length > 0 ? $"{Database} ({DatabaseDetail})" : Database;
+            File.WriteAllText(path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}{Environment.NewLine}AI agent: {Ai}{Environment.NewLine}Database: {Database}{Environment.NewLine}Cloud sync: {cloud}{Environment.NewLine}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -88,43 +96,4 @@ internal sealed class SuiteStatus
             return Office.Ai.SuiteAiCoordinator.IsHost ? "starting (the launcher hosts it)" : "not running (port 8742 is taken by another program)";
         }
     }
-
-    static string DescribeDatabase()
-    {
-        var host = SuiteLauncherHost.Instance;
-        var path = host.CompanyOpen ? host.CompanyPath : SuiteJsonHub.CompanyPath() ?? "";
-        if (string.IsNullOrWhiteSpace(path))
-            return "no company file chosen";
-        if (!File.Exists(path))
-            return $"{Path.GetFileName(path)} not found";
-        var size = new FileInfo(path).Length;
-        var file = $"{Path.GetFileName(path)} ({FormatSize(size)})";
-        if (!host.CompanyOpen)
-            return $"{file}, closed";
-        if (host.Locked)
-            return $"{file}, open, session locked";
-        return host.SignedIn ? $"{file}, open, signed in as {host.Username}" : $"{file}, open, sign-in needed";
-    }
-
-    /// <summary>Whether the Neon credentials in <c>neon.env</c> are set up and whether the launcher's sync is running (see <see cref="CloudSyncService"/>).</summary>
-    static string DescribeCloud()
-    {
-        try
-        {
-            var path = Environment.GetEnvironmentVariable(SuiteWire.EnvNeonEnvFile);
-            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
-                path = SuiteWire.LocalPath("neon.env");
-            if (!File.Exists(path))
-                return "not set up (no neon.env)";
-            var set = File.ReadLines(path).Any(l => l.TrimStart().StartsWith("DATABASE_URL", StringComparison.Ordinal) && l.Contains('=') && l[(l.IndexOf('=') + 1)..].Trim().Length > 0);
-            return set ? CloudSyncService.Instance.Describe() : "neon.env has no database address";
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            return "neon.env could not be read";
-        }
-    }
-
-    static string FormatSize(long bytes) =>
-        bytes >= 1 << 20 ? $"{bytes / (1024.0 * 1024.0):0.#} MB" : $"{Math.Max(1, bytes / 1024)} KB";
 }

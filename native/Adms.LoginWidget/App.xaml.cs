@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml;
 
 namespace Adms.LoginWidget;
@@ -26,6 +25,12 @@ public partial class App : Application
         AppDomain.CurrentDomain.ProcessExit += (_, _) => Office.Ai.SuiteAiCoordinator.StopHost();
     }
 
+    /// <summary>
+    /// The launcher also hosts the suite's database service (loopback 127.0.0.1:8743): a local database that syncs to Neon in the background, only while
+    /// Kivo has a session. It never opens a window and never asks for a password.
+    /// </summary>
+    static void StartDatabaseService() => DatabaseServiceHost.Instance.Start();
+
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         var request = LaunchRequest.FromArguments(Environment.GetCommandLineArgs());
@@ -35,7 +40,7 @@ public partial class App : Application
         _show = new EventWaitHandle(false, EventResetMode.AutoReset, "O-Studio.Suite.Launcher.Show");
         if (!first)
         {
-            // Another launcher is running: ask it to bring its sign-in window forward, then leave.
+            // Another launcher is running: ask it to bring its window forward (and start the app this request names), then leave.
             _show.Set();
             Exit();
             return;
@@ -43,38 +48,19 @@ public partial class App : Application
         var queue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         ThreadPool.RegisterWaitForSingleObject(_show, (_, _) => queue.TryEnqueue(() =>
         {
-            CompanyLoginWidget.ShowOrFocus();
+            MynaWindow.ShowOrFocus();
             _ = SuiteStatus.Instance.RefreshAsync();
-            _ = SuiteLauncherHost.Instance.RunPendingLaunchAsync(queue);
+            SuiteLauncherHost.Instance.RunPendingLaunch();
         }), null, Timeout.Infinite, false);
-        SuiteLauncherHost.Instance.Changed += () => queue.TryEnqueue(async () => await SuiteLauncherHost.Instance.RunPendingLaunchAsync(queue));
 
-        var enginePath = Path.Combine(AppContext.BaseDirectory, "architect_office_desktop_lib.dll");
-        if (File.Exists(enginePath))
-        {
-            try
-            {
-                NativeLibrary.Load(enginePath);
-            }
-            catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException)
-            {
-            }
-        }
-
-        Osas.Core.Suite.Engine.LookIn(AppContext.BaseDirectory, "architect_office_desktop_lib.dll");
         O.Ui.SuiteMotion.RespectSystemPreference();
         StartAiCore();
-        CloudSyncService.Instance.Start(Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());
-        AppDomain.CurrentDomain.ProcessExit += (_, _) => CloudSyncService.Stop();
+        StartDatabaseService();
         new SuiteLauncherWindow().Activate();
         if (request != null)
         {
-            // Started on behalf of an app: show the sign-in window; the app starts when a project is locked.
-            queue.TryEnqueue(() =>
-            {
-                CompanyLoginWidget.ShowOrFocus();
-                _ = SuiteLauncherHost.Instance.RunPendingLaunchAsync(queue);
-            });
+            // Started on behalf of an app: start that app now, nothing has to be signed in here first.
+            queue.TryEnqueue(SuiteLauncherHost.Instance.RunPendingLaunch);
         }
     }
 }

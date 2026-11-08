@@ -18,6 +18,11 @@ public static class SuiteWire
     public const string EnvAiPort = "OSTUDIO_AI_PORT";
     public const string EnvAiToken = "OSTUDIO_AI_TOKEN";
 
+    /// <summary>Where the launcher's database service listens (contracts/session-broker.md section 2); set for every app the launcher starts, next to the AI variables.</summary>
+    public const string EnvDbUrl = "OSAS_DB_URL";
+    public const int DbPort = 8743;
+    public const string DbUrl = "http://127.0.0.1:8743";
+
     public const string EnvUpdateChannel = "OSTUDIO_UPDATE_CHANNEL_URL";
     public const string EnvNeonEnvFile = "OSTUDIO_NEON_ENV_FILE";
 

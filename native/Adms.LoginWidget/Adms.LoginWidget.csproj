@@ -19,7 +19,7 @@
     <Company>Human Centric Works</Company>
     <Product>O-Studio Suite Launcher</Product>
     <AssemblyTitle>O-Studio Suite Launcher</AssemblyTitle>
-    <Description>System tray launcher: company sign-in and suite apps.</Description>
+    <Description>System tray launcher: hosts the AI Core and the database service, starts the suite apps.</Description>
     <Copyright>Copyright © 2026 Human Centric Works</Copyright>
     <Version>0.1.0</Version>
     <Nullable>enable</Nullable>
@@ -42,6 +42,7 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
   </ItemGroup>
   <ItemGroup>
+    <!-- moved to Kivo; remove after the broker merge: the launcher no longer opens a company file (no AdmsSession). The reference stays only so the Rust engine DLL keeps being copied beside the launcher until the installer stops expecting it. -->
     <ProjectReference Include="..\Adms.Interop\Adms.Interop.csproj">
       <Properties>EngineProfile=$(EngineProfile)</Properties>
     </ProjectReference>

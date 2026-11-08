@@ -251,6 +251,30 @@ public sealed class OspCloudClient : IAsyncDisposable
             head.LatestRevision);
     }
 
+    /// <summary>
+    /// Download the newest snapshot of <paramref name="projectId"/> to <paramref name="destPath"/> and check it against the cloud checksum. Unlike
+    /// <see cref="PullAsync"/> it needs no local file and never touches the project file: the database service uses it to fill the <c>.osp.incoming</c> sidecar.
+    /// </summary>
+    public async Task<(CloudHead? Head, string Sha256)> DownloadLatestAsync(string projectId, string destPath, CancellationToken ct = default)
+    {
+        var head = await GetHeadAsync(projectId, ct).ConfigureAwait(false);
+        if (head is null)
+            return (null, "");
+        var key = SnapshotKey(projectId, head.LatestRevision);
+        using var response = await _s3.GetObjectAsync(_settings.S3Bucket, key, ct).ConfigureAwait(false);
+        await using (var stream = response.ResponseStream)
+        await using (var file = File.Create(destPath))
+            await stream.CopyToAsync(file, ct).ConfigureAwait(false);
+        var sha = Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(destPath, ct).ConfigureAwait(false))).ToLowerInvariant();
+        if (head.Sha256 is not null && !string.Equals(head.Sha256, sha, StringComparison.OrdinalIgnoreCase))
+        {
+            File.Delete(destPath);
+            throw new InvalidDataException("Downloaded snapshot checksum did not match cloud metadata.");
+        }
+
+        return (head, sha);
+    }
+
     public async ValueTask DisposeAsync()
     {
         await _pg.DisposeAsync().ConfigureAwait(false);
