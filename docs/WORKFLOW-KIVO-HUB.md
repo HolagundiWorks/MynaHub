@@ -66,3 +66,9 @@ Estimates and bills have a revision number and an approval state in Kivo. Falcon
 - Does a running bill lock the `measured_to_date` it used, so a later re-measure makes a new bill rather than changing the old one? (Recommended: yes.)
 - Is `item_code` the Falcon item library code, or Kivo's own price list code?
 - One company per PC, or several? It decides whether the database service keeps one local database or one per company file.
+
+### Defaults in force until the owner answers (2026-11-08)
+
+- A running bill **locks** the `measured_to_date` it used; a re-measure makes a new bill.
+- **One company per PC**: Kivo keeps one open company, and the database service keeps one local database.
+- **One approver** for an estimate and a bill.

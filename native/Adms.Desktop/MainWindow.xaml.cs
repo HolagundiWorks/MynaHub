@@ -122,10 +122,87 @@ public sealed partial class MainWindow : Window
         TasksWidget.ShowOrFocus(shell);
     }
 
-    private void OpenCompanyLoginWidget(object sender, RoutedEventArgs e)
+    // ----- Kivo is the sign-in for the suite: Tren and Falcon ask for a session over the broker pipe (docs/contracts/session-broker.md). -----
+
+    private bool _hiddenForBroker;
+
+    /// <summary>A caller of the broker needs the person to sign in: come to the front, open the remembered company if none is open.</summary>
+    internal void ShowForBroker()
     {
-        if (!CompanyLoginLauncher.TryLaunch(out var error) && error != null)
-            ShowError(error);
+        _hiddenForBroker = _hiddenForBroker || !AppWindow.IsVisible;
+        BringToFront();
+        if (!_companyOpen && !_busy && _session != null && SuiteHub.CompanyPath() is { } path && File.Exists(path))
+            _ = OpenPathAsync(path);
+    }
+
+    /// <summary>The person started Kivo again while it was running in the background.</summary>
+    internal void ShowForUser()
+    {
+        _hiddenForBroker = false;
+        BringToFront();
+    }
+
+    private void BringToFront()
+    {
+        AppWindow.Show();
+        if (AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
+            presenter.Restore();
+        Activate();
+        SetForegroundWindow(Hwnd);
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(nint hwnd);
+
+    /// <summary>Tells the broker who is signed in, or that no one is. Only a sign-in that completes the wait of a caller may hide the window again.</summary>
+    private void TellBroker(string? username, string role)
+    {
+        var broker = App.Broker;
+        if (broker == null)
+            return;
+        if (username == null)
+        {
+            broker.SignedOut();
+            return;
+        }
+        var waited = broker.SignInPending;
+        broker.SignedIn(new Osas.Core.Broker.BrokerIdentity(username, _companyUuid, _companyName, [role.Trim().ToLowerInvariant()]));
+        if (waited && _hiddenForBroker)
+        {
+            _hiddenForBroker = false;
+            AppWindow.Hide();
+        }
+    }
+
+    private async void SignIn(object sender, RoutedEventArgs e)
+    {
+        if (_busy || _session == null || !_companyOpen)
+            return;
+        var username = LoginUser.Text.Trim();
+        var password = LoginPassword.Password;
+        if (username.Length == 0 || password.Length == 0)
+        {
+            ShowError("Enter your user name and password.");
+            return;
+        }
+        await RunEngineAsync("Signing in…", () =>
+        {
+            _session.Login(username, password);
+            var status = _session.Call("auth_status");
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                LoginPassword.Password = "";
+                ApplyStatus(status);
+            });
+        });
+    }
+
+    private void LoginKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != VirtualKey.Enter)
+            return;
+        e.Handled = true;
+        SignIn(sender, new RoutedEventArgs());
     }
 
     private void RestoreTheme() => AppTheme.Apply(Root, AppWindow, Hwnd);
@@ -466,6 +543,15 @@ public sealed partial class MainWindow : Window
 
     private void OnClosing(AppWindow sender, AppWindowClosingEventArgs args)
     {
+        if (!_shuttingDown && _hiddenForBroker && !_signedIn)
+        {
+            // Closed the sign-in a caller asked for: tell the caller, and go back to the background rather than ending the broker.
+            args.Cancel = true;
+            _hiddenForBroker = false;
+            AppWindow.Hide();
+            App.Broker?.CancelSignIn();
+            return;
+        }
         SavePlacement();
         Office.Ai.SuiteAiCoordinator.StopHost();
         if (_shuttingDown)
@@ -486,6 +572,8 @@ public sealed partial class MainWindow : Window
         _shuttingDown = true;
         _ = CloudSyncHub.StopAsync();
         ReleaseSession();
+        App.Broker?.SignedOut();
+        App.Broker?.Dispose();
     }
 
     private async Task ConfirmClose()
@@ -651,6 +739,7 @@ public sealed partial class MainWindow : Window
             _companyUuid = "";
             _role = "";
             Title = "Kivo";
+            TellBroker(null, "");
             ClearSecrets();
             ClearWorkspace();
             ShowWelcome();
@@ -957,7 +1046,7 @@ public sealed partial class MainWindow : Window
         if (!_companyOpen)
         {
             args.Handled = true;
-            OpenCompanyLoginWidget(this, new RoutedEventArgs());
+            _ = PickAndOpenAsync();
         }
     }
 
@@ -1116,6 +1205,7 @@ public sealed partial class MainWindow : Window
         {
             _companyOpen = false;
             _signedIn = false;
+            TellBroker(null, "");
             ClearWorkspace();
             ShowWelcome();
             _ = LoadWelcomeAsync();
@@ -1131,12 +1221,14 @@ public sealed partial class MainWindow : Window
         var setup = status.TryGetProperty("setup_required", out var setupFlag) && setupFlag.ValueKind == JsonValueKind.True;
         if (setup)
         {
+            TellBroker(null, "");
             ClearWorkspace();
             ShowSetup();
             return;
         }
         if (!status.TryGetProperty("user", out var user) || user.ValueKind != JsonValueKind.Object)
         {
+            TellBroker(null, "");
             ClearWorkspace();
             ShowLogin(_companyName);
             return;
@@ -1148,11 +1240,13 @@ public sealed partial class MainWindow : Window
         var locked = status.TryGetProperty("locked", out var lockedFlag) && lockedFlag.ValueKind == JsonValueKind.True;
         if (locked)
         {
+            App.Broker?.Locked();
             ClearWorkspace();
             ShowUnlock(username);
             return;
         }
         ShowWorkspace(username, _role);
+        TellBroker(username, Text(user, "role"));
     }
 
     private void FinishClose()
@@ -1185,19 +1279,14 @@ public sealed partial class MainWindow : Window
 
     private void ShowWelcome() => ShowOnly(WelcomePanel);
 
-    private bool _launcherOffered;
-
     private void ShowLogin(string name)
     {
-        LoginHeading.Text = string.IsNullOrWhiteSpace(name) ? "Sign in with the launcher" : name;
+        LoginHeading.Text = string.IsNullOrWhiteSpace(name) ? "Sign in" : name;
         ShowOnly(LoginPanel);
         Notice.IsOpen = false;
-        // Sign-in lives in the launcher: start it once per run so the user is not left looking at a dead end.
-        if (!_launcherOffered)
-        {
-            _launcherOffered = true;
-            CompanyLoginLauncher.TryLaunch(out _);
-        }
+        if (string.IsNullOrWhiteSpace(LoginUser.Text) && SuiteHub.RememberedUsername() is { } remembered)
+            LoginUser.Text = remembered;
+        (string.IsNullOrWhiteSpace(LoginUser.Text) ? (Control)LoginUser : LoginPassword).Focus(FocusState.Programmatic);
     }
 
     private void ShowSetup()
@@ -1259,6 +1348,7 @@ public sealed partial class MainWindow : Window
         RecoverPassword.Password = "";
         RecoverConfirm.Password = "";
         UnlockPassword.Password = "";
+        LoginPassword.Password = "";
     }
 
     private async Task ShowRecoveryAsync(string code, string title, string message)
@@ -1280,9 +1370,12 @@ public sealed partial class MainWindow : Window
     private void UpdateCommands()
     {
         var engine = _session != null;
-        ChooseCompanyItem.IsEnabled = !_busy;
+        ChooseCompanyItem.IsEnabled = !_busy && !_companyOpen;
         OpenCompanyButton.IsEnabled = !_busy;
         FollowButton.IsEnabled = !_busy && !_companyOpen && engine;
+        CreateCompanyItem.IsEnabled = !_busy && !_companyOpen && engine;
+        CreateCompanyButton.IsEnabled = !_busy && !_companyOpen && engine;
+        SignInButton.IsEnabled = !_busy && _companyOpen;
         CloseItem.IsEnabled = !_busy && _companyOpen;
         LockItem.IsEnabled = !_busy && _signedIn;
         LogoutItem.IsEnabled = !_busy && _signedIn;

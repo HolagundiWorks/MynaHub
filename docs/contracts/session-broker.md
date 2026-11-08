@@ -24,6 +24,18 @@ Tokens: 32 random bytes, base64url, opaque. One token per (app, purpose, project
 
 If the pipe does not exist, the client starts Kivo with `O-Studio.exe --broker` (starts hidden at the sign-in or the tray, creates the pipe, no main window until needed) and retries for up to 60 s.
 
+### Clarifications from the Kivo implementation (2026-11-08)
+
+- `status.expires_utc` is the end of the Kivo sign-in's absolute window (sign-in time plus 24 hours).
+- `validate` counts as use: a good token slides its idle window, never past the absolute limit. A bad, ended or expired token is `ok:true`, `valid:false` (not an error).
+- `renew` errors: `bad_token` for an unknown token, `expired` once the absolute limit has passed.
+- `denied`: a user whose only role is `auditor` may get a token for `db_connect` but not for `save_to_office`, `import` or `sync`. `roles` carries the role names as the company file stores them (`owner`, `principal`, `accounts`, `document_editor`, `auditor`).
+- `ask_session` for the same (app, purpose, project) while a token is live returns that token again.
+- Locking Kivo's session stops new tokens (an interactive ask brings up the unlock screen) but keeps the tokens already given. Sign-out, closing the company, or leaving Kivo ends all of them.
+- Missing or wrongly typed `interactive` means `true`. `end_session` with `"token":null` or no `token` ends all.
+- One Kivo per user: it owns the mutex `Local\Osas.Kivo.Instance`. A second `O-Studio.exe` brings the first forward and exits; a second `--broker` simply exits.
+- `--broker`: no window until a caller needs a sign-in. The window then opens (on the remembered company if none is open) and goes back to the background after the sign-in completes. Closing it unsigned answers the waiting callers with `cancelled`.
+
 ## 2. Database service (served by the launcher, Myna)
 
 Transport: **loopback HTTP** `http://127.0.0.1:8743` (the AI Core uses 8742). Every request except `/v1/health` carries `Authorization: Bearer <session token>`; the service calls broker `validate` (cache a positive answer for 30 s). JSON bodies. Errors: `{"ok":false,"error":"<code>","message":"..."}` with HTTP 401 for `signed_out`/`bad_token`/`expired`, 403 `denied`, 404, 409 `revision_conflict`.
