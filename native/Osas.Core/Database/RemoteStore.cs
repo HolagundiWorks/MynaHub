@@ -18,6 +18,9 @@ public interface IRemoteStore
     /// <summary>False when no credentials are set up. The service then reports <c>offline</c>.</summary>
     bool IsConfigured { get; }
 
+    /// <summary>True when project files are deliberately kept on this PC (see <c>ProjectFilePolicy</c>): the service says <c>local</c>, not <c>offline</c>, and nothing is sent.</summary>
+    bool CloudDisabled => false;
+
     /// <summary>The newest remote revision of the project, or null when it was never pushed. Throws <see cref="RemoteUnavailableException"/>.</summary>
     Task<RemoteHead?> GetHeadAsync(string projectId, CancellationToken ct = default);
 
@@ -27,3 +30,20 @@ public interface IRemoteStore
     /// <summary>Download the newest remote revision to <paramref name="destPath"/> (a sidecar; the open file is never touched).</summary>
     Task<RemotePullResult> PullToAsync(string projectId, string destPath, CancellationToken ct = default);
 }
+
+/// <summary>The store used while project files stay local: no network, no credentials, nothing sent.</summary>
+public sealed class LocalOnlyRemoteStore : IRemoteStore
+{
+    public bool IsConfigured => false;
+
+    public bool CloudDisabled => true;
+
+    static RemoteUnavailableException Off() => new("Project files stay on this PC.");
+
+    public Task<RemoteHead?> GetHeadAsync(string projectId, CancellationToken ct = default) => throw Off();
+
+    public Task<RemotePushResult> PushAsync(RemoteContext who, string ospPath, long expectedRemoteRevision, CancellationToken ct = default) => throw Off();
+
+    public Task<RemotePullResult> PullToAsync(string projectId, string destPath, CancellationToken ct = default) => throw Off();
+}
+

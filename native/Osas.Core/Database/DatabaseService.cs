@@ -23,7 +23,7 @@ public sealed record DbConnectResult(bool Connected, long? RemoteRevision, strin
 
 public sealed record DbProjectStatus(long? LocalRevision, long? RemoteRevision, string? LastSyncUtc, string State, long Pending);
 
-public sealed record DbPushResult(long RemoteRevision);
+public sealed record DbPushResult(long? RemoteRevision, bool LocalOnly = false);
 
 public sealed record DbPullResult(long Revision, string? Sha256, bool Incoming);
 
@@ -117,6 +117,8 @@ public sealed class DatabaseService : IDisposable
                 return "starting";
             if (_session == null)
                 return "signed_out";
+            if (_remote.CloudDisabled)
+                return "local";
             return _remoteDown || !_remote.IsConfigured ? "offline" : "ready";
         }
     }
@@ -399,6 +401,9 @@ public sealed class DatabaseService : IDisposable
     public async Task<DbPushResult> PushAsync(AuthInfo auth, string projectId, long? revision, string? sha256, CancellationToken ct = default)
     {
         var entry = Find(projectId);
+        // Project files stay on this PC: the local file is the shared database, so there is nothing to send.
+        if (_remote.CloudDisabled)
+            return new DbPushResult(null, true);
         await entry.Gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
@@ -473,6 +478,8 @@ public sealed class DatabaseService : IDisposable
     public async Task<DbPullResult> PullAsync(AuthInfo auth, string projectId, CancellationToken ct = default)
     {
         var entry = Find(projectId);
+        if (_remote.CloudDisabled)
+            return new DbPullResult(0, null, false);
         await entry.Gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {

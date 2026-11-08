@@ -399,6 +399,52 @@ public sealed class DatabaseServiceTests : IDisposable
 
     // ---- helpers ----
 
+    // ---- project files stay on this PC ----
+
+    [Fact]
+    public async Task Local_only_mode_says_local_connects_and_sends_nothing()
+    {
+        _broker.SignedIn = true;
+        _broker.Tokens.Add("tok");
+        var local = new DatabaseService(_broker, new LocalOnlyRemoteStore(), Path.Combine(_dir, "local-projects.json"));
+        await local.RefreshSessionAsync();
+        var (osp, id) = NewProject("p1", 2);
+        var auth = await local.AuthenticateAsync("tok");
+
+        Assert.Equal("local", local.Health().State);
+        var connected = await local.ConnectAsync(auth, id, "p1", osp);
+        Assert.True(connected.Connected);
+
+        var before = File.ReadAllBytes(osp);
+        var push = await local.PushAsync(auth, id, 2, null);
+        Assert.True(push.LocalOnly);
+        Assert.Null(push.RemoteRevision);
+        var pull = await local.PullAsync(auth, id);
+        Assert.False(pull.Incoming);
+        Assert.Equal(before, File.ReadAllBytes(osp));
+        Assert.False(File.Exists(osp + ".incoming"));
+        local.Dispose();
+    }
+
+    [Fact]
+    public void Project_files_are_not_pushed_unless_the_machine_opts_in()
+    {
+        var old = Environment.GetEnvironmentVariable(ProjectFilePolicy.EnvVar);
+        try
+        {
+            Environment.SetEnvironmentVariable(ProjectFilePolicy.EnvVar, null);
+            Assert.False(ProjectFilePolicy.PushToCloud);
+            Environment.SetEnvironmentVariable(ProjectFilePolicy.EnvVar, "0");
+            Assert.False(ProjectFilePolicy.PushToCloud);
+            Environment.SetEnvironmentVariable(ProjectFilePolicy.EnvVar, "1");
+            Assert.True(ProjectFilePolicy.PushToCloud);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(ProjectFilePolicy.EnvVar, old);
+        }
+    }
+
     async Task SignIn()
     {
         _broker.SignedIn = true;

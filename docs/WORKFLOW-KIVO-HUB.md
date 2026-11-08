@@ -10,14 +10,14 @@ Draw in **Tren**, measure in **Falcon**, both on **one `.osp` file** that is con
 
 | App | Owns | Does not own any more |
 |---|---|---|
-| **Myna (launcher)** | Hosts the **AI Core** (Olmo, loopback 8742) and the **database service**: a local database that syncs to Neon in the background. Tray icon, start and stop of the suite apps. | Company login (removed from the launcher) |
+| **Myna (launcher)** | Hosts the **AI Core** (Olmo, loopback 8742) and the **database service**: the local shared project database (project files are not synced). Tray icon, start and stop of the suite apps. | Company login (removed from the launcher) |
 | **Kivo** | **Company login** and the session. Estimates, running bills, **approvals, revisions**, clients, accounts. Cloud sync settings. CSV import. | |
 | **Tren** | The drawing and its take-off rows, written into the `.osp`. | Sign-in, approvals, revisions |
 | **Falcon** | Quantities, rates and the estimate sheet from the take-off. **CSV export.** | Sign-in, approvals, revisions |
 
 ## Decisions (owner, 2026-11-08)
 
-1. **Database:** a **local database on this PC that syncs to Neon**. Work continues offline; the launcher pushes and pulls when connected. This is the design in [ODP-PROJECT-FILE-AND-SYNC.md](ODP-PROJECT-FILE-AND-SYNC.md) and [CLOUD-NEON.md](CLOUD-NEON.md), with the launcher as the host.
+1. **Database (changed 2026-11-08):** a **local database on this PC**. **Project files stay on this PC (decided 2026-11-08).** Tren and Falcon share the local `.osp`; nothing in it is pushed to Neon. Only Kivo is synced, and project data reaches the company database only through the CSV that Falcon exports and Kivo imports. Pushing the project file itself is off; `OSAS_PUSH_PROJECT_FILES=1` turns it back on for a machine that should do it (`Osas.Core.ProjectFilePolicy`). Earlier design: a local database that syncs to Neon. This is the design in [ODP-PROJECT-FILE-AND-SYNC.md](ODP-PROJECT-FILE-AND-SYNC.md) and [CLOUD-NEON.md](CLOUD-NEON.md), with the launcher as the host.
 2. **Sign-in:** **each app asks Kivo on demand.** When Tren or Falcon first needs the database it asks Kivo for a session; Kivo opens, the user signs in once, and the session is handed back. Tren and Falcon never store company credentials or Neon keys (already the rule in CLOUD-NEON.md).
 3. **CSV contents:** estimate lines, measured quantities for running bills, and the plumbing and electrical take-off rows.
 

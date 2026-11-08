@@ -34,6 +34,12 @@ public static class CloudSyncHub
     public static async Task<bool> StartAsync(CloudSyncHub.AppShellBridge shell)
     {
         await StopAsync().ConfigureAwait(false);
+        if (!Osas.Core.ProjectFilePolicy.PushToCloud)
+        {
+            Emit(Osas.Core.ProjectFilePolicy.LocalOnlyNotice);
+            return false;
+        }
+
         var settings = NeonSettings.Load();
         if (!settings.IsComplete)
         {
@@ -167,6 +173,8 @@ public static class CloudSyncHub
     /// </summary>
     public static async Task<PushResult> PushNowAsync(long studioProjectId, string ospPath, AppShellBridge? shell = null)
     {
+        if (!Osas.Core.ProjectFilePolicy.PushToCloud)
+            return new PushResult(false, Osas.Core.ProjectFilePolicy.LocalOnlyNotice, null);
         if (_coordinator is not null)
             return await _coordinator.PushNowAsync(studioProjectId, ospPath).ConfigureAwait(false);
         var settings = NeonSettings.Load();
@@ -182,6 +190,8 @@ public static class CloudSyncHub
 
     public static async Task<PullResult> PullNowAsync(long studioProjectId, string ospPath)
     {
+        if (!Osas.Core.ProjectFilePolicy.PushToCloud)
+            return new PullResult(false, Osas.Core.ProjectFilePolicy.LocalOnlyNotice, null);
         if (_coordinator is not null)
             return await _coordinator.PullNowAsync(studioProjectId, ospPath).ConfigureAwait(false);
         var settings = NeonSettings.Load();

@@ -42,7 +42,7 @@ Transport: **loopback HTTP** `http://127.0.0.1:8743` (the AI Core uses 8742). Ev
 
 | Method and path | Purpose |
 |---|---|
-| `GET /v1/health` (no token) | `{"ok":true,"state":"ready"|"signed_out"|"offline"|"starting","sync":"idle"|"pushing"|"pulling"|"offline","pending":<count>}` |
+| `GET /v1/health` (no token) | `{"ok":true,"state":"ready"|"local"|"signed_out"|"offline"|"starting","sync":"idle"|"pushing"|"pulling"|"offline","pending":<count>}` |
 | `POST /v1/projects/connect` | Body `{project_id, name, osp_path, revision}`. Registers the `.osp`, returns `{connected:true, remote_revision, action:"none"|"push"|"pull"|"conflict"}`. |
 | `GET /v1/projects/{id}` | `{local_revision, remote_revision, last_sync_utc, state, pending}` |
 | `POST /v1/projects/{id}/push` | Body `{revision, sha256}`. Sends the file revision (the `.osp` is read by the service from the registered path). Returns `{remote_revision}`; `409` if the remote moved. |

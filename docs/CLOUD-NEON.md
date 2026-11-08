@@ -1,6 +1,8 @@
 # Kivo and Neon (cloud sync)
 
-Cloud sync for `.osp` project files is **Kivo only** — see [ODP-PROJECT-FILE-AND-SYNC.md](ODP-PROJECT-FILE-AND-SYNC.md). Tren and Falcon keep opening the local `.osp`; they never store Neon keys.
+**Project files stay on this PC (decided 2026-11-08).** Tren and Falcon share the local `.osp`; nothing in it is pushed to Neon. Only Kivo is synced, and project data reaches the company database only through the CSV that Falcon exports and Kivo imports. Pushing the project file itself is off; `OSAS_PUSH_PROJECT_FILES=1` turns it back on for a machine that should do it (`Osas.Core.ProjectFilePolicy`).
+
+The rest of this page describes the opt-in mode. Cloud sync for `.osp` project files was **Kivo only** — see [ODP-PROJECT-FILE-AND-SYNC.md](ODP-PROJECT-FILE-AND-SYNC.md). Tren and Falcon keep opening the local `.osp`; they never store Neon keys.
 
 This document explains how to **create** a Neon project, **connect** it to the Kivo repository, and **smoke-test** the four services before any WinUI “Cloud sync” UI exists.
 

@@ -18,7 +18,7 @@ internal sealed class DatabaseServiceHost
 
     DatabaseService? _service;
     DatabaseHttpServer? _server;
-    NeonRemoteStore? _remote;
+    IRemoteStore? _remote;
 
     /// <summary>Raised when the service's state or sync activity changes (any thread).</summary>
     internal event Action? Changed;
@@ -32,7 +32,7 @@ internal sealed class DatabaseServiceHost
     {
         if (_service != null)
             return;
-        _remote = new NeonRemoteStore();
+        _remote = Osas.Core.ProjectFilePolicy.PushToCloud ? new NeonRemoteStore() : new LocalOnlyRemoteStore();
         _service = new DatabaseService(new PipeBrokerClient(), _remote, SuiteWire.LocalPath("dbservice-projects.json"))
         {
             Log = line => System.Diagnostics.Debug.WriteLine("[dbservice] " + line),
@@ -60,8 +60,8 @@ internal sealed class DatabaseServiceHost
         _server = null;
         _service?.Dispose();
         _service = null;
-        if (_remote != null)
-            _ = _remote.DisposeAsync();
+        if (_remote is IAsyncDisposable disposable)
+            _ = disposable.DisposeAsync();
         _remote = null;
     }
 
@@ -81,6 +81,7 @@ internal sealed class DatabaseServiceHost
             var word = state switch
             {
                 "ready" => "connected",
+                "local" => "on this PC",
                 "signed_out" => "signed out",
                 "offline" => "offline",
                 _ => "starting",
@@ -88,6 +89,7 @@ internal sealed class DatabaseServiceHost
             var detail = state switch
             {
                 "ready" => sync is "pushing" or "pulling" ? sync : pending > 0 ? $"{pending} revision(s) waiting" : "in step",
+                "local" => "project files stay on this PC; only Kivo is synced",
                 "signed_out" => "sign in to Kivo to sync; the local project files still work",
                 "offline" => new NeonSettingsProbe().Configured ? "cloud not reachable; changes wait on this PC" : "no neon.env; changes stay on this PC",
                 _ => "",
