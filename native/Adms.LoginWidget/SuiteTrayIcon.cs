@@ -16,6 +16,7 @@ internal sealed class SuiteTrayIcon : IDisposable
     const uint IdSignIn = 1001;
     const uint IdExit = 1002;
     const uint IdRefresh = 1003;
+    const uint IdShow = 1004;
     const uint IdAppBase = 2000;
 
     const uint NifMessage = 0x00000001;
@@ -60,7 +61,7 @@ internal sealed class SuiteTrayIcon : IDisposable
         if (_instance != null)
             return;
         _instance = new SuiteTrayIcon(queue);
-        SuiteLauncherHost.Instance.Changed += () => queue.TryEnqueue(_instance.Refresh);
+        SuiteStatus.Instance.Changed += () => queue.TryEnqueue(_instance.Refresh);
     }
 
     internal static void Stop()
@@ -91,7 +92,7 @@ internal sealed class SuiteTrayIcon : IDisposable
 
     void Refresh()
     {
-        var tip = SuiteLauncherHost.Instance.TrayTooltip();
+        var tip = SuiteLauncherHost.TrayTooltip();
         if (tip.Length > 127)
             tip = tip[..127];
 
@@ -121,32 +122,20 @@ internal sealed class SuiteTrayIcon : IDisposable
     {
         _ = SuiteStatus.Instance.RefreshAsync();
         var menu = CreatePopupMenu();
-        var host = SuiteLauncherHost.Instance;
-        var status = host.SignedIn
-            ? $"{host.CompanyName} — {host.Username}"
-            : host.CompanyOpen
-                ? $"{host.CompanyName} — sign in"
-                : "No company signed in";
-        if (status.Length > 80)
-            status = status[..80];
-        AppendMenu(menu, MfString | MfDisabled, 0, status);
         var suite = SuiteStatus.Instance;
-        AppendMenu(menu, MfString | MfDisabled, 0, Clip("AI agent: " + suite.Ai));
+        AppendMenu(menu, MfString | MfDisabled, 0, Clip("AI: " + SuiteLauncherHost.Word(suite.Ai)));
         AppendMenu(menu, MfString | MfDisabled, 0, Clip("Database: " + suite.Database));
-        AppendMenu(menu, MfString | MfDisabled, 0, Clip("Cloud sync: " + suite.Cloud));
-        AppendMenu(menu, MfString | MfDisabled, 0, Clip("Project: " + suite.Project));
         AppendMenu(menu, MfString, IdRefresh, "Refresh status");
         AppendMenu(menu, MfSeparator, 0, null);
-        AppendMenu(menu, MfString, IdSignIn, "Company sign-in…");
+        if (string.Equals(suite.Database, "signed out", StringComparison.Ordinal))
+            AppendMenu(menu, MfString, IdSignIn, "Open Kivo to sign in");
+        AppendMenu(menu, MfString, IdShow, "Show Myna");
+        AppendMenu(menu, MfSeparator, 0, null);
 
         for (var i = 0; i < SuiteCatalog.Apps.Count; i++)
         {
             var app = SuiteCatalog.Apps[i];
-            var flags = MfString;
-            var needsSignIn = !host.CanLaunchSiblingApps;
-            if (needsSignIn)
-                flags |= MfGrayed;
-            AppendMenu(menu, flags, IdAppBase + (uint)i, app.Title);
+            AppendMenu(menu, MfString, IdAppBase + (uint)i, app.Title);
         }
 
         AppendMenu(menu, MfSeparator, 0, null);
@@ -164,7 +153,13 @@ internal sealed class SuiteTrayIcon : IDisposable
     {
         if (cmd == IdSignIn)
         {
-            CompanyLoginWidget.ShowOrFocus();
+            RunOrShowError(SuiteLauncherHost.Instance.OpenKivoToSignIn);
+            return;
+        }
+
+        if (cmd == IdShow)
+        {
+            MynaWindow.ShowOrFocus();
             return;
         }
 
@@ -184,25 +179,24 @@ internal sealed class SuiteTrayIcon : IDisposable
         if (cmd >= IdAppBase && cmd < IdAppBase + SuiteCatalog.Apps.Count)
         {
             var app = SuiteCatalog.Apps[(int)(cmd - IdAppBase)];
-            try
-            {
-                await SuiteLauncherHost.Instance.LaunchAppAsync(app, _queue);
-            }
-            catch (Exception ex)
-            {
-                await ShowTrayErrorAsync(ex.Message);
-            }
+            RunOrShowError(() => SuiteLauncherHost.Instance.LaunchApp(app));
+        }
+    }
+
+    static void RunOrShowError(Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception ex)
+        {
+            MynaWindow.ShowOrFocus();
+            MynaWindow.ShowError(ex.Message);
         }
     }
 
     static string Clip(string text) => text.Length > 100 ? text[..100] + "…" : text;
-
-    async Task ShowTrayErrorAsync(string message)
-    {
-        CompanyLoginWidget.ShowOrFocus();
-        CompanyLoginWidget.ShowError(message);
-        await Task.CompletedTask;
-    }
 
     nint WindowProc(nint hwnd, uint msg, nint wParam, nint lParam)
     {
