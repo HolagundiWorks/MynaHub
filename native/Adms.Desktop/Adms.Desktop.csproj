@@ -15,9 +15,9 @@
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <Company>Human Centric Works</Company>
-    <Product>O-Studio</Product>
-    <AssemblyTitle>O-Studio</AssemblyTitle>
-    <Description>O-Studio</Description>
+    <Product>Kivo</Product>
+    <AssemblyTitle>Kivo</AssemblyTitle>
+    <Description>Kivo: the suite hub (company sign-in, estimates, bills, approvals)</Description>
     <Copyright>Copyright © 2026 Human Centric Works</Copyright>
     <Version>0.1.0</Version>
     <AssemblyVersion>0.1.0.0</AssemblyVersion>

@@ -17,8 +17,8 @@
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <Company>Human Centric Works</Company>
-    <Product>O-Studio Suite Launcher</Product>
-    <AssemblyTitle>O-Studio Suite Launcher</AssemblyTitle>
+    <Product>Myna</Product>
+    <AssemblyTitle>Myna</AssemblyTitle>
     <Description>System tray launcher: hosts the AI Core and the database service, starts the suite apps.</Description>
     <Copyright>Copyright © 2026 Human Centric Works</Copyright>
     <Version>0.1.0</Version>

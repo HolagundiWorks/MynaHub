@@ -17,10 +17,10 @@ public static class SuiteCatalog
 {
     public static IReadOnlyList<SuiteAppDescriptor> Apps { get; } =
     [
-        new("Kivo", "Company hub, projects, and people", "O-Studio", ["O-Studio"], "O-Studio.exe"),
-        new("Falcon", "Quantities, estimates and billing", "O-CoreOp", ["O-CoreOp", "AQCCore"], "O-CoreOp.exe", "AQCCore.exe"),
-        new("Tren", "Drafting", "O-Draft", ["O-Draft", "AAD"], "ODraft.WinUi.exe", "O-Draft.exe", "aad-host.exe"),
-        new("Finch", "3D / BIM form", "O-Form", ["O-Form"], "O-Form.exe"),
+        new("Kivo", "Company hub, projects, and people", "O-Studio", ["Kivo", "O-Studio"], "O-Studio.exe"),
+        new("Falcon", "Quantities, estimates and billing", "O-CoreOp", ["Falcon", "O-CoreOp", "AQCCore"], "O-CoreOp.exe", "AQCCore.exe"),
+        new("Tren", "Drafting", "O-Draft", ["Tren", "O-Draft", "AAD"], "ODraft.WinUi.exe", "O-Draft.exe", "aad-host.exe"),
+        new("Finch", "3D / BIM form", "O-Form", ["Finch", "O-Form"], "O-Form.exe"),
     ];
 
     public static SuiteAppDescriptor? FindByTicketApp(string ticketApp)
