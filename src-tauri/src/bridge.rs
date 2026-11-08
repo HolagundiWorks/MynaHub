@@ -291,6 +291,10 @@ pub fn invoke(state: &AppState, op: &str, args: &Value) -> Result<Option<Vec<u8>
             arg(args, "kind")?,
             arg(args, "expected_revision")?,
         )),
+        "falcon_csv_preview" => run(crate::falcon_import_cmd::falcon_csv_preview(HostState::new(state), arg(args, "path")?, arg(args, "project_id")?)),
+        "falcon_csv_import" => run(crate::falcon_import_cmd::falcon_csv_import(HostState::new(state), arg(args, "path")?, arg(args, "project_id")?)),
+        "falcon_csv_map_list" => run(crate::falcon_import_cmd::falcon_csv_map_list(HostState::new(state))),
+        "falcon_csv_map_set" => run(crate::falcon_import_cmd::falcon_csv_map_set(HostState::new(state), arg(args, "falcon_code")?, arg(args, "kivo_item")?)),
         "agent_tools" => run(crate::approvals_cmd::agent_tools(HostState::new(state))),
         "agent_call" => {
             let name: String = arg(args, "name")?;

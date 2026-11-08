@@ -1,0 +1,13 @@
+﻿schema,row_type,project_id,drawing_revision,package,item_code,description,unit,quantity,rate,amount,measured_to_date,this_period,previous,source,kind,tag,size,level,note
+osas-falcon-csv/1,meta,3f2b8c1e-5a47-4d9b-8e21-7c6a90d4b512,12,,,Demo Villa,,,,,,,,,,,,,currency=INR;exported=2026-11-08T10:00:00Z;falcon=1.4.1
+osas-falcon-csv/1,estimate,3f2b8c1e-5a47-4d9b-8e21-7c6a90d4b512,12,Substructure,EXC-001,Excavation in ordinary soil,m3,42.500,310.00,13175.00,,,,falcon,,,,,
+osas-falcon-csv/1,estimate,3f2b8c1e-5a47-4d9b-8e21-7c6a90d4b512,12,Substructure,PCC-001,PCC 1:4:8 bed,m3,6.250,5400.00,33750.00,,,,falcon,,,,,
+osas-falcon-csv/1,estimate,3f2b8c1e-5a47-4d9b-8e21-7c6a90d4b512,12,Superstructure,BRK-010,Brick masonry 230 mm,m3,28.400,6200.00,176080.00,,,,falcon,,,,,
+osas-falcon-csv/1,estimate,3f2b8c1e-5a47-4d9b-8e21-7c6a90d4b512,12,Plumbing,PLM-CW20,"CW pipe 20 mm, fixed",m,86.000,210.00,18060.00,,,,tren:12,,,,,
+osas-falcon-csv/1,estimate,3f2b8c1e-5a47-4d9b-8e21-7c6a90d4b512,12,Plumbing,PLM-WC01,"Water closet, European",nos,3.000,8500.00,25500.00,,,,tren:12,,,,,
+osas-falcon-csv/1,measured,3f2b8c1e-5a47-4d9b-8e21-7c6a90d4b512,12,,EXC-001,Excavation in ordinary soil,m3,,,,42.500,12.500,30.000,falcon,,,,,
+osas-falcon-csv/1,measured,3f2b8c1e-5a47-4d9b-8e21-7c6a90d4b512,12,,BRK-010,Brick masonry 230 mm,m3,,,,9.200,9.200,0.000,falcon,,,,,
+osas-falcon-csv/1,takeoff,3f2b8c1e-5a47-4d9b-8e21-7c6a90d4b512,12,,,,m,86.000,,,,,,tren:12,plumbing,CW-01,20,GF,
+osas-falcon-csv/1,takeoff,3f2b8c1e-5a47-4d9b-8e21-7c6a90d4b512,12,,,,nos,1.000,,,,,,tren:13,plumbing_fixtures,WC-01,,GF,
+osas-falcon-csv/1,takeoff,3f2b8c1e-5a47-4d9b-8e21-7c6a90d4b512,12,,,,nos,1.000,,,,,,tren:13,plumbing_fixtures,WC-02,,FF,
+osas-falcon-csv/1,total,3f2b8c1e-5a47-4d9b-8e21-7c6a90d4b512,12,,,,,10,,266565.00,,,,,,,,,
