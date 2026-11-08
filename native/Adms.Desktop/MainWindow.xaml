@@ -25,13 +25,18 @@
                  AutomationProperties.Name="Menu bar"
                  AutomationProperties.LandmarkType="Navigation">
             <MenuBarItem Title="File" AccessKey="F">
-                <MenuFlyoutItem x:Name="ChooseCompanyItem" Text="Choose or create a company…" AccessKey="O" Click="OpenCompanyLoginWidget">
+                <MenuFlyoutItem x:Name="ChooseCompanyItem" Text="Open a company…" AccessKey="O" Click="OpenCompany">
                     <MenuFlyoutItem.Icon>
                         <FontIcon Glyph="&#xE8B7;"/>
                     </MenuFlyoutItem.Icon>
                     <MenuFlyoutItem.KeyboardAccelerators>
                         <KeyboardAccelerator Key="O" Modifiers="Control"/>
                     </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="CreateCompanyItem" Text="Create a company…" AccessKey="N" Click="CreateCompany">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE710;"/>
+                    </MenuFlyoutItem.Icon>
                 </MenuFlyoutItem>
                 <MenuFlyoutItem x:Name="CloseItem" Text="Close company" AccessKey="C" Click="CloseCompany">
                     <MenuFlyoutItem.Icon>
@@ -85,7 +90,6 @@
                 </MenuFlyoutItem>
                 <MenuFlyoutSeparator/>
                 <MenuFlyoutItem Text="Tasks widget…" AccessKey="T" Click="OpenTasksWidget"/>
-                <MenuFlyoutItem Text="Suite launcher…" Click="OpenCompanyLoginWidget"/>
             </MenuBarItem>
             <MenuBarItem Title="Company" AccessKey="M">
                 <MenuFlyoutItem Text="Company profile" Click="GoCompany">
@@ -121,10 +125,11 @@
                 <Border Style="{StaticResource SetupCardStyle}" MaxWidth="560">
                     <StackPanel Spacing="12">
                         <Image x:Name="WelcomeLogo" MaxWidth="460" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="Kivo"/>
-                        <TextBlock Text="Companies are chosen and created in the O-Studio launcher. Pick or create one there and O-Studio opens on it, signed in. O-Studio holds the company details, users, and the admin password for the suite." TextWrapping="WrapWholeWords" Style="{ThemeResource BodyStyle}"/>
+                        <TextBlock Text="Open your company file and sign in here. Kivo holds the company details, users and the admin password for the suite, and signs Tren and Falcon in when they ask." TextWrapping="WrapWholeWords" Style="{ThemeResource BodyStyle}"/>
                         <TextBlock Text="Developed by Human Centric Works" Style="{ThemeResource CaptionStyle}"/>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button x:Name="OpenCompanyButton" Content="Open Myna" Click="OpenCompanyLoginWidget" Style="{StaticResource AccentButtonStyle}"/>
+                            <Button x:Name="OpenCompanyButton" Content="Open a company…" Click="OpenCompany" Style="{StaticResource AccentButtonStyle}"/>
+                            <Button x:Name="CreateCompanyButton" Content="Create a company…" Click="CreateCompany"/>
                         </StackPanel>
                         <Button x:Name="FollowButton" Content="Open the company last chosen" Click="FollowSuite" Visibility="Collapsed" HorizontalAlignment="Left"/>
                         <InfoBar x:Name="LegacyNotice" IsOpen="False" IsClosable="False" Severity="Informational"
@@ -143,10 +148,11 @@
                     <StackPanel Spacing="12">
                         <Image x:Name="LoginLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="Kivo"/>
                         <TextBlock x:Name="LoginHeading" Style="{ThemeResource PageTitleStyle}" TextWrapping="WrapWholeWords"/>
-                        <TextBlock Text="Sign in once in the O-Studio launcher (the tray icon). Choose O-Studio there and it opens signed in." Style="{ThemeResource BodyStyle}" TextWrapping="WrapWholeWords"/>
+                        <TextBox x:Name="LoginUser" Header="User name" KeyDown="LoginKeyDown"/>
+                        <PasswordBox x:Name="LoginPassword" Header="Password" KeyDown="LoginKeyDown"/>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button x:Name="OpenLauncherButton" Content="Open Myna" Click="OpenCompanyLoginWidget" Style="{StaticResource AccentButtonStyle}"/>
-                            <Button x:Name="SwitchFromLogin" Content="Choose another company" Click="OpenCompanyLoginWidget"/>
+                            <Button x:Name="SignInButton" Content="Sign in" Click="SignIn" Style="{StaticResource AccentButtonStyle}"/>
+                            <Button x:Name="SwitchFromLogin" Content="Choose another company" Click="CloseCompany"/>
                         </StackPanel>
                         <Button x:Name="ForgotButton" Content="Forgot password? Use recovery code" Click="ShowRecover"/>
                     </StackPanel>
@@ -164,7 +170,7 @@
                         <PasswordBox x:Name="SetupConfirm" Header="Confirm password" KeyDown="SetupKeyDown"/>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button x:Name="SetupButton" Content="Create account" Click="CreateOwner" Style="{StaticResource AccentButtonStyle}"/>
-                            <Button Content="Choose another company" Click="OpenCompanyLoginWidget"/>
+                            <Button Content="Choose another company" Click="CloseCompany"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -196,7 +202,7 @@
                         <PasswordBox x:Name="UnlockPassword" Header="Password" KeyDown="UnlockKeyDown"/>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button x:Name="UnlockButton" Content="Unlock" Click="Unlock" Style="{StaticResource AccentButtonStyle}"/>
-                            <Button Content="Choose another company" Click="OpenCompanyLoginWidget"/>
+                            <Button Content="Choose another company" Click="CloseCompany"/>
                         </StackPanel>
                         <Button Content="Use recovery code" Click="ShowRecover"/>
                     </StackPanel>
