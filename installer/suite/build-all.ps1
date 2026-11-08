@@ -74,6 +74,7 @@ $manifest = [ordered]@{
 Write-Host "=== 1/5 Kivo NSIS ===" -ForegroundColor Cyan
 Push-Location $studioRepo
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $installerDir "build.ps1")
+if ($LASTEXITCODE -ne 0) { throw "Kivo Setup build failed (exit $LASTEXITCODE)" }
 Pop-Location
 $studioSetup = Get-ChildItem (Join-Path $installerDir "O-Studio-Setup-*.exe") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 $manifest.payloads.o_studio_setup = @{ path = $studioSetup.FullName; sha256 = (Get-FileHash $studioSetup.FullName -Algorithm SHA256).Hash }
@@ -90,6 +91,7 @@ if (-not (Test-Path (Join-Path $officeDir "office.dll"))) { throw "office.dll mi
 Write-Host "=== 3/5 Falcon Setup ===" -ForegroundColor Cyan
 Push-Location (Join-Path $coreOpRepo "BBSDesktop\installer")
 & powershell -NoProfile -ExecutionPolicy Bypass -File build-installer.ps1 -OfficeDllDir $officeDir
+if ($LASTEXITCODE -ne 0) { throw "Falcon Setup build failed (exit $LASTEXITCODE); not wrapping a stale installer" }
 Pop-Location
 $coreOpSetup = Get-ChildItem (Join-Path $coreOpRepo "BBSDesktop\artifacts\installer\O-CoreOp-Setup-*.exe") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 $manifest.payloads.o_coreop_setup = @{ path = $coreOpSetup.FullName; sha256 = (Get-FileHash $coreOpSetup.FullName -Algorithm SHA256).Hash }
@@ -99,6 +101,7 @@ if ($savedTarget) { $env:CARGO_TARGET_DIR = $savedTarget } else { Remove-Item En
 if ($env:AAD_FONTS_DIR -and -not (Test-Path -LiteralPath $env:AAD_FONTS_DIR)) { Remove-Item Env:AAD_FONTS_DIR -ErrorAction SilentlyContinue }
 Push-Location (Join-Path $draftRepo "packaging\windows")
 & powershell -NoProfile -ExecutionPolicy Bypass -File package.ps1 -Arch x64
+if ($LASTEXITCODE -ne 0) { throw "Tren package build failed (exit $LASTEXITCODE)" }
 Pop-Location
 $draftZip = Get-ChildItem (Join-Path $draftRepo "dist\release\o-draft-*-windows-x64-portable.zip") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 $manifest.payloads.o_draft_zip = @{ path = $draftZip.FullName; sha256 = (Get-FileHash $draftZip.FullName -Algorithm SHA256).Hash }

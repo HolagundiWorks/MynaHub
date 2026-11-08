@@ -77,7 +77,7 @@ cargo test --manifest-path src-tauri/Cargo.toml   # engine, accounting, company 
 cargo test --manifest-path office-core/Cargo.toml
 ```
 
-The installer is built with `installer/build.ps1` (release engine, self-contained publish, NSIS) and is named `Kivo-Setup-<version>.exe`. **`O-Studio.Launcher.exe` lives under `launcher\` beside `O-Studio.exe`** (see [docs/packaging.md](docs/packaging.md)). For all suite apps together, build **`installer/suite/build-all.ps1`** → `Kivo-Suite-Setup-<version>.exe` ([installer/suite/README.md](installer/suite/README.md)). It stays unsigned unless signing secrets are set (`installer/sign.ps1`). Help → **Check for updates…** is a channel stub. What is open and planned is in [docs/roadmap.md](docs/roadmap.md).
+The installer is built with `installer/build.ps1` (release engine, self-contained publish, NSIS) and is named `O-Studio-Setup-<version>.exe`. **`O-Studio.Launcher.exe` lives under `launcher\` beside `O-Studio.exe`** (see [docs/packaging.md](docs/packaging.md)). For all suite apps together, build **`installer/suite/build-all.ps1`** → `Kivo-Suite-Setup-<version>.exe` ([installer/suite/README.md](installer/suite/README.md)). It stays unsigned unless signing secrets are set (`installer/sign.ps1`). Help → **Check for updates…** is a channel stub. What is open and planned is in [docs/roadmap.md](docs/roadmap.md).
 
 ### Cloud sync (Neon)
 

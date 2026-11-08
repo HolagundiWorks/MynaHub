@@ -55,7 +55,7 @@ Output: `installer/suite/out/Kivo-Suite-Setup-<version>.exe` (per user, no admin
 ## Suite glue (legacy)
 
 `installer/install-suite.ps1 -ArtifactsDir …` (in this repo; migrated from the OSAS hub)
-picks up `Kivo-Setup-*.exe` and optional sibling Setup.exe files. Sibling apps still
+picks up `O-Studio-Setup-*.exe` and optional sibling Setup.exe files. Sibling apps still
 need `office.dll` from this repo’s `office-ffi` release build beside their install. Kivo itself needs no `office.dll`: `architect_office_desktop_lib.dll` carries the same `office_*` interface, so the app ships one engine library.
 
 **OSAS.exe is deprecated.** Kivo is the suite shell (company choose/create, admin
