@@ -7,6 +7,7 @@ use office_core::{auth, store, vault};
 
 mod accounting;
 mod approvals_cmd;
+mod falcon_import_cmd;
 mod studio_drafts_cmd;
 mod desk;
 mod admin;

@@ -21,6 +21,7 @@ internal static class ApprovalsPage
         page.Children.Add(Flow.Heading("Approvals"));
         page.Children.Add(Flow.Secondary("Estimates and running bills CoreOp shared into the company file. Approve locks the draft. Corrections need a revised CoreOp share — a locked body is never edited in place."));
 
+        page.Children.Add(FalconImport.Button(shell));
         var filter = Book.Choices("Show", ("Drafts", "draft"), ("Pending", "pending_approval"), ("Approved", "approved_locked"), ("Superseded", "superseded"), ("All", ""));
         page.Children.Add(filter);
         var listHost = new StackPanel { Spacing = 8 };
