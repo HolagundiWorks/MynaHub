@@ -42,19 +42,6 @@ public static class ServiceStatus
         return ServiceLevel.Off;
     }
 
-    /// <summary>The launcher's database service (<c>Database:</c> line): connected is up; signed out, offline and starting wait (the local file still works); a service that did not start is a fault.</summary>
-    public static ServiceLevel ForDatabase(string text)
-    {
-        text = (text ?? "").TrimStart();
-        if (text.StartsWith("connected", StringComparison.OrdinalIgnoreCase))
-            return ServiceLevel.Running;
-        if (text.StartsWith("stopped", StringComparison.OrdinalIgnoreCase))
-            return ServiceLevel.Stopped;
-        if (text.StartsWith("signed out", StringComparison.OrdinalIgnoreCase) || text.StartsWith("offline", StringComparison.OrdinalIgnoreCase) || text.StartsWith("starting", StringComparison.OrdinalIgnoreCase) || text.StartsWith("checking", StringComparison.OrdinalIgnoreCase))
-            return ServiceLevel.Waiting;
-        return ServiceLevel.Off;
-    }
-
     /// <summary>The company file: open and signed in is up; open but waiting for sign-in is waiting; not found is a fault; closed or none is off.</summary>
     public static ServiceLevel ForCompanyFile(string text)
     {

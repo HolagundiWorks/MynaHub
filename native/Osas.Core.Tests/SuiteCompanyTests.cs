@@ -66,24 +66,6 @@ public class SuiteCompanyTests : IDisposable
     }
 
     [Fact]
-    public void An_app_is_signed_in_as_the_same_person_by_a_ticket_that_works_once_and_no_password_is_passed()
-    {
-        if (!Available) return;
-        var path = NewCompany();
-        using var company = SuiteCompany.Open(Path.Combine(_dir, "osas"), path, "owner", Password);
-        var ticket = company.TicketFor("O-CoreOp");
-        Assert.Equal(("owner", 64), (ticket.Username, ticket.Ticket.Length));
-        Assert.DoesNotContain(Password, ticket.Ticket);
-        using var app = Engine.Start(Path.Combine(_dir, "app"));
-        app.Call("company.open", new JsonObject { ["path"] = path, ["secret"] = "", ["unlock"] = "" });
-        var who = app.Call("auth.login_ticket", new JsonObject { ["ticket"] = ticket.Ticket });
-        Assert.Equal("owner", who!["username"]!.GetValue<string>());
-        Assert.NotNull(app.Call("company_profile_get"));
-        var second = Assert.Throws<EngineException>(() => app.Call("auth.login_ticket", new JsonObject { ["ticket"] = ticket.Ticket }));
-        Assert.Contains("expired", second.Message);
-    }
-
-    [Fact]
     public void Users_are_added_changed_and_given_new_passwords_and_each_change_needs_the_signed_in_persons_password()
     {
         if (!Available) return;
@@ -137,15 +119,5 @@ public class SuiteCompanyTests : IDisposable
         Assert.Equal(path, new SuiteSettings(Path.Combine(_dir, "settings", "suite.json")).CompanyPath);
         var text = File.ReadAllText(Path.Combine(_dir, "settings", "suite.json"));
         Assert.DoesNotContain("password", text, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("ticket", text, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void The_environment_an_app_is_started_with_names_the_company_and_the_ticket()
-    {
-        var env = SuiteSettings.AppEnvironment(@"C:\Files\Studio.osas", new AppTicket("abc", "owner"));
-        Assert.Equal((@"C:\Files\Studio.osas", "abc", "owner"), (env[SuiteWire.EnvCompany], env[SuiteWire.EnvTicket], env[SuiteWire.EnvUser]));
-        var bare = SuiteSettings.AppEnvironment(@"C:\Files\Studio.osas", null);
-        Assert.Single(bare);
     }
 }

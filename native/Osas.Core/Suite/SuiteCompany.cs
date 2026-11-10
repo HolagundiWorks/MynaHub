@@ -35,9 +35,6 @@ public sealed record UserInfo(long Id, string Username, string Role, bool Disabl
     };
 }
 
-/// <summary>A one-time sign-in for an app OSAS is about to start. It works once, for two minutes.</summary>
-public sealed record AppTicket(string Ticket, string Username);
-
 /// <summary>
 /// The company the suite is working in, opened and signed in by OSAS. OSAS holds the company file open, shows and edits the company's
 /// details, and signs the apps in as the same person by giving each a ticket; it never keeps or passes the password.
@@ -132,13 +129,6 @@ public sealed class SuiteCompany : IDisposable
     /// <summary>Sets a user's password, for someone who has forgotten theirs. It also clears any lockout.</summary>
     public void SetPassword(long id, string password, string adminPassword) =>
         _engine.Call("user_set_password", new JsonObject { ["id"] = id, ["password"] = password, ["admin_password"] = adminPassword });
-
-    /// <summary>A ticket for one app. It works once, for two minutes, and signs that app in as the person signed in here.</summary>
-    public AppTicket TicketFor(string app)
-    {
-        var t = _engine.Call("auth.ticket", new JsonObject { ["app"] = app }) ?? throw new EngineException("No ticket was given.");
-        return new AppTicket(t["ticket"]!.GetValue<string>(), t["username"]?.GetValue<string>() ?? User);
-    }
 
     /// <summary>The tools the assistant may use, from the engine's governed list. Every one only reads.</summary>
     public IReadOnlyList<Osas.Core.Agent.ToolSpec> AssistantTools() =>
@@ -253,19 +243,5 @@ public sealed class SuiteSettings
         var o = File.Exists(_file) && JsonNode.Parse(File.ReadAllText(_file)) is JsonObject existing ? existing : new JsonObject();
         o[key] = value;
         File.WriteAllText(_file, o.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
-    }
-
-    /// <summary>The environment an app is started with: where the company file is, and the ticket that signs it in.</summary>
-    public static IReadOnlyDictionary<string, string> AppEnvironment(string companyPath, AppTicket? ticket)
-    {
-        var env = new Dictionary<string, string> { [SuiteWire.EnvCompany] = companyPath };
-        if (ticket != null)
-        {
-            env[SuiteWire.EnvTicket] = ticket.Ticket;
-            env[SuiteWire.EnvUser] = ticket.Username;
-        }
-        foreach (var (key, value) in SelectedProjectStore.EnvironmentFor(companyPath))
-            env[key] = value;
-        return env;
     }
 }

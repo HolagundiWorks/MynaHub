@@ -11,10 +11,10 @@ internal sealed class SuiteLauncherHost
     internal static SuiteLauncherHost Instance { get; } = new();
 
     /// <summary>Start an app of the suite (brought to the front when it already runs).</summary>
-    internal void LaunchApp(SuiteAppDescriptor app, string? ospPath = null)
+    internal void LaunchApp(SuiteAppDescriptor app)
     {
         var exe = SuiteCatalog.FindExecutable(app) ?? throw new InvalidOperationException($"{app.Title} is not installed.");
-        SuiteCatalog.StartApp(exe, ospPath is null ? null : new Dictionary<string, string> { [SuiteWire.EnvProjectOsp] = ospPath });
+        SuiteCatalog.StartApp(exe);
     }
 
     /// <summary>Start the app that asked for the launcher (<see cref="LaunchRequest"/>): at once, since nothing has to be signed in here first.</summary>
@@ -25,12 +25,12 @@ internal sealed class SuiteLauncherHost
             return;
         LaunchRequest.Clear();
         var descriptor = SuiteCatalog.Apps.FirstOrDefault(a =>
-            string.Equals(a.Title, request.App, StringComparison.OrdinalIgnoreCase) || string.Equals(a.TicketApp, request.App, StringComparison.OrdinalIgnoreCase));
+            string.Equals(a.Title, request.App, StringComparison.OrdinalIgnoreCase));
         if (descriptor == null)
             return;
         try
         {
-            LaunchApp(descriptor, request.Osp);
+            LaunchApp(descriptor);
         }
         catch (Exception ex)
         {

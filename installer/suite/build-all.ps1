@@ -90,7 +90,7 @@ if (-not (Test-Path (Join-Path $officeDir "office.dll"))) { throw "office.dll mi
 
 Write-Host "=== 3/5 Falcon Setup ===" -ForegroundColor Cyan
 Push-Location (Join-Path $coreOpRepo "BBSDesktop\installer")
-& powershell -NoProfile -ExecutionPolicy Bypass -File build-installer.ps1 -OfficeDllDir $officeDir
+& powershell -NoProfile -ExecutionPolicy Bypass -File build-installer.ps1
 if ($LASTEXITCODE -ne 0) { throw "Falcon Setup build failed (exit $LASTEXITCODE); not wrapping a stale installer" }
 Pop-Location
 $coreOpSetup = Get-ChildItem (Join-Path $coreOpRepo "BBSDesktop\artifacts\installer\O-CoreOp-Setup-*.exe") | Sort-Object LastWriteTime -Descending | Select-Object -First 1

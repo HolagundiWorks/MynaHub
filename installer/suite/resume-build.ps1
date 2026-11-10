@@ -21,7 +21,7 @@ $officeDll = if ($env:CARGO_TARGET_DIR) {
     Join-Path $studio 'office-ffi\target\release'
 }
 $ver = '1.3.0'
-& (Join-Path $coreop 'BBSDesktop\installer\build-installer.ps1') -OfficeDllDir $officeDll
+& (Join-Path $coreop 'BBSDesktop\installer\build-installer.ps1')
 $savedTarget = $env:CARGO_TARGET_DIR
 Remove-Item Env:CARGO_TARGET_DIR -ErrorAction SilentlyContinue
 try {

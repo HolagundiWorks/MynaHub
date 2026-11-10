@@ -1,5 +1,7 @@
 # Studio as the hub: one company file, one sign-in
 
+> **Partly retired 2026-11-08.** The one-time sign-in ticket and the company path passed to Falcon and Tren no longer exist: Tren and Falcon are independent of Kivo and share only the local `.osp`. See [SUITE.md](SUITE.md). The rest is kept as history.
+
 Written 2026-10-19; **updated 2026-10-28** for the Studio↔OSAS merge ([studio-osas-merge.md](studio-osas-merge.md)).
 
 **Decision (2026-10-28):** **Kivo** is the user-facing suite shell. It holds the company details, the admin password, users, and Myna cards. The suite brand remains **OSAS**; env vars and `suite.json` keep the `OSAS_*` names so CoreOp, Draft and Form do not need a rename. A separate OSAS.exe hub is retired (2026-11-01) once Studio ships these duties.
@@ -44,8 +46,6 @@ When an app is started by OSAS without a valid ticket (it expired, or the person
 | `company_profile_get` | View | The company details |
 | `company_profile_save` | Manage settings | Saves them (audited) |
 | `user_list`, `user_create`, `user_update`, `user_set_password` | Manage users (each change also needs `admin_password`) | The company's users |
-| `auth.ticket` `{ app }` | A signed-in, unlocked session | `{ ticket, expires_in, username }` |
-| `auth.login_ticket` `{ ticket }` | A company open in this session | Signs in as the ticket's user |
 
 
 ## Who owns what (decision 2026-10-19)

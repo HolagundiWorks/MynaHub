@@ -12,7 +12,7 @@ public sealed record SuiteAppDescriptor(
     string[] ProductNames,
     params string[] ExeNames);
 
-/// <summary>Discover suite executables and start them with a one-time ticket (never a password on the command line).</summary>
+/// <summary>Discover suite executables and start them. Nothing about a person or a company is passed to an app.</summary>
 public static class SuiteCatalog
 {
     public static IReadOnlyList<SuiteAppDescriptor> Apps { get; } =
@@ -22,17 +22,6 @@ public static class SuiteCatalog
         new("Tren", "Drafting", "O-Draft", ["Tren", "O-Draft", "AAD"], "ODraft.WinUi.exe", "O-Draft.exe", "aad-host.exe"),
         new("Finch", "3D / BIM form", "O-Form", ["Finch", "O-Form"], "O-Form.exe"),
     ];
-
-    public static SuiteAppDescriptor? FindByTicketApp(string ticketApp)
-    {
-        foreach (var app in Apps)
-        {
-            if (string.Equals(app.TicketApp, ticketApp, StringComparison.OrdinalIgnoreCase))
-                return app;
-        }
-
-        return null;
-    }
 
     static string? FindInstallLocationFromRegistry(string productHint)
     {
@@ -108,22 +97,6 @@ public static class SuiteCatalog
         return null;
     }
 
-    public static string? ReadTicket(JsonElement payload) =>
-        payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("ticket", out var t)
-            ? t.GetString()
-            : null;
-
-    public static void ApplySuiteLaunchEnvironment(ProcessStartInfo start, string companyPath, string ticket)
-    {
-        start.Environment[SuiteWire.EnvCompany] = companyPath;
-        start.Environment[SuiteWire.EnvTicket] = ticket;
-        start.Environment[SuiteWire.EnvAiRole] = "client";
-        start.Environment[SuiteWire.EnvAiHost] = "127.0.0.1";
-        start.Environment[SuiteWire.EnvAiPort] = "8742";
-        foreach (var (key, value) in SelectedProjectStore.EnvironmentFor(companyPath))
-            start.Environment[key] = value;
-    }
-
     /// <summary>
     /// True when the app at <paramref name="exePath"/> is already running (same executable file) and its window was brought to the front, so nothing
     /// new needs starting. Each suite app is one window: a second click on its tile, or a second launch request, must not open a second copy.
@@ -194,19 +167,6 @@ public static class SuiteCatalog
         ApplyServiceEnvironment(start);
         foreach (var (key, value) in extraEnvironment ?? new Dictionary<string, string>())
             start.Environment[key] = value;
-        Process.Start(start);
-    }
-
-    public static void StartWithTicket(string exePath, string companyPath, string ticket)
-    {
-        if (FocusRunning(exePath))
-            return;
-        var start = new ProcessStartInfo(exePath)
-        {
-            UseShellExecute = false,
-            WorkingDirectory = Path.GetDirectoryName(exePath) ?? Environment.CurrentDirectory,
-        };
-        ApplySuiteLaunchEnvironment(start, companyPath, ticket);
         Process.Start(start);
     }
 }

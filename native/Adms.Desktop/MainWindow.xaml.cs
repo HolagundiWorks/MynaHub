@@ -108,7 +108,6 @@ public sealed partial class MainWindow : Window
         Root.Loaded += (_, _) => RestoreTheme();
         RestoreTheme();
         _ = LoadWelcomeAsync();
-        _ = StartFromSuiteAsync();
     }
 
     private void OpenTasksWidget(object sender, RoutedEventArgs e)
@@ -180,32 +179,6 @@ public sealed partial class MainWindow : Window
     {
         if (SuiteHub.CompanyPath() is { } path)
             await OpenPathAsync(path);
-    }
-
-    /// <summary>
-    /// A sibling app may start Studio with <c>OSTUDIO_COMPANY</c> and a one-time
-    /// <c>OSTUDIO_TICKET</c>. The file opens through the ordinary path; an expired ticket leaves the launcher prompt showing.
-    /// </summary>
-    private async Task StartFromSuiteAsync()
-    {
-        var path = Environment.GetEnvironmentVariable(SuiteWire.EnvCompany);
-        var ticket = Environment.GetEnvironmentVariable(SuiteWire.EnvTicket);
-        Environment.SetEnvironmentVariable(SuiteWire.EnvTicket, null);
-        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
-            return;
-        for (var i = 0; i < 100 && (_session == null || _busy); i++)
-            await Task.Delay(100);
-        if (_session == null)
-            return;
-        await OpenPathAsync(path);
-        if (!_companyOpen || string.IsNullOrWhiteSpace(ticket))
-            return;
-        await RunEngineAsync("Signing in…", () =>
-        {
-            _session.Call("auth.login_ticket", new { ticket });
-            var status = _session.Call("auth_status");
-            DispatcherQueue.TryEnqueue(() => ApplyStatus(status));
-        });
     }
 
     private async void OpenCompany(object sender, RoutedEventArgs e) => await PickAndOpenAsync();

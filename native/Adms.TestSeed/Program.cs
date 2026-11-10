@@ -108,10 +108,6 @@ using (var session = new AdmsSession(engineDir))
     session.Call("project_stages_apply", new { project_id = projectId, consultancy = "comprehensive", floors = 1 });
     WireDocumentsProjectIntoWorkspace(session, projectId, testRoot, companyFile);
 
-    var ticket = session.Call("auth.ticket", new { app = "O-CoreOp" });
-    if (SuiteCatalog.ReadTicket(ticket) is not { Length: > 0 })
-        throw new InvalidOperationException("Ticket issue failed after seed.");
-
     session.CloseCompany();
 }
 

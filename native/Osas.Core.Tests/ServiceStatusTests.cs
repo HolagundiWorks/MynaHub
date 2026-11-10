@@ -37,16 +37,6 @@ public class ServiceStatusTests
     public void The_company_file_line_maps_to_a_level(string text, ServiceLevel expected) =>
         Assert.Equal(expected, ServiceStatus.ForCompanyFile(text));
 
-    [Theory]
-    [InlineData("connected", ServiceLevel.Running)]
-    [InlineData("signed out", ServiceLevel.Waiting)]
-    [InlineData("offline", ServiceLevel.Waiting)]
-    [InlineData("starting", ServiceLevel.Waiting)]
-    [InlineData("stopped (port 8743 is used by another program)", ServiceLevel.Stopped)]
-    [InlineData("", ServiceLevel.Off)]
-    public void The_database_service_line_maps_to_a_level(string text, ServiceLevel expected) =>
-        Assert.Equal(expected, ServiceStatus.ForDatabase(text));
-
     [Fact]
     public void Every_level_has_a_word() =>
         Assert.All(Enum.GetValues<ServiceLevel>(), level => Assert.False(string.IsNullOrWhiteSpace(ServiceStatus.Word(level))));

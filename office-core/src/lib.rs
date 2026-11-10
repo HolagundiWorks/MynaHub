@@ -25,7 +25,6 @@ pub mod share;
 pub mod schema;
 pub mod store;
 pub mod subcontracts;
-pub mod suite;
 pub mod tasks;
 pub mod tds26as;
 pub mod track;
