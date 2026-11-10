@@ -5,7 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:oui="using:O.Ui.Controls"
     Title="MynaHub">
-    <Grid x:Name="Root" Language="en-IN" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <Grid x:Name="Root" Language="en-IN" Background="{ThemeResource AppBackgroundBrush}">
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Key="Escape" Invoked="DismissNotice"/>
             <KeyboardAccelerator Key="N" Modifiers="Control" Invoked="NewCommand"/>
@@ -210,7 +210,7 @@
             </ScrollViewer>
 
             <Grid x:Name="WorkspaceHost" Visibility="Collapsed"/>
-            <Grid x:Name="PdfHost" Visibility="Collapsed" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"/>
+            <Grid x:Name="PdfHost" Visibility="Collapsed" Background="{ThemeResource AppBackgroundBrush}"/>
         </Grid>
 
         <oui:SuiteBottomStatusBar x:Name="StatusStrip" Grid.Row="3"/>
