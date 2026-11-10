@@ -1,6 +1,6 @@
 # Test plan: Myna
 
-Myna (`O-Studio.Launcher.exe`, beside `O-Studio.exe` in the Kivo install folder) is a tray app. It holds the company sign-in, shows the status of the AI agent, the database and cloud sync, and starts the other apps with a one-time ticket. Source: `O-STUDIO\native\Adms.LoginWidget`.
+Myna (`O-Studio.Launcher.exe`, beside `O-Studio.exe` in the MynaHub install folder) is a tray app. It holds the company sign-in, shows the status of the AI agent, the database and cloud sync, and starts the other apps with a one-time ticket. Source: `O-STUDIO\native\Adms.LoginWidget`.
 
 Case format and rules: [README.md](README.md). `[N]` normal, `[B]` boundary or bad input, `[R]` repeat or undo.
 
@@ -8,7 +8,7 @@ Case format and rules: [README.md](README.md). `[N]` normal, `[B]` boundary or b
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
-| LNC-SMK-01 | Start | Start `O-Studio.Launcher.exe` from the Kivo install folder | The process stays running for 30 s; a tray icon appears (it may be in the hidden-icons area); no window opens by itself | `Get-Process O-Studio.Launcher`; UIA tray overflow item named like "Kivo suite" |
+| LNC-SMK-01 | Start | Start `O-Studio.Launcher.exe` from the MynaHub install folder | The process stays running for 30 s; a tray icon appears (it may be in the hidden-icons area); no window opens by itself | `Get-Process O-Studio.Launcher`; UIA tray overflow item named like "MynaHub suite" |
 | LNC-SMK-02 | No crash events | After LNC-SMK-01 read the Application event log | No `Application Error` for `O-Studio.Launcher.exe` | `Get-WinEvent` |
 | LNC-SMK-03 | Exit | Tray menu, **Exit** | The process ends; the tray icon disappears | process list |
 
@@ -20,17 +20,17 @@ Case format and rules: [README.md](README.md). `[N]` normal, `[B]` boundary or b
 | LNC-ONE-02 | Rapid starts `[B]` | Start it 5 times within 2 s | One process remains; no error dialog | process count |
 | LNC-ONE-03 | After exit `[R]` | Exit, then start again | A new launcher starts normally | process count |
 | LNC-ONE-04 | After a crash `[B]` | Kill the process (`Stop-Process -Force`), start again | Starts normally (no stale lock) | process count |
-| LNC-ONE-05 | Start from Kivo | Kivo, **Suite launcher…** while Myna runs | No second launcher; the sign-in window comes forward | process count |
+| LNC-ONE-05 | Start from MynaHub | MynaHub, **Suite launcher…** while Myna runs | No second launcher; the sign-in window comes forward | process count |
 | LNC-ONE-06 | Two Windows users | (only on a machine with two accounts) each starts a launcher | Each user has their own; they do not block each other | process list per session |
 
 ## L3 Tray icon and menu
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
-| LNC-TRY-01 | Tooltip, no company | No company remembered (`suite.json` absent) | Tooltip "Kivo suite launcher" | UIA name of the tray item |
-| LNC-TRY-02 | Tooltip, company remembered | Company remembered, not signed in | "Kivo suite — company remembered, not signed in" | UIA name |
-| LNC-TRY-03 | Tooltip, signed in | Sign in (L5) | "<Company> — <user> (Kivo suite)" | UIA name |
-| LNC-TRY-04 | Menu opens | Click the icon (left or right) | A menu with, in order: status line; **AI agent:**; **Database:**; **Cloud sync:**; **Refresh status**; separator; **Company sign-in…**; one item per suite app (Kivo, Falcon, Tren, and Finch/O-Dynamo only if installed); separator; **Exit** | screenshot of the menu region; UIA `#32768` |
+| LNC-TRY-01 | Tooltip, no company | No company remembered (`suite.json` absent) | Tooltip "MynaHub suite launcher" | UIA name of the tray item |
+| LNC-TRY-02 | Tooltip, company remembered | Company remembered, not signed in | "MynaHub suite — company remembered, not signed in" | UIA name |
+| LNC-TRY-03 | Tooltip, signed in | Sign in (L5) | "<Company> — <user> (MynaHub suite)" | UIA name |
+| LNC-TRY-04 | Menu opens | Click the icon (left or right) | A menu with, in order: status line; **AI agent:**; **Database:**; **Cloud sync:**; **Refresh status**; separator; **Company sign-in…**; one item per suite app (MynaHub, MynaOps, MynaCAD, and MynaMod/O-Dynamo only if installed); separator; **Exit** | screenshot of the menu region; UIA `#32768` |
 | LNC-TRY-05 | Apps greyed when signed out | Open the menu while not signed in | App items are disabled; Company sign-in and Refresh are enabled | screenshot |
 | LNC-TRY-06 | Apps enabled when signed in | Open the menu while signed in | App items are enabled | screenshot |
 | LNC-TRY-07 | Long text `[B]` | Company with a 90-character name | Menu lines are shortened with an ellipsis, not cut mid-menu or overflowing | screenshot |
@@ -54,7 +54,7 @@ The file is `%LOCALAPPDATA%\O-Studio\launcher-status.txt`: four lines (time, AI 
 | LNC-STA-09 | Database, open signed out / signed in / locked | Open the company in the sign-in window; sign in; lock | "open, sign-in needed", then "open, signed in as <user>", then "open, session locked" | file |
 | LNC-STA-10 | Size shown | Company file of about 1 MB and one under 1 KB | `MB` with one decimal; at least `1 KB` | file |
 | LNC-STA-11 | Cloud, no credentials | No `neon.env` | "not set up (no neon.env)" | file |
-| LNC-STA-12 | Cloud, credentials | `neon.env` with a `DATABASE_URL=` value | "credentials found; starts at sign-in" before sign-in; after sign-in "running (n projects syncing)" (n = projects switched on in Kivo > Cloud sync); "could not connect (...); retrying every 30 s" when Neon cannot be reached; after Sign out "stopped (signed out); starts again at the next sign-in" | file |
+| LNC-STA-12 | Cloud, credentials | `neon.env` with a `DATABASE_URL=` value | "credentials found; starts at sign-in" before sign-in; after sign-in "running (n projects syncing)" (n = projects switched on in MynaHub > Cloud sync); "could not connect (...); retrying every 30 s" when Neon cannot be reached; after Sign out "stopped (signed out); starts again at the next sign-in" | file |
 | LNC-STA-13 | Cloud, empty value `[B]` | `DATABASE_URL=` with nothing after it | "neon.env has no database address" | file |
 | LNC-STA-14 | Refresh status | Change something, choose **Refresh status** | The file's first line (time) advances at once | file |
 | LNC-STA-15 | Auto refresh | Leave it for 60 s | The time line advances at least twice | file |
@@ -67,7 +67,7 @@ Opened by **Company sign-in…**, by a second launch, or by an error.
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
-| LNC-WIN-01 | Opens (phone shell) | Choose Company sign-in… | A window "Company login", about 400x760, laid out as a phone: an **app bar** (logo, company or "Kivo suite", user and role or a hint, and two service icons, one for the AI agent and one for the database server), the page in the middle, a thin status line, and, once signed in, a bar of three tabs **Home**, **Services**, **Account**. Before sign-in the welcome panel (create, open, recent) shows with the accent on "Open remembered company" when there is one, else on Create, and no tabs | UIA tree, screenshot |
+| LNC-WIN-01 | Opens (phone shell) | Choose Company sign-in… | A window "Company login", about 400x760, laid out as a phone: an **app bar** (logo, company or "MynaHub suite", user and role or a hint, and two service icons, one for the AI agent and one for the database server), the page in the middle, a thin status line, and, once signed in, a bar of three tabs **Home**, **Services**, **Account**. Before sign-in the welcome panel (create, open, recent) shows with the accent on "Open remembered company" when there is one, else on Create, and no tabs | UIA tree, screenshot |
 | LNC-WIN-02 | Status live | Change state (L4) with the window open | The two icons in the app bar and the three rows on the **Services** tab update without reopening (within a few seconds of a change in the cloud sync, within 20 s for the rest) | UIA, screenshot |
 | LNC-WIN-03 | Create a company | Create a company with name, owner, password of 12+ characters | The company opens; the recovery code is shown once; setup completes | UIA, `suite.json` |
 | LNC-WIN-04 | Password too short `[B]` | 11 characters | Refused with a clear message; nothing created | UIA |
@@ -78,25 +78,25 @@ Opened by **Company sign-in…**, by a second launch, or by an error.
 | LNC-WIN-09 | Protected file | Company encrypted at rest | Asks for the file password or recovery code first | UIA |
 | LNC-WIN-10 | Lock / Unlock | Lock, then unlock | The session locks (tray tooltip changes), unlock with the password restores it | UIA, tooltip |
 | LNC-WIN-11 | Sign out | Sign out | Back to sign-in; tray app items disabled again | menu screenshot |
-| LNC-WIN-12 | Close company | Close company | Company closed; the file lock is released (another app can open it) | open the file in Kivo |
+| LNC-WIN-12 | Close company | Close company | Company closed; the file lock is released (another app can open it) | open the file in MynaHub |
 | LNC-WIN-13 | Writes `suite.json` | Sign in | `%LOCALAPPDATA%\OSAS\suite.json` has the company path and user name, no password | file read |
 | LNC-WIN-14 | Close the window | Close with the X | Myna keeps running in the tray | process |
-| LNC-WIN-15 | Forgotten password | Look for a recovery route | Record where it is (Kivo has one: "Forgot password? Use recovery code"). A missing route in Myna is not a bug if documented | doc |
+| LNC-WIN-15 | Forgotten password | Look for a recovery route | Record where it is (MynaHub has one: "Forgot password? Use recovery code"). A missing route in Myna is not a bug if documented | doc |
 | LNC-WIN-16 | Tabs | Sign in, then choose Services, Account, Home | Each page shows alone; the chosen tab is accent-coloured; the pages stay until another tab is chosen; the tab bar is not shown before sign-in | UIA, screenshot |
-| LNC-WIN-17 | Home apps | On Home | Four tiles with their marks: Kivo (orange), Falcon (blue), Tren (black), Finch (grey placeholder, disabled, "planned"). Kivo is enabled once signed in; Falcon and Tren only with a project loaded (tooltip says what is missing); a click starts the app | UIA, screenshot |
+| LNC-WIN-17 | Home apps | On Home | Four tiles with their marks: MynaHub (orange), MynaOps (blue), MynaCAD (black), MynaMod (grey placeholder, disabled, "planned"). MynaHub is enabled once signed in; MynaOps and MynaCAD only with a project loaded (tooltip says what is missing); a click starts the app | UIA, screenshot |
 | LNC-WIN-18 | Service icons | Look at the app-bar icons and the Services tab | AI agent (sparkle icon) and database server (database icon), and on the Services tab also the company file (folder icon): **lit** (orange badge) while the service is Running; amber badge while Waiting (starting, or waiting for sign-in); **inactive** (grey, dim, no badge) when Not running or Off. The tooltip and the accessible name give the word and the detail, for example "Database server: Not running (could not connect…)" | screenshot, UIA name |
 | LNC-WIN-20 | Icon buttons | Look at Home and Account | Load project (tick, accent), New project… (plus), Close project (cross) and Lock session (padlock), Sign out (power), Close company (arrow) are icons without text; each has a tooltip and the accessible name of the old text button, and a 48 px touch size | UIA, screenshot |
 | LNC-WIN-21 | AI orb | With the AI agent running, watch the orb in the app bar, on the Ask page and on the Services page for 10 s | A dark sphere lit by four soft lobes (Ember, Dusk, Midnight, Grove), the white suite mark with round ends, four small particles orbiting (two clockwise, two counter-clockwise), the sphere breathing and the halos swelling. Frames a few seconds apart differ. Waiting: still at 60 %. Not running: still at 30 % | screenshots 2 s apart |
-| LNC-WIN-22 | Marks and brand colours | Look at the app tiles, the window icon and the dialogs | Kivo on Ember `#B83E16`, Tren on Midnight `#102C80`, Finch on Grove `#166040`, Falcon on Dusk `#5630A0`, all with a white mark; dialog buttons and focus marks are Ember, not Windows blue; app names in Apfel Grotezk and titles in Mazius Display (bundled fonts) | screenshot |
+| LNC-WIN-22 | Marks and brand colours | Look at the app tiles, the window icon and the dialogs | MynaHub on Ember `#B83E16`, MynaCAD on Midnight `#102C80`, MynaMod on Grove `#166040`, MynaOps on Dusk `#5630A0`, all with a white mark; dialog buttons and focus marks are Ember, not Windows blue; app names in Apfel Grotezk and titles in Mazius Display (bundled fonts) | screenshot |
 | LNC-WIN-19 | Account page | Account tab | Avatar with the user's initial, user and role, company name, file path (trimmed, full path on hover), and Lock session, Sign out, Close company as full-width buttons | UIA |
 
 ## L6 Launching apps
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
-| LNC-APP-01 | Start Falcon | Signed in, menu, **Falcon** | Falcon starts on the same company, signed in as the same user, with no password prompt | process, window title |
-| LNC-APP-02 | Start Tren | Menu, **Tren** | Tren starts and shows company details read-only | process, UI |
-| LNC-APP-03 | Start Kivo (hand-off) | Menu, **Kivo** | Myna releases the company, Kivo opens it signed in as the same user; Myna shows it closed | process, status file |
+| LNC-APP-01 | Start MynaOps | Signed in, menu, **MynaOps** | MynaOps starts on the same company, signed in as the same user, with no password prompt | process, window title |
+| LNC-APP-02 | Start MynaCAD | Menu, **MynaCAD** | MynaCAD starts and shows company details read-only | process, UI |
+| LNC-APP-03 | Start MynaHub (hand-off) | Menu, **MynaHub** | Myna releases the company, MynaHub opens it signed in as the same user; Myna shows it closed | process, status file |
 | LNC-APP-04 | Ticket is single-use | Copy the ticket from a started app's environment, try to use it again (test harness) | Second use refused | `auth.login_ticket` call |
 | LNC-APP-05 | Ticket expires | Wait 3 minutes, use an issued ticket | Refused (tickets last about 2 minutes) | harness |
 | LNC-APP-06 | App not installed `[B]` | Rename an app's folder, choose it | Message that the app is not installed; Myna keeps running | UIA |
@@ -111,14 +111,14 @@ Opened by **Company sign-in…**, by a second launch, or by an error.
 | LNC-PRJ-02 | Search `[N]` | Type part of a code, name or client in the filter | The list narrows; clearing the filter restores it | UIA |
 | LNC-PRJ-03 | Load `[N]` | Pick a project, Load project | On **Home** the project card shows "Current project", the project name, `code · client` and Close project; the list, search, Load project and New project… are hidden; `selected-project.json` has the project id, `.osp` path, company and user; status file `Project:` line shows it | file read |
 | LNC-PRJ-04 | Folder made on load `[N]` | Load a project that has no folder yet | The project folder with `osas.project.json` exists; the selection names `project.osp` inside it | file system |
-| LNC-PRJ-05 | Launch on the project `[N]` | Load, then Tray > Falcon and Tren | Each starts with `OSTUDIO_PROJECT_ID` and `OSTUDIO_PROJECT_OSP` set (read from the process environment) | process env |
-| LNC-PRJ-06 | Launch without a project `[B]` | Close the project, Tray > Tren | Refused with "Load a project first" | message |
-| LNC-PRJ-07 | Switch refused while an app is open `[B]` | Load A, start Tren, try Close project | Refused: "Tren still has A open"; A stays loaded and the list stays inactive | message, file |
-| LNC-PRJ-08 | Close refused while an app is open `[B]` | Tren running, Close project | Refused naming Tren; after closing the app, Close project works, `selected-project.json` is gone and the card shows the list, search, Load project and New project… again | file |
+| LNC-PRJ-05 | Launch on the project `[N]` | Load, then Tray > MynaOps and MynaCAD | Each starts with `OSTUDIO_PROJECT_ID` and `OSTUDIO_PROJECT_OSP` set (read from the process environment) | process env |
+| LNC-PRJ-06 | Launch without a project `[B]` | Close the project, Tray > MynaCAD | Refused with "Load a project first" | message |
+| LNC-PRJ-07 | Switch refused while an app is open `[B]` | Load A, start MynaCAD, try Close project | Refused: "MynaCAD still has A open"; A stays loaded and the list stays inactive | message, file |
+| LNC-PRJ-08 | Close refused while an app is open `[B]` | MynaCAD running, Close project | Refused naming MynaCAD; after closing the app, Close project works, `selected-project.json` is gone and the card shows the list, search, Load project and New project… again | file |
 | LNC-PRJ-09 | Closed project re-opens `[R]` | Close project, pick the same project, Load project | Loads again; the card shows it as the current project | UIA |
-| LNC-PRJ-10 | Archived project `[B]` | Archive a project in Kivo, refresh the list | Not listed; a stale lock on it is refused by `project_launch_info` (launchable false) | engine call |
-| LNC-PRJ-11 | New project `[N]` | New project…, existing client, name, accept the generated code | Project and its folder exist in the company file; it is loaded at once | Kivo project list |
-| LNC-PRJ-12 | New project, new client `[N]` | New project…, New client…, enter the client name | Client and project created, project loaded | Kivo |
+| LNC-PRJ-10 | Archived project `[B]` | Archive a project in MynaHub, refresh the list | Not listed; a stale lock on it is refused by `project_launch_info` (launchable false) | engine call |
+| LNC-PRJ-11 | New project `[N]` | New project…, existing client, name, accept the generated code | Project and its folder exist in the company file; it is loaded at once | MynaHub project list |
+| LNC-PRJ-12 | New project, new client `[N]` | New project…, New client…, enter the client name | Client and project created, project loaded | MynaHub |
 | LNC-PRJ-13 | New project, bad input `[B]` | No name; no client; a duplicate name for the same client; a duplicate code | Each refused with a clear message; nothing created | message |
 | LNC-PRJ-14 | New project as Auditor `[B]` | Sign in as Auditor, New project… | Refused (Edit permission); no records created | message, audit log |
 | LNC-PRJ-15 | Other company `[B]` | Load in company A, sign in to company B | B sees no loaded project; A's project returns when A is opened again | file |

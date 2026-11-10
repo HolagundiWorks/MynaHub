@@ -8,9 +8,9 @@
 | Choice | Value |
 |---|---|
 | Surviving repository | This one (`HolagundiWorks/O-STUDIO` / `holagundiworks/o-studio`) |
-| User-facing shell | **Kivo** WinUI — company, admin password, users, firm, suite cards, approvals, assistant |
+| User-facing shell | **MynaHub** WinUI — company, admin password, users, firm, suite cards, approvals, assistant |
 | Source of truth | Company file via `office-core` / `office-ffi` (`office.dll`) |
-| Suite brand | User-facing hub is **Kivo**; wire env vars keep the `OSAS_*` contract |
+| Suite brand | User-facing hub is **MynaHub**; wire env vars keep the `OSAS_*` contract |
 | Secondary OSAS.exe | **Retired** — see [osas-deprecation.md](osas-deprecation.md) |
 
 ## Implemented vs proposed

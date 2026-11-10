@@ -1,12 +1,12 @@
-//! Suite project folder: one directory per Kivo project holding Tren, Finch and the `.osp` project file.
+//! Suite project folder: one directory per MynaHub project holding MynaCAD, MynaMod and the `.osp` project file.
 //!
 //! Layout (relative to the company file's parent):
 //! ```text
 //! projects/<slug>/
 //!   osas.project.json   # suite envelope (ProjectRef + drawing_id)
-//!   project.osp         # drawing, take-off, CoreOp project record (Tren / Falcon)
-//!   draft/model.dxf     # Tren starter drawing (legacy scaffold)
-//!   form/model.blend    # Finch model (created empty; first save fills it)
+//!   project.osp         # drawing, take-off, CoreOp project record (MynaCAD / MynaOps)
+//!   draft/model.dxf     # MynaCAD starter drawing (legacy scaffold)
+//!   form/model.blend    # MynaMod model (created empty; first save fills it)
 //! ```
 
 use crate::refs::{self, ProjectRef, REF_VERSION};
@@ -124,11 +124,11 @@ pub fn scaffold(conn: &Connection, input: ScaffoldInput<'_>) -> Result<Workspace
     if !draft.exists() {
         write_atomic(&draft, MINIMAL_DXF.as_bytes())?;
     }
-    // Finch fills the blend on first save; leave a zero-byte stub so the path exists.
+    // MynaMod fills the blend on first save; leave a zero-byte stub so the path exists.
     if !form.exists() {
         write_atomic(&form, b"")?;
     }
-    // `.osp` is created when Tren or Falcon first saves the project file.
+    // `.osp` is created when MynaCAD or MynaOps first saves the project file.
 
     let drawing_id = {
         let existing = read_manifest(&root).ok().and_then(|m| {
@@ -178,7 +178,7 @@ pub fn scaffold(conn: &Connection, input: ScaffoldInput<'_>) -> Result<Workspace
         serde_json::to_vec_pretty(&manifest).map_err(|e| e.to_string())?.as_slice(),
     )?;
 
-    // Minimal Tren project.json so Draft can adopt the folder later.
+    // Minimal MynaCAD project.json so Draft can adopt the folder later.
     let draft_project = json!({
         "schema_version": 1,
         "project": {
@@ -186,7 +186,7 @@ pub fn scaffold(conn: &Connection, input: ScaffoldInput<'_>) -> Result<Workspace
             "code": if input.code.is_empty() { format!("P{}", input.project_id) } else { input.code.to_string() },
             "name": input.name,
             "type": "building",
-            "description": "Scaffolded by Kivo",
+            "description": "Scaffolded by MynaHub",
             "units": { "length": "mm", "area": "m2" }
         },
         "floors": [{

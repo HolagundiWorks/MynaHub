@@ -6,7 +6,7 @@ using Osas.Core;
 namespace Adms.Desktop;
 
 /// <summary>
-/// Kivo as the suite hub: remembers the chosen company and starts Falcon, Tren and Finch. They are independent of Kivo: no sign-in ticket,
+/// MynaHub as the suite hub: remembers the chosen company and starts MynaOps, MynaCAD and MynaMod. They are independent of MynaHub: no sign-in ticket,
 /// no company path and no locked project are passed; they only learn where the AI Core is.
 /// </summary>
 internal static class SuiteHub
@@ -18,9 +18,9 @@ internal static class SuiteHub
     /// <summary>Known suite apps launched from Studio cards. Discovery is best-effort.</summary>
     internal static IReadOnlyList<SuiteCard> Cards { get; } =
     [
-        new("Falcon", "Quantities, estimates and billing", "O-CoreOp", ["O-CoreOp", "AQCCore"], "O-CoreOp.exe", "AQCCore.exe"),
-        new("Tren", "Drafting", "O-Draft", ["O-Draft", "AAD"], "O-Draft.exe", "aad-host.exe"),
-        new("Finch", "3D / BIM form", "O-Form", ["O-Form"], "O-Form.exe"),
+        new("MynaOps", "Quantities, estimates and billing", "O-CoreOp", ["O-CoreOp", "AQCCore"], "O-CoreOp.exe", "AQCCore.exe"),
+        new("MynaCAD", "Drafting", "O-Draft", ["O-Draft", "AAD"], "O-Draft.exe", "aad-host.exe"),
+        new("MynaMod", "3D / BIM form", "O-Form", ["O-Form"], "O-Form.exe"),
     ];
 
     internal static string? CompanyPath() => SuiteJsonHub.CompanyPath();

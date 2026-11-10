@@ -476,7 +476,7 @@ internal static class RecordPages
 
     public static UIElement Proposals(AppShell shell) => new RecordPage(
         shell, "01.08", "Practice", "Fee proposals",
-        "What the practice proposes to charge a client. Choose how the fee is worked out and fill in only the figures for that basis. When the project has an Falcon estimate saved in this company file, you can use that total as the cost of the work. A proposal is drafted, sent, then accepted or declined; once the client has decided it cannot change.",
+        "What the practice proposes to charge a client. Choose how the fee is worked out and fill in only the figures for that basis. When the project has an MynaOps estimate saved in this company file, you can use that total as the cost of the work. A proposal is drafted, sent, then accepted or declined; once the client has decided it cannot change.",
         "proposal_list", "proposal_save",
         [
             new("client_id", "Client", RecordKind.Client),
@@ -582,32 +582,32 @@ internal static class RecordPages
         });
 
     /// <summary>
-    /// Shows the Falcon estimate saved on the chosen company-file project and offers to use its grand total as the fee cost basis.
+    /// Shows the MynaOps estimate saved on the chosen company-file project and offers to use its grand total as the fee cost basis.
     /// </summary>
     private static void WireEstimateLink(RecordPage page)
     {
         if (!page.Shell.CanEdit)
             return;
         var caption = new TextBlock { TextWrapping = TextWrapping.Wrap, Opacity = 0.85 };
-        var use = new Button { Content = "Use Falcon estimate as cost", MinHeight = 32, IsEnabled = false };
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(use, "Use Falcon estimate as cost of the work");
+        var use = new Button { Content = "Use MynaOps estimate as cost", MinHeight = 32, IsEnabled = false };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(use, "Use MynaOps estimate as cost of the work");
         var raCaption = new TextBlock { TextWrapping = TextWrapping.Wrap, Opacity = 0.85 };
-        page.LinkPanel.Children.Add(Flow.Section("Falcon estimate"));
+        page.LinkPanel.Children.Add(Flow.Section("MynaOps estimate"));
         page.LinkPanel.Children.Add(caption);
         page.LinkPanel.Children.Add(use);
-        page.LinkPanel.Children.Add(Flow.Section("Falcon running bills"));
+        page.LinkPanel.Children.Add(Flow.Section("MynaOps running bills"));
         page.LinkPanel.Children.Add(raCaption);
 
         JsonElement? latest = null;
         void Refresh()
         {
-            caption.Text = "Choose a project to see any estimate Falcon has saved in this company file.";
-            raCaption.Text = "Choose a project to see any running bills (RA) Falcon has saved in this company file.";
+            caption.Text = "Choose a project to see any estimate MynaOps has saved in this company file.";
+            raCaption.Text = "Choose a project to see any running bills (RA) MynaOps has saved in this company file.";
             use.IsEnabled = false;
             latest = null;
             if (!page.TryGetInput("project_id", out var element) || element is not ComboBox box || box.SelectedItem is not ComboBoxItem { Tag: long projectId })
                 return;
-            _ = page.Shell.Run("Reading the Falcon estimate…", () =>
+            _ = page.Shell.Run("Reading the MynaOps estimate…", () =>
             {
                 var summary = page.Shell.Call("project_estimate_summary", new { project_id = projectId });
                 JsonElement? ra = null;
@@ -621,14 +621,14 @@ internal static class RecordPages
                         var rupees = summary.TryGetProperty("grand_total_rupees", out var g) && g.TryGetDouble(out var r) ? r : 0;
                         var book = Kit.Str(summary, "rate_book_version_name");
                         var rev = Kit.Str(summary, "document_revision");
-                        caption.Text = $"Saved estimate grand total {Flow.Money((long)Math.Round(rupees * 100))}{(book.Length == 0 ? "" : $" · {book}")} · company document revision {rev}. This is the figure Falcon calculated; using it fills Estimated cost of the work for a percentage fee.";
+                        caption.Text = $"Saved estimate grand total {Flow.Money((long)Math.Round(rupees * 100))}{(book.Length == 0 ? "" : $" · {book}")} · company document revision {rev}. This is the figure MynaOps calculated; using it fills Estimated cost of the work for a percentage fee.";
                         use.IsEnabled = true;
                     }
                     else
                     {
                         caption.Text = Kit.Str(summary, "reason").Length > 0
                             ? Kit.Str(summary, "reason")
-                            : "No Falcon estimate is saved for this project yet.";
+                            : "No MynaOps estimate is saved for this project yet.";
                         use.IsEnabled = false;
                     }
                     if (ra is JsonElement raSummary && raSummary.TryGetProperty("present", out var raPresent) && raPresent.ValueKind == JsonValueKind.True)
@@ -642,7 +642,7 @@ internal static class RecordPages
                     else if (ra is JsonElement raMissing)
                         raCaption.Text = Kit.Str(raMissing, "reason").Length > 0
                             ? Kit.Str(raMissing, "reason")
-                            : "No Falcon running bills are saved for this project yet.";
+                            : "No MynaOps running bills are saved for this project yet.";
                 });
             });
         }
@@ -667,7 +667,7 @@ internal static class RecordPages
                     if (string.Equals(item.Tag as string, "percent", StringComparison.Ordinal))
                         basis.SelectedItem = item;
             }
-            page.Notice("Cost of the work set from the Falcon estimate. Save the proposal to keep the link.");
+            page.Notice("Cost of the work set from the MynaOps estimate. Save the proposal to keep the link.");
         };
 
         if (page.TryGetInput("project_id", out var projectEl) && projectEl is ComboBox projectBox)

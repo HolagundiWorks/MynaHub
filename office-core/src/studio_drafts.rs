@@ -1,7 +1,7 @@
 //! CoreOp → Studio draft share (project documents).
 //!
 //! CoreOp writes envelopes via `doc_put` with kinds `aqc.estimate.draft` and
-//! `aqc.ra.draft.<bill_id>` (see Falcon `docs/STUDIO-DRAFT-SHARE.md`).
+//! `aqc.ra.draft.<bill_id>` (see MynaOps `docs/STUDIO-DRAFT-SHARE.md`).
 //! Studio lists those kinds, shows summary fields, then sets envelope `state`
 //! to `approved_locked`. Corrections require a new CoreOp share (new revision),
 //! never an in-place edit of a locked body.
@@ -262,7 +262,7 @@ pub fn validate_coreop_share_body(body: &str) -> Result<(), String> {
     let env = parse_envelope(body)?;
     if str_field(&env, "state") != STATE_DRAFT {
         return Err(
-            "Approval states can only be set from Kivo (Practice → Approvals), not through a direct document save.".into(),
+            "Approval states can only be set from MynaHub (Practice → Approvals), not through a direct document save.".into(),
         );
     }
     if envelope_field(&env, "v").as_u64() != Some(1) {

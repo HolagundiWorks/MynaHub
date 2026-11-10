@@ -1,5 +1,5 @@
 #Requires -Version 5.1
-# Continues suite build after Kivo + office-ffi (needs MSVC from vcvars64 and NSIS on PATH).
+# Continues suite build after MynaHub + office-ffi (needs MSVC from vcvars64 and NSIS on PATH).
 $ErrorActionPreference = 'Stop'
 $env:Path = "$env:LOCALAPPDATA\tauri\NSIS;$env:Path"
 $vcvars = @(
@@ -31,4 +31,4 @@ try {
 }
 Set-Location $PSScriptRoot
 & (Join-Path $PSScriptRoot 'build-single.ps1') -Version $ver
-Write-Host "Built $(Join-Path $PSScriptRoot "out\Kivo-Suite-Setup-$ver.exe")"
+Write-Host "Built $(Join-Path $PSScriptRoot "out\Myna-Setup-$ver.exe")"

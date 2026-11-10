@@ -1,6 +1,6 @@
-//! Importing a Falcon CSV (contract v1, `docs/contracts/falcon-csv.md`) into the company file.
+//! Importing a MynaOps CSV (contract v1, `docs/contracts/falcon-csv.md`) into the company file.
 //!
-//! It builds on Kivo's existing approvals model (`suite_approvals`, see `approvals`): an **estimate version** is a row of kind
+//! It builds on MynaHub's existing approvals model (`suite_approvals`, see `approvals`): an **estimate version** is a row of kind
 //! `estimate`, a **running bill** a row of kind `running_bill`; both are versioned, start as `draft`, and become `approved_locked`
 //! only when someone approves them. The import never approves, and never edits a locked row: a change to an approved estimate
 //! becomes the next draft version, a re-measure after an approved bill becomes a new draft bill.
@@ -9,7 +9,7 @@
 //! track, see `migrations/aos_0001_falcon_import.sql`.
 //!
 //! The row key is (`project_id`, `drawing_revision`, `row_type`, `item_code` or `tag`). Each row also carries a hash of the values
-//! Falcon sent, so a re-import is recognised as the same, a different value as changed. `plan` only reads; `import` runs the same
+//! MynaOps sent, so a re-import is recognised as the same, a different value as changed. `plan` only reads; `import` runs the same
 //! plan and writes it in one transaction, or writes nothing.
 
 use crate::falcon_csv::{self, Issue, Meta, Parsed};
@@ -48,14 +48,14 @@ pub fn map_list(conn: &Connection) -> Result<Vec<MapEntry>, String> {
     sql(rows.collect())
 }
 
-/// Maps a Falcon item code to a Kivo price-list item. An empty `kivo_item` removes the mapping.
+/// Maps a MynaOps item code to a MynaHub price-list item. An empty `kivo_item` removes the mapping.
 pub fn map_set(conn: &Connection, actor: i64, falcon_code: &str, kivo_item: &str) -> Result<(), String> {
     let (code, item) = (falcon_code.trim(), kivo_item.trim());
     if code.is_empty() || code.len() > 80 {
-        return Err("Enter the Falcon item code.".into());
+        return Err("Enter the MynaOps item code.".into());
     }
     if item.len() > 80 {
-        return Err("The Kivo item code is too long.".into());
+        return Err("The MynaHub item code is too long.".into());
     }
     if item.is_empty() {
         sql(conn.execute("DELETE FROM aos_falcon_itemmap WHERE falcon_code = ?1", params![code]))?;
@@ -207,7 +207,7 @@ struct Ver {
     id: i64,
     version: i64,
     status: String,
-    /// Set when the version came from a Falcon import of this Falcon project.
+    /// Set when the version came from a MynaOps import of this MynaOps project.
     drawing_revision: Option<i64>,
 }
 
@@ -235,7 +235,7 @@ enum BillAct {
     None,
     Unchanged,
     Update(i64),
-    /// A new bill; `supersede_draft` is an unapproved Falcon bill of an older drawing revision that it replaces.
+    /// A new bill; `supersede_draft` is an unapproved MynaOps bill of an older drawing revision that it replaces.
     New { supersede_draft: Option<i64> },
 }
 
@@ -314,7 +314,7 @@ fn bill_body(meta: &Meta, sha: &str, rows: &BTreeMap<String, Value>, base: &Base
         let before = prior.get(code).copied().unwrap_or(0.0);
         let falcon_prev = p["previous"].as_f64().unwrap_or(0.0);
         if (before - falcon_prev).abs() > QTY_EPS {
-            line_flags.push(format!("{code}: Falcon's previous {falcon_prev:.3} differs from the last approved bill in Kivo ({before:.3})."));
+            line_flags.push(format!("{code}: MynaOps's previous {falcon_prev:.3} differs from the last approved bill in MynaHub ({before:.3})."));
         }
         let mut line = p.clone();
         line["estimate_quantity"] = est.map(|q| json!(q)).unwrap_or(Value::Null);
@@ -420,11 +420,11 @@ fn plan(conn: &Connection, p: &Parsed, given_project: Option<i64>) -> Result<Pla
         current_version: None,
     };
 
-    // Which Kivo project is this Falcon project?
+    // Which MynaHub project is this MynaOps project?
     let linked: Option<i64> = sql(conn.query_row("SELECT project_id FROM aos_falcon_link WHERE falcon_project = ?1", params![falcon], |r| r.get(0)).optional())?;
     plan.project_id = match (linked, given_project) {
         (Some(l), Some(g)) if l != g => {
-            plan.issues.push(issue(format!("This Falcon project is already linked to Kivo project {l}; it cannot be imported into project {g}.")));
+            plan.issues.push(issue(format!("This MynaOps project is already linked to MynaHub project {l}; it cannot be imported into project {g}.")));
             None
         }
         (Some(l), _) => Some(l),
@@ -474,7 +474,7 @@ fn plan(conn: &Connection, p: &Parsed, given_project: Option<i64>) -> Result<Pla
                     EstAct::Unchanged
                 } else {
                     plan.issues.push(issue(format!(
-                        "Kivo already has estimate v{} from a newer drawing revision (r{}); this file is r{rev} and differs from the r{rev} estimate. Export the current drawing revision instead.",
+                        "MynaHub already has estimate v{} from a newer drawing revision (r{}); this file is r{rev} and differs from the r{rev} estimate. Export the current drawing revision instead.",
                         l.version,
                         l.drawing_revision.unwrap_or(0)
                     )));
@@ -488,7 +488,7 @@ fn plan(conn: &Connection, p: &Parsed, given_project: Option<i64>) -> Result<Pla
                 let newer = latest.is_some_and(|l| l.drawing_revision.is_some_and(|r| r > rev));
                 if newer {
                     plan.issues.push(issue(format!(
-                        "Kivo already has an estimate from drawing revision r{}; this file is the older r{rev}.",
+                        "MynaHub already has an estimate from drawing revision r{}; this file is the older r{rev}.",
                         latest.and_then(|l| l.drawing_revision).unwrap_or(0)
                     )));
                     EstAct::None
@@ -496,7 +496,7 @@ fn plan(conn: &Connection, p: &Parsed, given_project: Option<i64>) -> Result<Pla
                     let supersede_draft = match latest {
                         Some(l) if l.status == "draft" => {
                             if l.drawing_revision.is_none() {
-                                plan.issues.push(issue(format!("Estimate v{} is a draft that did not come from Falcon. Approve or withdraw it before importing.", l.version)));
+                                plan.issues.push(issue(format!("Estimate v{} is a draft that did not come from MynaOps. Approve or withdraw it before importing.", l.version)));
                             }
                             Some(l.id)
                         }
@@ -540,7 +540,7 @@ fn plan(conn: &Connection, p: &Parsed, given_project: Option<i64>) -> Result<Pla
                 match theirs {
                     Some(r) if r == rev => draft_rows = Some((id, stored_rows(conn, id)?)),
                     Some(_) => replaces = Some(id),
-                    None => plan.issues.push(issue(format!("There is already a draft running bill (RA {version}) for this project that did not come from this Falcon project. Approve or withdraw it before importing."))),
+                    None => plan.issues.push(issue(format!("There is already a draft running bill (RA {version}) for this project that did not come from this MynaOps project. Approve or withdraw it before importing."))),
                 }
             }
         }
@@ -768,8 +768,8 @@ fn rewrite_draft(tx: &Connection, id: i64, body: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Imports a Falcon CSV. A file with any problem is refused whole (`refused > 0`, nothing written). Otherwise everything is written in
-/// one transaction. `project_id` names the Kivo project when this Falcon project is not linked to one yet.
+/// Imports a MynaOps CSV. A file with any problem is refused whole (`refused > 0`, nothing written). Otherwise everything is written in
+/// one transaction. `project_id` names the MynaHub project when this MynaOps project is not linked to one yet.
 pub fn import(conn: &mut Connection, actor: i64, bytes: &[u8], file_name: &str, project_id: Option<i64>) -> Result<ImportResult, String> {
     ensure(conn)?;
     let by: String = sql(conn.query_row("SELECT username FROM users WHERE id = ?1", params![actor], |r| r.get(0))).map_err(|_| "Not signed in.".to_string())?;
@@ -787,7 +787,7 @@ pub fn import(conn: &mut Connection, actor: i64, bytes: &[u8], file_name: &str, 
         return refuse(conn, plan.issues);
     }
     let Some(pid) = plan.project_id else {
-        return refuse(conn, vec![issue("Choose the Kivo project this Falcon project belongs to.")]);
+        return refuse(conn, vec![issue("Choose the MynaHub project this MynaOps project belongs to.")]);
     };
     let meta = &parsed.meta;
     let falcon = meta.project_id.as_str();
@@ -830,7 +830,7 @@ pub fn import(conn: &mut Connection, actor: i64, bytes: &[u8], file_name: &str, 
         }
         EstAct::New { supersede_draft, supersedes } => {
             let body = estimate_body(meta, &sha, &plan.est_rows);
-            let title = format!("{name} estimate (Falcon, drawing r{rev})");
+            let title = format!("{name} estimate (MynaOps, drawing r{rev})");
             let supersedes = *supersedes;
             if let Some(old) = supersede_draft {
                 sql(tx.execute("UPDATE suite_approvals SET status = 'superseded' WHERE id = ?1 AND status = 'draft'", params![old]))?;
@@ -840,7 +840,7 @@ pub fn import(conn: &mut Connection, actor: i64, bytes: &[u8], file_name: &str, 
             insert_rows(&tx, id, &plan.est_rows)?;
             result.estimate_approval_id = Some(id);
             result.estimate_version = Some(version);
-            audit(&tx, Some(actor), "approval_submitted", &format!("estimate {id} v{version} (Falcon CSV)"));
+            audit(&tx, Some(actor), "approval_submitted", &format!("estimate {id} v{version} (MynaOps CSV)"));
         }
     }
     if let Some(id) = result.estimate_approval_id {
@@ -862,13 +862,13 @@ pub fn import(conn: &mut Connection, actor: i64, bytes: &[u8], file_name: &str, 
                 sql(tx.execute("UPDATE suite_approvals SET status = 'superseded' WHERE id = ?1 AND status = 'draft'", params![old]))?;
             }
             let next: i64 = sql(tx.query_row("SELECT COALESCE(MAX(version), 0) + 1 FROM suite_approvals WHERE project_id = ?1 AND kind = 'running_bill'", params![pid], |r| r.get(0)))?;
-            let title = format!("{name} running bill {next} (Falcon, drawing r{rev})");
+            let title = format!("{name} running bill {next} (MynaOps, drawing r{rev})");
             let (id, version) = new_approval(&tx, pid, "running_bill", &title, &body, None, &by)?;
             sql(tx.execute("INSERT INTO aos_falcon_bill (approval_id, falcon_project, drawing_revision) VALUES (?1, ?2, ?3)", params![id, falcon, rev]))?;
             insert_rows(&tx, id, &plan.bill_changed)?;
             result.bill_approval_id = Some(id);
             result.bill_version = Some(version);
-            audit(&tx, Some(actor), "approval_submitted", &format!("running_bill {id} v{version} (Falcon CSV)"));
+            audit(&tx, Some(actor), "approval_submitted", &format!("running_bill {id} v{version} (MynaOps CSV)"));
         }
     }
     if let (Some(id), None) = (result.bill_approval_id, result.bill_version) {

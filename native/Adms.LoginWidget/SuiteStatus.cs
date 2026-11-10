@@ -50,7 +50,7 @@ internal sealed class SuiteStatus
 
     /// <summary>
     /// The latest status as plain text, <c>launcher-status.txt</c> in the suite's local folder, so it can be read without opening the menu. It is overwritten
-    /// each time. The <c>Cloud sync:</c> line is kept for Kivo's Cloud sync page, which shows it.
+    /// each time. The <c>Cloud sync:</c> line is kept for MynaHub's Cloud sync page, which shows it.
     /// </summary>
     void WriteLog()
     {

@@ -4,7 +4,7 @@
 //!   reload what it shows. It does not change for the app's own writes.
 //! * **Schema compatibility.** An app that is older than the file must stop rather than guess. `schema_ok` says whether this build
 //!   understands the file as it is now (another app may have upgraded it after this one opened it).
-//! * **Project documents.** An app keeps a document per project and kind (for example Falcon's quantities, kind `aqc.project`).
+//! * **Project documents.** An app keeps a document per project and kind (for example MynaOps's quantities, kind `aqc.project`).
 //!   Each save names the revision it was based on; if someone else saved since, the save is refused instead of overwriting.
 //!   The last ten revisions are kept so a bad save can be undone.
 
@@ -204,7 +204,7 @@ fn validate_aqc_project_summary(conn: &Connection, project_id: i64, body: &str) 
     for key in obj.keys() {
         if !AQC_PROJECT_SUMMARY_KEYS.contains(&key.as_str()) {
             return Err(format!(
-                "The aqc.project document may only contain Kivo summary fields (\"{key}\" is not allowed). Full project data belongs in the .osp file."
+                "The aqc.project document may only contain MynaHub summary fields (\"{key}\" is not allowed). Full project data belongs in the .osp file."
             ));
         }
     }
@@ -229,7 +229,7 @@ fn validate_aqc_project_summary(conn: &Connection, project_id: i64, body: &str) 
     Ok(())
 }
 
-/// What Kivo shows against a fee proposal: the last estimate Falcon saved on this project in the company file.
+/// What MynaHub shows against a fee proposal: the last estimate MynaOps saved on this project in the company file.
 ///
 /// Reads `project_documents` kind `aqc.project` and picks `last_estimate.grand_total` (rupees) plus any `artifact_ref` /
 /// top-level `project_ref`. Returns a JSON object with `present: false` when there is no document or no estimate yet.
@@ -239,10 +239,10 @@ pub fn estimate_summary(conn: &Connection, project_id: i64) -> Result<serde_json
         return Ok(serde_json::json!({
             "present": false,
             "project_id": project_id,
-            "reason": "Falcon has not saved a quantities document for this project yet."
+            "reason": "MynaOps has not saved a quantities document for this project yet."
         }));
     };
-    let body: serde_json::Value = serde_json::from_str(&doc.body).map_err(|_| "The Falcon project document could not be read.".to_string())?;
+    let body: serde_json::Value = serde_json::from_str(&doc.body).map_err(|_| "The MynaOps project document could not be read.".to_string())?;
     let Some(estimate) = body.get("last_estimate").filter(|v| !v.is_null()) else {
         return Ok(serde_json::json!({
             "present": false,
@@ -250,7 +250,7 @@ pub fn estimate_summary(conn: &Connection, project_id: i64) -> Result<serde_json
             "document_revision": doc.revision,
             "updated_by": doc.updated_by,
             "updated_at": doc.updated_at,
-            "reason": "Falcon has not calculated an estimate for this project yet."
+            "reason": "MynaOps has not calculated an estimate for this project yet."
         }));
     };
     let grand = estimate.get("grand_total").and_then(|v| v.as_f64()).unwrap_or(0.0);
@@ -275,17 +275,17 @@ pub fn estimate_summary(conn: &Connection, project_id: i64) -> Result<serde_json
     }))
 }
 
-/// BOQ-style abstract: base total at schedule rates from Falcon `last_estimate` (before markups).
+/// BOQ-style abstract: base total at schedule rates from MynaOps `last_estimate` (before markups).
 pub fn boq_summary(conn: &Connection, project_id: i64) -> Result<serde_json::Value, String> {
     project_exists(conn, project_id)?;
     let Some(doc) = doc_get(conn, project_id, "aqc.project")? else {
         return Ok(serde_json::json!({
             "present": false,
             "project_id": project_id,
-            "reason": "Falcon has not saved a quantities document for this project yet."
+            "reason": "MynaOps has not saved a quantities document for this project yet."
         }));
     };
-    let body: serde_json::Value = serde_json::from_str(&doc.body).map_err(|_| "The Falcon project document could not be read.".to_string())?;
+    let body: serde_json::Value = serde_json::from_str(&doc.body).map_err(|_| "The MynaOps project document could not be read.".to_string())?;
     let Some(estimate) = body.get("last_estimate").filter(|v| !v.is_null()) else {
         return Ok(serde_json::json!({
             "present": false,
@@ -293,7 +293,7 @@ pub fn boq_summary(conn: &Connection, project_id: i64) -> Result<serde_json::Val
             "document_revision": doc.revision,
             "updated_by": doc.updated_by,
             "updated_at": doc.updated_at,
-            "reason": "Falcon has not calculated a BOQ/estimate base for this project yet."
+            "reason": "MynaOps has not calculated a BOQ/estimate base for this project yet."
         }));
     };
     let base = estimate.get("base_total").and_then(|v| v.as_f64()).unwrap_or(0.0);
@@ -311,7 +311,7 @@ pub fn boq_summary(conn: &Connection, project_id: i64) -> Result<serde_json::Val
     }))
 }
 
-/// What Kivo shows next to fee / invoice screens: running-account (RA) bills Falcon saved on this project.
+/// What MynaHub shows next to fee / invoice screens: running-account (RA) bills MynaOps saved on this project.
 ///
 /// Reads `aqc.project` → `accounts.bills[]`. Gross/net are recomputed from lines + rates (CoreOp stores
 /// percentages, not totals). Money is returned in paise like [`estimate_summary`].
@@ -321,10 +321,10 @@ pub fn ra_summary(conn: &Connection, project_id: i64) -> Result<serde_json::Valu
         return Ok(serde_json::json!({
             "present": false,
             "project_id": project_id,
-            "reason": "Falcon has not saved a quantities document for this project yet."
+            "reason": "MynaOps has not saved a quantities document for this project yet."
         }));
     };
-    let body: serde_json::Value = serde_json::from_str(&doc.body).map_err(|_| "The Falcon project document could not be read.".to_string())?;
+    let body: serde_json::Value = serde_json::from_str(&doc.body).map_err(|_| "The MynaOps project document could not be read.".to_string())?;
     let Some(bills) = body.pointer("/accounts/bills").and_then(|v| v.as_array()).filter(|a| !a.is_empty()) else {
         return Ok(serde_json::json!({
             "present": false,
@@ -332,7 +332,7 @@ pub fn ra_summary(conn: &Connection, project_id: i64) -> Result<serde_json::Valu
             "document_revision": doc.revision,
             "updated_by": doc.updated_by,
             "updated_at": doc.updated_at,
-            "reason": "Falcon has not saved any running bills for this project yet."
+            "reason": "MynaOps has not saved any running bills for this project yet."
         }));
     };
     let mut certified = 0i64;

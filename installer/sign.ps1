@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Authenticode-sign Kivo Setup.exe when signing material exists.
+  Authenticode-sign MynaHub Setup.exe when signing material exists.
 
 .DESCRIPTION
   Same contract as the OSAS launcher installer\sign.ps1 — never invents a production cert.
@@ -59,8 +59,8 @@ function Ensure-SelfSignedPfx {
         Write-Output "Creating self-signed code-signing certificate at $pfxPath"
         $cert = New-SelfSignedCertificate `
             -Type CodeSigningCert `
-            -Subject "CN=Kivo Development (self-signed)" `
-            -FriendlyName "Kivo development code signing" `
+            -Subject "CN=MynaHub Development (self-signed)" `
+            -FriendlyName "MynaHub development code signing" `
             -CertStoreLocation "Cert:\CurrentUser\My" `
             -KeyExportPolicy Exportable `
             -KeySpec Signature `

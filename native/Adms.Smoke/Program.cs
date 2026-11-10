@@ -111,7 +111,7 @@ try
         again.CloseCompany();
     }
 
-    Console.WriteLine("Kivo native smoke test passed.");
+    Console.WriteLine("MynaHub native smoke test passed.");
 }
 finally
 {

@@ -1,10 +1,10 @@
-# Kivo
+# MynaHub
 
-Kivo is the office app and suite hub. The suite is Kivo (office and company file, orange), Falcon (quantities, estimates and billing, blue), Tren (drafting, black) and Finch (3D form, planned). Myna is the launcher. Some code identifiers keep older spellings, such as the `aos` / `aqc` session strings and the `AOSENC1` file marker, because files already use them.
+MynaHub is the office app and suite hub. The suite is MynaHub (office and company file, orange), MynaOps (quantities, estimates and billing, blue), MynaCAD (drafting, black) and MynaMod (3D form, planned). Myna is the launcher. Some code identifiers keep older spellings, such as the `aos` / `aqc` session strings and the `AOSENC1` file marker, because files already use them.
 
 > **The suite:** names, roles, file formats, toolbars of every app and how they link in real time are in [docs/SUITE.md](docs/SUITE.md).
 
-Offline Windows desktop app for an architectural practice. Clients, projects, letters, invoices, and the accounts live in one company file. Kivo also chooses that company file, holds the admin password, launches sibling apps with one-time tickets, and approves estimates and running bills shared from Falcon. A separate **OSAS.exe** hub is deprecated. Developed by Human Centric Works.
+Offline Windows desktop app for an architectural practice. Clients, projects, letters, invoices, and the accounts live in one company file. MynaHub also chooses that company file, holds the admin password, launches sibling apps with one-time tickets, and approves estimates and running bills shared from MynaOps. A separate **OSAS.exe** hub is deprecated. Developed by Human Centric Works.
 
 **License:** [AGPL-3.0](LICENSE) (Community) or [Commercial](LICENSING.md) · see also [NOTICE](NOTICE)
 
@@ -12,7 +12,7 @@ Help for daily work is in [docs/help](docs/help/Home.md). Merge decision: [docs/
 
 ## Company file
 
-Each practice is one `.adms` file. Copying or backing up that file moves the company with it. Kivo checks the file before opening it, locks it while it is open, and keeps a copy before a schema upgrade. An ordinary company file is a SQLite database and is not encrypted. The engine can also protect a file at rest: a protected file starts with `AOSENC1` and holds a random file key wrapped once with the owner's password and once with the recovery code, and backups of a protected file are sealed the same way. Losing both the password and the recovery code means the file cannot be opened.
+Each practice is one `.adms` file. Copying or backing up that file moves the company with it. MynaHub checks the file before opening it, locks it while it is open, and keeps a copy before a schema upgrade. An ordinary company file is a SQLite database and is not encrypted. The engine can also protect a file at rest: a protected file starts with `AOSENC1` and holds a random file key wrapped once with the owner's password and once with the recovery code, and backups of a protected file are sealed the same way. Losing both the password and the recovery code means the file cannot be opened.
 
 Sign-in uses the admin password. The password needs 12 or more characters. A recovery code is shown once when the company is created, and a new code is shown once whenever the password is reset.
 
@@ -29,7 +29,7 @@ Shortcuts: Ctrl+N new record, Ctrl+S save, Ctrl+P print, Ctrl+F search, Ctrl+K g
 
 ![The Myna: choose a company, open a company file or the remembered one, recent companies, and the state of the AI and cloud services](docs/images/launcher-company-login.png)
 
-Myna (`O-Studio.Launcher.exe`, in the Start menu as **Myna**) is the front door of the suite. It stays in the tray, signs you in, locks one project and starts Falcon and Tren on it. An app started on its own, or a double-clicked `.osp`, asks Myna first.
+Myna (`O-Studio.Launcher.exe`, in the Start menu as **Myna**) is the front door of the suite. It stays in the tray, signs you in, locks one project and starts MynaOps and MynaCAD on it. An app started on its own, or a double-clicked `.osp`, asks Myna first.
 
 | Part of the window | What it does |
 |---|---|
@@ -43,11 +43,11 @@ After sign-in Myna lists the company's projects (search by code, name or client)
 
 ## Install and remove
 
-One setup, `Kivo-Suite-Setup-<version>.exe`, installs and removes Kivo, Falcon and Tren. **Install:** pick everything or individual apps (Kivo is added automatically when Falcon or Tren is chosen), watch the progress, read the summary. **Remove:** run the same setup, choose *Remove applications*, select the apps, confirm; the setup asks what to do about apps that depend on a removed Kivo and keeps shared files such as the `.osp` file type while another app still uses it. Company files, projects and the assistant model are never deleted. Details and the silent command line: [installer/suite/README.md](installer/suite/README.md).
+One setup, `Myna-Setup-<version>.exe`, installs and removes MynaHub, MynaOps and MynaCAD. **Install:** pick everything or individual apps (MynaHub is added automatically when MynaOps or MynaCAD is chosen), watch the progress, read the summary. **Remove:** run the same setup, choose *Remove applications*, select the apps, confirm; the setup asks what to do about apps that depend on a removed MynaHub and keeps shared files such as the `.osp` file type while another app still uses it. Company files, projects and the assistant model are never deleted. Details and the silent command line: [installer/suite/README.md](installer/suite/README.md).
 
 ## The suite
 
-Kivo is one of several apps that share an office's records. The pieces in this repository:
+MynaHub is one of several apps that share an office's records. The pieces in this repository:
 
 | Folder | What it is |
 |---|---|
@@ -55,7 +55,7 @@ Kivo is one of several apps that share an office's records. The pieces in this r
 | `office-ffi/`, `native/Office.Interop/` | A C interface and .NET wrapper so another native app can use the same file. Contract: [docs/office-abi.md](docs/office-abi.md) |
 | `office-agent/` | Governed read-only tools and an MCP server for an AI assistant |
 
-The architecture and integration map for Kivo, Tren, Falcon and O-UI is [docs/suite-architecture.md](docs/suite-architecture.md). Each folder is its own Cargo crate; run `cargo test` inside it.
+The architecture and integration map for MynaHub, MynaCAD, MynaOps and O-UI is [docs/suite-architecture.md](docs/suite-architecture.md). Each folder is its own Cargo crate; run `cargo test` inside it.
 
 ## Develop
 
@@ -68,7 +68,7 @@ cargo build --manifest-path src-tauri/Cargo.toml
 dotnet build native/Adms.Desktop/Adms.Desktop.csproj -c Debug -p:Platform=x64 -p:WindowsPackageType=None
 ```
 
-The logos come from the sibling `O-UI` library (`brand/` there), in orange for Kivo. Build output (`target/`, `bin/`, `obj/`, `installer/stage`) is ignored by git and can be deleted at any time.
+The logos come from the sibling `O-UI` library (`brand/` there), in orange for MynaHub. Build output (`target/`, `bin/`, `obj/`, `installer/stage`) is ignored by git and can be deleted at any time.
 
 Tests:
 
@@ -77,15 +77,15 @@ cargo test --manifest-path src-tauri/Cargo.toml   # engine, accounting, company 
 cargo test --manifest-path office-core/Cargo.toml
 ```
 
-The installer is built with `installer/build.ps1` (release engine, self-contained publish, NSIS) and is named `O-Studio-Setup-<version>.exe`. **`O-Studio.Launcher.exe` lives under `launcher\` beside `O-Studio.exe`** (see [docs/packaging.md](docs/packaging.md)). For all suite apps together, build **`installer/suite/build-all.ps1`** → `Kivo-Suite-Setup-<version>.exe` ([installer/suite/README.md](installer/suite/README.md)). It stays unsigned unless signing secrets are set (`installer/sign.ps1`). Help → **Check for updates…** is a channel stub. What is open and planned is in [docs/roadmap.md](docs/roadmap.md).
+The installer is built with `installer/build.ps1` (release engine, self-contained publish, NSIS) and is named `O-Studio-Setup-<version>.exe`. **`O-Studio.Launcher.exe` lives under `launcher\` beside `O-Studio.exe`** (see [docs/packaging.md](docs/packaging.md)). For all suite apps together, build **`installer/suite/build-all.ps1`** → `Myna-Setup-<version>.exe` ([installer/suite/README.md](installer/suite/README.md)). It stays unsigned unless signing secrets are set (`installer/sign.ps1`). Help → **Check for updates…** is a channel stub. What is open and planned is in [docs/roadmap.md](docs/roadmap.md).
 
 ### Cloud sync (Neon)
 
-Kivo will sync `.osp` project files through **Neon** (Postgres + Object Storage); only Studio holds cloud credentials. **Setup:** [docs/CLOUD-NEON.md](docs/CLOUD-NEON.md). **In the app:** Suite → **Cloud sync** (or `npm run verify` for a headless smoke test).
+MynaHub will sync `.osp` project files through **Neon** (Postgres + Object Storage); only Studio holds cloud credentials. **Setup:** [docs/CLOUD-NEON.md](docs/CLOUD-NEON.md). **In the app:** Suite → **Cloud sync** (or `npm run verify` for a headless smoke test).
 
 ## Licensing
 
-Kivo is **open source** and **dual-licensed** (Developed by Human Centric Works):
+MynaHub is **open source** and **dual-licensed** (Developed by Human Centric Works):
 
 - **Community Edition** — [GNU AGPL v3](LICENSE). Free and open source for individuals,
   hobbyists, research, and internal business use. Note the AGPL's network clause: hosting
@@ -98,7 +98,7 @@ Kivo is **open source** and **dual-licensed** (Developed by Human Centric Works)
 See [LICENSING.md](LICENSING.md). Support / commercial: **support@hcworks.in** · <https://hcworks.in>
 
 Share contracts and documents with other suite apps — do not copy source across the
-AGPL boundary into permissive repos (Tren, O-UI).
+AGPL boundary into permissive repos (MynaCAD, O-UI).
 
 ## Before live use
 

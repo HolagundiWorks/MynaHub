@@ -1,6 +1,6 @@
-# How to use Kivo
+# How to use MynaHub
 
-Kivo — Kivo is the office app for one architectural practice. Everything for that practice is stored in a single company file.
+MynaHub — MynaHub is the office app for one architectural practice. Everything for that practice is stored in a single company file.
 
 ## Start here
 

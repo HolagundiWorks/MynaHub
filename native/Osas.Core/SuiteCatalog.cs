@@ -4,7 +4,7 @@ using Microsoft.Win32;
 
 namespace Osas.Core;
 
-/// <summary>One installable app in the Kivo suite (launcher cards and tray menu).</summary>
+/// <summary>One installable app in the MynaHub suite (launcher cards and tray menu).</summary>
 public sealed record SuiteAppDescriptor(
     string Title,
     string Blurb,
@@ -17,10 +17,10 @@ public static class SuiteCatalog
 {
     public static IReadOnlyList<SuiteAppDescriptor> Apps { get; } =
     [
-        new("Kivo", "Company hub, projects, and people", "O-Studio", ["Kivo", "O-Studio"], "O-Studio.exe"),
-        new("Falcon", "Quantities, estimates and billing", "O-CoreOp", ["Falcon", "O-CoreOp", "AQCCore"], "O-CoreOp.exe", "AQCCore.exe"),
-        new("Tren", "Drafting", "O-Draft", ["Tren", "O-Draft", "AAD"], "ODraft.WinUi.exe", "O-Draft.exe", "aad-host.exe"),
-        new("Finch", "3D / BIM form", "O-Form", ["Finch", "O-Form"], "O-Form.exe"),
+        new("MynaHub", "Company hub, projects, and people", "O-Studio", ["MynaHub", "O-Studio"], "O-Studio.exe"),
+        new("MynaOps", "Quantities, estimates and billing", "O-CoreOp", ["MynaOps", "O-CoreOp", "AQCCore"], "O-CoreOp.exe", "AQCCore.exe"),
+        new("MynaCAD", "Drafting", "O-Draft", ["MynaCAD", "O-Draft", "AAD"], "ODraft.WinUi.exe", "O-Draft.exe", "aad-host.exe"),
+        new("MynaMod", "3D / BIM form", "O-Form", ["MynaMod", "O-Form"], "O-Form.exe"),
     ];
 
     static string? FindInstallLocationFromRegistry(string productHint)
@@ -149,8 +149,8 @@ public static class SuiteCatalog
     }
 
     /// <summary>
-    /// Start an app with the service environment and optional arguments, no sign-in: each app asks Kivo for a session itself when it needs the database.
-    /// An app that is already running is brought to the front instead (unless it is started with arguments, for example Kivo's <c>--broker --signin</c>, which
+    /// Start an app with the service environment and optional arguments, no sign-in: each app asks MynaHub for a session itself when it needs the database.
+    /// An app that is already running is brought to the front instead (unless it is started with arguments, for example MynaHub's <c>--broker --signin</c>, which
     /// must reach the running copy through its own single-instance handling).
     /// </summary>
     public static void StartApp(string exePath, IReadOnlyDictionary<string, string>? extraEnvironment = null, params string[] arguments)

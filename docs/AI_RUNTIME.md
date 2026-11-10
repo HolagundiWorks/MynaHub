@@ -1,8 +1,8 @@
 # Suite assistant model (Olmo 3 7B)
 
-Kivo **hosts** the shared Olmo 3 7B Instruct model (`Office.Ai` + `AiCoreListener` on `127.0.0.1:8742`). Falcon and Tren connect as clients when launched from Kivo (`OSAS_AI_ROLE=client`). Install paths, llama.cpp runtime, and the HTTP contract are documented in **Falcon** `docs/LOCAL-MODEL.md`.
+MynaHub **hosts** the shared Olmo 3 7B Instruct model (`Office.Ai` + `AiCoreListener` on `127.0.0.1:8742`). MynaOps and MynaCAD connect as clients when launched from MynaHub (`OSAS_AI_ROLE=client`). Install paths, llama.cpp runtime, and the HTTP contract are documented in **MynaOps** `docs/LOCAL-MODEL.md`.
 
-## What Kivo adds
+## What MynaHub adds
 
 | Part | Where |
 |---|---|
@@ -20,7 +20,7 @@ The older **Tulu 3 8B** bundle under `%LOCALAPPDATA%\O-Studio` and `LocalRuntime
 
 ## Lifecycle
 
-1. Sign in to Kivo → `SuiteAiCoordinator.StartHostIfNeeded()` binds `:8742`.
-2. First question (Kivo, Falcon, or Tren) loads `llama-server` and the GGUF from `%LOCALAPPDATA%\HumanCentricWorks\models\`.
-3. Sign out, close the workspace, or exit Kivo → listener stops and `LocalLlmHost.Shutdown()` unloads the model.
-4. Launch Falcon or Tren from Kivo → those processes do not load weights; they use the host.
+1. Sign in to MynaHub → `SuiteAiCoordinator.StartHostIfNeeded()` binds `:8742`.
+2. First question (MynaHub, MynaOps, or MynaCAD) loads `llama-server` and the GGUF from `%LOCALAPPDATA%\HumanCentricWorks\models\`.
+3. Sign out, close the workspace, or exit MynaHub → listener stops and `LocalLlmHost.Shutdown()` unloads the model.
+4. Launch MynaOps or MynaCAD from MynaHub → those processes do not load weights; they use the host.

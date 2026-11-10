@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Builds fresh app installers, then Kivo-Suite-Setup-<Version>.exe, with a manifest of git commits.
+  Builds fresh app installers, then Myna-Setup-<Version>.exe, with a manifest of git commits.
 
 .DESCRIPTION
   Use this instead of build-single.ps1 alone when the suite must match current source.
@@ -71,10 +71,10 @@ $manifest = [ordered]@{
     payloads    = @{}
 }
 
-Write-Host "=== 1/5 Kivo NSIS ===" -ForegroundColor Cyan
+Write-Host "=== 1/5 MynaHub NSIS ===" -ForegroundColor Cyan
 Push-Location $studioRepo
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $installerDir "build.ps1")
-if ($LASTEXITCODE -ne 0) { throw "Kivo Setup build failed (exit $LASTEXITCODE)" }
+if ($LASTEXITCODE -ne 0) { throw "MynaHub Setup build failed (exit $LASTEXITCODE)" }
 Pop-Location
 $studioSetup = Get-ChildItem (Join-Path $installerDir "O-Studio-Setup-*.exe") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 $manifest.payloads.o_studio_setup = @{ path = $studioSetup.FullName; sha256 = (Get-FileHash $studioSetup.FullName -Algorithm SHA256).Hash }
@@ -88,33 +88,33 @@ Pop-Location
 $officeDir = Join-Path $env:CARGO_TARGET_DIR "release"
 if (-not (Test-Path (Join-Path $officeDir "office.dll"))) { throw "office.dll missing in $officeDir" }
 
-Write-Host "=== 3/5 Falcon Setup ===" -ForegroundColor Cyan
+Write-Host "=== 3/5 MynaOps Setup ===" -ForegroundColor Cyan
 Push-Location (Join-Path $coreOpRepo "BBSDesktop\installer")
 & powershell -NoProfile -ExecutionPolicy Bypass -File build-installer.ps1
-if ($LASTEXITCODE -ne 0) { throw "Falcon Setup build failed (exit $LASTEXITCODE); not wrapping a stale installer" }
+if ($LASTEXITCODE -ne 0) { throw "MynaOps Setup build failed (exit $LASTEXITCODE); not wrapping a stale installer" }
 Pop-Location
 $coreOpSetup = Get-ChildItem (Join-Path $coreOpRepo "BBSDesktop\artifacts\installer\O-CoreOp-Setup-*.exe") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 $manifest.payloads.o_coreop_setup = @{ path = $coreOpSetup.FullName; sha256 = (Get-FileHash $coreOpSetup.FullName -Algorithm SHA256).Hash }
 
-Write-Host "=== 4/5 Tren portable zip ===" -ForegroundColor Cyan
+Write-Host "=== 4/5 MynaCAD portable zip ===" -ForegroundColor Cyan
 if ($savedTarget) { $env:CARGO_TARGET_DIR = $savedTarget } else { Remove-Item Env:CARGO_TARGET_DIR -ErrorAction SilentlyContinue }
 if ($env:AAD_FONTS_DIR -and -not (Test-Path -LiteralPath $env:AAD_FONTS_DIR)) { Remove-Item Env:AAD_FONTS_DIR -ErrorAction SilentlyContinue }
 Push-Location (Join-Path $draftRepo "packaging\windows")
 & powershell -NoProfile -ExecutionPolicy Bypass -File package.ps1 -Arch x64
-if ($LASTEXITCODE -ne 0) { throw "Tren package build failed (exit $LASTEXITCODE)" }
+if ($LASTEXITCODE -ne 0) { throw "MynaCAD package build failed (exit $LASTEXITCODE)" }
 Pop-Location
 $draftZip = Get-ChildItem (Join-Path $draftRepo "dist\release\o-draft-*-windows-x64-portable.zip") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 $manifest.payloads.o_draft_zip = @{ path = $draftZip.FullName; sha256 = (Get-FileHash $draftZip.FullName -Algorithm SHA256).Hash }
 
-Write-Host "=== 5/5 Kivo Suite unified Setup ===" -ForegroundColor Cyan
+Write-Host "=== 5/5 Myna Suite unified Setup ===" -ForegroundColor Cyan
 & (Join-Path $suiteDir "build-single.ps1") -Version $Version `
     -StudioSetup $studioSetup.FullName `
     -CoreOpSetup $coreOpSetup.FullName `
     -DraftZip $draftZip.FullName
 
-$suiteExe = Join-Path $outDir "Kivo-Suite-Setup-$Version.exe"
+$suiteExe = Join-Path $outDir "Myna-Setup-$Version.exe"
 $manifest.suite_sha256 = (Get-FileHash $suiteExe -Algorithm SHA256).Hash
-$manifestPath = Join-Path $outDir "Kivo-Suite-Setup-$Version.manifest.json"
+$manifestPath = Join-Path $outDir "Myna-Setup-$Version.manifest.json"
 $manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
 
 Write-Host "Manifest: $manifestPath" -ForegroundColor Green

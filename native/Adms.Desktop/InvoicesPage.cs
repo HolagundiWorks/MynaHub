@@ -23,7 +23,7 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
     private readonly TextBox _issue = Flow.Input("Issue date");
     private readonly TextBox _due = Flow.Input("Due date");
     private readonly TextBox _notes = Flow.Input("Notes", true);
-    private readonly TextBlock _estimateHint = Flow.Secondary("Choose a project to see any Falcon estimate saved in this company file.");
+    private readonly TextBlock _estimateHint = Flow.Secondary("Choose a project to see any MynaOps estimate saved in this company file.");
     private readonly StackPanel _lines = new() { Spacing = 8 };
     private readonly TextBlock _title = Flow.Heading("Invoices and receipts");
     private readonly TextBlock _state = Flow.Secondary("");
@@ -428,15 +428,15 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
         });
     });
 
-    /// <summary>Surfaces the company-file Falcon estimate next to fee invoices so cost and fee stay on the same project identity.</summary>
+    /// <summary>Surfaces the company-file MynaOps estimate next to fee invoices so cost and fee stay on the same project identity.</summary>
     private void RefreshEstimateHint()
     {
         if (_project.SelectedItem is not ComboBoxItem { Tag: long projectId } || projectId <= 0)
         {
-            _estimateHint.Text = "Choose a project to see any Falcon estimate saved in this company file.";
+            _estimateHint.Text = "Choose a project to see any MynaOps estimate saved in this company file.";
             return;
         }
-        _ = _shell.Run("Reading the Falcon estimate…", () =>
+        _ = _shell.Run("Reading the MynaOps estimate…", () =>
         {
             var summary = _shell.Call("project_estimate_summary", new { project_id = projectId });
             JsonElement? ra = null;
@@ -449,12 +449,12 @@ internal sealed class InvoicesPage : UserControl, IPageCommands
                     && summary.TryGetProperty("grand_total_paise", out var paise) && paise.TryGetInt64(out var total))
                 {
                     var book = Kit.Str(summary, "rate_book_version_name");
-                    parts.Add($"Falcon estimate: {Flow.Money(total)}{(book.Length == 0 ? "" : $" · {book}")}");
+                    parts.Add($"MynaOps estimate: {Flow.Money(total)}{(book.Length == 0 ? "" : $" · {book}")}");
                 }
                 else
                     parts.Add(Kit.Str(summary, "reason").Length > 0
                         ? Kit.Str(summary, "reason")
-                        : "No Falcon estimate is saved for this project yet.");
+                        : "No MynaOps estimate is saved for this project yet.");
                 if (ra is JsonElement raSummary && raSummary.TryGetProperty("present", out var raPresent) && raPresent.ValueKind == JsonValueKind.True
                     && raSummary.TryGetProperty("last_net_paise", out var netNode) && netNode.TryGetInt64(out var net))
                 {

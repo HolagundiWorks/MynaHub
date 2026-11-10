@@ -20,4 +20,4 @@ Client configuration (Claude Desktop or Claude Code):
 Use a user with the lowest role that does the job. The auditor role is read-only, and the document editor cannot see finance tools.
 
 ## Not built
-Tools that change records (they would return a preview and need an approval step), tools for Tren and Falcon, and the suite host that joins them. See `docs/suite-architecture.md`.
+Tools that change records (they would return a preview and need an approval step), tools for MynaCAD and MynaOps, and the suite host that joins them. See `docs/suite-architecture.md`.

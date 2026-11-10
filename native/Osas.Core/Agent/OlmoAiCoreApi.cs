@@ -56,7 +56,7 @@ public sealed class OlmoAiCoreApi : IMessagesApi
             var text = await response.Content.ReadAsStringAsync(cancel).ConfigureAwait(false);
             using var doc = JsonDocument.Parse(text);
             if (doc.RootElement.TryGetProperty("status", out var st) && st.GetString() == "not_installed")
-                return (false, "Olmo 3 7B or the llama.cpp runtime is not installed on this computer (see docs/LOCAL-MODEL.md in Falcon).");
+                return (false, "Olmo 3 7B or the llama.cpp runtime is not installed on this computer (see docs/LOCAL-MODEL.md in MynaOps).");
             return (true, null);
         }
         catch (HttpRequestException)

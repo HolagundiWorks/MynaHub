@@ -1,15 +1,15 @@
-# Test plan: Kivo
+# Test plan: MynaHub
 
-Kivo is the office app and suite hub: one company file for a practice. Source: `O-STUDIO\native\Adms.Desktop` (WinUI), engine in `office-core`, `src-tauri`. Help pages: `docs/help/*.md`. Case format: [README.md](README.md). `[N]` normal, `[B]` boundary or bad input, `[R]` repeat or undo.
+MynaHub is the office app and suite hub: one company file for a practice. Source: `O-STUDIO\native\Adms.Desktop` (WinUI), engine in `office-core`, `src-tauri`. Help pages: `docs/help/*.md`. Case format: [README.md](README.md). `[N]` normal, `[B]` boundary or bad input, `[R]` repeat or undo.
 
-Sign-in is in Myna. Kivo's own login page is only a prompt to use Myna; set-up (first admin), unlock and recovery stay in Kivo.
+Sign-in is in Myna. MynaHub's own login page is only a prompt to use Myna; set-up (first admin), unlock and recovery stay in MynaHub.
 
 ## S1 Smoke
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
-| STU-SMK-01 | Start | Start `O-Studio.exe` | Window "Kivo" opens with the welcome panel (create, open, recent) | UIA |
-| STU-SMK-02 | Start with ticket | Launcher, **Kivo** | Opens on the company, signed in, workspace visible | UIA |
+| STU-SMK-01 | Start | Start `O-Studio.exe` | Window "MynaHub" opens with the welcome panel (create, open, recent) | UIA |
+| STU-SMK-02 | Start with ticket | Launcher, **MynaHub** | Opens on the company, signed in, workspace visible | UIA |
 | STU-SMK-03 | Close | Close the window | Process ends; company file released | process |
 | STU-SMK-04 | Engine | Welcome panel | No "engine could not be loaded" message | UIA |
 
@@ -17,18 +17,18 @@ Sign-in is in Myna. Kivo's own login page is only a prompt to use Myna; set-up (
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
-| STU-CMP-01 | No company creation | Look in Kivo (File menu, welcome panel) | There is no **New company** and no **Create a new company**; the welcome panel and **File → Choose or create a company…** open Myna. Creating a company is LNC-WIN-03 in Myna plan | UIA |
-| STU-CMP-02 | No company picker | Look in Kivo | There is no **Open company** and no file picker for companies; Kivo opens on the company Myna chose, signed in | UIA |
-| STU-CMP-03 | No recent list | Start Kivo with no company open | The welcome panel shows only **Open Myna** (and **Open the company last chosen** when the suite has one); no recent list | UIA |
+| STU-CMP-01 | No company creation | Look in MynaHub (File menu, welcome panel) | There is no **New company** and no **Create a new company**; the welcome panel and **File → Choose or create a company…** open Myna. Creating a company is LNC-WIN-03 in Myna plan | UIA |
+| STU-CMP-02 | No company picker | Look in MynaHub | There is no **Open company** and no file picker for companies; MynaHub opens on the company Myna chose, signed in | UIA |
+| STU-CMP-03 | No recent list | Start MynaHub with no company open | The welcome panel shows only **Open Myna** (and **Open the company last chosen** when the suite has one); no recent list | UIA |
 | STU-CMP-04 | Missing recent file `[B]` | Delete a recent file outside the app | Row shown with **Open** disabled | UIA |
 | STU-CMP-05 | Last chosen | **Open the company last chosen** | Opens the company in `suite.json` | UIA |
 | STU-CMP-06 | Earlier file format | Open an `.adms` company | Opens (earlier files still open) | UIA |
 | STU-CMP-07 | Convert earlier data | When earlier-version data exists, the **Convert** banner | Creates a company file; the original is untouched | file hashes |
 | STU-CMP-08 | Not a company file `[B]` | Open a renamed text file | Refused with a message; the app stays usable | UIA |
-| STU-CMP-09 | File lock | Open the same company in a second Kivo, and in Falcon | Defined behaviour: Kivo and Falcon may have it open together; two Kivo windows on one file do not corrupt it. Record the actual behaviour | both apps |
+| STU-CMP-09 | File lock | Open the same company in a second MynaHub, and in MynaOps | Defined behaviour: MynaHub and MynaOps may have it open together; two MynaHub windows on one file do not corrupt it. Record the actual behaviour | both apps |
 | STU-CMP-10 | Protected file | Create a protected (encrypted) company; reopen | File starts with `AOSENC1`; asks for the file password; wrong one refused; recovery code works; losing both is documented as unrecoverable | file header, UIA |
 | STU-CMP-11 | Backup before upgrade | Open a company made by an older schema | A copy is kept before the schema upgrade | folder listing |
-| STU-CMP-12 | Switch company | In Myna choose another company; Kivo, **Choose another company** | Myna opens; once another company is chosen no data from the first remains on screen | UIA |
+| STU-CMP-12 | Switch company | In Myna choose another company; MynaHub, **Choose another company** | Myna opens; once another company is chosen no data from the first remains on screen | UIA |
 
 ## S3 Session, users and roles
 
@@ -72,7 +72,7 @@ Roles: Owner, Principal, Accounts, Document editor, Auditor.
 | STU-PRA-13 | Fee proposals | Create, issue, accept | Numbering continues; accepted proposal links to a project | UIA |
 | STU-PRA-14 | Meetings and decisions | Add a meeting with decisions | Saved; decisions listed | UIA |
 | STU-PRA-15 | Tasks board and widget | Add, move and finish a task; open the tasks widget | Board and widget agree; widget needs sign-in | UIA |
-| STU-PRA-16 | Project dashboard (Falcon summary) | Open a project that has a mirrored summary from Falcon | Summary figures shown; absent summary shows an empty state, not an error | UIA |
+| STU-PRA-16 | Project dashboard (MynaOps summary) | Open a project that has a mirrored summary from MynaOps | Summary figures shown; absent summary shows an empty state, not an error | UIA |
 
 ## S5 Documents
 
@@ -117,7 +117,7 @@ Money results are S1 when wrong.
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
-| STU-OFF-01 | Firm profile | Name, address, PAN, GSTIN, registration, bank, letterhead, accent | Saved; appears on documents; also seen read-only in Falcon and Tren | UIA, other apps |
+| STU-OFF-01 | Firm profile | Name, address, PAN, GSTIN, registration, bank, letterhead, accent | Saved; appears on documents; also seen read-only in MynaOps and MynaCAD | UIA, other apps |
 | STU-OFF-02 | Staff | Add, edit, leave | Saved | UIA |
 | STU-OFF-03 | Leave | Apply and approve leave | Balance changes | UIA |
 | STU-OFF-04 | Attendance | Mark attendance | Saved per day; monthly summary | UIA |
@@ -130,15 +130,15 @@ Money results are S1 when wrong.
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
-| STU-SUI-01 | Suite page cards | Open Suite | Cards for Kivo, Falcon, Tren with version and installed state | UIA |
-| STU-SUI-02 | Launch from card | Launch Falcon from the card | Starts signed in (ticket), no password | process |
+| STU-SUI-01 | Suite page cards | Open Suite | Cards for MynaHub, MynaOps, MynaCAD with version and installed state | UIA |
+| STU-SUI-02 | Launch from card | Launch MynaOps from the card | Starts signed in (ticket), no password | process |
 | STU-SUI-03 | Suite monitor | Open the monitor panel | Shows who has the company file open, size; no names or amounts of records | UIA |
-| STU-SUI-04 | Approvals inbox | Share an estimate from Falcon; open Approvals | Draft appears with kind and project; approve / reject; decision visible in Falcon | both apps |
+| STU-SUI-04 | Approvals inbox | Share an estimate from MynaOps; open Approvals | Draft appears with kind and project; approve / reject; decision visible in MynaOps | both apps |
 | STU-SUI-05 | Assistant bar | Ask a question about the practice | Answer from read-only tools only; a change request is refused or needs a preview and approval | UIA |
 | STU-SUI-06 | Assistant, host down | Stop the AI host | A clear message, not a hang | UIA |
 | STU-CLD-01 | Cloud sync page, no keys | Open Cloud sync with no `neon.env` | "not configured" message with the path to create it | UIA |
 | STU-CLD-02 | Test connection | With the test branch keys, **Test connection** | Success message; with a wrong password a failure message that does not print the password | UIA |
-| STU-CLD-03 | Enable sync for a project | Sign in through Myna; in Kivo enable a project with an `.osp` | Myna (not Kivo) pushes on save; revision shown; the page says background sync runs in Myna and shows Myna's Cloud sync line; there is no on/off toggle | UIA, Neon row |
+| STU-CLD-03 | Enable sync for a project | Sign in through Myna; in MynaHub enable a project with an `.osp` | Myna (not MynaHub) pushes on save; revision shown; the page says background sync runs in Myna and shows Myna's Cloud sync line; there is no on/off toggle | UIA, Neon row |
 | STU-CLD-04 | Pull | Change the cloud copy from a second machine/profile; pull | Local `.osp` revision increases; conflict handled as documented | file inspect |
 | STU-CLD-05 | Conflict | Change both sides | The conflict is shown, nothing is silently overwritten | UIA |
 | STU-CLD-06 | Offline | Disconnect the network | App keeps working; Myna's sync retries and resumes later | UIA |
@@ -154,7 +154,7 @@ Money results are S1 when wrong.
 | STU-SHL-04 | Theme | Light, dark, system, high contrast | All pages readable; no clipped text; contrast usable | screenshots |
 | STU-SHL-05 | Window sizes | 1280x720, 900 px, 520 px wide | Pane collapses below 900 px; pages wrap down to 520 px; no horizontal scroll of the page | screenshots |
 | STU-SHL-06 | Keyboard only | Tab through each page | Every control reachable; visible focus; accessible names | UIA |
-| STU-SHL-07 | Bottom status bar and Ask bar | Observe | Same shell as Tren and Falcon (shared bar) | screenshot |
+| STU-SHL-07 | Bottom status bar and Ask bar | Observe | Same shell as MynaCAD and MynaOps (shared bar) | screenshot |
 | STU-SHL-08 | Window placement | Move, resize, close, reopen | Position remembered; never off-screen on a changed monitor setup | screenshots |
 | STU-SHL-09 | Updates | **Check for updates** | A clear "not installed automatically" message; no crash | UIA |
 | STU-SHL-10 | Help | Open each help page | Opens, matches current screens (note stale pages as S4 bugs) | UIA |

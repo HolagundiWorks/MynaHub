@@ -1,17 +1,17 @@
-//! Bridge for the Falcon CSV import (estimates and running bills). The rules live in `office_core::falcon_import`.
+//! Bridge for the MynaOps CSV import (estimates and running bills). The rules live in `office_core::falcon_import`.
 
 use crate::commands::{require, HostState, INTERNAL};
 use office_core::auth::Permission;
 use office_core::falcon_import::{self, ImportResult, MapEntry, Preview};
 
-/// A Falcon export is a few hundred kilobytes at most; refuse anything that is clearly not one.
+/// A MynaOps export is a few hundred kilobytes at most; refuse anything that is clearly not one.
 const MAX_FILE: u64 = 16 * 1024 * 1024;
 
 fn read_file(path: &str) -> Result<(Vec<u8>, String), String> {
     let p = std::path::Path::new(path);
     let len = std::fs::metadata(p).map_err(|_| "That file could not be opened.".to_string())?.len();
     if len > MAX_FILE {
-        return Err("That file is too large to be a Falcon export.".into());
+        return Err("That file is too large to be a MynaOps export.".into());
     }
     let bytes = std::fs::read(p).map_err(|_| "That file could not be read.".to_string())?;
     let name = p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();

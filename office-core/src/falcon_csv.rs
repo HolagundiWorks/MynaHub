@@ -1,4 +1,4 @@
-//! Falcon CSV, contract v1 (`docs/contracts/falcon-csv.md`): a strict reader and validator. UI-free and database-free.
+//! MynaOps CSV, contract v1 (`docs/contracts/falcon-csv.md`): a strict reader and validator. UI-free and database-free.
 //!
 //! A file is accepted whole or refused whole: every problem is collected with its line number and a reason, so the person can
 //! fix the export instead of finding one error at a time.
@@ -178,7 +178,7 @@ pub fn parse(bytes: &[u8]) -> Result<Parsed, Vec<Issue>> {
     let cols: BTreeMap<String, usize> = header.iter().enumerate().map(|(i, c)| (c.trim().to_string(), i)).collect();
     let missing: Vec<&str> = COLUMNS.iter().copied().filter(|c| !cols.contains_key(*c)).collect();
     if !missing.is_empty() {
-        return Err(vec![Issue { line: header_line, message: format!("The header is missing column(s): {}. This is not a Falcon export, or it is from a different version.", missing.join(", ")) }]);
+        return Err(vec![Issue { line: header_line, message: format!("The header is missing column(s): {}. This is not a MynaOps export, or it is from a different version.", missing.join(", ")) }]);
     }
 
     let mut meta: Option<(usize, Meta)> = None;
@@ -201,7 +201,7 @@ pub fn parse(bytes: &[u8]) -> Result<Parsed, Vec<Issue>> {
         }
         let schema = c.text("schema");
         if schema != SCHEMA {
-            c.bad(format!("Unsupported schema \"{schema}\"; this version of Kivo reads {SCHEMA}."));
+            c.bad(format!("Unsupported schema \"{schema}\"; this version of MynaHub reads {SCHEMA}."));
             continue;
         }
         let row_type = c.text("row_type");

@@ -8,7 +8,7 @@ using Osas.Core.Monitor;
 namespace Adms.Desktop;
 
 /// <summary>
-/// Watches the company file that Kivo and Falcon share: space used, what is free inside it, who has it open and how busy they are,
+/// Watches the company file that MynaHub and MynaOps share: space used, what is free inside it, who has it open and how busy they are,
 /// backups, and how often it is being written. It opens the file read-only, never signs in, and shows counts and sizes only.
 /// </summary>
 public sealed class MonitorPanel : StackPanel
@@ -131,7 +131,7 @@ public sealed class MonitorPanel : StackPanel
         if (s.IsCompanyFile)
         {
             Tile("Free inside the file", Bytes(s.FreeBytes), $"{freePercent:0.#}% of the file; compacting gives this back");
-            Tile("Project documents", Bytes(s.ProjectDocumentBytes), $"{Count(s, "project_documents")} saved by Falcon");
+            Tile("Project documents", Bytes(s.ProjectDocumentBytes), $"{Count(s, "project_documents")} saved by MynaOps");
             Tile("Stored files", Bytes(s.StoredFileBytes), $"{Count(s, "stored_files")} letters, drawings and other files");
             Tile("Records", $"{Count(s, "clients")} clients", $"{Count(s, "projects")} projects · {Count(s, "invoices")} invoices · {Count(s, "audit_log")} audit entries");
             var activity = s.ChangesPerMinute == 0 ? "Quiet" : $"{s.ChangesPerMinute:0} in the last minute";

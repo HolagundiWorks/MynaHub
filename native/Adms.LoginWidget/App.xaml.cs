@@ -16,7 +16,7 @@ public partial class App : Application
 
     /// <summary>
     /// The launcher hosts the suite's AI Core (Olmo 3 7B on 127.0.0.1:8742) for as long as it runs, so the assistant is there whether or not
-    /// Kivo is open. The model itself loads on the first question. When another process already serves the port, the launcher leaves it alone.
+    /// MynaHub is open. The model itself loads on the first question. When another process already serves the port, the launcher leaves it alone.
     /// </summary>
     static void StartAiCore()
     {
@@ -27,7 +27,7 @@ public partial class App : Application
 
     /// <summary>
     /// The launcher also hosts the suite's database service (loopback 127.0.0.1:8743): a local database that syncs to Neon in the background, only while
-    /// Kivo has a session. It never opens a window and never asks for a password.
+    /// MynaHub has a session. It never opens a window and never asks for a password.
     /// </summary>
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)

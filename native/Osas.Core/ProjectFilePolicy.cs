@@ -1,8 +1,8 @@
 namespace Osas.Core;
 
 /// <summary>
-/// Where project files (<c>.osp</c>) may go. They stay on this PC: Tren and Falcon share the local file, and only Kivo is synced to the
-/// cloud, with Falcon's exported CSV as the one way project data reaches the company database. Pushing the project file itself to
+/// Where project files (<c>.osp</c>) may go. They stay on this PC: MynaCAD and MynaOps share the local file, and only MynaHub is synced to the
+/// cloud, with MynaOps's exported CSV as the one way project data reaches the company database. Pushing the project file itself to
 /// Neon is off; setting <c>OSAS_PUSH_PROJECT_FILES=1</c> turns it back on for a machine that should do it.
 /// </summary>
 public static class ProjectFilePolicy
@@ -13,5 +13,5 @@ public static class ProjectFilePolicy
     public static bool PushToCloud => Environment.GetEnvironmentVariable(EnvVar) == "1";
 
     /// <summary>The sentence the logs and the Cloud sync page show when the push is off.</summary>
-    public const string LocalOnlyNotice = "Project files stay on this PC. Only Kivo is synced; Falcon's exported CSV is how project data reaches the company database.";
+    public const string LocalOnlyNotice = "Project files stay on this PC. Only MynaHub is synced; MynaOps's exported CSV is how project data reaches the company database.";
 }

@@ -3,8 +3,8 @@ using Osas.Core;
 namespace Adms.LoginWidget;
 
 /// <summary>
-/// Starts the suite apps and Kivo's sign-in for the launcher. The launcher has no company login any more: Kivo owns it (contracts/session-broker.md), and
-/// each app asks Kivo for a session when it needs the database. Apps start with the AI and database addresses in their environment and nothing else.
+/// Starts the suite apps and MynaHub's sign-in for the launcher. The launcher has no company login any more: MynaHub owns it (contracts/session-broker.md), and
+/// each app asks MynaHub for a session when it needs the database. Apps start with the AI and database addresses in their environment and nothing else.
 /// </summary>
 internal sealed class SuiteLauncherHost
 {

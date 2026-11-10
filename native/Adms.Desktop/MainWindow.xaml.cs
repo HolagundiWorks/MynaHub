@@ -38,7 +38,7 @@ public sealed partial class MainWindow : Window
     private PrintDocument? _printDocument;
     private IPrintDocumentSource? _printSource;
     private IReadOnlyList<UIElement> _printPages = [];
-    private string _printJob = "Kivo";
+    private string _printJob = "MynaHub";
     private readonly ProgressRing _busyRing = new() { Width = 20, Height = 20, IsActive = false };
     private readonly O.Ui.Controls.SuiteThemeSwitch _suiteTheme = new();
 
@@ -121,7 +121,7 @@ public sealed partial class MainWindow : Window
         TasksWidget.ShowOrFocus(shell);
     }
 
-    /// <summary>The person started Kivo again while it was running in the background.</summary>
+    /// <summary>The person started MynaHub again while it was running in the background.</summary>
     internal void ShowForUser()
     {
         BringToFront();
@@ -490,7 +490,7 @@ public sealed partial class MainWindow : Window
         {
             args.Cancel = true;
             _closeAfterBusy = true;
-            ShowError("Kivo will close after the current operation finishes. Nothing is written until you confirm a save.");
+            ShowError("MynaHub will close after the current operation finishes. Nothing is written until you confirm a save.");
             return;
         }
         if (!_allowClose && _signedIn && _workspace != null)
@@ -666,7 +666,7 @@ public sealed partial class MainWindow : Window
             _companyPath = "";
             _companyUuid = "";
             _role = "";
-            Title = "Kivo";
+            Title = "MynaHub";
             ClearSecrets();
             ClearWorkspace();
             ShowWelcome();
@@ -906,7 +906,7 @@ public sealed partial class MainWindow : Window
         }
         var dialog = new ContentDialog
         {
-            Title = "About Kivo",
+            Title = "About MynaHub",
             Content = new StackPanel
             {
                 Spacing = 8,
@@ -1143,7 +1143,7 @@ public sealed partial class MainWindow : Window
         _companyUuid = Text(company, "uuid");
         if (!string.IsNullOrWhiteSpace(_companyPath))
             SuiteHub.RememberCompany(_companyPath);
-        Title = string.IsNullOrWhiteSpace(_companyName) ? "Kivo" : $"{_companyName} — Kivo";
+        Title = string.IsNullOrWhiteSpace(_companyName) ? "MynaHub" : $"{_companyName} — MynaHub";
         var setup = status.TryGetProperty("setup_required", out var setupFlag) && setupFlag.ValueKind == JsonValueKind.True;
         if (setup)
         {
@@ -1346,7 +1346,7 @@ public sealed partial class MainWindow : Window
         var invalid = Path.GetInvalidFileNameChars();
         var cleaned = new string(company.Select(ch => invalid.Contains(ch) ? '-' : ch).ToArray()).Trim();
         if (cleaned.Length == 0)
-            cleaned = "Kivo";
+            cleaned = "MynaHub";
         return cleaned + " preview";
     }
 

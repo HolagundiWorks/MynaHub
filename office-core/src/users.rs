@@ -1,6 +1,6 @@
 //! The company's users: who can sign in to the suite, and with which role.
 //!
-//! Users belong to the company file, so every app sees the same people. They are managed from Kivo (the suite shell); CoreOp, Draft and
+//! Users belong to the company file, so every app sees the same people. They are managed from MynaHub (the suite shell); CoreOp, Draft and
 //! Form only sign in as one of them. Every change needs the administrator's own password again, and the last active owner can never be removed.
 
 use crate::auth;

@@ -747,7 +747,7 @@ internal static class Ledgers
         var page = form.Body;
         page.Children.Add(Flow.SheetMark("05.01", "Admin", "Firm settings"));
         page.Children.Add(Flow.Heading("Firm settings"));
-        page.Children.Add(Flow.Secondary("The name, registration and tax scheme printed on letters and invoices. Export a company-details file for Tren title blocks. Tren does not open this company file."));
+        page.Children.Add(Flow.Secondary("The name, registration and tax scheme printed on letters and invoices. Export a company-details file for MynaCAD title blocks. MynaCAD does not open this company file."));
         var fields = new Dictionary<string, TextBox>();
         foreach (var (key, label) in new[]
         {
@@ -954,7 +954,7 @@ internal static class Ledgers
             LoadProfile();
         };
         // Edit, Save and Cancel sit at the top, under the description, where the page is read.
-        var exportPack = new Button { Content = "Export for Tren" };
+        var exportPack = new Button { Content = "Export for MynaCAD" };
         exportPack.Click += async (_, _) =>
         {
             var file = await FileDialogs.PickCompanyPackDestination(shell.Window.Handle, "company-details.json");
@@ -989,8 +989,8 @@ internal static class Ledgers
             }
             await new ContentDialog
             {
-                Title = "Export for Tren",
-                Content = new TextBlock { Text = "Wrote " + file.Path + ". Import it in Tren for title blocks and documentation.", TextWrapping = TextWrapping.Wrap },
+                Title = "Export for MynaCAD",
+                Content = new TextBlock { Text = "Wrote " + file.Path + ". Import it in MynaCAD for title blocks and documentation.", TextWrapping = TextWrapping.Wrap },
                 CloseButtonText = "Close",
                 XamlRoot = (shell.Window.Content as FrameworkElement)?.XamlRoot,
             }.ShowAsync();

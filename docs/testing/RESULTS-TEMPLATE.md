@@ -13,7 +13,7 @@ Plan: PLAN-<APP>.md at commit <hash of the docs>
 |---|---|
 | Installer | <file name> |
 | SHA-256 | <hash> |
-| Repository commits | Kivo <hash>, Falcon <hash>, Tren <hash>, o-ui <hash> |
+| Repository commits | MynaHub <hash>, MynaOps <hash>, MynaCAD <hash>, o-ui <hash> |
 | Windows | <build number> |
 | Baseline (ENV-01..05) | <pass/fail with counts> |
 

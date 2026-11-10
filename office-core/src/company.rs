@@ -95,7 +95,7 @@ pub fn validate(path: &Path) -> Result<FileCheck, String> {
     }
     let version: usize = conn.pragma_query_value(None, "user_version", |r| r.get(0)).map_err(map_open_error)?;
     if version > db::latest_version() {
-        return Err(fail("This company file was made by a newer version of Kivo. Update the app to open it."));
+        return Err(fail("This company file was made by a newer version of MynaHub. Update the app to open it."));
     }
     let check: String = conn.query_row("PRAGMA quick_check", [], |r| r.get(0)).map_err(|_| fail("This company file is damaged and cannot be opened."))?;
     if check != "ok" {
@@ -570,7 +570,7 @@ pub fn open_protected(state: &AppState, path: &Path, secret: &str, unlock: &str)
         }
         let version: usize = conn.pragma_query_value(None, "user_version", |r| r.get(0)).map_err(|_| fail("This protected company file is damaged."))?;
         if version > db::latest_version() {
-            return Err(fail("This company file was made by a newer version of Kivo. Update the app to open it."));
+            return Err(fail("This company file was made by a newer version of MynaHub. Update the app to open it."));
         }
         version
     };

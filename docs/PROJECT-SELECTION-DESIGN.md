@@ -1,38 +1,38 @@
 # Project creation and selection through Myna (design)
 
-**Status:** decided 2026-11-01 (section 6). Step 1 (wire and engine calls) is built; Myna, Falcon and Tren changes are not.
+**Status:** decided 2026-11-01 (section 6). Step 1 (wire and engine calls) is built; Myna, MynaOps and MynaCAD changes are not.
 **Terms and links:** [SUITE.md](SUITE.md). **Data rules:** [PROJECT-HIERARCHY-AND-SECURITY.md](PROJECT-HIERARCHY-AND-SECURITY.md).
 
 ## 1. The decision
 
-1. A project is created and chosen **only** in Myna (or in Kivo). Falcon and Tren have no New project, Open project or Save As project.
+1. A project is created and chosen **only** in Myna (or in MynaHub). MynaOps and MynaCAD have no New project, Open project or Save As project.
 2. After sign-in Myna shows the company's projects in a drop-down. The user picks one and **locks** it.
-3. Starting Tren or Falcon from Myna opens the locked project directly.
-4. Myna (and Kivo) has a **basic wizard**: name, client, code, site address. Everything else (team, fees, stages, brief) is edited in Kivo.
+3. Starting MynaCAD or MynaOps from Myna opens the locked project directly.
+4. Myna (and MynaHub) has a **basic wizard**: name, client, code, site address. Everything else (team, fees, stages, brief) is edited in MynaHub.
 
 ## 2. What exists today
 
 | Piece | Where | State |
 |---|---|---|
-| Project record | company file, table `projects` (client, code, name, site address, status active/on_hold/completed, archived, `workspace_path`) | created in Kivo only; Falcon is refused by policy |
+| Project record | company file, table `projects` (client, code, name, site address, status active/on_hold/completed, archived, `workspace_path`) | created in MynaHub only; MynaOps is refused by policy |
 | Project folder | `office-core/src/project_workspace.rs`: `scaffold` makes a folder with `project.osp` named in `osas.project.json`; `attach_osp` copies an existing `.osp` in | the `.osp` itself is created when an app first saves |
-| Active project | `active-project.json`, written by Tren, read by Falcon | the apps decide, not the user |
-| Project wizard | Tren `ProjectWizardWindow` (project details, team, floors and heights, layer sets, tabs, symbols), engine `project.wizard` | mixes project identity with drawing setup |
-| New/Open project | Tren `project.setup`, `project.open`, File > Open/Save As `.osp`; Falcon project settings and open/new | each app has its own |
-| Start-up | launcher/Kivo pass `OSTUDIO_COMPANY`, `OSTUDIO_TICKET`, `OSTUDIO_USER` | no project in the hand-off |
+| Active project | `active-project.json`, written by MynaCAD, read by MynaOps | the apps decide, not the user |
+| Project wizard | MynaCAD `ProjectWizardWindow` (project details, team, floors and heights, layer sets, tabs, symbols), engine `project.wizard` | mixes project identity with drawing setup |
+| New/Open project | MynaCAD `project.setup`, `project.open`, File > Open/Save As `.osp`; MynaOps project settings and open/new | each app has its own |
+| Start-up | launcher/MynaHub pass `OSTUDIO_COMPANY`, `OSTUDIO_TICKET`, `OSTUDIO_USER` | no project in the hand-off |
 
 The company file already has the right model (a project owns a workspace folder with one `.osp`). The change is **who chooses**, not where data lives.
 
 ## 3. Target flow
 
-**Wording and states (2026-11-01).** Myna says *Load project* and *Close project* (not lock and unlock; the wire and files keep the name "locked project"). With no project loaded the list and its search are active, *Load project* and *New project…* are active and *Close project* is not. With a project loaded the list, search, *Load project* and *New project…* are inactive and *Close project* is active; it is refused, naming the app, while Falcon or Tren is open. Closing the project makes the list active again.
+**Wording and states (2026-11-01).** Myna says *Load project* and *Close project* (not lock and unlock; the wire and files keep the name "locked project"). With no project loaded the list and its search are active, *Load project* and *New project…* are active and *Close project* is not. With a project loaded the list, search, *Load project* and *New project…* are inactive and *Close project* is active; it is refused, naming the app, while MynaOps or MynaCAD is open. Closing the project makes the list active again.
 
 
 ```
 Launcher: sign in -> drop-down of projects (search, recent first)
         -> [New project...]  basic wizard (name, client, code, address) -> workspace + project.osp created now
         -> pick one -> [Lock]   (selection saved in suite.json)
-Start Tren / Falcon -> env OSTUDIO_PROJECT_ID + path -> app opens that project.osp, title shows "Project name"
+Start MynaCAD / MynaOps -> env OSTUDIO_PROJECT_ID + path -> app opens that project.osp, title shows "Project name"
 Change project -> only in the launcher, refused while an app holds the project (shows which)
 ```
 
@@ -48,15 +48,15 @@ The lock is a file of its own, `%LOCALAPPDATA%\O-Studio\selected-project.json` (
 
 A selection made for another company reads as none. Code: `Osas.Core.SelectedProjectStore`.
 
-Apps are started with `OSTUDIO_PROJECT_ID`, `OSTUDIO_PROJECT_OSP`, and `OSTUDIO_PROJECT_NAME` beside the existing variables. The active-project pointer stays for one release (Falcon's live notice) and is then retired. Constants go in `Office.Shared.SuiteWire`, `Osas.Core.SuiteWire` and `aad-office::wire` (the three copies already kept equal).
+Apps are started with `OSTUDIO_PROJECT_ID`, `OSTUDIO_PROJECT_OSP`, and `OSTUDIO_PROJECT_NAME` beside the existing variables. The active-project pointer stays for one release (MynaOps's live notice) and is then retired. Constants go in `Office.Shared.SuiteWire`, `Osas.Core.SuiteWire` and `aad-office::wire` (the three copies already kept equal).
 
 An app **verifies** what it is given: the project exists in the company file, is not archived, and the path is the recorded workspace path. It never trusts the path alone.
 
 ### 3.2 Basic wizard
 
-Fields: client (pick or add), project name, code (generated by `project_codes`, editable), site address. It calls the same office-core function Kivo uses to create a project and then `scaffold`, so launcher and Kivo cannot diverge. It needs the **Edit** permission; an Auditor sees the list and cannot create. The workspace folder is made at once. The `.osp` itself is made by the app that first opens the project (Tren and Falcon already create a missing project file), so an app opening a locked project whose file is absent creates it rather than failing.
+Fields: client (pick or add), project name, code (generated by `project_codes`, editable), site address. It calls the same office-core function MynaHub uses to create a project and then `scaffold`, so launcher and MynaHub cannot diverge. It needs the **Edit** permission; an Auditor sees the list and cannot create. The workspace folder is made at once. The `.osp` itself is made by the app that first opens the project (MynaCAD and MynaOps already create a missing project file), so an app opening a locked project whose file is absent creates it rather than failing.
 
-Tren's current wizard splits in two: project identity moves to Myna; **drawing setup** (floors and heights, layer sets, discipline tabs, symbols) stays in Tren as "Drawing setup", offered automatically the first time an empty project opens.
+MynaCAD's current wizard splits in two: project identity moves to Myna; **drawing setup** (floors and heights, layer sets, discipline tabs, symbols) stays in MynaCAD as "Drawing setup", offered automatically the first time an empty project opens.
 
 ## 4. Work by component
 
@@ -64,9 +64,9 @@ Tren's current wizard splits in two: project identity moves to Myna; **drawing s
 |---|---|
 | office-core | `project_list` for Myna (id, code, name, client, status, workspace, `.osp` present, last revision); create-and-scaffold in one call; project lookup by id for app verification |
 | Launcher (`Adms.LoginWidget`) | project drop-down (searchable, status filter, recent first), Lock/Unlock, New project dialog, status line "Project: name (locked)", block change while an app runs, write `suite.json` |
-| Kivo | "Open in suite" on a project sets the same lock; project page shows which apps have it open; keeps full editing of project details |
-| Tren | read env/`suite.json` at start; remove project wizard, Project open/new/Save As and `.osp` pickers from File and the welcome screen; title/status show the project; DXF/DWG become import into the project; keep the headless CLI and the control channel (`app.open`) for automation and tests |
-| Falcon | read env/`suite.json`; remove New/Open project and project file pickers; project settings keep only CoreOp's own fields (persona, rate book, levels link); `ServedProject` opens the locked `.osp` |
+| MynaHub | "Open in suite" on a project sets the same lock; project page shows which apps have it open; keeps full editing of project details |
+| MynaCAD | read env/`suite.json` at start; remove project wizard, Project open/new/Save As and `.osp` pickers from File and the welcome screen; title/status show the project; DXF/DWG become import into the project; keep the headless CLI and the control channel (`app.open`) for automation and tests |
+| MynaOps | read env/`suite.json`; remove New/Open project and project file pickers; project settings keep only CoreOp's own fields (persona, rate book, levels link); `ServedProject` opens the locked `.osp` |
 | Installer | `.osp` double-click goes to Myna, which selects the project when the file is inside a known workspace and offers "Add to company" when not |
 | Docs and tests | SUITE.md hierarchy and tool-bar tables; PLAN-O-DRAFT, PLAN-O-COREOP file and project cases; INT-LNC-04 (no company chosen) and INT-OSP cases rewritten |
 
@@ -74,7 +74,7 @@ Tren's current wizard splits in two: project identity moves to Myna; **drawing s
 
 1. office-core calls and wire constants (no UI change, testable alone).
 2. Launcher: drop-down, lock, wizard, `suite.json`.
-3. Falcon then Tren read the lock; keep the old UI behind a development switch.
+3. MynaOps then MynaCAD read the lock; keep the old UI behind a development switch.
 4. Remove the old project UI; update docs and plans; run the suite test program on the new build.
 
 ## 5. Issues to expect
@@ -82,10 +82,10 @@ Tren's current wizard splits in two: project identity moves to Myna; **drawing s
 **Data and files**
 1. **Existing projects.** Users have standalone `.osp` files and recent lists. They need "Add to company" (use `attach_osp`) or they vanish from view. Provide an import in Myna.
 2. **Workspace paths are per machine.** `projects.workspace_path` is an absolute path in the company file. A second PC, a moved folder, or a drive letter change breaks it. Store a path relative to the company file's folder, with a per-machine override, and show "folder not found, locate it".
-3. **Project exists only in the cloud.** A project created on another PC has a record but no local `.osp`. The drop-down must show it as "not downloaded" and pull through Kivo's Neon sync before the apps start.
+3. **Project exists only in the cloud.** A project created on another PC has a record but no local `.osp`. The drop-down must show it as "not downloaded" and pull through MynaHub's Neon sync before the apps start.
 4. **Two machines, one project.** Revisions conflict at sync, not at lock. The lock is local; it must not be mistaken for a team lock. Say so in the UI.
-5. **Tren holds many drawings.** A project has several drawings, but Draft has tabs, xrefs and underlays that are files outside the project. Decide whether external DWG/DXF open as "import into project" (changes stored copies) or as a temporary external tab. Xref paths relative to the old location need a rule.
-6. **Levels and floors have two owners.** Falcon project levels and Tren's wizard floors describe the same building. One of them must become the source (proposal: the `.osp` project record, edited in Draft's drawing setup, read-only in CoreOp).
+5. **MynaCAD holds many drawings.** A project has several drawings, but Draft has tabs, xrefs and underlays that are files outside the project. Decide whether external DWG/DXF open as "import into project" (changes stored copies) or as a temporary external tab. Xref paths relative to the old location need a rule.
+6. **Levels and floors have two owners.** MynaOps project levels and MynaCAD's wizard floors describe the same building. One of them must become the source (proposal: the `.osp` project record, edited in Draft's drawing setup, read-only in CoreOp).
 
 **Behaviour**
 7. **Switching while apps run.** Recommended: refuse and name the app. Allowing it would leave an app writing to a project the user thinks is closed.
@@ -96,17 +96,17 @@ Tren's current wizard splits in two: project identity moves to Myna; **drawing s
 12. **Persona and first-run details.** CoreOp needs a persona (Project Manager/PMC or Contractor) and rate book for a new project. Myna wizard does not ask; CoreOp must open its project settings once, or Studio's project page supplies them.
 
 **Technical**
-13. **Myna keeps the company file open.** Its shared claim blocks operations that need exclusive access, for example protecting the file (Kivo releases its own claim for that). Myna must release the claim on request or reopen briefly for each call.
+13. **Myna keeps the company file open.** Its shared claim blocks operations that need exclusive access, for example protecting the file (MynaHub releases its own claim for that). Myna must release the claim on request or reopen briefly for each call.
 14. **The ticket is single-use and 120 seconds.** Project selection does not belong in it; it goes in env/`suite.json`. A stale `suite.json` (project deleted or archived since) must fail clearly.
 15. **Tests that open arbitrary files** (control channel `app.open`, the CLI, mutation tests) must keep working, so the restriction applies to the interactive UI only.
 16. **Large lists.** A practice may have hundreds of projects. The drop-down needs search and grouping by client, not a plain list.
 17. **Path injection.** An environment variable holding a path is a trust boundary (section 3.1): verify against the company file.
-18. **Permissions already differ by app.** Falcon is refused project creation by policy (`CompanyOfficePolicy`); Myna is the first non-Studio place to create projects, so the policy needs a launcher entry rather than being loosened for CoreOp.
+18. **Permissions already differ by app.** MynaOps is refused project creation by policy (`CompanyOfficePolicy`); Myna is the first non-Studio place to create projects, so the policy needs a launcher entry rather than being loosened for CoreOp.
 
 ## 6. Decisions (2026-11-01)
 
 1. **No scratch project.** Quick viewing of a plain DXF is not supported; a drawing is always inside a project. (Issue 11 becomes: DXF/DWG are imported into the project only.)
-2. **Drawing setup stays in Tren** (floors and heights, layer sets, discipline tabs, symbols), offered when an empty project first opens.
+2. **Drawing setup stays in MynaCAD** (floors and heights, layer sets, discipline tabs, symbols), offered when an empty project first opens.
 3. **An app started with no lock** starts Myna and waits; it never works without a company and project.
 4. **Switching projects while an app has the current one open is refused**, and Myna names the app.
 
@@ -115,8 +115,8 @@ Tren's current wizard splits in two: project identity moves to Myna; **drawing s
 | Step | State |
 |---|---|
 | 1. Wire constants `OSTUDIO_PROJECT_ID`, `OSTUDIO_PROJECT_OSP`, `selected-project.json` in the three SuiteWire copies; `SelectedProjectStore`; project added to the environment of every app start; engine calls `project_launch_info`, `project_workspace_ensure` | built, tested (6 new Osas.Core tests, 1 office-core test) |
-| 2. Launcher: project drop-down with search, lock and unlock, New project dialog (creates the client when new), refuses a change while Falcon or Tren is running, `Project:` line in the window, tray menu and `launcher-status.txt`; apps refuse to start without a lock | built and compiled; UI flows not yet run (cases LNC-PRJ-01..16) |
+| 2. Launcher: project drop-down with search, lock and unlock, New project dialog (creates the client when new), refuses a change while MynaOps or MynaCAD is running, `Project:` line in the window, tray menu and `launcher-status.txt`; apps refuse to start without a lock | built and compiled; UI flows not yet run (cases LNC-PRJ-01..16) |
 | 3a. Launcher `--launch <app>` request (`launch-request.json`, 15 minutes): started on behalf of an app, it shows the sign-in window and starts the app once a company is signed in and a project is locked | built |
-| 3b. Falcon starts on `OSTUDIO_PROJECT_OSP`; with no lock it asks Myna (`SuiteProjectLock.RequestLauncher`) and exits; File > New, Open, Open Tren's project and Save as are gone; `OSTUDIO_STANDALONE=1` skips the check for development and tests | built, compiled, 99 Office.Shared tests pass; UI not run |
-| 3c. Tren starts on `OSTUDIO_PROJECT_OSP` (creates the `.osp` from an empty drawing when the folder has none); with no lock it asks Myna and exits; New, Open, Save As, New Project and Open Project are removed from the menus; a control port, `--sample`, command-line files and `OSTUDIO_STANDALONE=1` keep automation working | built; checked on a packaged build: file created, pointer written, File menu has none of the removed items, an unlocked start exits after asking Myna |
+| 3b. MynaOps starts on `OSTUDIO_PROJECT_OSP`; with no lock it asks Myna (`SuiteProjectLock.RequestLauncher`) and exits; File > New, Open, Open MynaCAD's project and Save as are gone; `OSTUDIO_STANDALONE=1` skips the check for development and tests | built, compiled, 99 Office.Shared tests pass; UI not run |
+| 3c. MynaCAD starts on `OSTUDIO_PROJECT_OSP` (creates the `.osp` from an empty drawing when the folder has none); with no lock it asks Myna and exits; New, Open, Save As, New Project and Open Project are removed from the menus; a control port, `--sample`, command-line files and `OSTUDIO_STANDALONE=1` keep automation working | built; checked on a packaged build: file created, pointer written, File menu has none of the removed items, an unlocked start exits after asking Myna |
 | 4. Remove the old project UI; update SUITE.md and the test plans; run the suite test program | not started |

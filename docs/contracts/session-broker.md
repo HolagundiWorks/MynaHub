@@ -1,41 +1,41 @@
-> **Retired 2026-11-08.** Tren and Falcon are independent of Kivo, so the broker and the database service described below were removed from Kivo and Myna. This file is kept as history only.
+> **Retired 2026-11-08.** MynaCAD and MynaOps are independent of MynaHub, so the broker and the database service described below were removed from MynaHub and Myna. This file is kept as history only.
 
 # Session broker and database service (contract v1)
 
-Status: **proposal v1, 2026-11-08.** Part of [WORKFLOW-KIVO-HUB.md](../WORKFLOW-KIVO-HUB.md). Two parties build against this file at the same time: the **Kivo broker** (server of section 1) and the **launcher database service** (server of section 2, client of section 1). Change it only by editing this file in the same commit as the code.
+Status: **proposal v1, 2026-11-08.** Part of [WORKFLOW-KIVO-HUB.md](../WORKFLOW-KIVO-HUB.md). Two parties build against this file at the same time: the **MynaHub broker** (server of section 1) and the **launcher database service** (server of section 2, client of section 1). Change it only by editing this file in the same commit as the code.
 
 Rules for both: no password, Neon key or company-file key ever crosses either interface or is written to disk by a client. A session token lives in memory only.
 
-## 1. Session broker (served by Kivo)
+## 1. Session broker (served by MynaHub)
 
-Transport: Windows **named pipe** `\\.\pipe\osas-session-broker`, created by Kivo with an ACL that allows **only the current user** (no network access, `PipeOptions.CurrentUserOnly`). Message mode, UTF-8, **one JSON object per message**, one request then one response, then the client closes.
+Transport: Windows **named pipe** `\\.\pipe\osas-session-broker`, created by MynaHub with an ACL that allows **only the current user** (no network access, `PipeOptions.CurrentUserOnly`). Message mode, UTF-8, **one JSON object per message**, one request then one response, then the client closes.
 
 Every request has `"v":1` and `"op"`. Every response has `"v":1` and `"ok"`. On `ok:false`: `"error"` (code below) and `"message"` (English, for display).
 
 | op | Request fields | Success result | Notes |
 |---|---|---|---|
 | `status` | none | `signed_in` (bool), `user`, `company_id`, `company_name`, `expires_utc` | Never shows UI. Safe to poll. |
-| `ask_session` | `app` (`tren`, `falcon`, `myna`, `dbservice`), `purpose` (`db_connect`, `save_to_office`, `import`, `sync`), optional `project_id`, optional `interactive` (default true) | `token`, `expires_utc`, `user`, `company_id`, `roles` (array of strings) | If Kivo has a session: returns a token at once. If not and `interactive` is true: Kivo comes to the front with its sign-in, waits for the user, then answers (the call may take minutes; the client uses a 10 minute timeout). If `interactive` is false and signed out: `signed_out`. |
+| `ask_session` | `app` (`tren`, `falcon`, `myna`, `dbservice`), `purpose` (`db_connect`, `save_to_office`, `import`, `sync`), optional `project_id`, optional `interactive` (default true) | `token`, `expires_utc`, `user`, `company_id`, `roles` (array of strings) | If MynaHub has a session: returns a token at once. If not and `interactive` is true: MynaHub comes to the front with its sign-in, waits for the user, then answers (the call may take minutes; the client uses a 10 minute timeout). If `interactive` is false and signed out: `signed_out`. |
 | `validate` | `token` | `valid` (bool), `user`, `company_id`, `roles`, `expires_utc` | Used by the database service for every connection. Constant-time token comparison. |
 | `renew` | `token` | new `expires_utc` | Sliding window; refused after the absolute limit. |
-| `end_session` | `token` (optional: omit to end all) | none | Kivo sign-out calls this for all tokens and tells the database service to drop its connections. |
+| `end_session` | `token` (optional: omit to end all) | none | MynaHub sign-out calls this for all tokens and tells the database service to drop its connections. |
 
 Error codes: `signed_out`, `cancelled` (user closed the sign-in), `denied` (role does not allow the purpose), `bad_token`, `expired`, `kivo_unavailable` (client-side: pipe not there), `bad_request`.
 
-Tokens: 32 random bytes, base64url, opaque. One token per (app, purpose, project). **Idle lifetime 8 hours, absolute 24 hours.** Kivo keeps the table in memory; restart of Kivo ends all sessions (clients ask again).
+Tokens: 32 random bytes, base64url, opaque. One token per (app, purpose, project). **Idle lifetime 8 hours, absolute 24 hours.** MynaHub keeps the table in memory; restart of MynaHub ends all sessions (clients ask again).
 
-If the pipe does not exist, the client starts Kivo with `O-Studio.exe --broker` (starts hidden at the sign-in or the tray, creates the pipe, no main window until needed) and retries for up to 60 s.
+If the pipe does not exist, the client starts MynaHub with `O-Studio.exe --broker` (starts hidden at the sign-in or the tray, creates the pipe, no main window until needed) and retries for up to 60 s.
 
-### Clarifications from the Kivo implementation (2026-11-08)
+### Clarifications from the MynaHub implementation (2026-11-08)
 
-- `status.expires_utc` is the end of the Kivo sign-in's absolute window (sign-in time plus 24 hours).
+- `status.expires_utc` is the end of the MynaHub sign-in's absolute window (sign-in time plus 24 hours).
 - `validate` counts as use: a good token slides its idle window, never past the absolute limit. A bad, ended or expired token is `ok:true`, `valid:false` (not an error).
 - `renew` errors: `bad_token` for an unknown token, `expired` once the absolute limit has passed.
 - `denied`: a user whose only role is `auditor` may get a token for `db_connect` but not for `save_to_office`, `import` or `sync`. `roles` carries the role names as the company file stores them (`owner`, `principal`, `accounts`, `document_editor`, `auditor`).
 - `ask_session` for the same (app, purpose, project) while a token is live returns that token again.
-- Locking Kivo's session stops new tokens (an interactive ask brings up the unlock screen) but keeps the tokens already given. Sign-out, closing the company, or leaving Kivo ends all of them.
+- Locking MynaHub's session stops new tokens (an interactive ask brings up the unlock screen) but keeps the tokens already given. Sign-out, closing the company, or leaving MynaHub ends all of them.
 - Missing or wrongly typed `interactive` means `true`. `end_session` with `"token":null` or no `token` ends all.
-- One Kivo per user: it owns the mutex `Local\Osas.Kivo.Instance`. A second `O-Studio.exe` brings the first forward and exits; a second `--broker` simply exits.
+- One MynaHub per user: it owns the mutex `Local\Osas.MynaHub.Instance`. A second `O-Studio.exe` brings the first forward and exits; a second `--broker` simply exits.
 - `--broker`: no window until a caller needs a sign-in. The window then opens (on the remembered company if none is open) and goes back to the background after the sign-in completes. Closing it unsigned answers the waiting callers with `cancelled`.
 
 ## 2. Database service (served by the launcher, Myna)

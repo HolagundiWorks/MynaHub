@@ -10,8 +10,8 @@ using Osas.Core.Suite;
 namespace Adms.LoginWidget;
 
 /// <summary>
-/// The launcher window. It shows the two services the launcher hosts (the AI Core and the database service), offers Kivo's sign-in when the database is
-/// signed out, and starts the suite apps. It asks for no user name or password: the company sign-in is Kivo's.
+/// The launcher window. It shows the two services the launcher hosts (the AI Core and the database service), offers MynaHub's sign-in when the database is
+/// signed out, and starts the suite apps. It asks for no user name or password: the company sign-in is MynaHub's.
 /// </summary>
 internal sealed class MynaWindow : WidgetWindow
 {
@@ -103,7 +103,7 @@ internal sealed class MynaWindow : WidgetWindow
         body.Children.Add(BuildAppTiles());
         body.Children.Add(new TextBlock
         {
-            Text = "Myna hosts the AI assistant. Tren, Falcon and Kivo use it when it runs.",
+            Text = "Myna hosts the AI assistant. MynaCAD, MynaOps and MynaHub use it when it runs.",
             Style = (Style)Application.Current.Resources["CaptionStyle"],
             TextWrapping = TextWrapping.Wrap,
             Opacity = 0.8,
@@ -167,7 +167,7 @@ internal sealed class MynaWindow : WidgetWindow
         };
     }
 
-    /// <summary>The apps of the suite, each with its mark. Finch is a placeholder for the app that is planned.</summary>
+    /// <summary>The apps of the suite, each with its mark. MynaMod is a placeholder for the app that is planned.</summary>
     FrameworkElement BuildAppTiles()
     {
         var grid = new Grid { ColumnSpacing = 8, RowSpacing = 8 };
@@ -177,10 +177,10 @@ internal sealed class MynaWindow : WidgetWindow
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         var specs = new (string Title, string Blurb, string Mark)[]
         {
-            ("Kivo", "Company, estimates, bills", "mark-studio.png"),
-            ("Falcon", "Estimates and bills", "mark-coreop.png"),
-            ("Tren", "2D drafting", "mark-draft.png"),
-            ("Finch", "3D / BIM form (planned)", "mark-form.png"),
+            ("MynaHub", "Company, estimates, bills", "mark-studio.png"),
+            ("MynaOps", "Estimates and bills", "mark-coreop.png"),
+            ("MynaCAD", "2D drafting", "mark-draft.png"),
+            ("MynaMod", "3D / BIM form (planned)", "mark-form.png"),
         };
         for (var i = 0; i < specs.Length; i++)
         {
@@ -195,10 +195,10 @@ internal sealed class MynaWindow : WidgetWindow
             };
             AutomationProperties.SetName(tile, title);
             var app = SuiteCatalog.Apps.FirstOrDefault(a => string.Equals(a.Title, title, StringComparison.Ordinal));
-            if (title == "Finch" || app == null)
+            if (title == "MynaMod" || app == null)
             {
                 tile.IsEnabled = false;
-                ToolTipService.SetToolTip(tile, "Finch is planned and not built yet.");
+                ToolTipService.SetToolTip(tile, "MynaMod is planned and not built yet.");
             }
             else
             {

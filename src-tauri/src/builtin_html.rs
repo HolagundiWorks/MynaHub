@@ -13,7 +13,7 @@ pub struct HtmlTemplate {
     pub css: &'static str,
 }
 
-/// Shared print styles. Fonts come from the bundled IBM Plex families; sizes follow the Kivo print scale.
+/// Shared print styles. Fonts come from the bundled IBM Plex families; sizes follow the MynaHub print scale.
 const BASE: &str = "@page { size: A4; margin: 16mm 16mm 22mm 16mm; }
 .firm-name { font-family: 'IBM Plex Sans SemiBold'; font-size: 16pt; font-weight: 400; color: #1a1a1a; }
 .registration, .meta { font-size: 8.5pt; color: #5c5c5c; }
@@ -253,7 +253,7 @@ pub fn seed(conn: &Connection) -> Result<usize, String> {
             continue;
         }
         let taken: i64 = conn.query_row("SELECT COUNT(*) FROM templates WHERE name = ?1", params![t.name], |r| r.get(0)).map_err(|e| e.to_string())?;
-        let name = if taken > 0 { format!("{} (Kivo built-in)", t.name) } else { t.name.to_string() };
+        let name = if taken > 0 { format!("{} (MynaHub built-in)", t.name) } else { t.name.to_string() };
         let (html, css) = crate::docx::store(t.html, t.css)?;
         conn.execute(
             "INSERT INTO templates (kind, name, template_key, family, layout, description, built_in, format) VALUES (?1,?2,?3,?4,'letter',?5,1,'html')",

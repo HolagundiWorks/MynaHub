@@ -1,10 +1,10 @@
-# Test plan: Falcon
+# Test plan: MynaOps
 
-Falcon does quantity take-off, estimates, BOQ and billing (C# WinUI shell, C++ `bbs_engine.dll`). What exists is in `O-COREOP\README.md` (Features), `docs/ROADMAP.md`, `docs/WINUI-SHELL.md`, `docs/PROJECT-FILE.md`, `docs/DATA-MODEL-COMPONENTS.md`. Quantities follow IS 456 and IS 1200 conventions. Case format: [README.md](README.md). `[N]` normal, `[B]` boundary or bad input, `[R]` repeat or undo.
+MynaOps does quantity take-off, estimates, BOQ and billing (C# WinUI shell, C++ `bbs_engine.dll`). What exists is in `O-COREOP\README.md` (Features), `docs/ROADMAP.md`, `docs/WINUI-SHELL.md`, `docs/PROJECT-FILE.md`, `docs/DATA-MODEL-COMPONENTS.md`. Quantities follow IS 456 and IS 1200 conventions. Case format: [README.md](README.md). `[N]` normal, `[B]` boundary or bad input, `[R]` repeat or undo.
 
 **Numbers are the point.** For every calculation case the agent writes the hand calculation in the run report, then compares. A wrong number is S1.
 
-Shell: two ribbons of text tabs. Main ribbon sections: Project, RCC steel, Civil BOQ, Schedule, Contracts, Stores, Outputs (Ctrl+1 to Ctrl+7 jump to a section's first page). Office, accounts and HR of the practice live in Kivo.
+Shell: two ribbons of text tabs. Main ribbon sections: Project, RCC steel, Civil BOQ, Schedule, Contracts, Stores, Outputs (Ctrl+1 to Ctrl+7 jump to a section's first page). Office, accounts and HR of the practice live in MynaHub.
 
 
 > **Project selection (2026-11-01).** The project is chosen and locked in Myna; see [../PROJECT-SELECTION-DESIGN.md](../PROJECT-SELECTION-DESIGN.md). The app is started on a project with `OSTUDIO_PROJECT_ID` and `OSTUDIO_PROJECT_OSP` (a test folder with no `.osp` yet is fine: the first open makes it). Started with neither, the app asks Myna and exits. Automation and tests start it with `OSTUDIO_STANDALONE=1`, `--control PORT` or a file on the command line instead. The cases below that name New, Open or Save as project are written for the locked flow.
@@ -14,7 +14,7 @@ Shell: two ribbons of text tabs. Main ribbon sections: Project, RCC steel, Civil
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
 | COP-SMK-01 | Start | Start `O-CoreOp.exe` | Main window opens, ribbons visible, no crash | UIA, event log |
-| COP-SMK-02 | Start from launcher | Launcher, **Falcon** | Opens with the company's name and details shown read-only | UIA |
+| COP-SMK-02 | Start from launcher | Launcher, **MynaOps** | Opens with the company's name and details shown read-only | UIA |
 | COP-SMK-03 | Locked project, no file yet | Start with `OSTUDIO_PROJECT_OSP` pointing into an existing folder where no `.osp` exists | An empty project named after the file; Save creates the `.osp` | UIA, file |
 | COP-SMK-04 | Close | Close | Asks to save if changed; process ends | UIA |
 | COP-SMK-05 | Suites | `dotnet test AQC.CadImport.Tests` and `Office.Shared.Tests` | 0 failed (88 and 91 at last run) | output |
@@ -27,17 +27,17 @@ Shell: two ribbons of text tabs. Main ribbon sections: Project, RCC steel, Civil
 | COP-PRJ-02 | Open the locked project | Start from Myna with a project that has a saved `.osp` | Project loads equal to what was saved (compare key fields) | UIA |
 | COP-PRJ-03 | Older `.bbsproj` / `.json` | Start with `OSTUDIO_STANDALONE=1` and open one from the command line | Opens; Save refuses ("no project file to save to") because it is not an `.osp`; the old file is not rewritten | file hash |
 | COP-PRJ-04 | Save over `.osp` `[R]` | Edit, Save twice | `meta.revision` +1 per save; the drawing and take-off in the file are unchanged | `inspect` |
-| COP-PRJ-05 | No Save as | Look for Save as, New project, Open project, Open Tren's project | None of them exists in the File menu | UIA |
+| COP-PRJ-05 | No Save as | Look for Save as, New project, Open project, Open MynaCAD's project | None of them exists in the File menu | UIA |
 | COP-PRJ-06 | Bad file `[B]` | Open a text file renamed `.osp` | Message "not a project file"; app usable | UIA |
-| COP-PRJ-07 | Started alone | Start `O-CoreOp.exe` with no project environment and no `OSTUDIO_STANDALONE` | Myna starts or wakes with the request "Waiting to start Falcon"; the app exits; after sign-in and Lock, Falcon starts on the project | process list, launcher window |
-| COP-PRJ-07 | Recent and command line | Open from Explorer (double click / "Open in Falcon") | Opens that project | Explorer |
+| COP-PRJ-07 | Started alone | Start `O-CoreOp.exe` with no project environment and no `OSTUDIO_STANDALONE` | Myna starts or wakes with the request "Waiting to start MynaOps"; the app exits; after sign-in and Lock, MynaOps starts on the project | process list, launcher window |
+| COP-PRJ-07 | Recent and command line | Open from Explorer (double click / "Open in MynaOps") | Opens that project | Explorer |
 | COP-PRJ-08 | Project settings | Name, location, client, prepared-by, company, logo | Saved and printed on reports; logo shown | UIA, PDF |
 | COP-PRJ-09 | Engineering settings | Diameters, hooks, covers, civil yields | Changing a cover changes the steel weights in the next calculation | numbers |
 | COP-PRJ-10 | Cost percentages | Electrical, plumbing, escalation, consulting | Applied to the estimate base; 0 and 100 `[B]` accepted; negative or text refused | numbers |
 | COP-PRJ-11 | Personas | Declare PM/PMC; then Contractor | Letterhead and numbering series change (`PMC/...` vs `CON/...`); documents are branded accordingly | PDF |
-| COP-PRJ-12 | Company details read-only | Look for any place to edit the company | There is none: details come from Kivo; the project may be linked to a Studio project | UIA |
+| COP-PRJ-12 | Company details read-only | Look for any place to edit the company | There is none: details come from MynaHub; the project may be linked to a Studio project | UIA |
 | COP-PRJ-13 | Unsaved changes marker | Edit | Title shows modified; Save clears it | UIA |
-| COP-PRJ-14 | Mirror to company file | Save a project linked to a Studio project | A summary appears in Kivo's project dashboard; unlinked project writes nothing | Kivo |
+| COP-PRJ-14 | Mirror to company file | Save a project linked to a Studio project | A summary appears in MynaHub's project dashboard; unlinked project writes nothing | MynaHub |
 
 ## C3 Levels, RCC and civil BOQ
 
@@ -61,20 +61,20 @@ Shell: two ribbons of text tabs. Main ribbon sections: Project, RCC steel, Civil
 | COP-BOQ-06 | Data model page | Components and links graph opens; adding a component and a link works; the inspector shows the rule |
 | COP-BOQ-07 | Quantities page and levels totals | Per-level totals add to the project total |
 
-## C4 Take-off from Tren
+## C4 Take-off from MynaCAD
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
-| COP-TKO-01 | Page before a take-off | Open Take-off on a locked project with no take-off | Message that Tren has not recorded one | UIA |
-| COP-TKO-02 | List drawings | Open an `.osp` that Tren recorded | Drawings listed with state (complete / recording), counts; refreshes every 2 s | UIA |
+| COP-TKO-01 | Page before a take-off | Open Take-off on a locked project with no take-off | Message that MynaCAD has not recorded one | UIA |
+| COP-TKO-02 | List drawings | Open an `.osp` that MynaCAD recorded | Drawings listed with state (complete / recording), counts; refreshes every 2 s | UIA |
 | COP-TKO-03 | Read take-off | Select a complete drawing, **Read take-off** | Import preview lists the rows; nothing is written until accepted | UIA |
 | COP-TKO-04 | Accept import | Accept | Rows appear in the BOQ; one undo step reverts; importing again updates the same rows, no duplicates | numbers |
 | COP-TKO-05 | Not complete `[B]` | Drawing still "recording" | Cannot read; message | UIA |
 | COP-TKO-06 | Annotated drawing | **Annotated drawing** | The PDF opens, is stored with the project, listed under "stored with this project"; report uses it | UIA |
-| COP-TKO-07 | Live update | While the page is open, record in Tren | A notice "Tren updated the take-off" within about 2 s; the list refreshes | both apps |
+| COP-TKO-07 | Live update | While the page is open, record in MynaCAD | A notice "MynaCAD updated the take-off" within about 2 s; the list refreshes | both apps |
 | COP-TKO-08 | Two drawings, same floor | Record two on one floor | A double-count warning is shown | UIA |
-| COP-TKO-09 | Derived items not imported | Look for plaster, paint, skirting, shuttering | They are derived in Falcon, not imported | UIA |
-| COP-TKO-10 | Own saves ignored | Save in Falcon | No "Tren updated" notice for its own save | UIA |
+| COP-TKO-09 | Derived items not imported | Look for plaster, paint, skirting, shuttering | They are derived in MynaOps, not imported | UIA |
+| COP-TKO-10 | Own saves ignored | Save in MynaOps | No "MynaCAD updated" notice for its own save | UIA |
 | COP-TKO-11 | CAD bridge | **File, Import from CAD** with an `hcw-aqc-bridge` file, then **Export for CAD** | Preview first; idempotent re-import; `Lvl0` untouched; export writes levels, details, beam depths | files |
 | COP-TKO-12 | Quantity trust | Import the quantity-trust checklist | Known wall/opening numbers match | numbers |
 | COP-TKO-13 | Parametric wall rows | Import a parametric wall take-off | Rows carry thickness, notes; nominal-only wall keeps the documented note | numbers |
@@ -88,7 +88,7 @@ Shell: two ribbons of text tabs. Main ribbon sections: Project, RCC steel, Civil
 | COP-EST-03 | Estimate PDF | Totals equal the screen; sketches appendix present; page numbers; persona letterhead |
 | COP-EST-04 | Purchase order (steel and materials) | Quantities from the BBS; PO numbered; totals correct |
 | COP-EST-05 | Project report PDF | BOQ tables, sketches and the stored annotated drawings (one page per PDF page) |
-| COP-EST-06 | Share estimate/RA bill with Kivo | Draft appears in Kivo Approvals; decision returns |
+| COP-EST-06 | Share estimate/RA bill with MynaHub | Draft appears in MynaHub Approvals; decision returns |
 | COP-EST-07 | Rounding `[B]` | A rate with 4 decimals, a quantity with 3 | Rounding as documented, identical in screen, PDF and Excel |
 
 ## C6 Schedule, contracts, accounts, stores, HR
@@ -112,8 +112,8 @@ Shell: two ribbons of text tabs. Main ribbon sections: Project, RCC steel, Civil
 
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
-| COP-AI-01 | Floating AI bar | Open the bar | Shown in the same style as Tren's; opens/closes | UIA |
-| COP-AI-02 | Host up | Kivo running with the AI host | A question about the project is answered from the engine's numbers; it never computes quantities itself | UIA |
+| COP-AI-01 | Floating AI bar | Open the bar | Shown in the same style as MynaCAD's; opens/closes | UIA |
+| COP-AI-02 | Host up | MynaHub running with the AI host | A question about the project is answered from the engine's numbers; it never computes quantities itself | UIA |
 | COP-AI-03 | Host down | Stop the host | A clear message naming how to start it | UIA |
 | COP-AI-04 | Confirmed changes | Ask it to add an RCC row or change a cover | Each change needs confirmation and appears in undo history | UIA |
 | COP-AI-05 | Read-only engine runs | Ask it to run the estimate | Result equals the Estimate page | UIA |

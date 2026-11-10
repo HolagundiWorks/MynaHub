@@ -597,7 +597,7 @@ fn unzip(bytes: &[u8]) -> Result<BTreeMap<String, Vec<u8>>, String> {
             return Err("The Word document is incomplete.".into());
         }
         if method != 0 {
-            return Err("This Word document is compressed. Open it in Kivo and save it again.".into());
+            return Err("This Word document is compressed. Open it in MynaHub and save it again.".into());
         }
         let name = String::from_utf8_lossy(&bytes[name_at..name_at + name_len]).into_owned();
         files.insert(name, bytes[data_at..data_at + size].to_vec());

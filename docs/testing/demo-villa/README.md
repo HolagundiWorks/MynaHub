@@ -26,6 +26,6 @@ Needs `aad-cli` 1.3.2 or later (`--save` to a `.osp` and the structural details 
 
 ## See it
 
-![The plan in Tren](demo-villa-in-o-draft.png)
+![The plan in MynaCAD](demo-villa-in-o-draft.png)
 
-![The take-off in Falcon](demo-villa-in-o-coreop.png)
+![The take-off in MynaOps](demo-villa-in-o-coreop.png)

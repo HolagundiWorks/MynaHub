@@ -248,8 +248,8 @@ fn an_approved_bill_locks_its_measurements_and_a_remeasure_makes_a_new_bill() {
     assert_eq!(measured.iter().find(|m| m["item_code"] == "EXC-001").unwrap()["measured_to_date"], 42.5);
     let body2: Value = serde_json::from_str(&approvals::get(&c, r.bill_approval_id.unwrap()).unwrap().unwrap().body).unwrap();
     assert_eq!(body2["lines"].as_array().unwrap().len(), 1, "the new bill holds the lines that changed");
-    // Falcon's previous (30) is flagged against Kivo's last approved bill (0 for this item then 42.5)
-    assert!(r.flags.iter().any(|f| f.contains("EXC-001") && f.contains("Falcon's previous")), "{:?}", r.flags);
+    // MynaOps's previous (30) is flagged against MynaHub's last approved bill (0 for this item then 42.5)
+    assert!(r.flags.iter().any(|f| f.contains("EXC-001") && f.contains("MynaOps's previous")), "{:?}", r.flags);
     assert!(go(&mut c, &remeasured).noop);
 }
 
@@ -269,7 +269,7 @@ fn a_draft_bill_takes_further_lines_in_place() {
 fn the_project_link_is_kept_and_checked() {
     let mut c = conn();
     let none = import(&mut c, 1, FIXTURE, "demo.csv", None).unwrap();
-    assert!(none.refused > 0 && none.issues[0].message.contains("Choose the Kivo project"), "{none:?}");
+    assert!(none.refused > 0 && none.issues[0].message.contains("Choose the MynaHub project"), "{none:?}");
     let p = preview(&c, FIXTURE, None).unwrap();
     assert!(p.needs_project);
     assert_eq!(p.suggested_project_id, Some(1), "matched by the project name");

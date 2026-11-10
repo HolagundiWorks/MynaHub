@@ -1,6 +1,6 @@
 # Licensing
 
-**Kivo** is **open source** and **dual-licensed** by
+**MynaHub** is **open source** and **dual-licensed** by
 **Human Centric Works, Hospet**. You may use it under **either**:
 
 1. the open-source **GNU AGPL v3** (Community Edition), **or**
@@ -37,10 +37,10 @@ The full, authoritative terms are in [LICENSE](LICENSE).
 A separate **commercial license** is available if you do **not** want to comply with the
 AGPL — in particular if you:
 
-- **resell** Kivo or a derivative of it,
+- **resell** MynaHub or a derivative of it,
 - **embed** it into a commercial or proprietary product,
 - **offer it as a hosted service (SaaS)** without releasing your source under the AGPL,
-- **remove or replace the Kivo / Human Centric Works branding**, or
+- **remove or replace the MynaHub / Human Centric Works branding**, or
 - **distribute proprietary (closed-source) modifications**.
 
 A commercial license lifts the AGPL's copyleft and network-source obligations and can

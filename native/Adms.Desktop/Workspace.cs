@@ -100,7 +100,7 @@ internal sealed class WorkspaceView : UserControl
     {
         _shell = shell;
         StartLiveSync();
-        AutomationProperties.SetName(_paneLogo, "Kivo");
+        AutomationProperties.SetName(_paneLogo, "MynaHub");
         _shell.RefreshPaneLogo = LoadPaneLogo;
         LoadPaneLogo();
         BuildMenu();
@@ -296,7 +296,7 @@ internal sealed class WorkspaceView : UserControl
     }
 
     /// <summary>
-    /// The company file can be open in another app (Falcon) at the same time. Every two seconds this asks the engine whether anyone else
+    /// The company file can be open in another app (MynaOps) at the same time. Every two seconds this asks the engine whether anyone else
     /// has written; if so, the page being shown refreshes itself, unless it has unsaved changes, in which case it refreshes once they are gone.
     /// Asking does not count as activity, so an idle session still locks.
     /// </summary>
@@ -434,8 +434,8 @@ internal sealed class WorkspaceView : UserControl
     /// <summary>Suite app marks in the window status bar (see <see cref="WireBottomBar"/>).</summary>
     private static readonly Dictionary<string, string> AppMarks = new()
     {
-        ["Falcon"] = "mark-coreop.png",
-        ["Tren"] = "mark-draft.png",
+        ["MynaOps"] = "mark-coreop.png",
+        ["MynaCAD"] = "mark-draft.png",
     };
 
     private void AddTab(string title, string glyph) => _tabs.Add(new RibbonTab(title, glyph));

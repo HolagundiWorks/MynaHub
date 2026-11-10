@@ -1,6 +1,6 @@
-# Test plan: Tren
+# Test plan: MynaCAD
 
-Tren is the 2D CAD (Rust engine, WinUI shell). Source of truth for what exists: `O-DRAFT-main\docs\status.md` (capability matrix, "Implemented" vs "Planned"). A feature listed under "Planned" is `N/A`, not a failure. Command reference: `docs/UI_UX.md`, `docs/input-forms.md`, `docs/hcw-kit-port.md`. Case format: [README.md](README.md). `[N]` normal, `[B]` boundary or bad input, `[R]` repeat or undo.
+MynaCAD is the 2D CAD (Rust engine, WinUI shell). Source of truth for what exists: `O-DRAFT-main\docs\status.md` (capability matrix, "Implemented" vs "Planned"). A feature listed under "Planned" is `N/A`, not a failure. Command reference: `docs/UI_UX.md`, `docs/input-forms.md`, `docs/hcw-kit-port.md`. Case format: [README.md](README.md). `[N]` normal, `[B]` boundary or bad input, `[R]` repeat or undo.
 
 **How to drive it without the mouse:** every menu entry is a command. Use `aad-cli run --script x.scr` or the JSON control channel for the command itself (`takeoff.record`, `layer.set`, ...), and the WinUI window for what the command shows (dialogs, panels). A command-level pass does not replace a window-level pass for a feature that has a dialog: do both and record both.
 
@@ -38,7 +38,7 @@ Every command case also checks **undo and redo** (`[R]`) unless the command is m
 | DRF-FIL-14 | Recent files | Open three files | Listed in File menu; a deleted file shows as missing or is skipped | UIA |
 | DRF-FIL-15 | Several drawings open | Open 3 tabs; switch; close the middle | Active drawing correct; no cross-edits | UIA |
 | DRF-FIL-16 | Save off the UI thread | Save a large drawing | Window stays responsive during the save; result committed | timing |
-| DRF-FIL-17 | File association | Double-click an `.osp` in Explorer | Opens in Tren (suite installer registers `.osp`) | Explorer |
+| DRF-FIL-17 | File association | Double-click an `.osp` in Explorer | Opens in MynaCAD (suite installer registers `.osp`) | Explorer |
 | DRF-FIL-18 | Drawing compare | `dwgcompare` against itself and against a changed file | Equal vs different | command |
 | DRF-FIL-19 | Import DXF / DWG `[N]` | File > Import…, pick a DXF, then a DWG | Objects, layers and blocks merged into the open drawing at their own coordinates; names the drawing already has keep its definitions; one undo removes it | screenshot, undo |
 | DRF-FIL-20 | Import PDF | File > Import…, pick a vector PDF | Same as `pdf.import`: lines, text and fills as geometry on the PDF's layers | screenshot |
@@ -156,7 +156,7 @@ Take-off tools show in the top strip only while **Take-off** is on (toggle in th
 | DRF-HIS-05 | Damaged history file `[B]` | A garbage `.history.osp` gives an error, not a crash |
 | DRF-HIS-06 | Revision register | `revision.issue/list/set/void/table/codes/clouds`: issue updates the title block `REV` and draws the table; void keeps the number |
 | DRF-HIS-07 | Drawing revision | `drawing.revision` reports current / stale / missing for changed files |
-| DRF-PRJ-01 | `.osp` concurrency | Open the same `.osp` in Tren and Falcon; save in each alternately | Revisions increase by one per save; no data lost; neither app shows an error |
+| DRF-PRJ-01 | `.osp` concurrency | Open the same `.osp` in MynaCAD and MynaOps; save in each alternately | Revisions increase by one per save; no data lost; neither app shows an error |
 | DRF-PRJ-02 | Active-project pointer | Start on a locked project | `%LOCALAPPDATA%\O-Studio\active-project.json` names the project file; closing the app deletes it | file read |
 | DRF-PRJ-03 | Company file details | `companyfile` command / project details | Company and project details shown read-only from the company file; nothing written back |
 

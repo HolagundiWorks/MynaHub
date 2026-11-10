@@ -31,7 +31,7 @@ internal static class CloudSyncConflictDialog
                     $"“{projectName}” was updated on another device.\n\n"
                     + $"Local file revision: {localRevision}\n"
                     + $"Cloud revision: {cloudRevision}\n\n"
-                    + "Take cloud copy replaces your local .osp with the cloud snapshot (Tren and Falcon pick it up on their next revision poll).\n\n"
+                    + "Take cloud copy replaces your local .osp with the cloud snapshot (MynaCAD and MynaOps pick it up on their next revision poll).\n\n"
                     + "Back up local saves a copy beside the project file, then pulls the cloud snapshot.",
             },
         };

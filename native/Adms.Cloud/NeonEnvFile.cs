@@ -58,7 +58,7 @@ public static class NeonEnvFile
         Directory.CreateDirectory(Path.GetDirectoryName(DefaultPath)!);
         var lines = new List<string>
         {
-            "# Kivo cloud sync — service credentials (gitignore on dev machines).",
+            "# MynaHub cloud sync — service credentials (gitignore on dev machines).",
             "# Postgres + Object Storage from neon deploy; not Neon Auth user login.",
         };
         foreach (var key in SyncKeys)

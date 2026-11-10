@@ -1,8 +1,8 @@
 namespace Adms.Desktop;
 
 /// <summary>
-/// Where Kivo keeps its own settings (recent companies, window place). Earlier versions used a folder named ADMS; the first run of this
-/// version copies it to Kivo and leaves the old one where it is, so going back to an earlier version still finds its settings.
+/// Where MynaHub keeps its own settings (recent companies, window place). Earlier versions used a folder named ADMS; the first run of this
+/// version copies it to MynaHub and leaves the old one where it is, so going back to an earlier version still finds its settings.
 /// </summary>
 internal static class AppFolder
 {

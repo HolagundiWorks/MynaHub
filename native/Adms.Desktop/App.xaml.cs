@@ -5,10 +5,10 @@ namespace Adms.Desktop;
 
 public partial class App : Application
 {
-    private const string InstanceName = @"Local\Osas.Kivo.Instance";
-    private const string ShowName = @"Local\Osas.Kivo.Show";
+    private const string InstanceName = @"Local\Osas.MynaHub.Instance";
+    private const string ShowName = @"Local\Osas.MynaHub.Show";
 
-    // Held for the life of the process: the mutex marks this as the one Kivo, the event lets a second launch ask it to come forward.
+    // Held for the life of the process: the mutex marks this as the one MynaHub, the event lets a second launch ask it to come forward.
     private static Mutex? _instance;
     private static EventWaitHandle? _show;
 
@@ -22,7 +22,7 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        // One Kivo per person. A second start brings the first forward.
+        // One MynaHub per person. A second start brings the first forward.
         _instance = new Mutex(true, InstanceName, out var first);
         _show = new EventWaitHandle(false, EventResetMode.AutoReset, ShowName);
         if (!first)
@@ -59,7 +59,7 @@ public partial class App : Application
             while (_show!.WaitOne())
                 _window!.DispatcherQueue.TryEnqueue(_window.ShowForUser);
         })
-        { IsBackground = true, Name = "Kivo second-start watcher" };
+        { IsBackground = true, Name = "MynaHub second-start watcher" };
         thread.Start();
     }
 }

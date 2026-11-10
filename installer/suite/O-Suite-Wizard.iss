@@ -110,8 +110,8 @@ begin
   Dir := Expand('{localappdata}\Programs\O-Draft');
   if DirExists(Dir) then
     DelTree(Dir, True, True, True);
-  // The .osp association is shared: Falcon adds its own "Open in Falcon" verb to the same ProgId. While Falcon stays
-  // installed only Tren's verb goes; the file type and the other app's verb are left alone.
+  // The .osp association is shared: MynaOps adds its own "Open in MynaOps" verb to the same ProgId. While MynaOps stays
+  // installed only MynaCAD's verb goes; the file type and the other app's verb are left alone.
   if IsCoreOpInstalled then
   begin
     if RegKeyExists(HKCU, 'Software\Classes\OSAS.Project\shell\open') then
@@ -126,18 +126,19 @@ begin
   end;
   DeleteFile(Expand('{userprograms}\O-Draft.lnk'));
   DeleteFile(Expand('{userprograms}\Tren.lnk'));
+  DeleteFile(Expand('{userprograms}\MynaCAD.lnk'));
 end;
 
 { Names of the apps chosen for removal, one per line, for the confirmation. }
 function RemoveSelectionText: String;
 begin
   Result := '';
-  if RemoveStudio then Result := Result + '  - Kivo' + #13#10;
-  if RemoveCoreOp then Result := Result + '  - Falcon' + #13#10;
-  if RemoveDraft then Result := Result + '  - Tren' + #13#10;
+  if RemoveStudio then Result := Result + '  - MynaHub' + #13#10;
+  if RemoveCoreOp then Result := Result + '  - MynaOps' + #13#10;
+  if RemoveDraft then Result := Result + '  - MynaCAD' + #13#10;
 end;
 
-{ Falcon and Tren use Kivo (the suite hub: company sign-in, approvals and revisions; it starts Myna, which hosts the assistant and the database service). Removing it while one of them stays installed
+{ MynaOps and MynaCAD use MynaHub (the suite hub: company sign-in, approvals and revisions; it starts Myna, which hosts the assistant and the database service). Removing it while one of them stays installed
   needs a decision. Returns False to stay on the page. Silent setups keep the other apps and log it. }
 function ResolveStudioDependents: Boolean;
 var
@@ -148,17 +149,17 @@ begin
   if not RemoveStudio then
     Exit;
   Stay := '';
-  if IsCoreOpInstalled and (not RemoveCoreOp) then Stay := Stay + '  - Falcon' + #13#10;
-  if IsDraftInstalled and (not RemoveDraft) then Stay := Stay + '  - Tren' + #13#10;
+  if IsCoreOpInstalled and (not RemoveCoreOp) then Stay := Stay + '  - MynaOps' + #13#10;
+  if IsDraftInstalled and (not RemoveDraft) then Stay := Stay + '  - MynaCAD' + #13#10;
   if Stay = '' then
     Exit;
   if IsSilentSetup then
   begin
-    Log('Kivo is removed while these stay installed: ' + Stay);
+    Log('MynaHub is removed while these stay installed: ' + Stay);
     Exit;
   end;
-  Answer := MsgBox('These applications use Kivo (company sign-in, and Myna, which hosts the assistant and the database service) and are still installed:' + #13#10#13#10 + Stay + #13#10 +
-    'Yes: remove them as well.' + #13#10 + 'No: keep them (they cannot sign in to a company or reach the shared database until Kivo is installed again).' + #13#10 +
+  Answer := MsgBox('These applications use MynaHub (company sign-in, and Myna, which hosts the assistant and the database service) and are still installed:' + #13#10#13#10 + Stay + #13#10 +
+    'Yes: remove them as well.' + #13#10 + 'No: keep them (they cannot sign in to a company or reach the shared database until MynaHub is installed again).' + #13#10 +
     'Cancel: go back and change the selection.', mbConfirmation, MB_YESNOCANCEL);
   if Answer = IDCANCEL then
   begin
@@ -195,41 +196,41 @@ begin
   begin
     if FileExistsExpanded('{localappdata}\Programs\O-Studio\Uninstall.exe') then
     begin
-      if not ExecAndWait(Expand('{localappdata}\Programs\O-Studio\Uninstall.exe'), '/S', 'Removing Kivo…') then
+      if not ExecAndWait(Expand('{localappdata}\Programs\O-Studio\Uninstall.exe'), '/S', 'Removing MynaHub…') then
       begin
         Ok := False;
-        Lines := Lines + '- Kivo: uninstaller reported an error.' + #13#10;
+        Lines := Lines + '- MynaHub: uninstaller reported an error.' + #13#10;
       end
       else
-        Lines := Lines + '- Kivo removed.' + #13#10;
+        Lines := Lines + '- MynaHub removed.' + #13#10;
     end
     else
-      Lines := Lines + '- Kivo was not installed (skipped).' + #13#10;
-    SetProgress(40, 'Kivo step finished.');
+      Lines := Lines + '- MynaHub was not installed (skipped).' + #13#10;
+    SetProgress(40, 'MynaHub step finished.');
   end;
 
   if RemoveCoreOp then
   begin
     if FileExistsExpanded('{localappdata}\Programs\O-CoreOp\unins000.exe') then
     begin
-      if not ExecAndWait(Expand('{localappdata}\Programs\O-CoreOp\unins000.exe'), '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', 'Removing Falcon…') then
+      if not ExecAndWait(Expand('{localappdata}\Programs\O-CoreOp\unins000.exe'), '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', 'Removing MynaOps…') then
       begin
         Ok := False;
-        Lines := Lines + '- Falcon: uninstaller reported an error.' + #13#10;
+        Lines := Lines + '- MynaOps: uninstaller reported an error.' + #13#10;
       end
       else
-        Lines := Lines + '- Falcon removed.' + #13#10;
+        Lines := Lines + '- MynaOps removed.' + #13#10;
     end
     else
-      Lines := Lines + '- Falcon was not installed (skipped).' + #13#10;
-    SetProgress(70, 'Falcon step finished.');
+      Lines := Lines + '- MynaOps was not installed (skipped).' + #13#10;
+    SetProgress(70, 'MynaOps step finished.');
   end;
 
   if RemoveDraft then
   begin
-    SetProgress(80, 'Removing Tren…');
+    SetProgress(80, 'Removing MynaCAD…');
     RemoveDraftLayout;
-    Lines := Lines + '- Tren removed.' + #13#10;
+    Lines := Lines + '- MynaCAD removed.' + #13#10;
   end;
 
   Lines := Lines + #13#10 +
@@ -304,9 +305,9 @@ begin
   RemoveList.Top := 0;
   RemoveList.Width := RemoveSelectPage.SurfaceWidth;
   RemoveList.Height := ScaleY(140);
-  RemoveList.AddCheckBox('Kivo (office and suite hub)', '', 0, IsStudioInstalled, True, True, False, nil);
-  RemoveList.AddCheckBox('Falcon (quantities and billing)', '', 0, IsCoreOpInstalled, True, True, False, nil);
-  RemoveList.AddCheckBox('Tren (drafting and take-off)', '', 0, IsDraftInstalled, True, True, False, nil);
+  RemoveList.AddCheckBox('MynaHub (office and suite hub)', '', 0, IsStudioInstalled, True, True, False, nil);
+  RemoveList.AddCheckBox('MynaOps (quantities and billing)', '', 0, IsCoreOpInstalled, True, True, False, nil);
+  RemoveList.AddCheckBox('MynaCAD (drafting and take-off)', '', 0, IsDraftInstalled, True, True, False, nil);
 
   RemoveConfirmPage := CreateCustomPage(RemoveSelectPage.ID, 'Confirm removal', 'Review your choices before anything is deleted.');
   Lbl := TNewStaticText.Create(RemoveConfirmPage);
@@ -318,7 +319,7 @@ begin
   Lbl.Caption :=
     'The selected applications will be uninstalled. ' +
     'The Olmo assistant model, company files, and project files are not removed. ' +
-    'If you remove Kivo while Falcon or Tren stay installed, those apps cannot sign in to a company or reach the shared database until you install Kivo again.';
+    'If you remove MynaHub while MynaOps or MynaCAD stay installed, those apps cannot sign in to a company or reach the shared database until you install MynaHub again.';
 
   RemoveSummaryPage := CreateCustomPage(RemoveConfirmPage.ID, 'Removal complete', 'Summary of what was removed.');
   RemoveSummaryMemo := TNewStaticText.Create(RemoveSummaryPage);
@@ -441,16 +442,16 @@ begin
   if (CurPageID = wpFinished) and SuiteModeInstall then
   begin
     Memo := 'Installation finished.' + #13#10#13#10;
-    if WizardIsComponentSelected('studio') then Memo := Memo + '- Kivo' + #13#10;
-    if WizardIsComponentSelected('coreop') then Memo := Memo + '- Falcon' + #13#10;
-    if WizardIsComponentSelected('draft') then Memo := Memo + '- Tren' + #13#10;
+    if WizardIsComponentSelected('studio') then Memo := Memo + '- MynaHub' + #13#10;
+    if WizardIsComponentSelected('coreop') then Memo := Memo + '- MynaOps' + #13#10;
+    if WizardIsComponentSelected('draft') then Memo := Memo + '- MynaCAD' + #13#10;
 #ifdef HasForm
-    if WizardIsComponentSelected('form') then Memo := Memo + '- Finch' + #13#10;
+    if WizardIsComponentSelected('form') then Memo := Memo + '- MynaMod' + #13#10;
 #endif
 #ifdef HasDynamo
     if WizardIsComponentSelected('dynamo') then Memo := Memo + '- O-Dynamo' + #13#10;
 #endif
-    Memo := Memo + #13#10 + 'Open Kivo to sign in to your company, then start Falcon and Tren from it. Myna runs in the tray and hosts the assistant and the database service.';
+    Memo := Memo + #13#10 + 'Open MynaHub to sign in to your company, then start MynaOps and MynaCAD from it. Myna runs in the tray and hosts the assistant and the database service.';
     WizardForm.FinishedLabel.Caption := Memo;
   end;
 end;
@@ -508,8 +509,8 @@ begin
   if UninstallSilent then
     Exit;
   if MsgBox(
-    'This removes every suite application that was installed through Kivo Suite Setup (respecting the components originally chosen).' + #13#10#13#10 +
-    'To remove only some applications, run Kivo-Suite-Setup.exe again and choose "Remove applications".' + #13#10#13#10 +
+    'This removes every suite application that was installed through Myna Setup (respecting the components originally chosen).' + #13#10#13#10 +
+    'To remove only some applications, run Myna-Setup.exe again and choose "Remove applications".' + #13#10#13#10 +
     'Company files, projects, and the assistant model are not deleted.' + #13#10#13#10 +
     'Continue?',
     mbConfirmation, MB_YESNO) = IDNO then

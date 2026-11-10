@@ -6,7 +6,7 @@ using Microsoft.UI.Xaml.Controls;
 namespace Adms.Desktop;
 
 /// <summary>
-/// "Import from Falcon (CSV)": read a Falcon export, show what it would do, then import it as a draft estimate version and a draft
+/// "Import from MynaOps (CSV)": read a MynaOps export, show what it would do, then import it as a draft estimate version and a draft
 /// running bill. The rules (strict checks, idempotency, never approving) are in office-core <c>falcon_import</c>; contract:
 /// <c>docs/contracts/falcon-csv.md</c>. This file is only the dialogs.
 /// </summary>
@@ -15,8 +15,8 @@ internal static class FalconImport
     /// <summary>The button for a page's command row.</summary>
     public static Button Button(AppShell shell)
     {
-        var button = new Button { Content = "Import from Falcon (CSV)", MinHeight = 32 };
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, "Import from Falcon (CSV)");
+        var button = new Button { Content = "Import from MynaOps (CSV)", MinHeight = 32 };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, "Import from MynaOps (CSV)");
         button.Click += async (_, _) =>
         {
             try { await Start(shell); }
@@ -38,11 +38,11 @@ internal static class FalconImport
         while (true)
         {
             JsonElement preview = default;
-            if (!await shell.Run("Reading the Falcon file…", () => preview = shell.Call("falcon_csv_preview", new { path, project_id = projectId }).Clone()))
+            if (!await shell.Run("Reading the MynaOps file…", () => preview = shell.Call("falcon_csv_preview", new { path, project_id = projectId }).Clone()))
                 return;
             if (Flag(preview, "refused"))
             {
-                await Say(shell, "This file cannot be imported", Refusal(preview) + "\n\nNothing was imported. Fix the export in Falcon and try again.");
+                await Say(shell, "This file cannot be imported", Refusal(preview) + "\n\nNothing was imported. Fix the export in MynaOps and try again.");
                 return;
             }
 
@@ -52,7 +52,7 @@ internal static class FalconImport
             ComboBox? projects = null;
             if (Flag(preview, "needs_project"))
             {
-                panel.Children.Add(new TextBlock { Text = "Which Kivo project is this?", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+                panel.Children.Add(new TextBlock { Text = "Which MynaHub project is this?", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
                 projects = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = "Choose a project" };
                 JsonElement list = default;
                 await shell.Run("Loading projects…", () => list = shell.Call("project_list", new { client_id = (long?)null, include_archived = false }).Clone());
@@ -72,13 +72,13 @@ internal static class FalconImport
             {
                 panel.Children.Add(new TextBlock
                 {
-                    Text = "These Falcon item codes are not mapped to a Kivo item yet. They import as they are and are listed as unmapped; nothing is guessed. Type the Kivo item for any you know and choose Save mapping.",
+                    Text = "These MynaOps item codes are not mapped to a MynaHub item yet. They import as they are and are listed as unmapped; nothing is guessed. Type the MynaHub item for any you know and choose Save mapping.",
                     TextWrapping = TextWrapping.Wrap,
                 });
                 foreach (var code in unmapped.EnumerateArray())
                 {
                     var name = code.GetString() ?? "";
-                    var box = new TextBox { Header = name, PlaceholderText = "Kivo price-list item" };
+                    var box = new TextBox { Header = name, PlaceholderText = "MynaHub price-list item" };
                     boxes.Add((name, box));
                     panel.Children.Add(box);
                 }
@@ -86,7 +86,7 @@ internal static class FalconImport
 
             var dialog = new ContentDialog
             {
-                Title = "Import from Falcon",
+                Title = "Import from MynaOps",
                 Content = new ScrollViewer { Content = panel, MaxHeight = 520 },
                 PrimaryButtonText = Flag(preview, "noop") ? "" : "Import as drafts",
                 SecondaryButtonText = boxes.Count > 0 ? "Save mapping" : "",
@@ -110,7 +110,7 @@ internal static class FalconImport
             if (choice != ContentDialogResult.Primary) return;
             if (Flag(preview, "needs_project") && projectId == null)
             {
-                shell.Problem("Choose the Kivo project first.");
+                shell.Problem("Choose the MynaHub project first.");
                 continue;
             }
 
@@ -157,17 +157,17 @@ internal static class FalconImport
         var estimate = p.GetProperty("estimate");
         var bill = p.GetProperty("bill");
         var text = new StringBuilder();
-        text.AppendLine($"{Kit.Str(p, "project_name")} · drawing revision {Number(p, "drawing_revision")} · exported {Kit.Str(p, "exported")} by Falcon {Kit.Str(p, "falcon_version")}");
+        text.AppendLine($"{Kit.Str(p, "project_name")} · drawing revision {Number(p, "drawing_revision")} · exported {Kit.Str(p, "exported")} by MynaOps {Kit.Str(p, "falcon_version")}");
         text.AppendLine($"File SHA-256: {Kit.Str(p, "file_sha256")}");
         text.AppendLine();
         text.AppendLine($"Rows: {Number(rows, "estimate")} estimate, {Number(rows, "measured")} measured, {Number(rows, "takeoff")} take-off.");
-        var current = p.TryGetProperty("current_estimate_total", out var cur) && cur.ValueKind == JsonValueKind.Number ? $"; Kivo's current estimate v{Number(p, "current_estimate_version")} ({Kit.Str(p, "current_estimate_status")}) is {cur.GetDouble():N2}" : "";
+        var current = p.TryGetProperty("current_estimate_total", out var cur) && cur.ValueKind == JsonValueKind.Number ? $"; MynaHub's current estimate v{Number(p, "current_estimate_version")} ({Kit.Str(p, "current_estimate_status")}) is {cur.GetDouble():N2}" : "";
         text.AppendLine($"Estimate total in the file: {p.GetProperty("file_estimate_total").GetDouble():N2} {Kit.Str(p, "currency")}{current}.");
         text.AppendLine();
         text.AppendLine("Estimate: " + Describe(estimate, "estimate"));
         text.AppendLine("Running bill: " + Describe(bill, "bill"));
         if (Flag(p, "noop"))
-            text.AppendLine().AppendLine(Flag(p, "already_imported") ? "This file was imported before. Importing it again changes nothing." : "Everything in this file is already in Kivo. Importing it changes nothing.");
+            text.AppendLine().AppendLine(Flag(p, "already_imported") ? "This file was imported before. Importing it again changes nothing." : "Everything in this file is already in MynaHub. Importing it changes nothing.");
         if (estimate.TryGetProperty("differing", out var diffs) && diffs.ValueKind == JsonValueKind.Array && diffs.GetArrayLength() > 0)
         {
             text.AppendLine().AppendLine("Lines that differ from the current estimate:");
@@ -195,7 +195,7 @@ internal static class FalconImport
             "new_version" => $"a new draft version ({tail})",
             "new_bill" => $"a new draft bill ({tail})",
             "update_draft" => $"update the open draft ({tail})",
-            "unchanged" => $"already in Kivo ({tail})",
+            "unchanged" => $"already in MynaHub ({tail})",
             _ => $"none in this file",
         };
     }
@@ -205,7 +205,7 @@ internal static class FalconImport
         if (Number(r, "refused") > 0) return Refusal(r);
         var text = new StringBuilder();
         text.AppendLine($"Added {Number(r, "added")}, changed {Number(r, "changed")}, unchanged {Number(r, "unchanged")}, refused {Number(r, "refused")}.");
-        if (Flag(r, "noop")) text.AppendLine("Nothing was written: this file is already in Kivo.");
+        if (Flag(r, "noop")) text.AppendLine("Nothing was written: this file is already in MynaHub.");
         if (Long(r, "estimate_version") is { } ev && Kit.Str(r, "estimate_action") is "new_version" or "update_draft")
             text.AppendLine($"Estimate version {ev} is a draft.");
         if (Long(r, "bill_version") is { } bv && Kit.Str(r, "bill_action") is "new_bill" or "update_draft")

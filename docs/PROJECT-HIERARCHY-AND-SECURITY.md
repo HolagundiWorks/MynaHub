@@ -1,13 +1,13 @@
 # Project hierarchy and security (enterprise model)
 
-**Canonical copy:** Kivo `docs/PROJECT-HIERARCHY-AND-SECURITY.md`. Keep identical copies in Falcon, Tren, and O-UI when this changes. Updated 2026-10-31.
+**Canonical copy:** MynaHub `docs/PROJECT-HIERARCHY-AND-SECURITY.md`. Keep identical copies in MynaOps, MynaCAD, and O-UI when this changes. Updated 2026-10-31.
 
-This document ties together **where project data lives**, **who may change it**, and **which controls enforce that** in the Kivo suite.
+This document ties together **where project data lives**, **who may change it**, and **which controls enforce that** in the MynaHub suite.
 
 ## 1. Hierarchy (systems of record)
 
 ```
-Kivo (hub)
+MynaHub (hub)
 ├── Company file (.osas)          ← practice identity, RBAC, audit, billing records
 │   ├── Clients, projects, brief, stages, workspace paths
 │   ├── project_documents         ← cross-app mirrors & approval drafts (not full BOQ)
@@ -15,12 +15,12 @@ Kivo (hub)
 │
 └── Per project
     └── Project file (.osp)       ← drawing, take-off, full estimate / BOQ / RA (SQLite)
-        ├── drawing, drawing_state     (Tren writes)
-        ├── takeoff_*                  (Tren writes)
-        ├── project_doc                (Falcon writes — authoritative quantities & money)
+        ├── drawing, drawing_state     (MynaCAD writes)
+        ├── takeoff_*                  (MynaCAD writes)
+        ├── project_doc                (MynaOps writes — authoritative quantities & money)
         └── meta.revision              (conflict detection)
 
-Neon (optional)                   ← Kivo only: .osp snapshots + Postgres revision index
+Neon (optional)                   ← MynaHub only: .osp snapshots + Postgres revision index
 ```
 
 **Rules**
@@ -38,17 +38,17 @@ Neon (optional)                   ← Kivo only: .osp snapshots + Postgres revis
 | **C1 – Public firm** | Company name on letterhead | Company profile | All signed-in roles |
 | **C2 – Project commercial** | Estimate totals, RA nets, fee proposals | `.osp` + `aqc.project` summary | View+; write CoreOp / mirror on save |
 | **C3 – Financial books** | Invoices, journals, bank | Company file | Finance, Accounts, Owner |
-| **C4 – Credentials** | Password hashes, Neon env, suite tickets | Company file / `%LOCALAPPDATA%\O-Studio\` | Owner; **never** in Tren or Falcon |
-| **C5 – Drawing IP** | DWG/DXF bytes | `.osp` | View via apps; sync via Kivo only |
+| **C4 – Credentials** | Password hashes, Neon env, suite tickets | Company file / `%LOCALAPPDATA%\O-Studio\` | Owner; **never** in MynaCAD or MynaOps |
+| **C5 – Drawing IP** | DWG/DXF bytes | `.osp` | View via apps; sync via MynaHub only |
 
 ## 3. Trust boundaries
 
 | Boundary | Mechanism |
 |----------|-----------|
 | Desktop apps ↔ company file | `office.dll` / `office-ffi`: session, role, permission on every mutating call |
-| Kivo → sibling apps | One-time **suite ticket** (120 s, single use, SHA-256 stored); `OSTUDIO_COMPANY` + `OSTUDIO_TICKET`; audited |
-| Falcon ↔ Tren | Same `.osp`, `meta.revision`; no network |
-| Desktop ↔ Neon | **Kivo only**; apps hold no cloud keys |
+| MynaHub → sibling apps | One-time **suite ticket** (120 s, single use, SHA-256 stored); `OSTUDIO_COMPANY` + `OSTUDIO_TICKET`; audited |
+| MynaOps ↔ MynaCAD | Same `.osp`, `meta.revision`; no network |
+| Desktop ↔ Neon | **MynaHub only**; apps hold no cloud keys |
 | Assistant (Olmo) | Myna hosts; read-only `agent_*` tools; bank/UPI omitted from `company.details` |
 
 ## 4. Role-based access (company file)
@@ -63,16 +63,16 @@ Roles are defined in `office-core` (`auth.rs`). Effective permissions:
 | Document editor | ✓ | ✓ | — | — | — | — |
 | Auditor | ✓ | — | — | ✓ | — | — (audit log only) |
 
-**Suite-linked Falcon:** clients/projects/profile are **read-only**; CoreOp may **Edit** `doc_put` for `aqc.project` summaries and estimate/RA **drafts** only. Create client/project is refused (`CompanyOfficePolicy`).
+**Suite-linked MynaOps:** clients/projects/profile are **read-only**; CoreOp may **Edit** `doc_put` for `aqc.project` summaries and estimate/RA **drafts** only. Create client/project is refused (`CompanyOfficePolicy`).
 
 ## 5. Separation of duties (approvals)
 
 | Action | Who | Permission | Document kind |
 |--------|-----|------------|---------------|
-| Mirror BOQ / estimate / RA **abstracts** | Falcon | Edit | `aqc.project` (summary JSON only) |
-| Share estimate / RA **draft** | Falcon | Edit | `aqc.estimate.draft`, `aqc.ra.draft.*` — envelope **`state: draft` only** |
-| Mark pending / **approve & lock** / supersede | Kivo | Issue | `studio_draft_*` API — not raw `doc_put` |
-| Change firm profile / users | Kivo | Manage settings / users + re-auth for user admin |
+| Mirror BOQ / estimate / RA **abstracts** | MynaOps | Edit | `aqc.project` (summary JSON only) |
+| Share estimate / RA **draft** | MynaOps | Edit | `aqc.estimate.draft`, `aqc.ra.draft.*` — envelope **`state: draft` only** |
+| Mark pending / **approve & lock** / supersede | MynaHub | Issue | `studio_draft_*` API — not raw `doc_put` |
+| Change firm profile / users | MynaHub | Manage settings / users + re-auth for user admin |
 
 Engine enforcement (2026-10-31):
 
@@ -84,12 +84,12 @@ Engine enforcement (2026-10-31):
 
 | Control | Purpose |
 |---------|---------|
-| Optimistic revision (`expected_revision`) | Prevents silent overwrite across Kivo ↔ Falcon |
+| Optimistic revision (`expected_revision`) | Prevents silent overwrite across MynaHub ↔ MynaOps |
 | Document checksum (SHA-256) | `ArtifactRef` integrity; history keeps last 10 revisions |
 | Append-only `audit_log` | Tamper-evident practice events |
 | SQLite WAL + immediate transactions | Single writer ordering; 5 s busy timeout |
 | `watch` / `data_version` | Live refresh without granting Edit on poll |
-| `.osp` `meta.revision` | Tren / Falcon co-open detection |
+| `.osp` `meta.revision` | MynaCAD / MynaOps co-open detection |
 
 ## 7. Authentication and session
 
@@ -106,7 +106,7 @@ Engine enforcement (2026-10-31):
 
 | Event | When |
 |-------|------|
-| `project_created` / `project_updated` | Kivo project save |
+| `project_created` / `project_updated` | MynaHub project save |
 | `document_saved` | `doc_put` (kind + revision in detail) |
 | `studio_draft_approved` | Estimate/RA locked in Approvals |
 | `company_profile_saved` | Firm settings |
@@ -127,12 +127,12 @@ Auditors use **View audit** (`audit_list` / Office → Security).
 
 | Data | Authoritative write | Read |
 |------|---------------------|------|
-| Firm, users, clients, project registry | Kivo | All apps (context) |
-| Drawing & take-off | Tren → `.osp` | Falcon import |
-| Quantities, estimate, RA (full) | Falcon → `.osp` `project_doc` | Falcon |
-| Abstracts for Studio dashboard / fees | Falcon → company `aqc.project` | Kivo |
-| Approval drafts | Falcon share → company drafts | Kivo Approvals |
-| Practice invoices & tax | Kivo | Kivo |
+| Firm, users, clients, project registry | MynaHub | All apps (context) |
+| Drawing & take-off | MynaCAD → `.osp` | MynaOps import |
+| Quantities, estimate, RA (full) | MynaOps → `.osp` `project_doc` | MynaOps |
+| Abstracts for Studio dashboard / fees | MynaOps → company `aqc.project` | MynaHub |
+| Approval drafts | MynaOps share → company drafts | MynaHub Approvals |
+| Practice invoices & tax | MynaHub | MynaHub |
 
 ## 11. Related documents
 
@@ -141,6 +141,6 @@ Auditors use **View audit** (`audit_list` / Office → Security).
 | Suite names & links | `docs/SUITE.md` |
 | Company file concurrency | `docs/shared-company-file.md` |
 | ProjectRef / ArtifactRef | `docs/contracts/refs.md` |
-| Draft approval ABI | `docs/contracts/approvals.md`, Falcon `docs/STUDIO-DRAFT-SHARE.md` |
-| `.osp` format | Kivo `docs/ODP-PROJECT-FILE-AND-SYNC.md`, Falcon `docs/PROJECT-FILE.md` |
+| Draft approval ABI | `docs/contracts/approvals.md`, MynaOps `docs/STUDIO-DRAFT-SHARE.md` |
+| `.osp` format | MynaHub `docs/ODP-PROJECT-FILE-AND-SYNC.md`, MynaOps `docs/PROJECT-FILE.md` |
 | Office ABI | `docs/office-abi.md` |

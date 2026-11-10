@@ -2,7 +2,7 @@ using Osas.Core;
 
 namespace Adms.Cloud;
 
-/// <summary>Neon credentials for Kivo only (see docs/CLOUD-NEON.md). Never pass to Tren or Falcon.</summary>
+/// <summary>Neon credentials for MynaHub only (see docs/CLOUD-NEON.md). Never pass to MynaCAD or MynaOps.</summary>
 public sealed class NeonSettings
 {
     public string DatabaseUrl { get; init; } = "";

@@ -4,7 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:oui="using:O.Ui.Controls"
-    Title="Kivo">
+    Title="MynaHub">
     <Grid x:Name="Root" Language="en-IN" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Key="Escape" Invoked="DismissNotice"/>
@@ -124,8 +124,8 @@
             <ScrollViewer x:Name="WelcomePanel" Padding="32">
                 <Border Style="{StaticResource SetupCardStyle}" MaxWidth="560">
                     <StackPanel Spacing="12">
-                        <Image x:Name="WelcomeLogo" MaxWidth="460" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="Kivo"/>
-                        <TextBlock Text="Open your company file and sign in here. Kivo holds the company details, users and the admin password for the suite, and signs Tren and Falcon in when they ask." TextWrapping="WrapWholeWords" Style="{ThemeResource BodyStyle}"/>
+                        <Image x:Name="WelcomeLogo" MaxWidth="460" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="MynaHub"/>
+                        <TextBlock Text="Open your company file and sign in here. MynaHub holds the company details, users and the admin password for the suite, and signs MynaCAD and MynaOps in when they ask." TextWrapping="WrapWholeWords" Style="{ThemeResource BodyStyle}"/>
                         <TextBlock Text="Developed by Human Centric Works" Style="{ThemeResource CaptionStyle}"/>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button x:Name="OpenCompanyButton" Content="Open a company…" Click="OpenCompany" Style="{StaticResource AccentButtonStyle}"/>
@@ -146,7 +146,7 @@
             <ScrollViewer x:Name="LoginPanel" Visibility="Collapsed" Padding="32">
                 <Border Style="{StaticResource SetupCardStyle}">
                     <StackPanel Spacing="12">
-                        <Image x:Name="LoginLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="Kivo"/>
+                        <Image x:Name="LoginLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="MynaHub"/>
                         <TextBlock x:Name="LoginHeading" Style="{ThemeResource PageTitleStyle}" TextWrapping="WrapWholeWords"/>
                         <TextBox x:Name="LoginUser" Header="User name" KeyDown="LoginKeyDown"/>
                         <PasswordBox x:Name="LoginPassword" Header="Password" KeyDown="LoginKeyDown"/>
@@ -162,7 +162,7 @@
             <ScrollViewer x:Name="SetupPanel" Visibility="Collapsed" Padding="32">
                 <Border Style="{StaticResource SetupCardStyle}">
                     <StackPanel Spacing="12">
-                        <Image x:Name="SetupLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="Kivo"/>
+                        <Image x:Name="SetupLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="MynaHub"/>
                         <TextBlock x:Name="SetupHeading" Style="{ThemeResource PageTitleStyle}" Text="Set up the admin password" TextWrapping="WrapWholeWords"/>
                         <TextBlock Text="This company is opened with the admin password. The recovery code is shown once." TextWrapping="WrapWholeWords" Style="{ThemeResource BodyStyle}"/>
                         <TextBox x:Name="SetupUser" Header="Username" Visibility="Collapsed"/>
@@ -179,7 +179,7 @@
             <ScrollViewer x:Name="RecoverPanel" Visibility="Collapsed" Padding="32">
                 <Border Style="{StaticResource SetupCardStyle}">
                     <StackPanel Spacing="12">
-                        <Image x:Name="RecoverLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="Kivo"/>
+                        <Image x:Name="RecoverLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="MynaHub"/>
                         <TextBlock Style="{ThemeResource PageTitleStyle}" Text="Reset password" TextWrapping="WrapWholeWords"/>
                         <TextBlock Text="Enter the username and the recovery code. The old recovery code stops working. A new one is shown once." TextWrapping="WrapWholeWords" Style="{ThemeResource BodyStyle}"/>
                         <TextBox x:Name="RecoverUser" Header="Username"/>
@@ -197,7 +197,7 @@
             <ScrollViewer x:Name="UnlockPanel" Visibility="Collapsed" Padding="32">
                 <Border Style="{StaticResource SetupCardStyle}">
                     <StackPanel Spacing="12">
-                        <Image x:Name="UnlockLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="Kivo"/>
+                        <Image x:Name="UnlockLogo" Width="56" Height="56" HorizontalAlignment="Left" Stretch="Uniform" AutomationProperties.Name="MynaHub"/>
                         <TextBlock x:Name="UnlockHeading" Style="{ThemeResource PageTitleStyle}" Text="Session locked" TextWrapping="WrapWholeWords"/>
                         <PasswordBox x:Name="UnlockPassword" Header="Password" KeyDown="UnlockKeyDown"/>
                         <StackPanel Orientation="Horizontal" Spacing="8">

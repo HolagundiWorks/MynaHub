@@ -6,7 +6,7 @@ A proposal is what the practice offers to charge a client. Pick how the fee is w
 - **A rate per unit of area:** the built-up area and the rate for each unit.
 - **A lump sum:** the fee itself.
 
-When the project is shared with Falcon through the company file, the proposal can show the latest Falcon estimate total and **Use Falcon estimate as cost** (read-only from CoreOp's saved estimate). Running-account (RA) bill totals from Falcon appear beside the same project for fee and invoice screens.
+When the project is shared with MynaOps through the company file, the proposal can show the latest MynaOps estimate total and **Use MynaOps estimate as cost** (read-only from CoreOp's saved estimate). Running-account (RA) bill totals from MynaOps appear beside the same project for fee and invoice screens.
 
 GST is added on top and the total is shown on the list. A proposal starts as a draft. **Mark sent** when it goes to the client, then **Client decided** and choose Accepted or Declined. Once a client has decided, the proposal cannot change; make a new one. A sent proposal shows "(lapsed)" after its valid-until date. A proposal does not post to the books.
 

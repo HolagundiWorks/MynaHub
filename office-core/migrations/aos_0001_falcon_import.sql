@@ -1,5 +1,5 @@
--- Falcon CSV import (track "aos"). Estimate and bill versions live in suite_approvals; these tables hold what the import needs
--- around them: which Falcon project is which Kivo project, the Falcon item code mapping, the imported rows (the idempotency
+-- MynaOps CSV import (track "aos"). Estimate and bill versions live in suite_approvals; these tables hold what the import needs
+-- around them: which MynaOps project is which MynaHub project, the MynaOps item code mapping, the imported rows (the idempotency
 -- ledger and the priced take-off basis) and the import log.
 CREATE TABLE aos_falcon_link (
   falcon_project TEXT PRIMARY KEY,

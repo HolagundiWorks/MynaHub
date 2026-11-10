@@ -17,7 +17,7 @@ An app that follows this contract can say "this estimate was made from revision 
 
 | Field | Meaning |
 |---|---|
-| `company_uuid` | The id of the Kivo company file the project lives in (`company_file.company_uuid`). |
+| `company_uuid` | The id of the MynaHub company file the project lives in (`company_file.company_uuid`). |
 | `project_id` | The project's id in that file. |
 
 **Finding a project again.** A reader matches when `company_uuid` equals this file's and `project_id` exists here. If that fails, the project is not here and the reader says so. It does not guess from the project's name.
@@ -58,9 +58,9 @@ A reader does **not** check that the artifact exists or that the checksum is tru
 
 | App | Produces | Reads |
 |---|---|---|
-| Kivo | `ProjectRef` for any project; `ArtifactRef` for a fee proposal or document it issues | `ProjectRef` and `ArtifactRef` from other apps, to attach an estimate to a project |
-| Falcon | `ArtifactRef` for a BOQ, estimate or rate schedule, naming the drawing revision it used in `made_from` | `ProjectRef` to open or create the project it belongs to |
-| Tren | `ArtifactRef` for a drawing, and a `ProjectRef` in the bridge file | `ProjectRef`, to say which project a drawing is for |
+| MynaHub | `ProjectRef` for any project; `ArtifactRef` for a fee proposal or document it issues | `ProjectRef` and `ArtifactRef` from other apps, to attach an estimate to a project |
+| MynaOps | `ArtifactRef` for a BOQ, estimate or rate schedule, naming the drawing revision it used in `made_from` | `ProjectRef` to open or create the project it belongs to |
+| MynaCAD | `ArtifactRef` for a drawing, and a `ProjectRef` in the bridge file | `ProjectRef`, to say which project a drawing is for |
 
 ## Operations (office interface, `docs/office-abi.md`)
 
@@ -78,10 +78,10 @@ The **company file** (`company_uuid` + `project_id`) is the suite system of reco
 
 | Operation | Needs | Does |
 |---|---|---|
-| `project_estimate_summary` `{ project_id }` | View | Reads the Falcon `aqc.project` document's `last_estimate` (grand total in paise/rupees, rate book, optional `artifact_ref` and `project_ref`) |
+| `project_estimate_summary` `{ project_id }` | View | Reads the MynaOps `aqc.project` document's `last_estimate` (grand total in paise/rupees, rate book, optional `artifact_ref` and `project_ref`) |
 
 ## What is not done yet
-- Tren interactive project picker UI for `companyfile` (engine already stamps `project_ref` on take-off when linked).
-- Bridge file (`hcw-aqc-bridge`): Falcon parses `source.project_ref` when present (Import captions Mine/Other/missing); keep ensuring Draft export always writes it when company-linked. The `.osp` take-off path carries the ref when linked.
-- Fee proposals can use the Falcon estimate as cost; Studio also surfaces RA (`project_ra_summary`) beside fee/invoices. Fee invoices do not yet store an `ArtifactRef` column of their own.
+- MynaCAD interactive project picker UI for `companyfile` (engine already stamps `project_ref` on take-off when linked).
+- Bridge file (`hcw-aqc-bridge`): MynaOps parses `source.project_ref` when present (Import captions Mine/Other/missing); keep ensuring Draft export always writes it when company-linked. The `.osp` take-off path carries the ref when linked.
+- Fee proposals can use the MynaOps estimate as cost; Studio also surfaces RA (`project_ra_summary`) beside fee/invoices. Fee invoices do not yet store an `ArtifactRef` column of their own.
 - End-to-end click-through of calculate → company-file save → fee proposal → invoice on a real project (Windows GUI / human).

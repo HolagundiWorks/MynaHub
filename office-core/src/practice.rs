@@ -31,7 +31,7 @@ pub struct ProposalInput {
     pub issued_date: String,
     pub valid_until: String,
     pub notes: String,
-    /// Suite ArtifactRef JSON for the Falcon estimate this fee was based on (empty when not linked).
+    /// Suite ArtifactRef JSON for the MynaOps estimate this fee was based on (empty when not linked).
     #[serde(default)]
     pub estimate_artifact_json: String,
     /// Grand total of that estimate in paise at the time it was linked (0 when not linked).

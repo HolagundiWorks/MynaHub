@@ -34,7 +34,7 @@ export async function verifyObjectStorage(client: S3Client): Promise<void> {
   console.log(`[object-storage] ok — bucket "${bucket}" read/write`);
 }
 
-/** Key for a synced `.osp` snapshot at a revision (used by Kivo push). */
+/** Key for a synced `.osp` snapshot at a revision (used by MynaHub push). */
 export function ospSnapshotKey(projectId: string, revision: number): string {
   return `projects/${projectId}/r${revision}.osp`;
 }

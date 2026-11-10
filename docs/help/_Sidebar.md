@@ -1,4 +1,4 @@
-**Kivo help**
+**MynaHub help**
 
 [Home](Home)
 

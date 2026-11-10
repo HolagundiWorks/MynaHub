@@ -1,10 +1,10 @@
-# Kivo and Neon (cloud sync)
+# MynaHub and Neon (cloud sync)
 
-**Project files stay on this PC (decided 2026-11-08).** Tren and Falcon share the local `.osp`; nothing in it is pushed to Neon. Only Kivo is synced, and project data reaches the company database only through the CSV that Falcon exports and Kivo imports. Pushing the project file itself is off; `OSAS_PUSH_PROJECT_FILES=1` turns it back on for a machine that should do it (`Osas.Core.ProjectFilePolicy`).
+**Project files stay on this PC (decided 2026-11-08).** MynaCAD and MynaOps share the local `.osp`; nothing in it is pushed to Neon. Only MynaHub is synced, and project data reaches the company database only through the CSV that MynaOps exports and MynaHub imports. Pushing the project file itself is off; `OSAS_PUSH_PROJECT_FILES=1` turns it back on for a machine that should do it (`Osas.Core.ProjectFilePolicy`).
 
-The rest of this page describes the opt-in mode. Cloud sync for `.osp` project files was **Kivo only** — see [ODP-PROJECT-FILE-AND-SYNC.md](ODP-PROJECT-FILE-AND-SYNC.md). Tren and Falcon keep opening the local `.osp`; they never store Neon keys.
+The rest of this page describes the opt-in mode. Cloud sync for `.osp` project files was **MynaHub only** — see [ODP-PROJECT-FILE-AND-SYNC.md](ODP-PROJECT-FILE-AND-SYNC.md). MynaCAD and MynaOps keep opening the local `.osp`; they never store Neon keys.
 
-This document explains how to **create** a Neon project, **connect** it to the Kivo repository, and **smoke-test** the four services before any WinUI “Cloud sync” UI exists.
+This document explains how to **create** a Neon project, **connect** it to the MynaHub repository, and **smoke-test** the four services before any WinUI “Cloud sync” UI exists.
 
 ---
 
@@ -15,7 +15,7 @@ This document explains how to **create** a Neon project, **connect** it to the K
 | **Neon Console / CLI** | Org, project, branch, Postgres, Object Storage, Functions, Realtime |
 | **Repo root** | `neon.ts` (what to deploy), `.neon` (linked org/project/branch), `cloud/` (sync schema + verify) |
 | **`.env.local`** | Connection strings and secrets on **your machine only** (gitignored). Copy from [`.env.example`](../.env.example). |
-| **Launcher + WinUI Kivo** | **Myna** runs the background sync (push every 2 s, Postgres `LISTEN` pull) from sign-in on. **Kivo, Suite → Cloud sync**: test connection, enable sync per project, push or pull now. Credentials: `%LocalAppData%\\OSAS\\neon.env` (copy from repo `.env.local`). |
+| **Launcher + WinUI MynaHub** | **Myna** runs the background sync (push every 2 s, Postgres `LISTEN` pull) from sign-in on. **MynaHub, Suite → Cloud sync**: test connection, enable sync per project, push or pull now. Credentials: `%LocalAppData%\\OSAS\\neon.env` (copy from repo `.env.local`). |
 
 **Testing credentials:** A shared test project/password is fine for experiments. Put values only in `.env.local` or a password manager — never commit them, paste them in issues, or check them into the company file.
 
@@ -80,7 +80,7 @@ That writes:
 
 The repo’s [`neon.ts`](../neon.ts) tells Neon what to provision on **`neon deploy`**:
 
-| Declaration | Purpose for Kivo |
+| Declaration | Purpose for MynaHub |
 | --- | --- |
 | Postgres (always) | Sync metadata: `osp_project`, `osp_project_revision`, `osp_markup` ([`cloud/src/schema.ts`](../cloud/src/schema.ts)) |
 | `buckets.uploads` | Private bucket for `.osp` snapshots (`S3_BUCKET=uploads`) |
@@ -108,7 +108,7 @@ npm install
 
 You should get (names may vary slightly by CLI version):
 
-| Variable | Use in Kivo |
+| Variable | Use in MynaHub |
 | --- | --- |
 | `DATABASE_URL` / `DATABASE_URL_UNPOOLED` | Direct Postgres (migrations, Realtime DB name) |
 | `DATABASE_URL_POOLED` | App traffic (pooler host) — preferred in `cloud/` verify |
@@ -153,15 +153,15 @@ This runs [`cloud/src/verify.ts`](../cloud/src/verify.ts): creates sync tables i
 
 ---
 
-## 5. How Kivo the **app** connects
+## 5. How MynaHub the **app** connects
 
 Built in WinUI (**Suite → Cloud sync**). Architecture: [SUITE.md](SUITE.md) and [ODP-PROJECT-FILE-AND-SYNC.md](ODP-PROJECT-FILE-AND-SYNC.md).
 
-1. **Only Kivo** holds Neon credentials (`%LocalAppData%\\O-Studio\\neon.env` or `OSTUDIO_NEON_ENV_FILE`).
+1. **Only MynaHub** holds Neon credentials (`%LocalAppData%\\O-Studio\\neon.env` or `OSTUDIO_NEON_ENV_FILE`).
 2. **Suite → Cloud sync:** list company projects that have a `project.osp` path, turn sync on per project, **Push now** / **Pull now**, background push every 2s and pull on Postgres `NOTIFY osp_revision`.
 3. **Test connection** checks Postgres schema and Object Storage (`S3_BUCKET`, default **`uploads`** from [`neon.ts`](../neon.ts)).
 4. **Cloud ahead:** when push fails because another device uploaded first, Studio offers **Take cloud copy** or **Back up local, then pull** (sibling `.osp` backup file).
-5. **Tren / Falcon** unchanged: local `.osp` only; they detect new revisions via existing polls.
+5. **MynaCAD / MynaOps** unchanged: local `.osp` only; they detect new revisions via existing polls.
 
 Developers without WinUI can still run **`npm run verify`** (same services as the app connector uses).
 

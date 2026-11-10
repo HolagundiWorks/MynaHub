@@ -1,4 +1,4 @@
-//! Office Core: the shared company file and records used by the architecture office apps (Kivo, Falcon).
+//! Office Core: the shared company file and records used by the architecture office apps (MynaHub, MynaOps).
 //!
 //! The crate owns the file format (the migrations), the audit log and the records every app needs: clients, projects and their
 //! briefs, staff, leave and the office library. An app adds its own commands, sessions and permissions on top. Apps never write
