@@ -1,20 +1,21 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Builds the two Myna installers from current source: Myna-Setup (MynaHub + the Myna launcher) and MynaOpsCAD-Setup (MynaOps + MynaCAD together).
+  Builds the two Myna suite installers from current source: MynaHub-Setup (MynaHub) and MynaOpsCAD-Setup (MynaOps + MynaCAD together).
 
 .DESCRIPTION
   Two installers, each complete on its own (per user, no administrator):
 
-    Myna-Setup-<Version>.exe        MynaHub and the Myna launcher together (NSIS, built by installer\build.ps1)
+    MynaHub-Setup-<Version>.exe     MynaHub (NSIS, built by installer\build.ps1; removes the Myna launcher of a 1.7.x install)
     MynaOpsCAD-Setup-<Version>.exe  MynaOps and MynaCAD together (Inno Setup: O-COREOP\BBSDesktop\installer\O-CoreOp.iss in its combined mode,
                                     with MynaCAD's portable layout from O-DRAFT-main\packaging\windows\package.ps1)
 
-  MynaOps and MynaCAD depend on each other and share the project file, so they are one installer and are removed together. MynaHub and the
-  launcher are a separate installer. There is no installer for MynaOps or MynaCAD alone, and no combined suite installer.
+  MynaOps and MynaCAD depend on each other and share the project file, so they are one installer and are removed together; MynaOps also hosts
+  the AI agent for both. MynaHub is a separate installer. The Myna launcher was removed on 2026-11-11. There is no installer for MynaOps or
+  MynaCAD alone, and no combined suite installer.
 
   Expected sibling repos (names are fixed):
-    O-STUDIO     (MynaHub + Myna launcher; this script)
+    O-STUDIO     (MynaHub; this script)
     O-COREOP     (MynaOps; the combined Inno script)
     O-DRAFT-main (MynaCAD; the working tree is packaged: commit or stash edits you do not want in the build)
 
@@ -92,14 +93,15 @@ function Publish-Installer([string] $Source, [string] $Name, [string] $Key) {
     Write-Host "  -> $target" -ForegroundColor Green
 }
 
-Write-Host "=== 1/2 Myna Setup (MynaHub + the Myna launcher) ===" -ForegroundColor Cyan
+Write-Host "=== 1/2 MynaHub Setup ===" -ForegroundColor Cyan
 Push-Location $studioRepo
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $installerDir "build.ps1")
-if ($LASTEXITCODE -ne 0) { throw "Myna Setup (MynaHub + launcher) build failed (exit $LASTEXITCODE)" }
+if ($LASTEXITCODE -ne 0) { throw "MynaHub Setup build failed (exit $LASTEXITCODE)" }
 Pop-Location
 $hubSetup = Get-ChildItem (Join-Path $installerDir "O-Studio-Setup-*.exe") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if (-not $hubSetup) { throw "O-Studio-Setup-*.exe not found after the MynaHub build" }
-Publish-Installer $hubSetup.FullName "Myna-Setup-$Version.exe" "myna"
+# The staged NSIS output keeps its internal name (O-Studio-Setup); the published file is MynaHub-Setup.
+Publish-Installer $hubSetup.FullName "MynaHub-Setup-$Version.exe" "mynahub"
 
 Write-Host "=== 2/2 MynaOps + MynaCAD Setup ===" -ForegroundColor Cyan
 # MynaCAD's portable layout first: it goes inside the combined Setup

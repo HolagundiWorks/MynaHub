@@ -48,8 +48,17 @@ internal sealed class CloudSyncPage : UserControl
         test.Click += async (_, _) => await TestAsync();
         var refreshRev = new Button { Content = "Refresh revisions", MinHeight = O.Ui.SuiteScale.ControlMinHeight };
         refreshRev.Click += (_, _) => _ = ReloadProjectsAsync();
+        // The launcher that used to run the background sync is gone (2026-11-11): MynaHub runs it, from here, while it is open.
+        var startSync = new Button { Content = "Start sync", MinHeight = O.Ui.SuiteScale.ControlMinHeight };
+        startSync.Click += async (_, _) =>
+        {
+            await CloudSyncHub.StartAsync(Bridge());
+            _status.Text = SyncLine();
+            RefreshLog();
+        };
         actions.Children.Add(loadEnv);
         actions.Children.Add(test);
+        actions.Children.Add(startSync);
         actions.Children.Add(refreshRev);
         page.Children.Add(actions);
 
@@ -63,7 +72,7 @@ internal sealed class CloudSyncPage : UserControl
         {
             _ = ReloadProjectsAsync();
             RefreshLog();
-            _status.Text = LauncherLine();
+            _status.Text = SyncLine();
         };
         Unloaded += (_, _) => CloudSyncHub.LogLine -= _onLog;
     }
@@ -310,22 +319,15 @@ internal sealed class CloudSyncPage : UserControl
         }
     }
 
-    /// <summary>The sync runs in the launcher; this page sets it up. The launcher writes its state to <c>launcher-status.txt</c>.</summary>
-    static string LauncherLine()
+    /// <summary>Background sync runs in MynaHub, while this window is open and a company is signed in (Start sync on this page).</summary>
+    static string SyncLine()
     {
-        const string head = "Background sync runs in the suite launcher, from sign-in on. ";
-        try
-        {
-            var file = Osas.Core.SuiteWire.LocalPath("launcher-status.txt");
-            if (File.Exists(file) && File.ReadLines(file).FirstOrDefault(l => l.StartsWith("Cloud sync:", StringComparison.Ordinal)) is { } line)
-                return head + line;
-        }
-        catch (IOException)
-        {
-        }
-
-        return head + "Start the launcher to see its state. " + DescribeConfigState();
+        var head = CloudSyncHub.IsRunning
+            ? "Background sync is running in MynaHub. "
+            : "Background sync is not running. Start it here; it runs while MynaHub is open. ";
+        return head + DescribeConfigState();
     }
+
     void RefreshLog()
     {
         _log.Text = CloudSyncHub.RecentLog.Count == 0

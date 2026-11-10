@@ -42,28 +42,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Adms.Cloud\Adms.Cloud.csproj" />
     <ProjectReference Include="..\Adms.Interop\Adms.Interop.csproj" />
-    <ProjectReference Include="..\Adms.LoginWidget\Adms.LoginWidget.csproj">
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-      <SkipGetTargetFrameworkProperties>true</SkipGetTargetFrameworkProperties>
-    </ProjectReference>
     <ProjectReference Include="..\Osas.Core\Osas.Core.csproj" />
-    <ProjectReference Include="..\..\..\O-COREOP\BBSDesktop\Office.Ai\Office.Ai.csproj" />
     <ProjectReference Include="..\..\..\o-ui\O.Ui\O.Ui.csproj" />
   </ItemGroup>
-  <!-- The launcher is a build-order reference only. installer/build.ps1 publishes it beside O-Studio.exe with a shared WinUI payload (BUG-0005). -->
-  <Target Name="DropLauncherPayloadFromPublish" BeforeTargets="_HandleFileConflictsForPublish">
-    <ItemGroup>
-      <_LauncherPublishFile Include="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(ResolvedFileToPublish.FullPath)').Contains('Adms.LoginWidget'))" />
-      <ResolvedFileToPublish Remove="@(_LauncherPublishFile)" />
-    </ItemGroup>
-  </Target>
-  <Target Name="CopyCompanyLoginWidget" AfterTargets="Build">
-    <PropertyGroup>
-      <LoginWidgetOut>$(MSBuildThisFileDirectory)..\Adms.LoginWidget\bin\$(Configuration)\net8.0-windows10.0.19041.0\win-x64\</LoginWidgetOut>
-    </PropertyGroup>
-    <Copy SourceFiles="$(LoginWidgetOut)O-Studio.Launcher.exe"
-          DestinationFolder="$(OutDir)"
-          SkipUnchangedFiles="true"
-          Condition="Exists('$(LoginWidgetOut)O-Studio.Launcher.exe')" />
-  </Target>
 </Project>

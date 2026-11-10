@@ -4,7 +4,7 @@ using Office.Shared;
 
 namespace Adms.Cloud;
 
-/// <summary>Process-wide Neon sync. The launcher runs it from sign-in on; MynaHub only configures it and pushes or pulls a project on request.</summary>
+/// <summary>Process-wide Neon sync, in MynaHub only: started from MynaHub's Cloud sync page while a company is signed in; it also pushes or pulls a project on request.</summary>
 public static class CloudSyncHub
 {
     static OspSyncCoordinator? _coordinator;
@@ -168,8 +168,8 @@ public static class CloudSyncHub
     }
 
     /// <summary>
-    /// Push one project now. The background sync runs in the launcher, so a window that asks for this (MynaHub's Cloud sync page) usually has no
-    /// running coordinator of its own: it then pushes through a short-lived connection, as the signed-in company and user in <paramref name="shell"/>.
+    /// Push one project now. When the background sync was not started (MynaHub's Cloud sync page starts it) there is no
+    /// running coordinator: it then pushes through a short-lived connection, as the signed-in company and user in <paramref name="shell"/>.
     /// </summary>
     public static async Task<PushResult> PushNowAsync(long studioProjectId, string ospPath, AppShellBridge? shell = null)
     {

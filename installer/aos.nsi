@@ -9,9 +9,10 @@ Unicode true
 !insertmacro GetSize
 
 !define APP_NAME "MynaHub"
-; One Setup for MynaHub and the Myna launcher: the Setup, the Start menu folder and the Apps entry are called Myna.
-!define SETUP_NAME "Myna"
-!define START_DIR "Myna"
+; The Setup, the Start menu folder and the Apps entry are called MynaHub. The Myna launcher was removed on 2026-11-11: this Setup only installs
+; MynaHub, and on an upgrade it removes the launcher an earlier Myna Setup installed (see RemoveOldLauncher below).
+!define SETUP_NAME "MynaHub"
+!define START_DIR "MynaHub"
 ; The install folder, the registry keys and the uninstall id keep the earlier name so an upgrade finds the old install.
 !define APP_DIR "O-Studio"
 !define APP_ID "OStudio"
@@ -29,7 +30,7 @@ Unicode true
   !define OUT "O-Studio-Setup-${VERSION}.exe"
 !endif
 
-Name "${SETUP_NAME} (MynaHub and the Myna launcher)"
+Name "${SETUP_NAME}"
 OutFile "${OUT}"
 InstallDir "$LOCALAPPDATA\Programs\${APP_DIR}"
 InstallDirRegKey HKCU "Software\${PUBLISHER}\${APP_ID}" "InstallDir"
@@ -40,7 +41,7 @@ BrandingText "${PUBLISHER}"
 VIProductVersion "${VERSION}.0"
 VIAddVersionKey "ProductName" "${SETUP_NAME}"
 VIAddVersionKey "CompanyName" "${PUBLISHER}"
-VIAddVersionKey "FileDescription" "${SETUP_NAME} setup (MynaHub and the Myna launcher)"
+VIAddVersionKey "FileDescription" "${SETUP_NAME} setup"
 VIAddVersionKey "FileVersion" "${VERSION}"
 VIAddVersionKey "LegalCopyright" "Copyright (c) 2026 ${PUBLISHER}"
 
@@ -57,15 +58,36 @@ VIAddVersionKey "LegalCopyright" "Copyright (c) 2026 ${PUBLISHER}"
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "English"
 
+; The Myna launcher (O-Studio.Launcher.exe in launcher\, Setups up to 1.7.x) no longer exists. Stop a running copy (it held the AI model and would
+; keep its folder locked), then remove its folder, its shortcuts, the Start menu folder Myna when nothing else is left in it, any autostart entry
+; and the two state files only it used. The AI agent is now hosted by MynaOps (MynaOpsCAD-Setup).
+!macro RemoveOldLauncher
+  nsExec::Exec 'taskkill /F /T /IM O-Studio.Launcher.exe'
+  Pop $0
+  Sleep 500
+  RMDir /r "$INSTDIR\launcher"
+  Delete "$INSTDIR\O-Studio.Launcher.*"
+  Delete "$SMPROGRAMS\Myna\Myna.lnk"
+  Delete "$SMPROGRAMS\Myna\MynaHub.lnk"
+  Delete "$SMPROGRAMS\Myna\Uninstall Myna.lnk"
+  ; only removed when empty: anything the user put there stays
+  RMDir "$SMPROGRAMS\Myna"
+  Delete "$DESKTOP\Myna.lnk"
+  Delete "$SMSTARTUP\Myna.lnk"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Myna"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "O-Studio.Launcher"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "O-Suite Launcher"
+  Delete "$LOCALAPPDATA\O-Studio\launch-request.json"
+  Delete "$LOCALAPPDATA\O-Studio\launcher-status.txt"
+!macroend
+
 Section "Install"
   SetOutPath "$INSTDIR"
+  !insertmacro RemoveOldLauncher
   ; the program was called Adms.Desktop before; remove those files so an upgrade leaves one program behind
   Delete "$INSTDIR\Adms.Desktop.*"
-  ; remove a broken copy of the launcher from the install root (BUG-0019); keep launcher\ as the real payload (BUG-0033)
-  Delete "$INSTDIR\O-Studio.Launcher.*"
   ; force WinUI PRI refresh on upgrade (BUG-0033: a shared-folder publish left the wrong resources.pri at the root)
   Delete "$INSTDIR\resources.pri"
-  Delete "$INSTDIR\launcher\resources.pri"
   File /r "${SOURCE}\*.*"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
@@ -92,13 +114,10 @@ Section "Install"
   CreateShortcut "$SMPROGRAMS\${START_DIR}\${APP_NAME}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\Assets\app.ico" 0
   CreateShortcut "$SMPROGRAMS\${START_DIR}\Uninstall ${SETUP_NAME}.lnk" "$INSTDIR\Uninstall.exe"
   CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\Assets\app.ico" 0
-  ; Myna: hosts the assistant and the database service, and chooses the project. Company sign-in is in MynaHub.
-  CreateShortcut "$SMPROGRAMS\${START_DIR}\Myna.lnk" "$INSTDIR\launcher\O-Studio.Launcher.exe" "" "$INSTDIR\launcher\O-Studio.Launcher.exe" 0
-  CreateShortcut "$DESKTOP\Myna.lnk" "$INSTDIR\launcher\O-Studio.Launcher.exe" "" "$INSTDIR\launcher\O-Studio.Launcher.exe" 0
 
   ; the entry in Settings > Apps
   WriteRegStr HKCU "Software\${PUBLISHER}\${APP_ID}" "InstallDir" "$INSTDIR"
-  WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayName" "${SETUP_NAME} (MynaHub and the Myna launcher)"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayName" "${SETUP_NAME}"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayVersion" "${VERSION}"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "Publisher" "${PUBLISHER}"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayIcon" "$INSTDIR\Assets\app.ico"
@@ -115,10 +134,10 @@ SectionEnd
 Section "Uninstall"
   Delete "$SMPROGRAMS\${START_DIR}\${APP_NAME}.lnk"
   Delete "$SMPROGRAMS\${START_DIR}\Uninstall ${SETUP_NAME}.lnk"
-  Delete "$SMPROGRAMS\${START_DIR}\Myna.lnk"
   RMDir "$SMPROGRAMS\${START_DIR}"
   Delete "$DESKTOP\${APP_NAME}.lnk"
-  Delete "$DESKTOP\Myna.lnk"
+  ; an install that was never upgraded may still have the launcher of a Myna Setup (1.7.x)
+  !insertmacro RemoveOldLauncher
   ; the install folder is fixed and holds only the program, never company files; it is removed only if it is the app's own folder
   IfFileExists "$INSTDIR\${EXE}" 0 +2
     RMDir /r "$INSTDIR"

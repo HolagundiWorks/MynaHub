@@ -172,7 +172,7 @@ public sealed partial class MainWindow : Window
 
     private void RestoreTheme() => AppTheme.Apply(Root, AppWindow, Hwnd);
 
-    // ----- Studio is the suite hub: suite.json, ticket launch. Companies are chosen and created in the launcher. -----
+    // ----- MynaHub is the suite hub: suite.json and the company file. Companies are chosen, created and signed in here. -----
 
     /// <summary>Opens the company last remembered for the suite (written by Studio, or earlier by OSAS).</summary>
     private async void FollowSuite(object sender, RoutedEventArgs e)
@@ -483,7 +483,6 @@ public sealed partial class MainWindow : Window
     private void OnClosing(AppWindow sender, AppWindowClosingEventArgs args)
     {
         SavePlacement();
-        Office.Ai.SuiteAiCoordinator.StopHost();
         if (_shuttingDown)
             return;
         if (_busy)

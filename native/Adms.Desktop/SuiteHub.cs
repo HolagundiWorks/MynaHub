@@ -6,8 +6,8 @@ using Osas.Core;
 namespace Adms.Desktop;
 
 /// <summary>
-/// MynaHub as the suite hub: remembers the chosen company and starts MynaOps, MynaCAD and MynaMod. They are independent of MynaHub: no sign-in ticket,
-/// no company path and no locked project are passed; they only learn where the AI Core is.
+/// MynaHub as the suite hub: remembers the chosen company and starts MynaOps, MynaCAD and MynaMod by path. They are independent of MynaHub: no sign-in
+/// ticket, no company path, no locked project and no AI settings are passed (MynaOps hosts the AI agent for itself and MynaCAD).
 /// </summary>
 internal static class SuiteHub
 {
@@ -19,7 +19,7 @@ internal static class SuiteHub
     internal static IReadOnlyList<SuiteCard> Cards { get; } =
     [
         new("MynaOps", "Quantities, estimates and billing", "O-CoreOp", ["O-CoreOp", "AQCCore"], "O-CoreOp.exe", "AQCCore.exe"),
-        new("MynaCAD", "Drafting", "O-Draft", ["O-Draft", "AAD"], "O-Draft.exe", "aad-host.exe"),
+        new("MynaCAD", "Drafting", "O-Draft", ["O-Draft", "AAD"], "ODraft.WinUi.exe", "O-Draft.exe"),
         new("MynaMod", "3D / BIM form", "O-Form", ["O-Form"], "O-Form.exe"),
     ];
 
@@ -65,7 +65,7 @@ internal static class SuiteHub
         return null;
     }
 
-    /// <summary>Starts the app. Nothing about the company or a person is passed to it.</summary>
+    /// <summary>Starts the app. Nothing about the company, a person or the AI agent is passed to it.</summary>
     internal static void Launch(SuiteCard card)
     {
         var exe = FindExecutable(card)
@@ -78,9 +78,6 @@ internal static class SuiteHub
             UseShellExecute = false,
             WorkingDirectory = Path.GetDirectoryName(exe) ?? Environment.CurrentDirectory,
         };
-        start.Environment[SuiteWire.EnvAiRole] = "client";
-        start.Environment[SuiteWire.EnvAiHost] = "127.0.0.1";
-        start.Environment[SuiteWire.EnvAiPort] = "8742";
         Process.Start(start);
     }
 }

@@ -7,11 +7,6 @@ public static class SuiteWire
 
     public const string EnvOfficeDll = "OSTUDIO_OFFICE_DLL";
 
-    public const string EnvAiRole = "OSTUDIO_AI_ROLE";
-    public const string EnvAiHost = "OSTUDIO_AI_HOST";
-    public const string EnvAiPort = "OSTUDIO_AI_PORT";
-    public const string EnvAiToken = "OSTUDIO_AI_TOKEN";
-
     public const string EnvUpdateChannel = "OSTUDIO_UPDATE_CHANNEL_URL";
     public const string EnvNeonEnvFile = "OSTUDIO_NEON_ENV_FILE";
 

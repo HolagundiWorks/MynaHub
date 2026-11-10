@@ -104,7 +104,6 @@ internal sealed class WorkspaceView : UserControl
         _shell.RefreshPaneLogo = LoadPaneLogo;
         LoadPaneLogo();
         BuildMenu();
-        _assistant = new AssistantBar(_shell);
         BuildLayout();
         SelectTab(_tabs[0]);
         _shell.Navigate = Show;
@@ -113,8 +112,6 @@ internal sealed class WorkspaceView : UserControl
         O.Ui.SuiteAppearance.Changed += OnThemeChanged;
         Unloaded += (_, _) => O.Ui.SuiteAppearance.Changed -= OnThemeChanged;
     }
-
-    private AssistantBar _assistant = null!;
 
     private void OnThemeChanged(Microsoft.UI.Xaml.ElementTheme theme) => DispatcherQueue.TryEnqueue(() =>
     {
@@ -127,7 +124,6 @@ internal sealed class WorkspaceView : UserControl
         _host.Children.Clear();
         if (shown.Length > 0)
             Show(shown);
-        _assistant.Retheme();
     });
 
     private void BuildLayout()
@@ -135,7 +131,6 @@ internal sealed class WorkspaceView : UserControl
         // The parts that outlive a rebuild are lifted out of the old layout first: a control can have only one parent.
         (_host.Parent as Panel)?.Children.Remove(_host);
         (_subScroll.Parent as Panel)?.Children.Remove(_subScroll);
-        (_assistant.Parent as Panel)?.Children.Remove(_assistant);
         _mainBoxes.Clear();
         _subBoxes.Clear();
         (_paneLogo.Parent as Panel)?.Children.Remove(_paneLogo);
@@ -163,7 +158,7 @@ internal sealed class WorkspaceView : UserControl
         sub.HorizontalScrollMode = ScrollMode.Auto;
         sub.VerticalScrollMode = ScrollMode.Disabled;
         O.Ui.SuiteLandmarks.Navigation(sub, "Section menu");
-        // A line under the second row separates it from the page, and the page keeps room above (breathing space) and below (for the assistant bar).
+        // A line under the second row separates it from the page, and the page keeps room above and below (breathing space).
         // Arrows at either end appear only while the row is wider than the window, and move it by most of a screen.
         var more = new Grid();
         more.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -192,15 +187,13 @@ internal sealed class WorkspaceView : UserControl
         sub.SizeChanged += (_, _) => Cue();
         var subFrame = new Border { Child = more, BorderBrush = Flow.Ink("BorderSubtleBrush"), BorderThickness = new Thickness(0, 0, 0, 1) };
         body.Children.Add(subFrame);
-        _host.Margin = new Thickness(0, O.Ui.SuiteScale.Space3, 0, 64);
+        _host.Margin = new Thickness(0, O.Ui.SuiteScale.Space3, 0, O.Ui.SuiteScale.Space3);
         Grid.SetRow(_host, 1);
         O.Ui.SuiteLandmarks.Main(_host, "Page");
         body.Children.Add(_host);
         Grid.SetRow(body, 1);
         root.Children.Add(body);
-        // The assistant floats over the page; the other apps open from the bar along the bottom.
-        Grid.SetRow(_assistant, 1);
-        root.Children.Add(_assistant);
+        // The other apps open from the bar along the bottom. MynaHub has no assistant: the AI agent lives in MynaOps and MynaCAD.
         Content = root;
     }
 

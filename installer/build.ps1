@@ -23,14 +23,8 @@ dotnet publish native\Adms.Desktop\Adms.Desktop.csproj -c Release -r win-x64 --s
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 if (-not (Test-Path (Join-Path $stage "architect_office_desktop_lib.dll"))) { throw "The engine DLL was not copied beside the app." }
 
-# Launcher is a full self-contained publish under launcher\ so its resources.pri does not overwrite O-Studio.exe's (BUG-0033 / 0xc000027b).
-Write-Host "2b/3 Publishing launcher to launcher\ (isolated WinUI payload)"
-$launcherDir = Join-Path $stage "launcher"
-dotnet publish native\Adms.LoginWidget\Adms.LoginWidget.csproj -c Release -r win-x64 `
-    --self-contained true `
-    -o $launcherDir
-if ($LASTEXITCODE -ne 0) { throw "dotnet publish (launcher) failed" }
-if (-not (Test-Path (Join-Path $launcherDir "O-Studio.Launcher.exe"))) { throw "O-Studio.Launcher.exe was not published." }
+# The Myna launcher (O-Studio.Launcher.exe) was removed on 2026-11-11; nothing else is published. aos.nsi removes an old launcher on upgrade.
+if (Test-Path (Join-Path $stage "launcher")) { throw "a launcher\ folder is in the stage: the launcher no longer exists" }
 
 Write-Host "3/3 Installer"
 $out = Join-Path $PSScriptRoot "O-Studio-Setup-$version.exe"
