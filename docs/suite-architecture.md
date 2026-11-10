@@ -67,7 +67,7 @@ Keep each app's data its own. Share through a small versioned contract package. 
 
 | Contract | State |
 |---|---|
-| Company-file auth / tickets | Exists via `office.dll` / OSAS launcher; shared by suite apps offline |
+| Company-file auth | In MynaHub only (`office.dll` engine); tickets and the launcher are retired (2026-11-08 and 2026-11-11) |
 | CAD to quantities (`hcw-aqc-bridge` v1) | Exists, in the MynaOps repo |
 | Office records (`docs/office-abi.md`) | Exists, in this repo |
 | `ProjectRef` and `ArtifactRef` (a drawing, an estimate or a document with revision, checksum and the revisions it was made from) | **Written** (`docs/contracts/refs.md`) in `office-core`; produced by CoreOp estimates / Draft take-off when company-linked; consumed by Studio fee proposals |

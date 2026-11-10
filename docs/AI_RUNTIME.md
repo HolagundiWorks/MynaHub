@@ -1,5 +1,7 @@
 # Suite assistant model (Olmo 3 7B)
 
+> **Retired 2026-11-11.** MynaHub has no AI: its assistant bar, AI client and AI status were removed, and the Myna launcher that hosted the model later is gone too. The AI agent is now hosted by **MynaOps** for MynaOps and MynaCAD; see MynaOps `docs/LOCAL-MODEL.md` and `docs/SUITE.md` section 1a. This page is kept as history.
+
 MynaHub **hosts** the shared Olmo 3 7B Instruct model (`Office.Ai` + `AiCoreListener` on `127.0.0.1:8742`). MynaOps and MynaCAD connect as clients when launched from MynaHub (`OSAS_AI_ROLE=client`). Install paths, llama.cpp runtime, and the HTTP contract are documented in **MynaOps** `docs/LOCAL-MODEL.md`.
 
 ## What MynaHub adds

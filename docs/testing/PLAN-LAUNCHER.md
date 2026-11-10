@@ -1,5 +1,7 @@
 # Test plan: Myna
 
+> **Retired 2026-11-11.** The Myna launcher (`O-Studio.Launcher.exe`) was removed: company sign-in is in MynaHub, the AI agent is hosted by MynaOps, and nothing starts from a launcher. These cases are kept as history only; the replacements are section I0 of [PLAN-INTEGRATION.md](PLAN-INTEGRATION.md).
+
 Myna (`O-Studio.Launcher.exe`, beside `O-Studio.exe` in the MynaHub install folder) is a tray app. It holds the company sign-in, shows the status of the AI agent, the database and cloud sync, and starts the other apps with a one-time ticket. Source: `O-STUDIO\native\Adms.LoginWidget`.
 
 Case format and rules: [README.md](README.md). `[N]` normal, `[B]` boundary or bad input, `[R]` repeat or undo.

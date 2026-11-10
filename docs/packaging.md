@@ -8,7 +8,9 @@ NSIS per-user Setup.exe (no admin):
 powershell -ExecutionPolicy Bypass -File installer\build.ps1
 ```
 
-Output: `installer/O-Studio-Setup-<version>.exe` → `%LOCALAPPDATA%\Programs\O-Studio\` (`O-Studio.exe` at the root; `O-Studio.Launcher.exe` under `launcher\` with its own WinUI `resources.pri` so the two exes do not overwrite each other).
+Output: `installer/O-Studio-Setup-<version>.exe` (published by `build-all.ps1` as `MynaHub-Setup-<version>.exe`) → `%LOCALAPPDATA%\Programs\O-Studio\` (`O-Studio.exe` at the root). The Start menu folder and the Settings > Apps entry are called **MynaHub**.
+
+**Upgrading from a Myna Setup (1.7.x, with the launcher):** the Setup stops a running `O-Studio.Launcher.exe` (it held the AI model), deletes the `launcher\` folder, the `Myna.lnk` shortcuts (Start menu folder **Myna** and desktop), the Start menu folder **Myna** when nothing else is left in it, any `Myna` / `O-Studio.Launcher` value under `HKCU\...\CurrentVersion\Run` (no Setup ever wrote one; removed defensively), and the launcher's `launch-request.json` and `launcher-status.txt` in `%LOCALAPPDATA%\O-Studio`. The uninstaller does the same for an install that was never upgraded. Company files, the AI token (`ai\auth.token`, now used by MynaOps) and `suite.json` are kept.
 
 ### SQLite (no separate install)
 
@@ -42,20 +44,20 @@ powershell -File installer\sign.ps1 installer\O-Studio-Setup-0.1.0.exe
 # Do not ship self-signed builds
 ```
 
-## The Myna installers
+## The two suite installers
 
 Two installers, each one complete on its own (per user, no administrator). MynaOps and MynaCAD depend on each other, so they are one installer (changed 2026-11-10; before that one combined suite installer, then briefly three):
 
 | Installer | Installs | Built by |
 |---|---|---|
-| `Myna-Setup-<version>.exe` | MynaHub and the Myna launcher | `installer/build.ps1` (NSIS) |
-| `MynaOpsCAD-Setup-<version>.exe` | MynaOps and MynaCAD | MynaOps `BBSDesktop/installer/O-CoreOp.iss` in its combined mode (`build-installer.ps1 -CadStage`), around MynaCAD's portable layout |
+| `MynaHub-Setup-<version>.exe` | MynaHub (the Myna launcher was removed on 2026-11-11; this Setup removes an installed one) | `installer/build.ps1` (NSIS) |
+| `MynaOpsCAD-Setup-<version>.exe` | MynaOps and MynaCAD; MynaOps hosts the AI agent for both (llama runtime bundled; optional model download) | MynaOps `BBSDesktop/installer/O-CoreOp.iss` in its combined mode (`build-installer.ps1 -CadStage`), around MynaCAD's portable layout |
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File installer\suite\build-all.ps1 -Version 1.7.1
 ```
 
-Output: `installer/suite/out/` (the two Setups and `Myna-installers-<version>.manifest.json` with the git commits and checksums). Details: [installer/suite/README.md](../installer/suite/README.md).
+Output: `installer/suite/out/` (the two Setups and `Myna-installers-<version>.manifest.json` with the git commits and checksums; installer keys `mynahub` and `mynaopscad`). Details: [installer/suite/README.md](../installer/suite/README.md).
 
 ## Suite glue (legacy)
 
@@ -64,7 +66,7 @@ picks up `O-Studio-Setup-*.exe` and optional sibling Setup.exe files. Sibling ap
 need `office.dll` from this repo’s `office-ffi` release build beside their install. MynaHub itself needs no `office.dll`: `architect_office_desktop_lib.dll` carries the same `office_*` interface, so the app ships one engine library.
 
 **OSAS.exe is deprecated.** MynaHub is the suite shell (company choose/create, admin
-password, users, launcher cards, approvals). Do not ship a separate OSAS Setup as the
+password, users, the bottom bar that opens the other apps, approvals). Do not ship a separate OSAS Setup as the
 company chooser. Older installs that still have OSAS.exe may write the same
 `%LOCALAPPDATA%\OSAS\suite.json`; Studio is the preferred writer.
 

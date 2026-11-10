@@ -1,26 +1,26 @@
-# The Myna installers
+# The Myna suite installers
 
-Two installers, each complete on its own (per user, no administrator). **MynaOps and MynaCAD depend on each other** (MynaCAD records the take-off into the project file, MynaOps reads it and writes the estimate back), so they are **one installer** and are removed together. MynaHub and the Myna launcher are the other installer. There is no installer for MynaOps or MynaCAD alone, and no combined suite installer (retired 2026-11-10).
+Two installers, each complete on its own (per user, no administrator). **MynaOps and MynaCAD depend on each other** (MynaCAD records the take-off into the project file, MynaOps reads it and writes the estimate back), so they are **one installer** and are removed together. MynaHub is the other installer. The Myna launcher was removed on 2026-11-11; MynaOps hosts the AI agent for MynaOps and MynaCAD. There is no installer for MynaOps or MynaCAD alone, and no combined suite installer (retired 2026-11-10).
 
 | Installer | Installs | Install folders | Start menu |
 |---|---|---|---|
-| `Myna-Setup-<version>.exe` | **MynaHub** and the **Myna launcher** (AI Core host, tray icon) | `%LOCALAPPDATA%\Programs\O-Studio` | folder **Myna**: MynaHub, Myna |
-| `MynaOpsCAD-Setup-<version>.exe` | **MynaOps** (quantities, estimates, billing) and **MynaCAD** (drafting); optional task: the assistant model | `%LOCALAPPDATA%\Programs\O-CoreOp` and `...\O-Draft` | folder **MynaOps and MynaCAD**: MynaOps, MynaCAD |
+| `MynaHub-Setup-<version>.exe` | **MynaHub** | `%LOCALAPPDATA%\Programs\O-Studio` | folder **MynaHub**: MynaHub, Uninstall MynaHub |
+| `MynaOpsCAD-Setup-<version>.exe` | **MynaOps** (quantities, estimates, billing; hosts the AI agent) and **MynaCAD** (drafting); the llama runtime; optional task: the assistant model | `%LOCALAPPDATA%\Programs\O-CoreOp` and `...\O-Draft` | folder **MynaOps and MynaCAD**: MynaOps, MynaCAD |
 
-The install folders keep their old names on purpose (identifiers), so an upgrade replaces an earlier install in place. Each Setup removes the shortcuts and Start menu folders that earlier Setups made under older names (Kivo, Tren, Falcon, and the separate MynaOps and MynaCAD folders of 1.7.0).
+The install folders keep their old names on purpose (identifiers), so an upgrade replaces an earlier install in place. Each Setup removes the shortcuts and Start menu folders that earlier Setups made under older names (Kivo, Tren, Falcon, and the separate MynaOps and MynaCAD folders of 1.7.0). **Upgrade from 1.7.x:** `MynaHub-Setup` stops and removes the Myna launcher (`launcher\` folder, `Myna.lnk` in the Start menu and on the desktop, the Start menu folder **Myna** when it is empty afterwards, Run values, `launch-request.json`, `launcher-status.txt`); `MynaOpsCAD-Setup` stops a MynaOps that runs without a window as the AI host (`O-CoreOp.exe --ai-host`) before replacing files, and so does its uninstaller.
 
 ## File types
 
-Double-clicking a project file (`.osp`) opens it in MynaCAD; the right-click verb **Open in MynaOps** opens it in MynaOps. Neither starts Myna. Both are registered by `MynaOpsCAD-Setup` and removed with it.
+Double-clicking a project file (`.osp`) opens it in MynaCAD; the right-click verb **Open in MynaOps** opens it in MynaOps. Neither starts the other app. Both are registered by `MynaOpsCAD-Setup` and removed with it.
 
 ## Removing
 
-Settings > Apps lists **Myna (MynaHub and the Myna launcher)** and **MynaOps and MynaCAD**. Removing the second takes both apps. Company files (`.osas`), projects (`.osp`) and the assistant model are never deleted.
+Settings > Apps lists **MynaHub** (the same entry that read "Myna (MynaHub and the Myna launcher)" before) and **MynaOps and MynaCAD**. Removing the second takes both apps. Company files (`.osas`), projects (`.osp`) and the assistant model are never deleted.
 
 ## Silent command lines
 
 ```text
-Myna-Setup-<v>.exe /S
+MynaHub-Setup-<v>.exe /S
 MynaOpsCAD-Setup-<v>.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /TASKS="" /LOG="%TEMP%\opscad-install.log"
 ```
 

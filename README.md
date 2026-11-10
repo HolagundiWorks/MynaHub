@@ -1,6 +1,6 @@
 # MynaHub
 
-MynaHub is the office app and suite hub. The suite is MynaHub (office and company file, orange), MynaOps (quantities, estimates and billing, blue), MynaCAD (drafting, black) and MynaMod (3D form, planned). Myna is the launcher. Some code identifiers keep older spellings, such as the `aos` / `aqc` session strings and the `AOSENC1` file marker, because files already use them.
+MynaHub is the office app and suite hub. The suite is MynaHub (office and company file, orange), MynaOps (quantities, estimates and billing, blue), MynaCAD (drafting, black) and MynaMod (3D form, planned); Myna is the name of the suite. MynaHub holds every login (company sign-in, users, roles) and the company file; it has no AI (the AI agent runs in MynaOps for MynaOps and MynaCAD). Some code identifiers keep older spellings, such as the `aos` / `aqc` session strings and the `AOSENC1` file marker, because files already use them.
 
 > **The suite:** names, roles, file formats, toolbars of every app and how they link in real time are in [docs/SUITE.md](docs/SUITE.md).
 
@@ -25,25 +25,13 @@ Sign-in uses the admin password. The password needs 12 or more characters. A rec
 
 Shortcuts: Ctrl+N new record, Ctrl+S save, Ctrl+P print, Ctrl+F search, Ctrl+K go to a page.
 
-## Myna
+## The Myna launcher was removed (2026-11-11)
 
-![The Myna: choose a company, open a company file or the remembered one, recent companies, and the state of the AI and cloud services](docs/images/launcher-company-login.png)
-
-Myna (`O-Studio.Launcher.exe`, in the Start menu as **Myna**) is the front door of the suite. It stays in the tray, signs you in, locks one project and starts MynaOps and MynaCAD on it. An app started on its own, or a double-clicked `.osp`, asks Myna first.
-
-| Part of the window | What it does |
-|---|---|
-| Header | The suite name and the step ("Choose a company"). The round mark on the right is the AI assistant's state; the database icon is the cloud-sync state. |
-| **Create a new company...** / **Open company file...** | Make a company file or open an existing one, then sign in. |
-| **Open remembered company** | Opens the company chosen last time (greyed out until one is remembered). |
-| **Recent companies** | The company files opened before. |
-| Footer | Which company is remembered. |
-
-After sign-in Myna lists the company's projects (search by code, name or client) with **Load project**, **Close project** and **New project...**. Loading a project locks it for the suite and starts the app that asked for it; the other apps follow the same choice. Myna also hosts the shared AI assistant (Olmo 3 7B, on this computer) and the cloud sync.
+The tray launcher (`O-Studio.Launcher.exe`, shown as **Myna**) no longer exists. Company sign-in, users and the company file were already in MynaHub; MynaHub opens MynaOps and MynaCAD from its bottom bar by path, with nothing passed to them. The AI agent (Olmo 3 7B, on this computer) that the launcher hosted is now hosted by **MynaOps**, which MynaCAD starts without a window when it needs the agent. Installing `MynaHub-Setup` over a 1.7.x install removes the launcher, its `launcher\` folder and its Myna shortcuts. See [docs/SUITE.md](docs/SUITE.md).
 
 ## Install and remove
 
-Two installers, each complete on its own (per user, no administrator): `Myna-Setup-<version>.exe` installs **MynaHub and the Myna launcher** together, and `MynaOpsCAD-Setup-<version>.exe` installs **MynaOps and MynaCAD** together. MynaOps and MynaCAD depend on each other and share the local project file, so they are one installer and are removed together; there is no installer for either alone, and no combined suite installer. Each Setup is also its own uninstaller (Settings > Apps); company files, projects and the assistant model are never deleted. Details and silent command lines: [installer/suite/README.md](installer/suite/README.md).
+Two installers, each complete on its own (per user, no administrator): `MynaHub-Setup-<version>.exe` installs **MynaHub** (and removes the Myna launcher an earlier Myna Setup installed), and `MynaOpsCAD-Setup-<version>.exe` installs **MynaOps and MynaCAD** together. MynaOps and MynaCAD depend on each other and share the local project file, so they are one installer and are removed together; there is no installer for either alone, and no combined suite installer. Each Setup is also its own uninstaller (Settings > Apps); company files, projects and the assistant model are never deleted. Details and silent command lines: [installer/suite/README.md](installer/suite/README.md).
 
 ## The suite
 
@@ -53,7 +41,7 @@ MynaHub is one of several apps that share an office's records. The pieces in thi
 |---|---|
 | `office-core/` | The company file, sign-in, schema tracks and the shared records. |
 | `office-ffi/`, `native/Office.Interop/` | A C interface and .NET wrapper so another native app can use the same file. Contract: [docs/office-abi.md](docs/office-abi.md) |
-| `office-agent/` | Governed read-only tools and an MCP server for an AI assistant |
+| `office-agent/` | Governed read-only tools and an MCP server for an external AI assistant (not used by any app; MynaHub has no AI) |
 
 The architecture and integration map for MynaHub, MynaCAD, MynaOps and O-UI is [docs/suite-architecture.md](docs/suite-architecture.md). Each folder is its own Cargo crate; run `cargo test` inside it.
 
@@ -77,7 +65,7 @@ cargo test --manifest-path src-tauri/Cargo.toml   # engine, accounting, company 
 cargo test --manifest-path office-core/Cargo.toml
 ```
 
-The installer is built with `installer/build.ps1` (release engine, self-contained publish, NSIS) and is named `O-Studio-Setup-<version>.exe`. **`O-Studio.Launcher.exe` lives under `launcher\` beside `O-Studio.exe`** (see [docs/packaging.md](docs/packaging.md)). For all suite apps together, build **`installer/suite/build-all.ps1`** → `Myna-Setup-<version>.exe` ([installer/suite/README.md](installer/suite/README.md)). It stays unsigned unless signing secrets are set (`installer/sign.ps1`). Help → **Check for updates…** is a channel stub. What is open and planned is in [docs/roadmap.md](docs/roadmap.md).
+The installer is built with `installer/build.ps1` (release engine, self-contained publish, NSIS) and is named `O-Studio-Setup-<version>.exe` inside the build (see [docs/packaging.md](docs/packaging.md)). For both suite installers, build **`installer/suite/build-all.ps1`** → `MynaHub-Setup-<version>.exe` and `MynaOpsCAD-Setup-<version>.exe` ([installer/suite/README.md](installer/suite/README.md)). It stays unsigned unless signing secrets are set (`installer/sign.ps1`). Help → **Check for updates…** is a channel stub. What is open and planned is in [docs/roadmap.md](docs/roadmap.md).
 
 ### Cloud sync (Neon)
 

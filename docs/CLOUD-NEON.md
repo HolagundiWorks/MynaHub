@@ -15,7 +15,7 @@ This document explains how to **create** a Neon project, **connect** it to the M
 | **Neon Console / CLI** | Org, project, branch, Postgres, Object Storage, Functions, Realtime |
 | **Repo root** | `neon.ts` (what to deploy), `.neon` (linked org/project/branch), `cloud/` (sync schema + verify) |
 | **`.env.local`** | Connection strings and secrets on **your machine only** (gitignored). Copy from [`.env.example`](../.env.example). |
-| **Launcher + WinUI MynaHub** | **Myna** runs the background sync (push every 2 s, Postgres `LISTEN` pull) from sign-in on. **MynaHub, Suite → Cloud sync**: test connection, enable sync per project, push or pull now. Credentials: `%LocalAppData%\\OSAS\\neon.env` (copy from repo `.env.local`). |
+| **WinUI MynaHub** | **MynaHub** runs the background sync (push every 2 s, Postgres `LISTEN` pull) once **Start sync** is pressed on **Suite → Cloud sync**, for as long as MynaHub is open (the Myna launcher that ran it was removed on 2026-11-11). The same page: test connection, enable sync per project, push or pull now. Credentials: `%LocalAppData%\\OSAS\\neon.env` (copy from repo `.env.local`). |
 
 **Testing credentials:** A shared test project/password is fine for experiments. Put values only in `.env.local` or a password manager — never commit them, paste them in issues, or check them into the company file.
 

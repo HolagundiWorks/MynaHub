@@ -27,7 +27,7 @@ Build order and commands (full detail in each repository's packaging doc):
 
 | Step | Command | Output |
 |---|---|---|
-| 1 | `O-STUDIO\installer\build.ps1` | `O-STUDIO\installer\O-Studio-Setup-0.1.0.exe` (`O-Studio.exe` and `O-Studio.Launcher.exe` in one folder) |
+| 1 | `O-STUDIO\installer\build.ps1` | `O-STUDIO\installer\O-Studio-Setup-0.1.0.exe` (`O-Studio.exe`; the launcher was removed on 2026-11-11) |
 | 2 | `O-COREOP\BBSDesktop\installer\build-installer.ps1 -OfficeDllDir <folder with office.dll>` (build `office-ffi` first: `cargo build --release` in `O-STUDIO\office-ffi`; when `CARGO_TARGET_DIR` is set, use `<CARGO_TARGET_DIR>\release`) | `O-COREOP\BBSDesktop\artifacts\installer\O-CoreOp-Setup-<v>.exe` |
 | 3 | `O-DRAFT-main\packaging\windows\package.ps1 -Arch x64` | `O-DRAFT-main\dist\release\o-draft-<v>-windows-x64.msi` and `...-portable.zip` |
 | 4 | `O-STUDIO\installer\suite\build-all.ps1 -Version <v>` (builds both) | `O-STUDIO\installer\suite\out\Myna-Setup-<v>.exe` and `MynaOpsCAD-Setup-<v>.exe` |
@@ -45,7 +45,7 @@ Partial or full removal with the same package:
 rem each Setup removes itself: unins000.exe /VERYSILENT in the O-CoreOp folder (MynaOps and MynaCAD) or Uninstall.exe /S in the O-Studio folder (Myna)
 ```
 
-Installed locations (per user): `%LOCALAPPDATA%\Programs\O-Studio` (`O-Studio.Launcher.exe` beside `O-Studio.exe`), `...\MynaOps`, `...\MynaCAD`, `...\Myna Suite` (uninstaller).
+Installed locations (per user): `%LOCALAPPDATA%\Programs\O-Studio` (`O-Studio.exe`), `...\MynaOps`, `...\MynaCAD`, `...\Myna Suite` (uninstaller).
 
 Record in every run report: the installer file name and SHA-256, the commit of each repository, the Windows build number.
 
@@ -71,7 +71,7 @@ Test folder: `D:\Work Development\TestRuns\<yyyy-mm-dd>\` (outside every reposit
 |---|---|
 | Drive and read WinUI windows | UI Automation (PowerShell `System.Windows.Automation`), or the repository's UIA scripts: `O-COREOP\BBSDesktop\tests\e2e\*.ps1` (`run-e2e.ps1`, `uia-smoke.ps1`, `uia-osp-takeoff.ps1`, `e2e-draft-coreop-takeoff.ps1`). Prefer UIA element names to screen coordinates. Verify what is under a click point before clicking |
 | Drive MynaCAD without the mouse | `aad-cli` (`aad-cli run --script file.scr`), the JSON control channel on `127.0.0.1`, or the MCP server ([control-protocol.md](../../../O-DRAFT-main/docs/control-protocol.md)); every command in the menus is also a command |
-| Read Myna's state | `%LOCALAPPDATA%\O-Studio\launcher-status.txt` (AI agent, database, cloud sync; rewritten at least every 20 s) and `%LOCALAPPDATA%\OSAS\suite.json` |
+| Read the AI agent's state | `%LOCALAPPDATA%\O-Studio\ai\host.json` (which MynaOps hosts it, window or headless) and `ai\host.log` (headless host); `launcher-status.txt` is retired with the launcher. Company: `%LOCALAPPDATA%\OSAS\suite.json` |
 | Read the project file | `cargo run -p aad-odp --example inspect -- file.osp` |
 | Unit and integration suites (run first, they are the baseline) | `cargo test --workspace` (MynaCAD); `dotnet test AQC.CadImport.Tests` and `dotnet test Office.Shared.Tests` (MynaOps); `cargo test` in each MynaHub crate (`office-core`, `office-ffi`, `office-agent`) and `dotnet test native\Osas.Core.Tests` |
 | Screenshots | `System.Drawing` `CopyFromScreen` of the window rectangle only |

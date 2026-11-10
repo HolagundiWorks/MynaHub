@@ -23,10 +23,9 @@ A test is not "passed" because nothing crashed. It is passed when the **Expected
 1. **Prepare** the machine and the build: [TEST-ENVIRONMENT.md](TEST-ENVIRONMENT.md).
 2. **Smoke test** each app (the first section of each plan): it installs, starts, shows its main window, closes. Stop and report if any smoke test fails (S1).
 3. **Feature tests, app by app**, in this order, because later apps need earlier ones:
-   1. [PLAN-LAUNCHER.md](PLAN-LAUNCHER.md): company sign-in and ticket launch (everything else depends on it).
-   2. [PLAN-O-STUDIO.md](PLAN-O-STUDIO.md)
-   3. [PLAN-O-DRAFT.md](PLAN-O-DRAFT.md)
-   4. [PLAN-O-COREOP.md](PLAN-O-COREOP.md)
+   1. [PLAN-O-STUDIO.md](PLAN-O-STUDIO.md) (company sign-in lives here; the launcher plan, [PLAN-LAUNCHER.md](PLAN-LAUNCHER.md), is retired with the launcher)
+   2. [PLAN-O-DRAFT.md](PLAN-O-DRAFT.md)
+   3. [PLAN-O-COREOP.md](PLAN-O-COREOP.md)
 4. **Connected-app tests:** [PLAN-INTEGRATION.md](PLAN-INTEGRATION.md).
 5. **Bugs:** log each one as found (do not batch). After a plan section is finished, fix its S1/S2 bugs, re-run the failed cases and the regression cases, then continue.
 6. **Report:** fill the run report, update the status column of every case, list what was not run and why.
@@ -68,8 +67,8 @@ Every plan lists cases as rows: `ID | Feature | Steps | Expected | How to check`
 
 | App | Plan | Areas |
 |---|---|---|
-| Myna | [PLAN-LAUNCHER.md](PLAN-LAUNCHER.md) | tray icon and menu, status lines and status file, single instance, company sign-in window, ticket launch, hand-off to MynaHub |
+| (Myna launcher, removed 2026-11-11) | [PLAN-LAUNCHER.md](PLAN-LAUNCHER.md) | retired; kept as history |
 | MynaHub | [PLAN-O-STUDIO.md](PLAN-O-STUDIO.md) | company file, users and roles, practice register, documents, billing, books, reports and tax, office, tasks, approvals, suite and cloud sync pages, help, shell |
 | MynaCAD | [PLAN-O-DRAFT.md](PLAN-O-DRAFT.md) | files, drawing, modify, dimensions, layers, layouts, architecture tools, levels and sheet sets, take-off, electrical, smart blocks, PDF, history and revisions, project file, colour dialog, scripting and automation, AI tools, shell |
 | MynaOps | [PLAN-O-COREOP.md](PLAN-O-COREOP.md) | project settings, levels, RCC, civil BOQ, openings, take-off page, CAD bridge, item links, rate book, estimate, PO and reports, personas, schedule, contracts, accounts, stores, HR, assistant, project file, shell |
-| Connected | [PLAN-INTEGRATION.md](PLAN-INTEGRATION.md) | launcher to apps, company file sharing, `.osp` live sync, assistant hosting, cloud sync, approvals share, install, upgrade and uninstall |
+| Connected | [PLAN-INTEGRATION.md](PLAN-INTEGRATION.md) | launcher removal on upgrade, AI agent hosted by MynaOps (window and headless), project database manager, `.osp` live sync, cloud sync, approvals share, install, upgrade and uninstall |

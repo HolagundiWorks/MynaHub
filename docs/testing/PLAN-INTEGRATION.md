@@ -6,27 +6,48 @@ Links under test:
 
 | Link | Mechanism |
 |---|---|
-| Launcher or MynaHub to apps | one-time ticket, `OSTUDIO_COMPANY`, `OSTUDIO_TICKET`, `OSTUDIO_USER` |
+| MynaHub to apps | started by path; nothing passed (tickets, `OSTUDIO_COMPANY` and the launcher are retired) |
 | Company file | `office.dll` (C interface), read-only details in MynaOps and MynaCAD |
 | MynaCAD to MynaOps | the same `.osp`; MynaOps polls `meta.revision` every 2 s |
 | Which `.osp` | active-project pointer file (path in `Office.Shared.SuiteWire`) |
-| AI | Myna hosts Olmo 3 7B on `127.0.0.1:8742`; MynaHub, MynaOps and MynaCAD are clients |
+| AI | MynaOps hosts Olmo 3 7B on `127.0.0.1:8742` (its window, or headless `--ai-host` started by MynaCAD); MynaCAD is a client; MynaHub has no AI |
 | MynaOps to MynaHub | summaries and draft shares mirrored into the company file; approvals inbox |
 | MynaHub to cloud | Neon (Postgres, object storage, realtime), MynaHub only |
+
+## I0 No launcher: AI agent in MynaOps, project database (2026-11-11)
+
+The Myna launcher was removed; sections I2, I4 and I8 below describe it and are **retired** (kept as history). These cases replace them. **Not run yet:** they need the next build of both Setups (the branch `claude/no-launcher` was checked by unit tests, builds and a headless-host process test only).
+
+| ID | Scenario | Steps | Expected | How to check |
+|---|---|---|---|---|
+| INT-NL-01 | Upgrade removes the launcher | On a PC with Myna-Setup 1.7.x installed and the launcher running (tray icon), run `MynaHub-Setup` | Exit 0; no `O-Studio.Launcher.exe` process; `%LOCALAPPDATA%\Programs\O-Studio\launcher` gone; no `Myna.lnk` in the Start menu or on the desktop; Start menu folder `Myna` gone (or only the user's own files left in it); folder `MynaHub` with MynaHub and Uninstall MynaHub; Settings > Apps shows **MynaHub**; company files, `suite.json`, `ai\auth.token` kept | process list, folders, Start menu |
+| INT-NL-02 | MynaHub alone | Start MynaHub, sign in, open Suite and Cloud sync | Works; no Ask bar, no assistant, no AI status anywhere; no process listens on 8742 because of MynaHub | UIA, `netstat -ano` |
+| INT-NL-03 | MynaHub opens the apps | Click MynaOps and MynaCAD in MynaHub's bottom bar | Each starts; neither gets `OSTUDIO_*` variables (Process Explorer > Environment) | Process Explorer |
+| INT-NL-04 | MynaOps window hosts | Start MynaOps only | Status bar "AI: ready" (model installed) within 10 s; `ai\host.json` says `"mode":"window"` and MynaOps' pid; `127.0.0.1:8742/v1/health` answers with `"host":"MynaOps"` | curl with the token |
+| INT-NL-05 | MynaCAD alone starts MynaOps | Close every MynaOps and MynaCAD; start MynaCAD; ask the assistant something | The AI agent tooltip and reply area say "starting MynaOps…"; a windowless `O-CoreOp.exe --ai-host` appears; the answer comes (first one also loads the model); the MynaCAD window never stops responding | process list, UIA |
+| INT-NL-06 | Headless host ends | After INT-NL-05 close MynaCAD and wait 4 minutes | The `--ai-host` process is gone; `host.json` removed; `ai\host.log` ends with "idle … ending" | process list, log |
+| INT-NL-07 | MynaOps opens while the headless host runs | With the headless host up (INT-NL-05), start MynaOps | MynaOps is a client: "AI: ready", tooltip says MynaOps runs it in the background; its Ask bar answers | UIA |
+| INT-NL-08 | Model not downloaded | Move the model out of `%LOCALAPPDATA%\HumanCentricWorks\models`; start MynaOps; start MynaCAD and ask | MynaOps "AI: model not installed"; MynaCAD says the model is not installed and to use MynaOps > Edit > Assistant model; nothing hangs | UIA |
+| INT-NL-09 | Download the model in MynaOps | Edit > Assistant model > Download | Progress shown; on completion the file is 4,471,602,048 bytes with SHA-256 `0de0bc63...c5c4`; "AI: ready"; Stop download leaves no `.part` file | hash |
+| INT-NL-10 | MynaOps not installed | With only MynaCAD's files (rename `Programs\O-CoreOp`), ask in MynaCAD | "AI agent needs MynaOps: install MynaOps and MynaCAD (one installer)"; no error dialog | UIA |
+| INT-NL-11 | Setup with the headless host running | Run `MynaOpsCAD-Setup` (and later its uninstaller) while `O-CoreOp.exe --ai-host` runs | The host is stopped first; Setup does not ask to close it; exit 0 | log, process list |
+| INT-NL-12 | Project database page | Open a project in MynaOps; Project > Project database | Format `osp`, version 1, revision, size, folder and row counts match the file; Check integrity passes; Back up now adds `<name>.backups\<name> <UTC> manual.osp` | UIA, folder |
+| INT-NL-13 | Refused while MynaCAD has it | Open the same `.osp` in MynaCAD; in MynaOps open Project database | "Open in MynaCAD (…)"; Compact and Restore are disabled; Back up now still works | UIA |
+| INT-NL-14 | Compact and restore | Close MynaCAD; Compact; select an older backup; Restore | Compact keeps the revision; Restore keeps a `before-restore` backup, MynaOps reopens the project from the restored file, MynaCAD then opens it with the older drawing | UIA, MynaCAD |
 
 ## I1 Install, upgrade, uninstall
 
 | ID | Scenario | Steps | Expected | How to check |
 |---|---|---|---|---|
-| INT-INS-01 | Fresh install of each Setup | Clean profile or VM; run `Myna-Setup` and `MynaOpsCAD-Setup` (in either order) | Each exits 0 and installs only its own apps: Myna-Setup gives MynaHub and the Myna launcher (`O-Studio.Launcher.exe` beside `O-Studio.exe`); MynaOpsCAD-Setup gives MynaOps and MynaCAD; Start menu entries; `.osp` opens in MynaCAD (double-click) and has **Open in MynaOps** | folders, registry `HKCU\Software\Classes\.osp` |
-| INT-INS-02 | Apps work with only one Setup | Install only MynaOpsCAD-Setup; then only Myna-Setup | MynaOps and MynaCAD start and share the project file without MynaHub; MynaHub starts without them | UIA, process list |
+| INT-INS-01 | Fresh install of each Setup | Clean profile or VM; run `MynaHub-Setup` and `MynaOpsCAD-Setup` (in either order) | Each exits 0 and installs only its own apps: MynaHub-Setup gives MynaHub (no launcher); MynaOpsCAD-Setup gives MynaOps and MynaCAD; Start menu entries; `.osp` opens in MynaCAD (double-click) and has **Open in MynaOps** | folders, registry `HKCU\Software\Classes\.osp` |
+| INT-INS-02 | Apps work with only one Setup | Install only MynaOpsCAD-Setup; then only MynaHub-Setup | MynaOps and MynaCAD start and share the project file without MynaHub; MynaHub starts without them | UIA, process list |
 | INT-INS-03 | Upgrade | Install 1.7.1 over an earlier build of the same Setup, and over the separate 1.7.0 MynaOps and MynaCAD Setups | Apps replaced; company files, projects, settings, model kept; old shortcuts and Start menu folders (Kivo, Tren, Falcon, MynaOps, MynaCAD) removed | file hashes, Start menu |
-| INT-INS-04 | Uninstall | Settings > Apps: remove Myna, then "MynaOps and MynaCAD" | MynaOps and MynaCAD go together; company files, projects, `%LOCALAPPDATA%\HumanCentricWorks\models` stay; the `.osp` association goes with them | folders, registry |
+| INT-INS-04 | Uninstall | Settings > Apps: remove MynaHub, then "MynaOps and MynaCAD" | MynaOps and MynaCAD go together; company files, projects, `%LOCALAPPDATA%\HumanCentricWorks\models` stay; the `.osp` association goes with them | folders, registry |
 | INT-INS-05 | Running apps during install | Leave an app open while installing | A clear result (retry/close message), no corrupt install | log |
 | INT-INS-06 | Silent install log | `/LOG` | Each Setup log ends with exit 0 | log |
 | INT-INS-07 | Model task | Install with the model task on a machine without the model | 4.26 GB file downloaded, SHA-256 `0de0bc63...c5c4` verified, placed in `%LOCALAPPDATA%\HumanCentricWorks\models` | hash |
 
-## I2 Launcher, company file and tickets
+## I2 Launcher, company file and tickets (retired 2026-11-11: the launcher was removed; see I0)
 
 | ID | Scenario | Steps | Expected |
 |---|---|---|---|
@@ -57,7 +78,7 @@ Links under test:
 | INT-OSP-11 | `.osp` over a network or synced folder `[B]` | Put the file in OneDrive/Drive folder and use both apps | Record the observed behaviour (WAL files, locks); data-loss is S1 |
 | INT-OSP-12 | Legacy absence | Look for `.vdb` or `shilpid` anywhere in the apps | None: no menu, command, file type or process |
 
-## I4 Assistant (AI Core)
+## I4 Assistant (AI Core) (retired 2026-11-11: hosting moved to MynaOps; see I0. INT-AI-04 to 06 still apply to the MynaOps host)
 
 | ID | Scenario | Steps | Expected |
 |---|---|---|---|
@@ -90,7 +111,7 @@ Links under test:
 | INT-CLD-05 | Offline | Disable network, edit, reconnect | Edits queue and sync; no corruption |
 | INT-CLD-06 | Keys | Search `.osp`, logs, reports, evidence for the connection string | Absent |
 | INT-CLD-07 | Draft/CoreOp never hold keys | Inspect their folders and environment | No Neon values |
-| INT-CLD-08 | Sync runs in Myna | Sign in to Myna with Neon set up (test branch); do not open MynaHub | `launcher-status.txt` shows "running"; a project switched on in cloud-sync.json is pushed within seconds of a save |
+| INT-CLD-08 | Sync runs in Myna (retired: the sync runs in MynaHub, Suite > Cloud sync > Start sync) | Sign in to Myna with Neon set up (test branch); do not open MynaHub | `launcher-status.txt` shows "running"; a project switched on in cloud-sync.json is pushed within seconds of a save |
 | INT-CLD-09 | Survives the window and MynaHub | Close the sign-in window, then start MynaHub from Myna | Sync keeps running (status stays "running"); MynaHub's Cloud sync page shows Myna's line and no toggle |
 | INT-CLD-10 | Sign out stops it | Sign out in Myna | "stopped (signed out)"; no push after a save; signing in again restarts it |
 | INT-CLD-11 | Switch on / off while running | In MynaHub, switch a project on, then off | Myna picks it up within about 5 s; the other projects' switches are not undone by Myna's own saves |
@@ -109,7 +130,7 @@ Links under test:
 | INT-FLT-06 | Locked files from antivirus | Retry or message, no crash |
 | INT-FLT-07 | Clock change | Revisions are counters, not times: sync unaffected |
 
-## I8 Choosing the project (launcher)
+## I8 Choosing the project (launcher) (retired: the project is chosen in each app)
 
 | ID | Scenario | Steps | Expected |
 |---|---|---|---|

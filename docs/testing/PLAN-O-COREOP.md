@@ -14,7 +14,7 @@ Shell: two ribbons of text tabs. Main ribbon sections: Project, RCC steel, Civil
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
 | COP-SMK-01 | Start | Start `O-CoreOp.exe` | Main window opens, ribbons visible, no crash | UIA, event log |
-| COP-SMK-02 | Start from launcher | Launcher, **MynaOps** | Opens with the company's name and details shown read-only | UIA |
+| COP-SMK-02 | Start from MynaHub (launcher retired) | MynaHub bottom bar, **MynaOps** | Opens with the company's name and details shown read-only | UIA |
 | COP-SMK-03 | Locked project, no file yet | Start with `OSTUDIO_PROJECT_OSP` pointing into an existing folder where no `.osp` exists | An empty project named after the file; Save creates the `.osp` | UIA, file |
 | COP-SMK-04 | Close | Close | Asks to save if changed; process ends | UIA |
 | COP-SMK-05 | Suites | `dotnet test AQC.CadImport.Tests` and `Office.Shared.Tests` | 0 failed (88 and 91 at last run) | output |

@@ -1,5 +1,7 @@
 # Studio as the hub: one company file, one sign-in
 
+> **2026-11-11:** the launcher in the diagram and the table below no longer exists. MynaHub chooses, creates and signs in to the company file itself and opens the other apps by path with nothing passed (no tickets since 2026-11-08). See `docs/SUITE.md`.
+
 > **Partly retired 2026-11-08.** The one-time sign-in ticket and the company path passed to MynaOps and MynaCAD no longer exist: MynaCAD and MynaOps are independent of MynaHub and share only the local `.osp`. See [SUITE.md](SUITE.md). The rest is kept as history.
 
 Written 2026-10-19; **updated 2026-10-28** for the Studio↔OSAS merge ([studio-osas-merge.md](studio-osas-merge.md)).

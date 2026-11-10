@@ -1,4 +1,6 @@
-# Workflow: MynaHub is the office, the launcher is the engine room
+# Workflow: MynaHub is the office (the launcher is gone)
+
+Status update 2026-11-11: **the Myna launcher is removed.** Nothing in this note about the launcher (AI Core host, database service, cloud sync start, tray menu) is current: MynaHub keeps all logins and the company file and runs the Neon sync itself (Suite > Cloud sync > Start sync); MynaHub has no AI; the AI agent is hosted by MynaOps for MynaOps and MynaCAD (MynaCAD starts MynaOps without a window when it needs it); the project database manager is in MynaOps. See `docs/SUITE.md`. The rest of this note is the history of the 2026-11-08 design.
 
 Status update 2026-11-08 (later): **MynaCAD and MynaOps are independent of MynaHub.** They share the local `.osp` as their database and no longer sign in to MynaHub or call Myna's database service (decision 2 below, "each app asks MynaHub on demand", is withdrawn). MynaHub receives project data only through MynaOps's exported CSV. The broker, the database service, the sign-in ticket and the locked project were then removed from MynaHub, Myna, MynaCAD and MynaOps (same day).
 

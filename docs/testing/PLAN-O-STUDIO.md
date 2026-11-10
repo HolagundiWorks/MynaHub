@@ -9,7 +9,7 @@ Sign-in is in Myna. MynaHub's own login page is only a prompt to use Myna; set-u
 | ID | Feature | Steps | Expected | How to check |
 |---|---|---|---|---|
 | STU-SMK-01 | Start | Start `O-Studio.exe` | Window "MynaHub" opens with the welcome panel (create, open, recent) | UIA |
-| STU-SMK-02 | Start with ticket | Launcher, **MynaHub** | Opens on the company, signed in, workspace visible | UIA |
+| STU-SMK-02 | Start and sign in | Start MynaHub, open the test company, sign in (tickets and the launcher are retired) | Opens on the company, signed in, workspace visible; no Ask bar or AI status | UIA |
 | STU-SMK-03 | Close | Close the window | Process ends; company file released | process |
 | STU-SMK-04 | Engine | Welcome panel | No "engine could not be loaded" message | UIA |
 

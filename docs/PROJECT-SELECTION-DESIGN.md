@@ -1,5 +1,7 @@
 # Project creation and selection through Myna (design)
 
+> **Superseded.** The project is no longer chosen or locked in Myna: the apps became independent on 2026-11-08 and the Myna launcher was removed on 2026-11-11. Kept as history; see `docs/SUITE.md`.
+
 **Status:** decided 2026-11-01 (section 6). Step 1 (wire and engine calls) is built; Myna, MynaOps and MynaCAD changes are not.
 **Terms and links:** [SUITE.md](SUITE.md). **Data rules:** [PROJECT-HIERARCHY-AND-SECURITY.md](PROJECT-HIERARCHY-AND-SECURITY.md).
 
