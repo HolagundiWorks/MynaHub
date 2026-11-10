@@ -43,7 +43,7 @@ After sign-in Myna lists the company's projects (search by code, name or client)
 
 ## Install and remove
 
-Three installers, each complete on its own (per user, no administrator): `Myna-Setup-<version>.exe` installs **MynaHub and the Myna launcher** together, `MynaOps-Setup-<version>.exe` installs **MynaOps**, and `MynaCAD-Setup-<version>.exe` installs **MynaCAD**. There is no combined suite installer: the apps are independent, and MynaOps and MynaCAD share the local project file. Each Setup is also its own uninstaller (Settings > Apps); company files, projects and the assistant model are never deleted. Details and silent command lines: [installer/suite/README.md](installer/suite/README.md).
+Two installers, each complete on its own (per user, no administrator): `Myna-Setup-<version>.exe` installs **MynaHub and the Myna launcher** together, and `MynaOpsCAD-Setup-<version>.exe` installs **MynaOps and MynaCAD** together. MynaOps and MynaCAD depend on each other and share the local project file, so they are one installer and are removed together; there is no installer for either alone, and no combined suite installer. Each Setup is also its own uninstaller (Settings > Apps); company files, projects and the assistant model are never deleted. Details and silent command lines: [installer/suite/README.md](installer/suite/README.md).
 
 ## The suite
 

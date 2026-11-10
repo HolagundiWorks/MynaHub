@@ -1,24 +1,25 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Builds the three Myna installers from current source: Myna-Setup (MynaHub + the Myna launcher), MynaOps-Setup and MynaCAD-Setup.
+  Builds the two Myna installers from current source: Myna-Setup (MynaHub + the Myna launcher) and MynaOpsCAD-Setup (MynaOps + MynaCAD together).
 
 .DESCRIPTION
-  Three installers, each one complete on its own (per user, no administrator):
+  Two installers, each complete on its own (per user, no administrator):
 
-    Myna-Setup-<Version>.exe      MynaHub and the Myna launcher together (NSIS, built by installer\build.ps1)
-    MynaOps-Setup-<Version>.exe   MynaOps on its own (Inno Setup, built by O-COREOP\BBSDesktop\installer\build-installer.ps1)
-    MynaCAD-Setup-<Version>.exe   MynaCAD on its own (Inno Setup, O-DRAFT-main\packaging\windows\MynaCAD.iss, from the portable layout)
+    Myna-Setup-<Version>.exe        MynaHub and the Myna launcher together (NSIS, built by installer\build.ps1)
+    MynaOpsCAD-Setup-<Version>.exe  MynaOps and MynaCAD together (Inno Setup: O-COREOP\BBSDesktop\installer\O-CoreOp.iss in its combined mode,
+                                    with MynaCAD's portable layout from O-DRAFT-main\packaging\windows\package.ps1)
 
-  There is no combined suite installer any more. The apps are independent of each other; MynaOps and MynaCAD share the local project file.
+  MynaOps and MynaCAD depend on each other and share the project file, so they are one installer and are removed together. MynaHub and the
+  launcher are a separate installer. There is no installer for MynaOps or MynaCAD alone, and no combined suite installer.
 
   Expected sibling repos (names are fixed):
     O-STUDIO     (MynaHub + Myna launcher; this script)
-    O-COREOP     (MynaOps)
+    O-COREOP     (MynaOps; the combined Inno script)
     O-DRAFT-main (MynaCAD; the working tree is packaged: commit or stash edits you do not want in the build)
 
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File installer\suite\build-all.ps1 -Version 1.7.0
+  powershell -ExecutionPolicy Bypass -File installer\suite\build-all.ps1 -Version 1.7.1
 #>
 [CmdletBinding()]
 param(
@@ -91,7 +92,7 @@ function Publish-Installer([string] $Source, [string] $Name, [string] $Key) {
     Write-Host "  -> $target" -ForegroundColor Green
 }
 
-Write-Host "=== 1/3 Myna Setup (MynaHub + the Myna launcher) ===" -ForegroundColor Cyan
+Write-Host "=== 1/2 Myna Setup (MynaHub + the Myna launcher) ===" -ForegroundColor Cyan
 Push-Location $studioRepo
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $installerDir "build.ps1")
 if ($LASTEXITCODE -ne 0) { throw "Myna Setup (MynaHub + launcher) build failed (exit $LASTEXITCODE)" }
@@ -100,16 +101,8 @@ $hubSetup = Get-ChildItem (Join-Path $installerDir "O-Studio-Setup-*.exe") | Sor
 if (-not $hubSetup) { throw "O-Studio-Setup-*.exe not found after the MynaHub build" }
 Publish-Installer $hubSetup.FullName "Myna-Setup-$Version.exe" "myna"
 
-Write-Host "=== 2/3 MynaOps Setup ===" -ForegroundColor Cyan
-Push-Location (Join-Path $coreOpRepo "BBSDesktop\installer")
-& powershell -NoProfile -ExecutionPolicy Bypass -File build-installer.ps1
-if ($LASTEXITCODE -ne 0) { throw "MynaOps Setup build failed (exit $LASTEXITCODE); not publishing a stale installer" }
-Pop-Location
-$opsSetup = Get-ChildItem (Join-Path $coreOpRepo "BBSDesktop\artifacts\installer\O-CoreOp-Setup-*.exe") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-if (-not $opsSetup) { throw "O-CoreOp-Setup-*.exe not found after the MynaOps build" }
-Publish-Installer $opsSetup.FullName "MynaOps-Setup-$Version.exe" "mynaops"
-
-Write-Host "=== 3/3 MynaCAD Setup ===" -ForegroundColor Cyan
+Write-Host "=== 2/2 MynaOps + MynaCAD Setup ===" -ForegroundColor Cyan
+# MynaCAD's portable layout first: it goes inside the combined Setup
 if ($env:AAD_FONTS_DIR -and -not (Test-Path -LiteralPath $env:AAD_FONTS_DIR)) { Remove-Item Env:AAD_FONTS_DIR -ErrorAction SilentlyContinue }
 Push-Location (Join-Path $draftRepo "packaging\windows")
 & powershell -NoProfile -ExecutionPolicy Bypass -File package.ps1 -Arch x64
@@ -126,11 +119,13 @@ Expand-Archive -LiteralPath $draftZip.FullName -DestinationPath $app -Force
 $top = Get-ChildItem $app
 if ($top.Count -eq 1 -and $top[0].PSIsContainer) { Get-ChildItem $top[0].FullName | Move-Item -Destination $app; Remove-Item $top[0].FullName -Recurse }
 if (-not (Test-Path (Join-Path $app "ODraft.WinUi.exe"))) { throw "ODraft.WinUi.exe is not in $($draftZip.FullName)" }
-Copy-Item (Join-Path $draftRepo "LICENSE-MIT") (Join-Path $stage "LICENSE")
-$cadOut = Join-Path $stage "out"
-& (Find-Iscc) "/DAppVersion=$Version" "/DStage=$stage" "/DOutDir=$cadOut" (Join-Path $draftRepo "packaging\windows\MynaCAD.iss")
-if ($LASTEXITCODE -ne 0) { throw "ISCC failed for MynaCAD ($LASTEXITCODE)" }
-Publish-Installer (Join-Path $cadOut "MynaCAD-Setup-$Version.exe") "MynaCAD-Setup-$Version.exe" "mynacad"
+Push-Location (Join-Path $coreOpRepo "BBSDesktop\installer")
+& powershell -NoProfile -ExecutionPolicy Bypass -File build-installer.ps1 -CadStage $stage
+if ($LASTEXITCODE -ne 0) { throw "MynaOps + MynaCAD Setup build failed (exit $LASTEXITCODE); not publishing a stale installer" }
+Pop-Location
+$opsSetup = Get-ChildItem (Join-Path $coreOpRepo "BBSDesktop\artifacts\installer\MynaOpsCAD-Setup-*.exe") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $opsSetup) { throw "MynaOpsCAD-Setup-*.exe not found after the build" }
+Publish-Installer $opsSetup.FullName "MynaOpsCAD-Setup-$Version.exe" "mynaopscad"
 Remove-Item $stage -Recurse -Force
 
 $manifestPath = Join-Path $outDir "Myna-installers-$Version.manifest.json"

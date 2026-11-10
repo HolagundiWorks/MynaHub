@@ -44,19 +44,18 @@ powershell -File installer\sign.ps1 installer\O-Studio-Setup-0.1.0.exe
 
 ## The Myna installers
 
-Three installers, each one complete on its own (per user, no administrator; changed 2026-11-10 from one combined suite installer):
+Two installers, each one complete on its own (per user, no administrator). MynaOps and MynaCAD depend on each other, so they are one installer (changed 2026-11-10; before that one combined suite installer, then briefly three):
 
 | Installer | Installs | Built by |
 |---|---|---|
 | `Myna-Setup-<version>.exe` | MynaHub and the Myna launcher | `installer/build.ps1` (NSIS) |
-| `MynaOps-Setup-<version>.exe` | MynaOps | MynaOps `BBSDesktop/installer/build-installer.ps1` (Inno Setup) |
-| `MynaCAD-Setup-<version>.exe` | MynaCAD | MynaCAD `packaging/windows/MynaCAD.iss` (Inno Setup, from the portable layout) |
+| `MynaOpsCAD-Setup-<version>.exe` | MynaOps and MynaCAD | MynaOps `BBSDesktop/installer/O-CoreOp.iss` in its combined mode (`build-installer.ps1 -CadStage`), around MynaCAD's portable layout |
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File installer\suite\build-all.ps1 -Version 1.7.0
+powershell -ExecutionPolicy Bypass -File installer\suite\build-all.ps1 -Version 1.7.1
 ```
 
-Output: `installer/suite/out/` (the three Setups and `Myna-installers-<version>.manifest.json` with the git commits and checksums). Details: [installer/suite/README.md](../installer/suite/README.md).
+Output: `installer/suite/out/` (the two Setups and `Myna-installers-<version>.manifest.json` with the git commits and checksums). Details: [installer/suite/README.md](../installer/suite/README.md).
 
 ## Suite glue (legacy)
 

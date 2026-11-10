@@ -158,7 +158,7 @@ Saving: MynaCAD writes the drawing back into the `.osp` only when its bytes chan
 | MynaHub assistant and Neon sync | MynaHub `docs/AI_RUNTIME.md`, `docs/CLOUD-NEON.md`, `docs/ODP-PROJECT-FILE-AND-SYNC.md` |
 | Shared WinUI chrome | O-UI (`O.Ui`) — `SuiteBottomStatusBar`, `SuiteAskBar`, theme tokens |
 | ShilpiDB → `.osp` migration (historical) | Each app repo `docs/MIGRATION-OSP.md` — do not use **ShilpiDB** in new user text |
-| Installers | **Three installers (2026-11-10):** `Myna-Setup` (MynaHub + the Myna launcher), `MynaOps-Setup`, `MynaCAD-Setup`; build with MynaHub `installer/suite/build-all.ps1`, see its README. Per-app: MynaHub `docs/packaging.md`, MynaOps `docs/PACKAGING.md`, MynaCAD `docs/RELEASE_AND_PACKAGING.md` |
+| Installers | **Two installers (2026-11-10):** `Myna-Setup` (MynaHub + the Myna launcher) and `MynaOpsCAD-Setup` (MynaOps and MynaCAD together, because they depend on each other); build with MynaHub `installer/suite/build-all.ps1`, see its README. Per-app: MynaHub `docs/packaging.md`, MynaOps `docs/PACKAGING.md`, MynaCAD `docs/RELEASE_AND_PACKAGING.md` |
 | Testing | MynaHub `docs/testing/README.md` (plans for every app, the connected apps, bug process and log) |
 | Brand (palette, the mark, the AI agent orb, type) | MynaHub `docs/BRANDING.md`; artwork and colour files in `o-ui` (`brand/`, `Themes/SuiteAccent.*.xaml`) |
 

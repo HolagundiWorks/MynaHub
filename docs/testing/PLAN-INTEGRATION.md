@@ -18,10 +18,10 @@ Links under test:
 
 | ID | Scenario | Steps | Expected | How to check |
 |---|---|---|---|---|
-| INT-INS-01 | Fresh install of each Setup | Clean profile or VM; run `Myna-Setup`, `MynaOps-Setup` and `MynaCAD-Setup` (each alone, in any order) | Each exits 0 and installs only its own app(s): Myna-Setup gives MynaHub and the Myna launcher (`O-Studio.Launcher.exe` beside `O-Studio.exe`), MynaOps-Setup gives MynaOps, MynaCAD-Setup gives MynaCAD; Start menu entries; `.osp` registered by MynaCAD (and **Open in MynaOps** by MynaOps) | folders, registry `HKCU\Software\Classes\.osp` |
-| INT-INS-02 | Apps work alone | Install only MynaCAD; then only MynaOps; then only Myna-Setup | Each starts and works without the others | UIA, process list |
-| INT-INS-03 | Upgrade | Install 1.7.0 over an earlier build of the same Setup | App replaced; company files, projects, settings, model kept; old shortcuts (Kivo, Tren, Falcon) removed | file hashes, Start menu |
-| INT-INS-04 | Uninstall | Settings > Apps: remove each of Myna, MynaOps, MynaCAD in turn | Only that app removed; company files, projects, `%LOCALAPPDATA%\HumanCentricWorks\models` stay; the `.osp` association goes when MynaCAD is removed | folders, registry |
+| INT-INS-01 | Fresh install of each Setup | Clean profile or VM; run `Myna-Setup` and `MynaOpsCAD-Setup` (in either order) | Each exits 0 and installs only its own apps: Myna-Setup gives MynaHub and the Myna launcher (`O-Studio.Launcher.exe` beside `O-Studio.exe`); MynaOpsCAD-Setup gives MynaOps and MynaCAD; Start menu entries; `.osp` opens in MynaCAD (double-click) and has **Open in MynaOps** | folders, registry `HKCU\Software\Classes\.osp` |
+| INT-INS-02 | Apps work with only one Setup | Install only MynaOpsCAD-Setup; then only Myna-Setup | MynaOps and MynaCAD start and share the project file without MynaHub; MynaHub starts without them | UIA, process list |
+| INT-INS-03 | Upgrade | Install 1.7.1 over an earlier build of the same Setup, and over the separate 1.7.0 MynaOps and MynaCAD Setups | Apps replaced; company files, projects, settings, model kept; old shortcuts and Start menu folders (Kivo, Tren, Falcon, MynaOps, MynaCAD) removed | file hashes, Start menu |
+| INT-INS-04 | Uninstall | Settings > Apps: remove Myna, then "MynaOps and MynaCAD" | MynaOps and MynaCAD go together; company files, projects, `%LOCALAPPDATA%\HumanCentricWorks\models` stay; the `.osp` association goes with them | folders, registry |
 | INT-INS-05 | Running apps during install | Leave an app open while installing | A clear result (retry/close message), no corrupt install | log |
 | INT-INS-06 | Silent install log | `/LOG` | Each Setup log ends with exit 0 | log |
 | INT-INS-07 | Model task | Install with the model task on a machine without the model | 4.26 GB file downloaded, SHA-256 `0de0bc63...c5c4` verified, placed in `%LOCALAPPDATA%\HumanCentricWorks\models` | hash |
