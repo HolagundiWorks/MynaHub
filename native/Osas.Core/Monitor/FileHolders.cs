@@ -99,9 +99,9 @@ public sealed class WindowsFileHolders : IFileHolders
     public static string AppFor(string program, string fallback = "") =>
         program.ToLowerInvariant() switch
         {
-            "o-studio" or "adms.desktop" => "O-Studio",
-            "o-coreop" or "aqccore" => "O-CoreOp",
-            "aad" or "o-draft" or "aad.winui" or "odraft.winui" => "O-Draft",
+            "o-studio" or "adms.desktop" => "MynaHub",
+            "o-coreop" or "aqccore" => "MynaOps",
+            "aad" or "o-draft" or "aad.winui" or "odraft.winui" => "MynaCAD",
             "osas" => "OSAS",
             _ => fallback.Length > 0 ? fallback : program,
         };

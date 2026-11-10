@@ -33,7 +33,7 @@ internal static class LaunchRequest
         }
 
         if (open != null)
-            return new LaunchRequestData(app ?? "O-Draft", Path.GetFullPath(open));
+            return new LaunchRequestData(app ?? "MynaCAD", Path.GetFullPath(open));
         return launch != null ? new LaunchRequestData(launch, null) : null;
     }
 

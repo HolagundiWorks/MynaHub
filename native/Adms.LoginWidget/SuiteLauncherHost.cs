@@ -25,7 +25,7 @@ internal sealed class SuiteLauncherHost
             return;
         LaunchRequest.Clear();
         var descriptor = SuiteCatalog.Apps.FirstOrDefault(a =>
-            string.Equals(a.Title, request.App, StringComparison.OrdinalIgnoreCase));
+            string.Equals(a.Title, request.App, StringComparison.OrdinalIgnoreCase) || string.Equals(a.TicketApp, request.App, StringComparison.OrdinalIgnoreCase));
         if (descriptor == null)
             return;
         try

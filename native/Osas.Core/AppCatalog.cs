@@ -43,13 +43,13 @@ public sealed class AppCatalog
 
     private static readonly Spec[] Specs =
     [
-        new(SuiteApp.Studio, "O-Studio", "Office and project management", "O-Studio.exe",
+        new(SuiteApp.Studio, "MynaHub", "Office and project management", "O-Studio.exe",
             [@"HKCU\Software\Human Centric Works\OStudio|InstallDir", @"HKCU\Software\Human Centric Works\AOS|InstallDir"],
             ["%LOCALAPPDATA%\\Programs\\O-Studio", "%LOCALAPPDATA%\\Programs\\Architecture Office Suit"], ["Adms.Desktop.exe"]),
-        new(SuiteApp.Metra, "O-CoreOp", "Quantities, estimates and billing", "O-CoreOp.exe",
+        new(SuiteApp.Metra, "MynaOps", "Quantities, estimates and billing", "O-CoreOp.exe",
             [@"HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{A8F3C2E1-9B4D-4E6A-8C1F-2D7E5A9B0C3D}_is1|InstallLocation"],
             ["%LOCALAPPDATA%\\Programs\\O-CoreOp", "%LOCALAPPDATA%\\Programs\\O-Metra", "%LOCALAPPDATA%\\Programs\\AQC-Core"], ["AQCCore.exe"]),
-        new(SuiteApp.Draft, "O-Draft", "Drafting", "o-draft.exe",
+        new(SuiteApp.Draft, "MynaCAD", "Drafting", "o-draft.exe",
             [],
             ["%LOCALAPPDATA%\\Programs\\O-Draft", "%LOCALAPPDATA%\\Programs\\AAD"], ["aad.exe"]),
     ];

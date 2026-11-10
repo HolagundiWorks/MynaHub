@@ -207,7 +207,7 @@ public sealed partial class MainWindow : Window
     {
         if (_session == null)
         {
-            ShowError("The accounting engine is not loaded. Rebuild O-Studio with the Rust engine (src-tauri, cargo build --release) and ensure architect_office_desktop_lib.dll is beside O-Studio.exe.");
+            ShowError("The accounting engine is not loaded. Rebuild MynaHub with the Rust engine (src-tauri, cargo build --release) and ensure architect_office_desktop_lib.dll is beside O-Studio.exe.");
             return;
         }
         if (_busy)

@@ -173,9 +173,9 @@ public class CompanyFileMonitorTests : IDisposable
     {
         var path = CompanyFile();
         var me = Environment.ProcessId;
-        using var monitor = new CompanyFileMonitor(path, new FixedHolders(new Holder("O-Studio", "Adms.Desktop", me + 100000), new Holder("O-CoreOp", "AQCCore", me + 100001)));
+        using var monitor = new CompanyFileMonitor(path, new FixedHolders(new Holder("MynaHub", "Adms.Desktop", me + 100000), new Holder("MynaOps", "AQCCore", me + 100001)));
         var s = monitor.Sample();
-        Assert.Equal(["O-Studio", "O-CoreOp"], s.OpenIn.Select(p => p.App).ToArray());
+        Assert.Equal(["MynaHub", "MynaOps"], s.OpenIn.Select(p => p.App).ToArray());
     }
 
     [Fact]
@@ -188,12 +188,12 @@ public class CompanyFileMonitorTests : IDisposable
     }
 
     [Theory]
-    [InlineData("O-Studio", "O-Studio")]
-    [InlineData("Adms.Desktop", "O-Studio")]
-    [InlineData("O-CoreOp", "O-CoreOp")]
-    [InlineData("AQCCore", "O-CoreOp")]
-    [InlineData("aad", "O-Draft")]
-    [InlineData("o-draft", "O-Draft")]
+    [InlineData("O-Studio", "MynaHub")]
+    [InlineData("Adms.Desktop", "MynaHub")]
+    [InlineData("O-CoreOp", "MynaOps")]
+    [InlineData("AQCCore", "MynaOps")]
+    [InlineData("aad", "MynaCAD")]
+    [InlineData("o-draft", "MynaCAD")]
     [InlineData("OSAS", "OSAS")]
     [InlineData("notepad", "notepad")]
     public void Programs_are_named_the_way_the_suite_names_them(string program, string app) =>

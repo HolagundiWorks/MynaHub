@@ -135,7 +135,7 @@ public class AppCatalogTests
     public void Every_app_has_a_name_a_purpose_and_a_program_name()
     {
         var all = new AppCatalog(new FakeComputer()).Detect();
-        Assert.Equal(new[] { "O-Studio", "O-CoreOp", "O-Draft" }, all.Select(a => a.Name).ToArray());
+        Assert.Equal(new[] { "MynaHub", "MynaOps", "MynaCAD" }, all.Select(a => a.Name).ToArray());
         Assert.All(all, a => Assert.False(string.IsNullOrWhiteSpace(a.Purpose) || string.IsNullOrWhiteSpace(a.ExeName)));
     }
 }

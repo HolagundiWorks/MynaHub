@@ -6,7 +6,7 @@ namespace Adms.Desktop;
 
 internal static class BrandArt
 {
-    public const string Name = "O-Studio";
+    public const string Name = "MynaHub";
 
     public static ImageSource Mark()
     {
