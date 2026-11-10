@@ -42,15 +42,21 @@ powershell -File installer\sign.ps1 installer\O-Studio-Setup-0.1.0.exe
 # Do not ship self-signed builds
 ```
 
-## Suite installer (Myna Suite)
+## The Myna installers
 
-One **Myna-Setup-<version>.exe** installs or removes **MynaHub**, **MynaOps**, and **MynaCAD** from a single wizard (component checkboxes, install and remove modes, shared assistant model task). Build order and silent flags: [installer/suite/README.md](../installer/suite/README.md) and [docs/testing/TEST-ENVIRONMENT.md](testing/TEST-ENVIRONMENT.md).
+Three installers, each one complete on its own (per user, no administrator; changed 2026-11-10 from one combined suite installer):
+
+| Installer | Installs | Built by |
+|---|---|---|
+| `Myna-Setup-<version>.exe` | MynaHub and the Myna launcher | `installer/build.ps1` (NSIS) |
+| `MynaOps-Setup-<version>.exe` | MynaOps | MynaOps `BBSDesktop/installer/build-installer.ps1` (Inno Setup) |
+| `MynaCAD-Setup-<version>.exe` | MynaCAD | MynaCAD `packaging/windows/MynaCAD.iss` (Inno Setup, from the portable layout) |
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File installer\suite\build-single.ps1 -Version 1.3.0
+powershell -ExecutionPolicy Bypass -File installer\suite\build-all.ps1 -Version 1.7.0
 ```
 
-Output: `installer/suite/out/Myna-Setup-<version>.exe` (per user, no administrator). MynaHub’s own NSIS Setup is embedded and run silently; MynaOps’s Inno Setup likewise; MynaCAD is copied from the portable zip (the per-machine MSI is not used).
+Output: `installer/suite/out/` (the three Setups and `Myna-installers-<version>.manifest.json` with the git commits and checksums). Details: [installer/suite/README.md](../installer/suite/README.md).
 
 ## Suite glue (legacy)
 

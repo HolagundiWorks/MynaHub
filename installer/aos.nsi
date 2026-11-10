@@ -9,6 +9,9 @@ Unicode true
 !insertmacro GetSize
 
 !define APP_NAME "MynaHub"
+; One Setup for MynaHub and the Myna launcher: the Setup, the Start menu folder and the Apps entry are called Myna.
+!define SETUP_NAME "Myna"
+!define START_DIR "Myna"
 ; The install folder, the registry keys and the uninstall id keep the earlier name so an upgrade finds the old install.
 !define APP_DIR "O-Studio"
 !define APP_ID "OStudio"
@@ -26,7 +29,7 @@ Unicode true
   !define OUT "O-Studio-Setup-${VERSION}.exe"
 !endif
 
-Name "${APP_NAME}"
+Name "${SETUP_NAME} (MynaHub and the Myna launcher)"
 OutFile "${OUT}"
 InstallDir "$LOCALAPPDATA\Programs\${APP_DIR}"
 InstallDirRegKey HKCU "Software\${PUBLISHER}\${APP_ID}" "InstallDir"
@@ -35,9 +38,9 @@ SetCompressor /SOLID lzma
 BrandingText "${PUBLISHER}"
 
 VIProductVersion "${VERSION}.0"
-VIAddVersionKey "ProductName" "${APP_NAME}"
+VIAddVersionKey "ProductName" "${SETUP_NAME}"
 VIAddVersionKey "CompanyName" "${PUBLISHER}"
-VIAddVersionKey "FileDescription" "${APP_NAME} setup"
+VIAddVersionKey "FileDescription" "${SETUP_NAME} setup (MynaHub and the Myna launcher)"
 VIAddVersionKey "FileVersion" "${VERSION}"
 VIAddVersionKey "LegalCopyright" "Copyright (c) 2026 ${PUBLISHER}"
 
@@ -79,19 +82,23 @@ Section "Install"
   Delete "$SMPROGRAMS\Kivo\Myna.lnk"
   RMDir "$SMPROGRAMS\Kivo"
   Delete "$DESKTOP\Kivo.lnk"
+  Delete "$SMPROGRAMS\MynaHub\MynaHub.lnk"
+  Delete "$SMPROGRAMS\MynaHub\Uninstall MynaHub.lnk"
+  Delete "$SMPROGRAMS\MynaHub\Myna.lnk"
+  RMDir "$SMPROGRAMS\MynaHub"
 
   ; shortcuts carry the application icon, so the Start menu, the desktop and the taskbar all show it
-  CreateDirectory "$SMPROGRAMS\${APP_NAME}"
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\Assets\app.ico" 0
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk" "$INSTDIR\Uninstall.exe"
+  CreateDirectory "$SMPROGRAMS\${START_DIR}"
+  CreateShortcut "$SMPROGRAMS\${START_DIR}\${APP_NAME}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\Assets\app.ico" 0
+  CreateShortcut "$SMPROGRAMS\${START_DIR}\Uninstall ${SETUP_NAME}.lnk" "$INSTDIR\Uninstall.exe"
   CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\Assets\app.ico" 0
   ; Myna: hosts the assistant and the database service, and chooses the project. Company sign-in is in MynaHub.
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\Myna.lnk" "$INSTDIR\launcher\O-Studio.Launcher.exe" "" "$INSTDIR\launcher\O-Studio.Launcher.exe" 0
+  CreateShortcut "$SMPROGRAMS\${START_DIR}\Myna.lnk" "$INSTDIR\launcher\O-Studio.Launcher.exe" "" "$INSTDIR\launcher\O-Studio.Launcher.exe" 0
   CreateShortcut "$DESKTOP\Myna.lnk" "$INSTDIR\launcher\O-Studio.Launcher.exe" "" "$INSTDIR\launcher\O-Studio.Launcher.exe" 0
 
   ; the entry in Settings > Apps
   WriteRegStr HKCU "Software\${PUBLISHER}\${APP_ID}" "InstallDir" "$INSTDIR"
-  WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayName" "${APP_NAME}"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayName" "${SETUP_NAME} (MynaHub and the Myna launcher)"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayVersion" "${VERSION}"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "Publisher" "${PUBLISHER}"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayIcon" "$INSTDIR\Assets\app.ico"
@@ -106,10 +113,10 @@ Section "Install"
 SectionEnd
 
 Section "Uninstall"
-  Delete "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk"
-  Delete "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk"
-  Delete "$SMPROGRAMS\${APP_NAME}\Myna.lnk"
-  RMDir "$SMPROGRAMS\${APP_NAME}"
+  Delete "$SMPROGRAMS\${START_DIR}\${APP_NAME}.lnk"
+  Delete "$SMPROGRAMS\${START_DIR}\Uninstall ${SETUP_NAME}.lnk"
+  Delete "$SMPROGRAMS\${START_DIR}\Myna.lnk"
+  RMDir "$SMPROGRAMS\${START_DIR}"
   Delete "$DESKTOP\${APP_NAME}.lnk"
   Delete "$DESKTOP\Myna.lnk"
   ; the install folder is fixed and holds only the program, never company files; it is removed only if it is the app's own folder

@@ -1,23 +1,28 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Builds fresh app installers, then Myna-Setup-<Version>.exe, with a manifest of git commits.
+  Builds the three Myna installers from current source: Myna-Setup (MynaHub + the Myna launcher), MynaOps-Setup and MynaCAD-Setup.
 
 .DESCRIPTION
-  Use this instead of build-single.ps1 alone when the suite must match current source.
-  build-single.ps1 only wraps whatever Setup.exe / zip files already exist (often stale).
+  Three installers, each one complete on its own (per user, no administrator):
+
+    Myna-Setup-<Version>.exe      MynaHub and the Myna launcher together (NSIS, built by installer\build.ps1)
+    MynaOps-Setup-<Version>.exe   MynaOps on its own (Inno Setup, built by O-COREOP\BBSDesktop\installer\build-installer.ps1)
+    MynaCAD-Setup-<Version>.exe   MynaCAD on its own (Inno Setup, O-DRAFT-main\packaging\windows\MynaCAD.iss, from the portable layout)
+
+  There is no combined suite installer any more. The apps are independent of each other; MynaOps and MynaCAD share the local project file.
 
   Expected sibling repos (names are fixed):
-    O-STUDIO   branch master (hub + suite iss)
-    O-COREOP   branch main
-    O-DRAFT-main on main (the working tree is packaged: commit or stash edits you do not want in the build)
+    O-STUDIO     (MynaHub + Myna launcher; this script)
+    O-COREOP     (MynaOps)
+    O-DRAFT-main (MynaCAD; the working tree is packaged: commit or stash edits you do not want in the build)
 
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File installer\suite\build-all.ps1 -Version 1.3.1
+  powershell -ExecutionPolicy Bypass -File installer\suite\build-all.ps1 -Version 1.7.0
 #>
 [CmdletBinding()]
 param(
-    [string] $Version = "1.3.1"
+    [string] $Version = "1.7.0"
 )
 
 $ErrorActionPreference = "Stop"
@@ -55,67 +60,80 @@ function Assert-Repo([string] $Path, [string] $Name) {
     if (-not (Test-Path -LiteralPath $Path)) { throw "$Name repo not found at $Path" }
 }
 
+function Find-Iscc {
+    $iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe", "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") |
+        Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $iscc) { throw "Inno Setup 6 (ISCC.exe) not found." }
+    return $iscc
+}
+
 Assert-Repo $studioRepo "O-STUDIO"
 Assert-Repo $coreOpRepo "O-COREOP"
-Assert-Repo $draftRepo "O-DRAFT"
+Assert-Repo $draftRepo "O-DRAFT-main"
 
 $env:Path = "$env:LOCALAPPDATA\tauri\NSIS;$env:Path"
 Import-VcVars64
+New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
 $manifest = [ordered]@{
-    built_utc   = (Get-Date).ToUniversalTime().ToString("o")
-    suite_version = $Version
-    o_studio    = Get-RepoHead $studioRepo
-    o_coreop    = Get-RepoHead $coreOpRepo
-    o_draft     = Get-RepoHead $draftRepo
-    payloads    = @{}
+    built_utc  = (Get-Date).ToUniversalTime().ToString("o")
+    version    = $Version
+    mynahub    = Get-RepoHead $studioRepo
+    mynaops    = Get-RepoHead $coreOpRepo
+    mynacad    = Get-RepoHead $draftRepo
+    installers = [ordered]@{}
 }
 
-Write-Host "=== 1/5 MynaHub NSIS ===" -ForegroundColor Cyan
+function Publish-Installer([string] $Source, [string] $Name, [string] $Key) {
+    $target = Join-Path $outDir $Name
+    Copy-Item -LiteralPath $Source -Destination $target -Force
+    $manifest.installers[$Key] = @{ file = $Name; sha256 = (Get-FileHash $target -Algorithm SHA256).Hash }
+    Write-Host "  -> $target" -ForegroundColor Green
+}
+
+Write-Host "=== 1/3 Myna Setup (MynaHub + the Myna launcher) ===" -ForegroundColor Cyan
 Push-Location $studioRepo
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $installerDir "build.ps1")
-if ($LASTEXITCODE -ne 0) { throw "MynaHub Setup build failed (exit $LASTEXITCODE)" }
+if ($LASTEXITCODE -ne 0) { throw "Myna Setup (MynaHub + launcher) build failed (exit $LASTEXITCODE)" }
 Pop-Location
-$studioSetup = Get-ChildItem (Join-Path $installerDir "O-Studio-Setup-*.exe") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-$manifest.payloads.o_studio_setup = @{ path = $studioSetup.FullName; sha256 = (Get-FileHash $studioSetup.FullName -Algorithm SHA256).Hash }
+$hubSetup = Get-ChildItem (Join-Path $installerDir "O-Studio-Setup-*.exe") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $hubSetup) { throw "O-Studio-Setup-*.exe not found after the MynaHub build" }
+Publish-Installer $hubSetup.FullName "Myna-Setup-$Version.exe" "myna"
 
-Write-Host "=== 2/5 office-ffi (office.dll) ===" -ForegroundColor Cyan
-$savedTarget = $env:CARGO_TARGET_DIR
-if (-not $savedTarget) { $env:CARGO_TARGET_DIR = "C:\Temp\odraft-target" }
-Push-Location (Join-Path $studioRepo "office-ffi")
-cargo build --release
-Pop-Location
-$officeDir = Join-Path $env:CARGO_TARGET_DIR "release"
-if (-not (Test-Path (Join-Path $officeDir "office.dll"))) { throw "office.dll missing in $officeDir" }
-
-Write-Host "=== 3/5 MynaOps Setup ===" -ForegroundColor Cyan
+Write-Host "=== 2/3 MynaOps Setup ===" -ForegroundColor Cyan
 Push-Location (Join-Path $coreOpRepo "BBSDesktop\installer")
 & powershell -NoProfile -ExecutionPolicy Bypass -File build-installer.ps1
-if ($LASTEXITCODE -ne 0) { throw "MynaOps Setup build failed (exit $LASTEXITCODE); not wrapping a stale installer" }
+if ($LASTEXITCODE -ne 0) { throw "MynaOps Setup build failed (exit $LASTEXITCODE); not publishing a stale installer" }
 Pop-Location
-$coreOpSetup = Get-ChildItem (Join-Path $coreOpRepo "BBSDesktop\artifacts\installer\O-CoreOp-Setup-*.exe") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-$manifest.payloads.o_coreop_setup = @{ path = $coreOpSetup.FullName; sha256 = (Get-FileHash $coreOpSetup.FullName -Algorithm SHA256).Hash }
+$opsSetup = Get-ChildItem (Join-Path $coreOpRepo "BBSDesktop\artifacts\installer\O-CoreOp-Setup-*.exe") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $opsSetup) { throw "O-CoreOp-Setup-*.exe not found after the MynaOps build" }
+Publish-Installer $opsSetup.FullName "MynaOps-Setup-$Version.exe" "mynaops"
 
-Write-Host "=== 4/5 MynaCAD portable zip ===" -ForegroundColor Cyan
-if ($savedTarget) { $env:CARGO_TARGET_DIR = $savedTarget } else { Remove-Item Env:CARGO_TARGET_DIR -ErrorAction SilentlyContinue }
+Write-Host "=== 3/3 MynaCAD Setup ===" -ForegroundColor Cyan
 if ($env:AAD_FONTS_DIR -and -not (Test-Path -LiteralPath $env:AAD_FONTS_DIR)) { Remove-Item Env:AAD_FONTS_DIR -ErrorAction SilentlyContinue }
 Push-Location (Join-Path $draftRepo "packaging\windows")
 & powershell -NoProfile -ExecutionPolicy Bypass -File package.ps1 -Arch x64
 if ($LASTEXITCODE -ne 0) { throw "MynaCAD package build failed (exit $LASTEXITCODE)" }
 Pop-Location
 $draftZip = Get-ChildItem (Join-Path $draftRepo "dist\release\o-draft-*-windows-x64-portable.zip") | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-$manifest.payloads.o_draft_zip = @{ path = $draftZip.FullName; sha256 = (Get-FileHash $draftZip.FullName -Algorithm SHA256).Hash }
+if (-not $draftZip) { throw "the MynaCAD portable zip was not produced" }
+$stage = Join-Path $suiteDir "stage"
+if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+$app = Join-Path $stage "app"
+New-Item -ItemType Directory -Path $app -Force | Out-Null
+Expand-Archive -LiteralPath $draftZip.FullName -DestinationPath $app -Force
+# the zip may hold one top-level folder; flatten it so the exe sits in the root
+$top = Get-ChildItem $app
+if ($top.Count -eq 1 -and $top[0].PSIsContainer) { Get-ChildItem $top[0].FullName | Move-Item -Destination $app; Remove-Item $top[0].FullName -Recurse }
+if (-not (Test-Path (Join-Path $app "ODraft.WinUi.exe"))) { throw "ODraft.WinUi.exe is not in $($draftZip.FullName)" }
+Copy-Item (Join-Path $draftRepo "LICENSE-MIT") (Join-Path $stage "LICENSE")
+$cadOut = Join-Path $stage "out"
+& (Find-Iscc) "/DAppVersion=$Version" "/DStage=$stage" "/DOutDir=$cadOut" (Join-Path $draftRepo "packaging\windows\MynaCAD.iss")
+if ($LASTEXITCODE -ne 0) { throw "ISCC failed for MynaCAD ($LASTEXITCODE)" }
+Publish-Installer (Join-Path $cadOut "MynaCAD-Setup-$Version.exe") "MynaCAD-Setup-$Version.exe" "mynacad"
+Remove-Item $stage -Recurse -Force
 
-Write-Host "=== 5/5 Myna Suite unified Setup ===" -ForegroundColor Cyan
-& (Join-Path $suiteDir "build-single.ps1") -Version $Version `
-    -StudioSetup $studioSetup.FullName `
-    -CoreOpSetup $coreOpSetup.FullName `
-    -DraftZip $draftZip.FullName
-
-$suiteExe = Join-Path $outDir "Myna-Setup-$Version.exe"
-$manifest.suite_sha256 = (Get-FileHash $suiteExe -Algorithm SHA256).Hash
-$manifestPath = Join-Path $outDir "Myna-Setup-$Version.manifest.json"
+$manifestPath = Join-Path $outDir "Myna-installers-$Version.manifest.json"
 $manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
-
 Write-Host "Manifest: $manifestPath" -ForegroundColor Green
-Write-Host "Setup:    $suiteExe" -ForegroundColor Green
+Get-ChildItem $outDir -Filter "*$Version*" | ForEach-Object { Write-Host ("  {0}  {1:N0} MB" -f $_.Name, ($_.Length / 1MB)) -ForegroundColor Green }
