@@ -1,13 +1,14 @@
 // Contrast of the suite's colour pairs against WCAG 2.2: 1.4.3 (text, 4.5) and 1.4.11 (graphics and component edges, 3).
 //   node contrast.mjs
-// The colours are those in o-ui / O-UI (Themes/SuiteColors.xaml and SuiteAccent.*.xaml). Keep them in step.
+// The colours are those in o-ui (Themes/SuiteColors.xaml, the light theme, pure white and black, and SuiteAccent.*.xaml). Keep them in step.
 const lum = h => { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(v => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
 const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
-const N = { bg: "#F6F5F1", side: "#EFEDE6", surface: "#FFFFFF", ink: "#17181B", soft: "#45484D", edgeStrong: "#8A877D", danger: "#B83A26" };
+const N = { bg: "#FFFFFF", side: "#FFFFFF", surface: "#FFFFFF", ink: "#000000", soft: "#4D4D4D", edgeStrong: "#767676", danger: "#C42B1C" };
 const A = {
-  "O-Studio (orange)": { accent: "#FF6B00", hover: "#F26400", pressed: "#E65F00", text: "#A83F00", wash: "#FFDCC2", on: "#17181B" },
-  "O-CoreOp (blue)": { accent: "#1F5FD1", hover: "#1A52B8", pressed: "#15449A", text: "#1A52B8", wash: "#D3E3FF", on: "#FFFFFF" },
-  "O-Draft (black)": { accent: "#1B1C20", hover: "#34363C", pressed: "#4B4E56", text: "#17181B", wash: "#E4E3DE", on: "#FFFFFF" },
+  "MynaHub (Ember)": { accent: "#B83E16", hover: "#A03212", pressed: "#8C2A10", text: "#B83E16", wash: "#F8E8E0", on: "#FFFFFF" },
+  "MynaCAD (Midnight)": { accent: "#102C80", hover: "#0C2470", pressed: "#081C60", text: "#102C80", wash: "#E4E8F8", on: "#FFFFFF" },
+  "MynaOps (Dusk)": { accent: "#5630A0", hover: "#4A289A", pressed: "#3E2080", text: "#5630A0", wash: "#EEE8F8", on: "#FFFFFF" },
+  "MynaMod (Grove)": { accent: "#166040", hover: "#125236", pressed: "#0E422C", text: "#166040", wash: "#E4F0EA", on: "#FFFFFF" },
 };
 const rows = [];
 const add = (what, fg, bg, need) => rows.push({ what, r: ratio(fg, bg), need });

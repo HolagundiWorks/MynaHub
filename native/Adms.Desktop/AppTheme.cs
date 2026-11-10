@@ -59,11 +59,11 @@ internal static class AppTheme
             return;
         var titleBar = window.TitleBar;
         titleBar.PreferredTheme = dark ? TitleBarTheme.Dark : TitleBarTheme.Light;
-        var background = dark ? Color(27, 27, 27) : Color(228, 234, 242);
-        var foreground = dark ? Color(243, 243, 243) : Color(26, 35, 50);
-        var inactiveForeground = dark ? Color(154, 154, 154) : Color(74, 86, 104);
-        var hover = dark ? Color(47, 47, 47) : Color(241, 245, 250);
-        var pressed = dark ? Color(56, 56, 56) : Color(216, 222, 232);
+        var background = dark ? Color(0, 0, 0) : Color(255, 255, 255);
+        var foreground = dark ? Color(255, 255, 255) : Color(0, 0, 0);
+        var inactiveForeground = dark ? Color(184, 184, 184) : Color(77, 77, 77);
+        var hover = dark ? Color(31, 31, 31) : Color(240, 240, 240);
+        var pressed = dark ? Color(51, 51, 51) : Color(217, 217, 217);
         titleBar.BackgroundColor = background;
         titleBar.ForegroundColor = foreground;
         titleBar.InactiveBackgroundColor = background;
@@ -94,11 +94,10 @@ internal static class AppTheme
             return;
         var immersive = dark ? 1 : 0;
         _ = DwmSetWindowAttribute(hwnd, DwmUseImmersiveDarkMode, ref immersive, sizeof(int));
-        var caption = dark ? ColorRef(27, 27, 27) : ColorRef(228, 234, 242);
-        var text = dark ? ColorRef(243, 243, 243) : ColorRef(26, 35, 50);
-        // Light border was #8A93A3 (138,147,163): 2.56:1 vs #E4EAF2 — fails WCAG 1.4.11 (3:1).
-        // Darkened to #707887 (112,120,135): 3.67:1.  Dark border unchanged (3.90:1 — passes).
-        var border = dark ? ColorRef(120, 120, 120) : ColorRef(112, 120, 135);
+        var caption = dark ? ColorRef(0, 0, 0) : ColorRef(255, 255, 255);
+        var text = dark ? ColorRef(255, 255, 255) : ColorRef(0, 0, 0);
+        // Pure white and pure black themes (2026-11-10): the border is #767676 on white (4.5:1) and #8C8C8C on black (6.2:1), both over 3:1 (WCAG 1.4.11).
+        var border = dark ? ColorRef(140, 140, 140) : ColorRef(118, 118, 118);
         _ = DwmSetWindowAttribute(hwnd, DwmCaptionColor, ref caption, sizeof(int));
         _ = DwmSetWindowAttribute(hwnd, DwmTextColor, ref text, sizeof(int));
         _ = DwmSetWindowAttribute(hwnd, DwmBorderColor, ref border, sizeof(int));

@@ -19,7 +19,7 @@ Audited 2026-10-29 against MynaCAD's polished shell (`apps/aad-winui`, its `docs
 | Icon size | 16 | 15 | 16 |
 | Fluent minimum overrides (text box, combo, list item) | 26, 26, 22 | none | 26, 26, 22 |
 
-Colours are unchanged: both already share the suite palette (ink `#1A2332` on `#E4EAF2` in light), and the suite keeps its own dark theme.
+Colours are unchanged: both already share the suite palette (ink `#1A2332` on `#E4EAF2` in light at the time; since 2026-11-10 the themes are pure white and pure black, see BRANDING.md), and the suite keeps its own dark theme.
 
 ## What changed in o-ui
 
