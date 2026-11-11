@@ -1,6 +1,6 @@
 # MynaHub
 
-MynaHub is the office app and suite hub. The suite is MynaHub (office and company file, orange), MynaOps (quantities, estimates and billing, blue), MynaCAD (drafting, black) and MynaMod (3D form, planned); Myna is the name of the suite. MynaHub holds every login (company sign-in, users, roles) and the company file; it has no AI (the AI agent runs in MynaOps for MynaOps and MynaCAD). Some code identifiers keep older spellings, such as the `aos` / `aqc` session strings and the `AOSENC1` file marker, because files already use them.
+MynaHub is the office app and suite hub. The suite is MynaHub (office and company file, orange), MynaOps (quantities, estimates and billing, blue), MynaCAD (drafting, black) and Myna3D (3D form, planned); Myna is the name of the suite. MynaHub holds every login (company sign-in, users, roles) and the company file; it has no AI (the AI agent runs in MynaOps for MynaOps and MynaCAD). Some code identifiers keep older spellings, such as the `aos` / `aqc` session strings and the `AOSENC1` file marker, because files already use them.
 
 > **The suite:** names, roles, file formats, toolbars of every app and how they link in real time are in [docs/SUITE.md](docs/SUITE.md).
 

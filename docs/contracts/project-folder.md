@@ -1,6 +1,6 @@
 # Contract: suite project folder (version 1)
 
-When MynaHub creates a project it also creates an on-disk workspace so MynaCAD and MynaMod share one root with the `.osp` project file.
+When MynaHub creates a project it also creates an on-disk workspace so MynaCAD and Myna3D share one root with the `.osp` project file.
 
 ## Layout
 
@@ -45,7 +45,7 @@ Root is `<company_file_parent>/projects/…`. Path is stored on `projects.worksp
 | `project_save` (create) | MynaHub | Inserts row + scaffolds folder |
 | `project_workspace_ensure` | MynaHub | Re-scaffolds / repairs |
 | `project_workspace_get` | MynaHub | Returns paths + drawing_id |
-| Open Project Folder | MynaMod | Binds manifest |
+| Open Project Folder | Myna3D | Binds manifest |
 | `project.open` / open DXF | MynaCAD | Uses `draft/` and `project.osp` |
 
 ## Code

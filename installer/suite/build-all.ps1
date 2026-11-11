@@ -7,7 +7,7 @@
   Two installers, each complete on its own (per user, no administrator):
 
     MynaHub-Setup-<Version>.exe     MynaHub (NSIS, built by installer\build.ps1; removes the Myna launcher of a 1.7.x install)
-    MynaOpsCAD-Setup-<Version>.exe  MynaOps and MynaCAD together (Inno Setup: O-COREOP\BBSDesktop\installer\O-CoreOp.iss in its combined mode,
+    MynaOpsCAD-Setup-<Version>.exe  MynaOps and MynaCAD together (Inno Setup: MynaOps\BBSDesktop\installer\O-CoreOp.iss in its combined mode,
                                     with MynaCAD's portable layout from MynaCAD\packaging\windows\package.ps1)
 
   MynaOps and MynaCAD depend on each other and share the project file, so they are one installer and are removed together; MynaOps also hosts
@@ -15,8 +15,8 @@
   MynaCAD alone, and no combined suite installer.
 
   Expected sibling repos (names are fixed):
-    O-STUDIO     (MynaHub; this script)
-    O-COREOP     (MynaOps; the combined Inno script)
+    MynaHub     (MynaHub; this script)
+    MynaOps     (MynaOps; the combined Inno script)
     MynaCAD (MynaCAD; the working tree is packaged: commit or stash edits you do not want in the build)
 
 .EXAMPLE
@@ -32,7 +32,7 @@ $suiteDir = $PSScriptRoot
 $installerDir = Split-Path $suiteDir -Parent
 $studioRepo = Split-Path $installerDir -Parent
 $reposRoot = Split-Path $studioRepo -Parent
-$coreOpRepo = Join-Path $reposRoot "O-COREOP"
+$coreOpRepo = Join-Path $reposRoot "MynaOps"
 $draftRepo = Join-Path $reposRoot "MynaCAD"
 $outDir = Join-Path $suiteDir "out"
 
@@ -69,8 +69,8 @@ function Find-Iscc {
     return $iscc
 }
 
-Assert-Repo $studioRepo "O-STUDIO"
-Assert-Repo $coreOpRepo "O-COREOP"
+Assert-Repo $studioRepo "MynaHub"
+Assert-Repo $coreOpRepo "MynaOps"
 Assert-Repo $draftRepo "MynaCAD"
 
 $env:Path = "$env:LOCALAPPDATA\tauri\NSIS;$env:Path"

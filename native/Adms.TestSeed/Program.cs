@@ -111,7 +111,7 @@ using (var session = new AdmsSession(engineDir))
     session.CloseCompany();
 }
 
-var smallOspSource = Path.Combine(repoRoot, "..", "O-COREOP", "BBSDesktop", "Office.Shared.Tests", "Fixtures", "small.osp");
+var smallOspSource = Path.Combine(repoRoot, "..", "MynaOps", "BBSDesktop", "Office.Shared.Tests", "Fixtures", "small.osp");
 var smallOspDest = Path.Combine(testRoot, "Demo-Villa.osp");
 if (File.Exists(smallOspSource))
     File.Copy(smallOspSource, smallOspDest, true);

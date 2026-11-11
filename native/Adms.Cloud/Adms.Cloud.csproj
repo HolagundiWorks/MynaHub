@@ -11,6 +11,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Osas.Core\Osas.Core.csproj" />
-    <ProjectReference Include="..\..\..\O-COREOP\BBSDesktop\Office.Shared\Office.Shared.csproj" />
+    <ProjectReference Include="..\..\..\MynaOps\BBSDesktop\Office.Shared\Office.Shared.csproj" />
   </ItemGroup>
 </Project>

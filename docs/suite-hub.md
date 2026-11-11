@@ -15,7 +15,7 @@ Launcher  ── chooses/creates the company file ── signs in once ──▶
   │
   ├─ card: MynaOps  ─┐  each gets: the company file path + a one-time sign-in ticket
   ├─ card: MynaCAD   ─┤  and opens that company already signed in as the same person
-  └─ card: MynaMod    ─┘
+  └─ card: Myna3D    ─┘
 ```
 
 - **The company file** is the `.osas` file (earlier `.adms` files open too). It is **chosen and created in Studio** (merge decision 2026-10-28). Studio remembers the choice (`%LOCALAPPDATA%\OSAS\suite.json`) so sibling apps can follow it. CoreOp/Draft started alone still redeem `OSAS_COMPANY` / `OSAS_TICKET` or offer to open the remembered company.

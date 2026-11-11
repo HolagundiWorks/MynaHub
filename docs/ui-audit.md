@@ -54,7 +54,7 @@ Bugs found and fixed:
 Changed on request:
 
 - The duplicate create buttons are gone: the floating button at the bottom right of Invoices, Projects, Clients, Letters and Templates (each page keeps its button at the top; Pulse keeps its Create menu).
-- The logo is off the ribbon, the light and dark switch is at the right of the bottom bar, and the bottom bar shows each app by its logo (an initial on a tile for MynaMod, which has no logo yet).
+- The logo is off the ribbon, the light and dark switch is at the right of the bottom bar, and the bottom bar shows each app by its logo (an initial on a tile for Myna3D, which has no logo yet).
 
 Not fixed, for a decision:
 - Table headers on the Invoices page mix styles (Total and Balance use a different face).

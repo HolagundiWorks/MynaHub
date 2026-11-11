@@ -1,6 +1,6 @@
 # Migration: ShilpiDB / `.vdb` → project file (`.osp`)
 
-**Status date:** 2026-10-30 (updated after doc/E2E cleanup). **Canonical suite terms:** [SUITE.md](SUITE.md). **Format spec:** MynaHub `docs/ODP-PROJECT-FILE-AND-SYNC.md`. **MynaOps behaviour:** [PROJECT-FILE.md](https://github.com/HolagundiWorks/O-COREOP/blob/main/docs/PROJECT-FILE.md).
+**Status date:** 2026-10-30 (updated after doc/E2E cleanup). **Canonical suite terms:** [SUITE.md](SUITE.md). **Format spec:** MynaHub `docs/ODP-PROJECT-FILE-AND-SYNC.md`. **MynaOps behaviour:** [PROJECT-FILE.md](https://github.com/HolagundiWorks/MynaOps/blob/main/docs/PROJECT-FILE.md).
 
 This page is the living checklist for retiring the old take-off store (ShilpiDB, `shilpid`, sidecar `.vdb` files) and standardising on **one `.osp` per project**. Keep a copy of this file in sync in each app repo (`docs/MIGRATION-OSP.md`) when you change it.
 
@@ -30,7 +30,7 @@ This page is the living checklist for retiring the old take-off store (ShilpiDB,
 - Take-off reader: `AQC.CadImport/OspTakeoff.cs`, tests `OspTakeoffTests.cs`.
 - Project file I/O: `Office.Shared/OdpFile.cs`, `BBSApp/Services/Odp/*`, `ProjectFiles.cs`, `TakeoffPage.cs`.
 - ShilpiDB connectors, gateway client, and duplicate `Services/Shilpi/` removed (re-delete if they reappear from an old branch).
-- Docs: `PROJECT-FILE.md`, `SUITE.md`, `HANDOFF-O-COREOP-PARAMETRIC-TAKEOFF.md`, `CLAUDE.md`, `CHANGELOG` pointer, `HANDOFF-O-COREOP.md`.
+- Docs: `PROJECT-FILE.md`, `SUITE.md`, `HANDOFF-MynaOps-PARAMETRIC-TAKEOFF.md`, `CLAUDE.md`, `CHANGELOG` pointer, `HANDOFF-MynaOps.md`.
 - **UIA e2e:** `tests/e2e/uia-osp-takeoff.ps1`, `run-e2e.ps1` (9 checks on `Office.Shared.Tests/Fixtures/small.osp`).
 - **`dotnet test`:** `AQC.CadImport.Tests` (88), `Office.Shared.Tests` (91) — run before release.
 
@@ -81,7 +81,7 @@ This page is the living checklist for retiring the old take-off store (ShilpiDB,
 | Format + sync roadmap | MynaHub `docs/ODP-PROJECT-FILE-AND-SYNC.md` |
 | MynaCAD project file | MynaCAD `docs/PROJECT-FILE.md` |
 | Bridge / CAD import | `docs/bridge/`, `docs/AADT.md` |
-| Parametric walls hand-off | `docs/HANDOFF-O-COREOP-PARAMETRIC-TAKEOFF.md` |
+| Parametric walls hand-off | `docs/HANDOFF-MynaOps-PARAMETRIC-TAKEOFF.md` |
 | Record layout | `AQC.CadImport/OspTakeoff.cs`, `docs/bridge/`, fixtures `odraft-takeoff-records.json` |
 | Manual UIA e2e | MynaOps `BBSDesktop/tests/e2e/README.md` |
 
