@@ -6,7 +6,7 @@ using Osas.Core;
 namespace Adms.Desktop;
 
 /// <summary>
-/// MynaHub as the suite hub: remembers the chosen company and starts MynaOps, MynaCAD and MynaMod by path. They are independent of MynaHub: no sign-in
+/// MynaHub as the suite hub: remembers the chosen company and starts MynaOps, MynaCAD and Myna3D by path. They are independent of MynaHub: no sign-in
 /// ticket, no company path, no locked project and no AI settings are passed (MynaOps hosts the AI agent for itself and MynaCAD).
 /// </summary>
 internal static class SuiteHub
@@ -20,7 +20,7 @@ internal static class SuiteHub
     [
         new("MynaOps", "Quantities, estimates and billing", "O-CoreOp", ["O-CoreOp", "AQCCore"], "O-CoreOp.exe", "AQCCore.exe"),
         new("MynaCAD", "Drafting", "O-Draft", ["O-Draft", "AAD"], "ODraft.WinUi.exe", "O-Draft.exe"),
-        new("MynaMod", "3D / BIM form", "O-Form", ["O-Form"], "O-Form.exe"),
+        new("Myna3D", "3D / BIM form", "O-Form", ["O-Form"], "O-Form.exe"),
     ];
 
     internal static string? CompanyPath() => SuiteJsonHub.CompanyPath();

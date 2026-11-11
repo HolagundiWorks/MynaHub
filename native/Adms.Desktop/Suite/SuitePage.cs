@@ -45,7 +45,7 @@ internal sealed class SuitePage : UserControl
         var heading = new TextBlock { Text = "Other apps", Style = Resource("SectionTitleStyle") };
         AutomationProperties.SetHeadingLevel(heading, AutomationHeadingLevel.Level2);
         stack.Children.Add(heading);
-        stack.Children.Add(new TextBlock { Text = "Open MynaOps, MynaCAD and MynaMod from the bar at the bottom of the window. They do not sign in here; the AI agent runs in MynaOps and serves MynaCAD too.", Style = Resource("SecondaryStyle"), TextWrapping = TextWrapping.Wrap });
+        stack.Children.Add(new TextBlock { Text = "Open MynaOps, MynaCAD and Myna3D from the bar at the bottom of the window. They do not sign in here; the AI agent runs in MynaOps and serves MynaCAD too.", Style = Resource("SecondaryStyle"), TextWrapping = TextWrapping.Wrap });
         return stack;
     }
 }

@@ -20,7 +20,7 @@ public static class SuiteCatalog
         new("MynaHub", "Company hub, projects, and people", "O-Studio", ["MynaHub", "O-Studio"], "O-Studio.exe"),
         new("MynaOps", "Quantities, estimates and billing", "O-CoreOp", ["MynaOps", "O-CoreOp", "AQCCore"], "O-CoreOp.exe", "AQCCore.exe"),
         new("MynaCAD", "Drafting", "O-Draft", ["MynaCAD", "O-Draft", "AAD"], "ODraft.WinUi.exe", "O-Draft.exe", "aad-host.exe"),
-        new("MynaMod", "3D / BIM form", "O-Form", ["MynaMod", "O-Form"], "O-Form.exe"),
+        new("Myna3D", "3D / BIM form", "O-Form", ["Myna3D", "MynaMod", "O-Form"], "O-Form.exe"),
     ];
 
     static string? FindInstallLocationFromRegistry(string productHint)

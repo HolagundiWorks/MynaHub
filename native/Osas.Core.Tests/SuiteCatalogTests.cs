@@ -25,7 +25,7 @@ public class SuiteCatalogTests
     public void The_removed_Myna_launcher_is_not_an_app_of_the_suite()
     {
         // 2026-11-11: the launcher (O-Studio.Launcher.exe) was removed; the catalogue lists the four apps only.
-        Assert.Equal(new[] { "MynaHub", "MynaOps", "MynaCAD", "MynaMod" }, SuiteCatalog.Apps.Select(a => a.Title).ToArray());
+        Assert.Equal(new[] { "MynaHub", "MynaOps", "MynaCAD", "Myna3D" }, SuiteCatalog.Apps.Select(a => a.Title).ToArray());
         Assert.DoesNotContain(SuiteCatalog.Apps.SelectMany(a => a.ExeNames), e => e.Contains("Launcher", StringComparison.OrdinalIgnoreCase));
     }
 

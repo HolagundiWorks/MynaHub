@@ -8,7 +8,7 @@ const A = {
   "MynaHub (Ember)": { accent: "#B83E16", hover: "#A03212", pressed: "#8C2A10", text: "#B83E16", wash: "#F8E8E0", on: "#FFFFFF" },
   "MynaCAD (Midnight)": { accent: "#102C80", hover: "#0C2470", pressed: "#081C60", text: "#102C80", wash: "#E4E8F8", on: "#FFFFFF" },
   "MynaOps (Dusk)": { accent: "#5630A0", hover: "#4A289A", pressed: "#3E2080", text: "#5630A0", wash: "#EEE8F8", on: "#FFFFFF" },
-  "MynaMod (Grove)": { accent: "#166040", hover: "#125236", pressed: "#0E422C", text: "#166040", wash: "#E4F0EA", on: "#FFFFFF" },
+  "Myna3D (Grove)": { accent: "#166040", hover: "#125236", pressed: "#0E422C", text: "#166040", wash: "#E4F0EA", on: "#FFFFFF" },
 };
 const rows = [];
 const add = (what, fg, bg, need) => rows.push({ what, r: ratio(fg, bg), need });

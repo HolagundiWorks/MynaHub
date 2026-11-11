@@ -1,4 +1,4 @@
-//! Suite project folder: one directory per MynaHub project holding MynaCAD, MynaMod and the `.osp` project file.
+//! Suite project folder: one directory per MynaHub project holding MynaCAD, Myna3D and the `.osp` project file.
 //!
 //! Layout (relative to the company file's parent):
 //! ```text
@@ -6,7 +6,7 @@
 //!   osas.project.json   # suite envelope (ProjectRef + drawing_id)
 //!   project.osp         # drawing, take-off, CoreOp project record (MynaCAD / MynaOps)
 //!   draft/model.dxf     # MynaCAD starter drawing (legacy scaffold)
-//!   form/model.blend    # MynaMod model (created empty; first save fills it)
+//!   form/model.blend    # Myna3D model (created empty; first save fills it)
 //! ```
 
 use crate::refs::{self, ProjectRef, REF_VERSION};
@@ -124,7 +124,7 @@ pub fn scaffold(conn: &Connection, input: ScaffoldInput<'_>) -> Result<Workspace
     if !draft.exists() {
         write_atomic(&draft, MINIMAL_DXF.as_bytes())?;
     }
-    // MynaMod fills the blend on first save; leave a zero-byte stub so the path exists.
+    // Myna3D fills the blend on first save; leave a zero-byte stub so the path exists.
     if !form.exists() {
         write_atomic(&form, b"")?;
     }
