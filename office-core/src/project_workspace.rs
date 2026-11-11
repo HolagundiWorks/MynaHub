@@ -268,7 +268,7 @@ pub fn get(conn: &Connection, project_id: i64) -> Result<Option<WorkspaceInfo>, 
     }))
 }
 
-/// What the launcher needs to list a project and what an app checks before it opens one.
+/// What MynaHub needs to list a project and what an app checks before it opens one.
 #[derive(Debug, Clone, Serialize)]
 pub struct LaunchInfo {
     pub id: i64,
