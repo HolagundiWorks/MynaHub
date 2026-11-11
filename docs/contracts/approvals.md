@@ -1,6 +1,6 @@
 # Contract: suite approvals (estimates and running bills)
 
-**Status:** Implemented in `office-core` (2026-10-28); **product path aligned with CoreOp [STUDIO-DRAFT-SHARE](https://github.com/HolagundiWorks/O-COREOP/pull/24)** ([O-COREOP#24](https://github.com/HolagundiWorks/O-COREOP/pull/24)).  
+**Status:** Implemented in `office-core` (2026-10-28); **product path aligned with CoreOp [STUDIO-DRAFT-SHARE](https://github.com/HolagundiWorks/MynaOPS/pull/24)** ([MynaOPS#24](https://github.com/HolagundiWorks/MynaOPS/pull/24)).  
 **Product rule:** CoreOp generates → shares **draft** into the company file → Studio **approves** → **lock** → corrections via **revised version** only.
 
 There are two ABIs. **Product CoreOp → Studio uses document kinds** (`studio_draft_*` / `doc_*`). The older `approval_*` / `suite_approvals` table remains for tools and tests that still call it; CoreOp does **not** write that table.
@@ -101,6 +101,6 @@ Kinds: `estimate` | `running_bill`.
 
 ## Related
 
-- CoreOp contract: `docs/STUDIO-DRAFT-SHARE.md` (O-COREOP#24)
+- CoreOp contract: `docs/STUDIO-DRAFT-SHARE.md` (MynaOPS#24)
 - `ArtifactRef` (`docs/contracts/refs.md`)
 - Product ownership: company details and approvals in Studio only

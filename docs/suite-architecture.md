@@ -10,20 +10,20 @@ The suite is **OSAS, the Open Source Architecture Suit**. Some code identifiers 
 
 | App | For | Accent | Repository |
 |---|---|---|---|
-| **MynaHub** | Office and project management | Orange | `HolagundiWorks/O-STUDIO` |
-| **MynaOps** | Quantities, estimates, billing | Blue | `HolagundiWorks/O-COREOP` |
-| **MynaCAD** | Drafting | Black | `HolagundiWorks/O-DRAFT` |
+| **MynaHub** | Office and project management | Orange | `HolagundiWorks/MynaHub` |
+| **MynaOps** | Quantities, estimates, billing | Blue | `HolagundiWorks/MynaOPS` |
+| **MynaCAD** | Drafting | Black | `HolagundiWorks/MynaCAD` |
 
-The shared design is the public `HolagundiWorks/O-UI` library (assembly `O.Ui`, MIT licensed; the marks in its brand folder have their own notice), and the folder has the marks for all three apps in their colours. MynaHub and MynaOps use the same responsive layout: a pane that collapses below 900 px, and pages that wrap down to 520 px. The accessibility audit is `docs/wcag-audit.md`.
+The shared design is the public `HolagundiWorks/MynaUI` library (assembly `O.Ui`, MIT licensed; the marks in its brand folder have their own notice), and the folder has the marks for all three apps in their colours. MynaHub and MynaOps use the same responsive layout: a pane that collapses below 900 px, and pages that wrap down to 520 px. The accessibility audit is `docs/wcag-audit.md`.
 
 ## 1. The products today (verified)
 
 | Product | Repository | What it is now | Stack | Licence |
 |---|---|---|---|---|
-| **MynaHub** | `HolagundiWorks/O-STUDIO` | Offline office app: clients, projects, letters, invoices, accounts, bank import, tax, staff, library, proposals, meetings, attendance, site records, permits, 26AS check. One `.adms` company file | Rust engine (cdylib) + WinUI 3 shell over a C interface | AGPL-3.0, or commercial |
-| **MynaCAD** | `HolagundiWorks/O-DRAFT` | 2D CAD in Rust: drafting, DXF and DWG, layouts, plotting, architecture tools, take-off into `.osp`, an offline local-model agent (Qwen3), an MCP server, a JSON control channel | Rust, wgpu, WinUI 3 shell (`aad-host.dll`) | MIT or Apache-2.0 |
-| **MynaOps** | `HolagundiWorks/O-COREOP` | Quantity take-off, BOQ, rate books, DSR estimates, bar bending schedules, purchase orders, running-account billing, scheduling, correspondence, stores and HR, an opt-in AI assistant, a CAD bridge importer | C# WinUI 3, C++ `bbs_engine.dll` | AGPL-3.0, or commercial |
-| **MynaUI** | `HolagundiWorks/O-UI` | Shared WinUI themes, marks, SuiteShell chrome (`O.Ui`) | .NET 8 class library | MIT (marks reserved) |
+| **MynaHub** | `HolagundiWorks/MynaHub` | Offline office app: clients, projects, letters, invoices, accounts, bank import, tax, staff, library, proposals, meetings, attendance, site records, permits, 26AS check. One `.adms` company file | Rust engine (cdylib) + WinUI 3 shell over a C interface | AGPL-3.0, or commercial |
+| **MynaCAD** | `HolagundiWorks/MynaCAD` | 2D CAD in Rust: drafting, DXF and DWG, layouts, plotting, architecture tools, take-off into `.osp`, an offline local-model agent (Qwen3), an MCP server, a JSON control channel | Rust, wgpu, WinUI 3 shell (`aad-host.dll`) | MIT or Apache-2.0 |
+| **MynaOps** | `HolagundiWorks/MynaOPS` | Quantity take-off, BOQ, rate books, DSR estimates, bar bending schedules, purchase orders, running-account billing, scheduling, correspondence, stores and HR, an opt-in AI assistant, a CAD bridge importer | C# WinUI 3, C++ `bbs_engine.dll` | AGPL-3.0, or commercial |
+| **MynaUI** | `HolagundiWorks/MynaUI` | Shared WinUI themes, marks, SuiteShell chrome (`O.Ui`) | .NET 8 class library | MIT (marks reserved) |
 
 OSS suite apps do **not** ship a portal connector. A hosted practice portal (if any) will live in separate forks later — not in these open-source trees.
 

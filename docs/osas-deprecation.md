@@ -1,6 +1,6 @@
 # OSAS.exe retired
 
-**Status:** Retired (2026-11-01). Deprecated 2026-10-28. **Surviving product:** MynaHub (`HolagundiWorks/O-STUDIO`).
+**Status:** Retired (2026-11-01). Deprecated 2026-10-28. **Surviving product:** MynaHub (`HolagundiWorks/MynaHub`).
 
 The old **OSAS.exe** hub is gone. Its work is done by two apps:
 
@@ -22,4 +22,4 @@ User text says **MynaHub**; never OSAS (see `SUITE.md`).
 
 ## The old repository
 
-`OSAS-Open_Source_Architecture_Suit` is no longer built or released. It is on branch `suite/single-installer` with one commit that exists only on the development machine (working tree clean 2026-11-11); push or bundle that commit, then archive the GitHub repository and delete the local folder.
+`OSAS-Open_Source_Architecture_Suit` is no longer built or released. The repository and its local folder were removed on 2026-11-11.

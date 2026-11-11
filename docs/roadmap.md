@@ -8,7 +8,7 @@ Each item says how we know it is open. **Checked** means it was looked at in the
 
 | | MynaHub | MynaOps |
 |---|---|---|
-| Repository | `HolagundiWorks/O-STUDIO`, `master` | `HolagundiWorks/O-COREOP`, `main` |
+| Repository | `HolagundiWorks/MynaHub`, `master` | `HolagundiWorks/MynaOPS`, `main` |
 | Window | WinUI 3, `native/Adms.Desktop` | WinUI 3, `BBSDesktop/BBSApp` |
 | Engine | Rust, `src-tauri` and `office-core`, one `.osas` company file (earlier `.adms` files open) | C# and its own project file |
 | Shared design | `MynaUI` (`O.Ui`), orange | `MynaUI` (`O.Ui`), blue |

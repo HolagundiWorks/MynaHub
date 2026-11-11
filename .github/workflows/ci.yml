@@ -31,7 +31,7 @@ jobs:
           path: aos
       - uses: actions/checkout@v4
         with:
-          repository: HolagundiWorks/O-UI
+          repository: HolagundiWorks/MynaUI
           path: MynaUI
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-dotnet@v4
