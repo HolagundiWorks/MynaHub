@@ -29,7 +29,7 @@ Build order and commands (full detail in each repository's packaging doc):
 |---|---|---|
 | 1 | `O-STUDIO\installer\build.ps1` | `O-STUDIO\installer\O-Studio-Setup-0.1.0.exe` (`O-Studio.exe`; the launcher was removed on 2026-11-11) |
 | 2 | `O-COREOP\BBSDesktop\installer\build-installer.ps1 -OfficeDllDir <folder with office.dll>` (build `office-ffi` first: `cargo build --release` in `O-STUDIO\office-ffi`; when `CARGO_TARGET_DIR` is set, use `<CARGO_TARGET_DIR>\release`) | `O-COREOP\BBSDesktop\artifacts\installer\O-CoreOp-Setup-<v>.exe` |
-| 3 | `O-DRAFT-main\packaging\windows\package.ps1 -Arch x64` | `O-DRAFT-main\dist\release\o-draft-<v>-windows-x64.msi` and `...-portable.zip` |
+| 3 | `MynaCAD\packaging\windows\package.ps1 -Arch x64` | `MynaCAD\dist\release\o-draft-<v>-windows-x64.msi` and `...-portable.zip` |
 | 4 | `O-STUDIO\installer\suite\build-all.ps1 -Version <v>` (builds both) | `O-STUDIO\installer\suite\out\Myna-Setup-<v>.exe` and `MynaOpsCAD-Setup-<v>.exe` |
 
 Install for testing with the suite installer, per user, no model download (the model is shared and already present):
@@ -56,7 +56,7 @@ Record in every run report: the installer file name and SHA-256, the commit of e
 | Test company `TestCo-<date>.osas` | run `dotnet run --project native/Adms.TestSeed -c Release` (creates company under `D:\Work Development\TestRuns\<date>\`, role users, demo client/project, copies `small.osp`; passwords in `docs/testing/.local/credentials.txt`) | all |
 | Re-link Documents `001-1` + DEMO drawing to TC-01 without re-seeding | `dotnet run --project native/Adms.TestSeed -c Release -- "D:\Work Development\TestRuns\<date>" --wire-only` | all |
 | Test users, one per role | create in MynaHub (Owner, Principal, Accounts, Document editor, Auditor) | role tests |
-| Small DXF/DWG | `Adms.TestSeed` copies `OneDrive\Documents\OSAS TEST\DEMO.dwg` (and `D1.dwg`) into `<test folder>\cad\`, and into `projects\tc-01-1\draft\`; also copies `drawing.osp` and `projects\001-1\` into `<test folder>\from-documents\`. Paths are listed in `docs/testing/.local/credentials.txt`. Plus `O-DRAFT-main\crates\engine\tests\fixtures` and `docs/qa` files | Draft |
+| Small DXF/DWG | `Adms.TestSeed` copies `OneDrive\Documents\OSAS TEST\DEMO.dwg` (and `D1.dwg`) into `<test folder>\cad\`, and into `projects\tc-01-1\draft\`; also copies `drawing.osp` and `projects\001-1\` into `<test folder>\from-documents\`. Paths are listed in `docs/testing/.local/credentials.txt`. Plus `MynaCAD\crates\engine\tests\fixtures` and `docs/qa` files | Draft |
 | `small.osp` | `O-COREOP\BBSDesktop\Office.Shared.Tests\Fixtures\small.osp` (copy; never test on the fixture itself) | CoreOp, Draft |
 | Empty `.osp` | `cargo run -p aad-odp --example pack -- test.osp Test --drawing demo.dxf` | Draft, CoreOp |
 | Bank statement CSV / XLSX | write a 20-row sample (date, narration, debit, credit, balance) into the test folder | Studio bank import |
@@ -70,7 +70,7 @@ Test folder: `D:\Work Development\TestRuns\<yyyy-mm-dd>\` (outside every reposit
 | Need | Tool |
 |---|---|
 | Drive and read WinUI windows | UI Automation (PowerShell `System.Windows.Automation`), or the repository's UIA scripts: `O-COREOP\BBSDesktop\tests\e2e\*.ps1` (`run-e2e.ps1`, `uia-smoke.ps1`, `uia-osp-takeoff.ps1`, `e2e-draft-coreop-takeoff.ps1`). Prefer UIA element names to screen coordinates. Verify what is under a click point before clicking |
-| Drive MynaCAD without the mouse | `aad-cli` (`aad-cli run --script file.scr`), the JSON control channel on `127.0.0.1`, or the MCP server ([control-protocol.md](../../../O-DRAFT-main/docs/control-protocol.md)); every command in the menus is also a command |
+| Drive MynaCAD without the mouse | `aad-cli` (`aad-cli run --script file.scr`), the JSON control channel on `127.0.0.1`, or the MCP server ([control-protocol.md](../../../MynaCAD/docs/control-protocol.md)); every command in the menus is also a command |
 | Read the AI agent's state | `%LOCALAPPDATA%\O-Studio\ai\host.json` (which MynaOps hosts it, window or headless) and `ai\host.log` (headless host); `launcher-status.txt` is retired with the launcher. Company: `%LOCALAPPDATA%\OSAS\suite.json` |
 | Read the project file | `cargo run -p aad-odp --example inspect -- file.osp` |
 | Unit and integration suites (run first, they are the baseline) | `cargo test --workspace` (MynaCAD); `dotnet test AQC.CadImport.Tests` and `dotnet test Office.Shared.Tests` (MynaOps); `cargo test` in each MynaHub crate (`office-core`, `office-ffi`, `office-agent`) and `dotnet test native\Osas.Core.Tests` |

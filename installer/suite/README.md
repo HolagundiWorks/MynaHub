@@ -28,10 +28,10 @@ Use `/TASKS="model"` with `MynaOpsCAD-Setup` to download the assistant model (Ol
 
 ## Building
 
-`build-all.ps1` rebuilds both from the sibling working trees (`O-STUDIO`, `O-COREOP`, `O-DRAFT-main`; commit or stash edits you do not want packaged) and writes the two Setups plus `Myna-installers-<version>.manifest.json` (git commits and SHA-256) to `out/`.
+`build-all.ps1` rebuilds both from the sibling working trees (`O-STUDIO`, `O-COREOP`, `MynaCAD`; commit or stash edits you do not want packaged) and writes the two Setups plus `Myna-installers-<version>.manifest.json` (git commits and SHA-256) to `out/`.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File installer\suite\build-all.ps1 -Version 1.7.1
 ```
 
-Needs the MSVC build tools (vcvars64), NSIS (the tauri copy under `%LOCALAPPDATA%\tauri\NSIS` is used), and Inno Setup 6. MynaHub's script is `installer/aos.nsi`; the combined MynaOps and MynaCAD script is `O-COREOP/BBSDesktop/installer/O-CoreOp.iss` (`#ifdef WithCad`: `build-installer.ps1 -CadStage <folder with app\ODraft.WinUi.exe>`), around the portable layout from `O-DRAFT-main/packaging/windows/package.ps1`.
+Needs the MSVC build tools (vcvars64), NSIS (the tauri copy under `%LOCALAPPDATA%\tauri\NSIS` is used), and Inno Setup 6. MynaHub's script is `installer/aos.nsi`; the combined MynaOps and MynaCAD script is `O-COREOP/BBSDesktop/installer/O-CoreOp.iss` (`#ifdef WithCad`: `build-installer.ps1 -CadStage <folder with app\ODraft.WinUi.exe>`), around the portable layout from `MynaCAD/packaging/windows/package.ps1`.

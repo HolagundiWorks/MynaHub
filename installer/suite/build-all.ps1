@@ -8,7 +8,7 @@
 
     MynaHub-Setup-<Version>.exe     MynaHub (NSIS, built by installer\build.ps1; removes the Myna launcher of a 1.7.x install)
     MynaOpsCAD-Setup-<Version>.exe  MynaOps and MynaCAD together (Inno Setup: O-COREOP\BBSDesktop\installer\O-CoreOp.iss in its combined mode,
-                                    with MynaCAD's portable layout from O-DRAFT-main\packaging\windows\package.ps1)
+                                    with MynaCAD's portable layout from MynaCAD\packaging\windows\package.ps1)
 
   MynaOps and MynaCAD depend on each other and share the project file, so they are one installer and are removed together; MynaOps also hosts
   the AI agent for both. MynaHub is a separate installer. The Myna launcher was removed on 2026-11-11. There is no installer for MynaOps or
@@ -17,7 +17,7 @@
   Expected sibling repos (names are fixed):
     O-STUDIO     (MynaHub; this script)
     O-COREOP     (MynaOps; the combined Inno script)
-    O-DRAFT-main (MynaCAD; the working tree is packaged: commit or stash edits you do not want in the build)
+    MynaCAD (MynaCAD; the working tree is packaged: commit or stash edits you do not want in the build)
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File installer\suite\build-all.ps1 -Version 1.7.1
@@ -33,7 +33,7 @@ $installerDir = Split-Path $suiteDir -Parent
 $studioRepo = Split-Path $installerDir -Parent
 $reposRoot = Split-Path $studioRepo -Parent
 $coreOpRepo = Join-Path $reposRoot "O-COREOP"
-$draftRepo = Join-Path $reposRoot "O-DRAFT-main"
+$draftRepo = Join-Path $reposRoot "MynaCAD"
 $outDir = Join-Path $suiteDir "out"
 
 function Import-VcVars64 {
@@ -71,7 +71,7 @@ function Find-Iscc {
 
 Assert-Repo $studioRepo "O-STUDIO"
 Assert-Repo $coreOpRepo "O-COREOP"
-Assert-Repo $draftRepo "O-DRAFT-main"
+Assert-Repo $draftRepo "MynaCAD"
 
 $env:Path = "$env:LOCALAPPDATA\tauri\NSIS;$env:Path"
 Import-VcVars64
