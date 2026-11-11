@@ -22,7 +22,7 @@ jobs:
         run: cargo test --manifest-path ${{ matrix.crate }}/Cargo.toml
 
   windows-app:
-    # Public shared design library (assembly O.Ui), checked out beside this repo as o-ui.
+    # Public shared design library (assembly O.Ui), checked out beside this repo as MynaUI.
     runs-on: windows-latest
     needs: rust
     steps:
@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: HolagundiWorks/O-UI
-          path: o-ui
+          path: MynaUI
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-dotnet@v4
         with:

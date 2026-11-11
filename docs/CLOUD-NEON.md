@@ -38,7 +38,7 @@ Enable **Realtime** on that branch if the console offers it (Settings → Realti
 
 ```powershell
 npm i -g neon@latest    # or: npx neon@latest … for one-off commands
-cd D:\Work Development\Repos\O-STUDIO
+cd D:\Work Development\Repos\MynaHub
 neon login              # completes in the browser; required before deploy
 ```
 
@@ -133,7 +133,7 @@ The CLI injects the same vars for one command.
 
 ## 4. Prove the connection (before WinUI)
 
-From the **O-STUDIO repository root**:
+From the **MynaHub repository root**:
 
 ```powershell
 npm run build

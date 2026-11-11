@@ -14,7 +14,7 @@ MynaHub ("the studio", exe `O-Studio.exe`) is the company hub of the Myna suite:
 ## Build and test
 - `dotnet test native/Osas.Core.Tests -p:Platform=x64`; `dotnet build native/Adms.Desktop/Adms.Desktop.csproj -c Release -p:Platform=x64`; Rust: `cargo test` in `office-core`. The smoke run needs the engine DLL (`cargo build --release` in `src-tauri`, `Adms.Smoke -p:EngineDll=...`). `dotnet build native/Adms.sln` fails on a PRI duplicate on unchanged main: build projects, not the solution.
 - Installers: `installer/suite/build-all.ps1 -Version X` packages the WORKING TREES of MynaHub, MynaOps and MynaCAD: keep them clean and on main while it runs (details in the project memory). `installer/suite/README.md` has the silent command lines.
-- WinUI projects reference `..\..\..\o-ui` (the sibling `o-ui` checkout): after a change there, build all three apps.
+- WinUI projects reference `..\..\..\MynaUI` (the sibling `MynaUI` checkout): after a change there, build all three apps.
 
 ## Git
 `main` and `master` must stay identical (push both: `git push origin HEAD:main HEAD:master`). Never `git add -A` or add whole `installer/` or `out/` folders; check `git diff --cached --name-only` for exe/dll/zip/msi first. Two old stashes are kept on purpose. Parallel agents: separate worktree and `CARGO_TARGET_DIR`, edit only your files.

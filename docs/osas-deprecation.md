@@ -22,4 +22,4 @@ User text says **MynaHub**; never OSAS (see `SUITE.md`).
 
 ## The old repository
 
-`OSAS-Open_Source_Architecture_Suit` is no longer built or released. It still holds uncommitted edits on branch `suite/single-installer`, so it was left as it is; add a README pointing to `HolagundiWorks/O-STUDIO` and archive it when those edits are dealt with.
+`OSAS-Open_Source_Architecture_Suit` is no longer built or released. It is on branch `suite/single-installer` with one commit that exists only on the development machine (working tree clean 2026-11-11); push or bundle that commit, then archive the GitHub repository and delete the local folder.

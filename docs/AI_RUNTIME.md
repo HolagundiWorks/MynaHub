@@ -14,7 +14,7 @@ MynaHub **hosts** the shared Olmo 3 7B Instruct model (`Office.Ai` + `AiCoreList
 | Prompt-based tool use (Olmo has no native tool API in this stack) | `Osas.Core/Agent/PromptChat.cs` |
 | Assistant loop, read-only tools, audit | `Assistant.cs`, `office-agent` |
 | Suite dashboard card | `Suite/SuitePage.cs` |
-| Shared Ask bar layout numbers | `o-ui/O.Ui/SuiteAskChrome.cs` |
+| Shared Ask bar layout numbers | `MynaUI/O.Ui/SuiteAskChrome.cs` |
 
 ## Tulu (removed from product path)
 

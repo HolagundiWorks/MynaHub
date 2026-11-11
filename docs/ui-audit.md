@@ -2,9 +2,9 @@
 
 Audited 2026-10-29 against MynaCAD's polished shell (`apps/aad-winui`, its `docs/UI_TOKENS.md` and `docs/UI_STANDARDS.md`).
 
-## What MynaCAD does that MynaHub and o-ui did not
+## What MynaCAD does that MynaHub and MynaUI did not
 
-| Parameter | MynaCAD | o-ui before | o-ui now |
+| Parameter | MynaCAD | MynaUI before | MynaUI now |
 |---|---|---|---|
 | Control height (inputs, buttons) | 26 | 32 to 36 | 26 |
 | Body / section / page title type | 12 / 13 / 18 | 13 / 15 / 22 | 12 / 13 / 18 |
@@ -21,7 +21,7 @@ Audited 2026-10-29 against MynaCAD's polished shell (`apps/aad-winui`, its `docs
 
 Colours are unchanged: both already share the suite palette (ink `#1A2332` on `#E4EAF2` in light at the time; since 2026-11-10 the themes are pure white and pure black, see BRANDING.md), and the suite keeps its own dark theme.
 
-## What changed in o-ui
+## What changed in MynaUI
 
 `O.Ui/Themes/SuiteStyles.xaml` holds the values (the scale keys and the default styles for buttons, text boxes, password boxes, combo boxes, cards, chips and the primary button), and `SuiteScale.cs` reads them with the same fallbacks. New keys: `Space1` to `Space6`, `SuiteMenuBarHeight`, `SuiteMenuItemHeight`, `SuiteTabHeight`, `SuiteStatusBarHeight`, `SuitePanelHeaderHeight`, `SuitePropertyRowHeight`, `SuiteControlHeightCompact`, `SuiteFontCaption`, `SuiteFontIcon`, `SuiteFontDisplay`. `SuiteThemeSwitch` now takes its height from the scale.
 
@@ -58,7 +58,7 @@ Changed on request:
 
 Not fixed, for a decision:
 - Table headers on the Invoices page mix styles (Total and Balance use a different face).
-- The theme switch is a bright blue pill in dark, which does not match the orange accent. It is in o-ui.
+- The theme switch is a bright blue pill in dark, which does not match the orange accent. It is in MynaUI.
 
 ## Third pass: every page, both themes (2026-10-29)
 
@@ -69,7 +69,7 @@ Fixed:
 - **Table headings did not line up with their rows.** On Clients, Projects, Letters and Invoices the heading shrank to the left while the rows spread to full width and ended in an Edit button. The heading now spans the same width and leaves room for the button. The heading of a number column also used a different face from the rest; it no longer does.
 - **No gap between neighbouring filters** (Search and Status; From and To; the report buttons). The grid now spaces its cells.
 - **Two page gutters.** Enquiries, Site records, Permits, Fee proposals, Meetings, Time, Transmittals and the office desk pages sat 8 px closer to the edge than the rest. All pages now start at the same left edge (measured on the captures).
-- **Oversized section tabs on Bank reconciliation** (24 px type) now follow the scale (14 px). The setting is in o-ui.
+- **Oversized section tabs on Bank reconciliation** (24 px type) now follow the scale (14 px). The setting is in MynaUI.
 - **A sub-tab off the edge of the row** (for example Approvals in a narrow window) is scrolled into view when chosen.
 
 Closed afterwards:
@@ -78,4 +78,4 @@ Closed afterwards:
 - **Practice sub-tab overflow.** When the second row is wider than the window, a "more" arrow appears at the right (and an "earlier" arrow at the left once scrolled), each moving the row by most of a screen. Built and checked to compile; not yet seen on screen in a narrow window.
 - **Long forms.** Pages built on `Flow.Scroll` always draw their vertical scrollbar, so a longer page shows that there is more below. The page still keeps 64 px clear for the assistant bar.
 
-Still open: the dark theme switch is a bright blue pill (in o-ui); Pulse keeps its Create menu.
+Still open: the dark theme switch is a bright blue pill (in MynaUI); Pulse keeps its Create menu.

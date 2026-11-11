@@ -43,7 +43,7 @@ MynaHub is one of several apps that share an office's records. The pieces in thi
 | `office-ffi/`, `native/Office.Interop/` | A C interface and .NET wrapper so another native app can use the same file. Contract: [docs/office-abi.md](docs/office-abi.md) |
 | `office-agent/` | Governed read-only tools and an MCP server for an external AI assistant (not used by any app; MynaHub has no AI) |
 
-The architecture and integration map for MynaHub, MynaCAD, MynaOps and O-UI is [docs/suite-architecture.md](docs/suite-architecture.md). Each folder is its own Cargo crate; run `cargo test` inside it.
+The architecture and integration map for MynaHub, MynaCAD, MynaOps and MynaUI is [docs/suite-architecture.md](docs/suite-architecture.md). Each folder is its own Cargo crate; run `cargo test` inside it.
 
 ## Develop
 
@@ -56,7 +56,7 @@ cargo build --manifest-path src-tauri/Cargo.toml
 dotnet build native/Adms.Desktop/Adms.Desktop.csproj -c Debug -p:Platform=x64 -p:WindowsPackageType=None
 ```
 
-The logos come from the sibling `O-UI` library (`brand/` there), in orange for MynaHub. Build output (`target/`, `bin/`, `obj/`, `installer/stage`) is ignored by git and can be deleted at any time.
+The logos come from the sibling `MynaUI` library (`brand/` there), in orange for MynaHub. Build output (`target/`, `bin/`, `obj/`, `installer/stage`) is ignored by git and can be deleted at any time.
 
 Tests:
 
@@ -86,7 +86,7 @@ MynaHub is **open source** and **dual-licensed** (Developed by Human Centric Wor
 See [LICENSING.md](LICENSING.md). Support / commercial: **support@hcworks.in** · <https://hcworks.in>
 
 Share contracts and documents with other suite apps — do not copy source across the
-AGPL boundary into permissive repos (MynaCAD, O-UI).
+AGPL boundary into permissive repos (MynaCAD, MynaUI).
 
 ## Before live use
 

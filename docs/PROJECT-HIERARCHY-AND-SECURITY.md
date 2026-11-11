@@ -1,6 +1,6 @@
 # Project hierarchy and security (enterprise model)
 
-**Canonical copy:** MynaHub `docs/PROJECT-HIERARCHY-AND-SECURITY.md`. Keep identical copies in MynaOps, MynaCAD, and O-UI when this changes. Updated 2026-10-31.
+**Canonical copy:** MynaHub `docs/PROJECT-HIERARCHY-AND-SECURITY.md`. Keep identical copies in MynaOps, MynaCAD, and MynaUI when this changes. Updated 2026-10-31.
 
 This document ties together **where project data lives**, **who may change it**, and **which controls enforce that** in the MynaHub suite.
 

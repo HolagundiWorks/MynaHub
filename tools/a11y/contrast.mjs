@@ -1,6 +1,6 @@
 // Contrast of the suite's colour pairs against WCAG 2.2: 1.4.3 (text, 4.5) and 1.4.11 (graphics and component edges, 3).
 //   node contrast.mjs
-// The colours are those in o-ui (Themes/SuiteColors.xaml, the light theme, pure white and black, and SuiteAccent.*.xaml). Keep them in step.
+// The colours are those in MynaUI (Themes/SuiteColors.xaml, the light theme, pure white and black, and SuiteAccent.*.xaml). Keep them in step.
 const lum = h => { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(v => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
 const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
 const N = { bg: "#FFFFFF", side: "#FFFFFF", surface: "#FFFFFF", ink: "#000000", soft: "#4D4D4D", edgeStrong: "#767676", danger: "#C42B1C" };

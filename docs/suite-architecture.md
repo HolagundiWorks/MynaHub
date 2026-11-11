@@ -23,7 +23,7 @@ The shared design is the public `HolagundiWorks/O-UI` library (assembly `O.Ui`, 
 | **MynaHub** | `HolagundiWorks/O-STUDIO` | Offline office app: clients, projects, letters, invoices, accounts, bank import, tax, staff, library, proposals, meetings, attendance, site records, permits, 26AS check. One `.adms` company file | Rust engine (cdylib) + WinUI 3 shell over a C interface | AGPL-3.0, or commercial |
 | **MynaCAD** | `HolagundiWorks/O-DRAFT` | 2D CAD in Rust: drafting, DXF and DWG, layouts, plotting, architecture tools, take-off into `.osp`, an offline local-model agent (Qwen3), an MCP server, a JSON control channel | Rust, wgpu, WinUI 3 shell (`aad-host.dll`) | MIT or Apache-2.0 |
 | **MynaOps** | `HolagundiWorks/O-COREOP` | Quantity take-off, BOQ, rate books, DSR estimates, bar bending schedules, purchase orders, running-account billing, scheduling, correspondence, stores and HR, an opt-in AI assistant, a CAD bridge importer | C# WinUI 3, C++ `bbs_engine.dll` | AGPL-3.0, or commercial |
-| **O-UI** | `HolagundiWorks/O-UI` | Shared WinUI themes, marks, SuiteShell chrome (`O.Ui`) | .NET 8 class library | MIT (marks reserved) |
+| **MynaUI** | `HolagundiWorks/O-UI` | Shared WinUI themes, marks, SuiteShell chrome (`O.Ui`) | .NET 8 class library | MIT (marks reserved) |
 
 OSS suite apps do **not** ship a portal connector. A hosted practice portal (if any) will live in separate forks later — not in these open-source trees.
 
@@ -96,7 +96,7 @@ A library of approved drawing details and specifications is not built yet. Propo
 | MynaOps | An MCP server around its calculation engine (`aqc.calculate_boq`, `aqc.compare_estimates`); record drawing revision and rate schedule in each estimate | MCP over stdio; Office C interface for the shared records | The same take-off gives the same BOQ twice, and the estimate names its inputs |
 | Suite host (new) | The MCP client, project selector, approval and audit | MCP | See section 7 |
 
-Licence boundary: MynaHub and MynaOps are AGPL-3.0 or commercial; MynaCAD is MIT or Apache-2.0; O-UI is MIT (marks reserved). Share contracts and documents, not source, across the AGPL↔permissive line.
+Licence boundary: MynaHub and MynaOps are AGPL-3.0 or commercial; MynaCAD is MIT or Apache-2.0; MynaUI is MIT (marks reserved). Share contracts and documents, not source, across the AGPL↔permissive line.
 
 ## 6. Phases (proposed, with exit criteria)
 
@@ -123,6 +123,6 @@ Licence boundary: MynaHub and MynaOps are AGPL-3.0 or commercial; MynaCAD is MIT
 
 1. ~~Portal vs company-file SoR~~ — company file (2026-10-28).
 2. The bridge file must carry `ProjectRef` for offline sharing; does MynaHub also need a dedicated export?
-3. ~~What licence does MynaHub carry?~~ **Settled:** MynaHub is AGPL-3.0 or commercial (same dual path as MynaOps; see `LICENSING.md`). Shared design `O-UI` / `O.Ui` remains MIT; marks reserved.
+3. ~~What licence does MynaHub carry?~~ **Settled:** MynaHub is AGPL-3.0 or commercial (same dual path as MynaOps; see `LICENSING.md`). Shared design `MynaUI` / `O.Ui` remains MIT; marks reserved.
 4. Is the suite host a separate small app, or part of MynaHub?
 5. What is a reusable "detail" record, precisely?
