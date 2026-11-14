@@ -213,3 +213,23 @@ The owner accepted all recommendations D1 to D10. Created in Neon (organization 
 - Deviation from section 3.3: the link between the cloud account and the local user is stored in `cloud-auth.json` (field `LocalUser`), not in a `cloud_identity` company-file table. The table arrives with Stage 2's migration if still wanted. Offline: nothing in company sign-in reads this file.
 - Run: `dotnet test native/Osas.Core.Tests -p:Platform=x64` filtered to `CloudAuthTests` (8 tests, fake HTTP, fake sealing, plus one live test against `dev` with a disposable account) and the desktop Release build. **Not run:** the WinUI panel by hand (no screenshot or click-through), the DPAPI sealing on its own (tests use a stand-in), the Google provider (not configured; shared Google provider is listed by Neon but unused).
 - **Open finding:** `dev` Auth currently allows sign-up by anyone who knows the endpoint, without email verification. Stage 2 must make membership (not just a valid token) the gate through RLS, and sign-up should be switched off or invite-only before production (owner-only invites, D3).
+
+## 14. Stage 2 status (2026-11-15): sync engine and schema, wave 1
+
+Wave 1 = clients, projects, project stages, tasks. Built and run:
+
+- **Neon (dev branch only):** `cloud/sql/0001_hub_sync.sql` applied to `dev` (schema `hub`: `company`, `company_member`, `company_seq`, `record`, `conflict`; functions `create_company`, `set_member`, `remove_member`, `push_records`, `role_of`; RLS on every table; no direct write grants). Data API enabled on `dev` with `hub` as the only exposed schema. `production` is untouched and empty.
+- **Deviations from sections 4 and 6:** one generic `hub.record` table with a JSON `body` per row (not one table per entity), so a new field never needs a schema change on three clients; the local mapping is a `sync_map` table, not new columns on the company tables. Membership and roles live in `hub.company_member` (never in Neon Auth user fields, which users can edit).
+- **Company file:** migration `0038_sync_wave1.sql` (additive: `sync_map`, `sync_dirty`, `sync_state`, triggers that record changes only once sync is enabled) and `office-core/src/sync.rs` (collect, ack, apply-pull). PAN and GSTIN of clients and a project's workspace path are **not** synced. Operations `sync_status/enable/disable/collect/ack/apply` in `src-tauri/src/syncops.rs` (link and unlink need the owner; the rest need Edit).
+- **C#:** `native/Adms.Cloud/HubSyncEngine.cs` (`HubDataApi`, `HubSyncEngine`: push first, then pull) and, in Suite > Cloud sync, **Link this company to the cloud** and **Sync company now**. There is no background loop yet: syncing is by button.
+- **Conflict rule as built:** the push names the cloud revision it last saw; if stale, the later `updated_ms` wins and the loser is kept in `hub.conflict`. A pull never overwrites a row with unsent local edits (push first). A record whose parent has not arrived is deferred and holds the cursor.
+
+**Run (what is verified):**
+- `cargo test` in `office-core`: 106 passed (9 are the new sync tests).
+- `dotnet test native/Osas.Core.Tests -p:Platform=x64`: 54 passed (fake HTTP and a scripted engine for the orchestration).
+- `cloud/sql/tests/rls-check.ps1` against `dev` with three disposable accounts: 22 of 22 passed (non-member sees and writes nothing; no token reads nothing; no direct table writes, even for the owner; auditor cannot push or read conflicts; stale-base conflicts settle by later edit and both losers are kept; last owner cannot be removed).
+- `native/Adms.SyncCheck` against `dev` with the release engine DLL: two real company files (A and B) shared one cloud company; A's existing rows reached the empty B; an edit on B reached A; a delete on A removed the task on B; a conflicting client edit settled on the later one on both; a no-op pass pushed nothing; the PAN stayed on A. 9 of 9 passed.
+- Desktop Release build succeeded.
+
+**Not run / known gaps:** the two new buttons were never clicked in the running app; no background or periodic sync, no push on edit; invoices, receipts, ledger, files and the other waves are not synced; `hub.company_member` role names beyond owner/auditor/member were not exercised by the RLS script; Android is Stage 3. Observed once and not reproduced: a brand-new account's very first Data API call answered "not signed in"; the same call succeeded on repeat. If it recurs, the client should retry once after sign-up.
+**Dev data created by the checks** (disposable, never deleted by this work): about ten test cloud accounts and the test companies `rls-test-*` and `synccheck-*` on `dev`.

@@ -9,6 +9,7 @@ mod accounting;
 mod approvals_cmd;
 mod falcon_import_cmd;
 mod studio_drafts_cmd;
+mod syncops;
 mod desk;
 mod admin;
 mod bank;

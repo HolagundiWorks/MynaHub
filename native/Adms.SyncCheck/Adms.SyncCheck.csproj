@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Manual end to end check of the company sync against a Neon DEV branch: two real company files converge through the cloud.
+       Set NEON_AUTH_BASE_URL, NEON_DATA_API_URL, MYNA_SYNC_EMAIL and MYNA_SYNC_PASSWORD (a disposable account), then run
+       dotnet run with this project and Platform x64. It needs the engine DLL (see Adms.Interop). Never point it at production. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Adms.SyncCheck</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Adms.Interop\Adms.Interop.csproj" />
+    <ProjectReference Include="..\Adms.Cloud\Adms.Cloud.csproj" />
+  </ItemGroup>
+</Project>

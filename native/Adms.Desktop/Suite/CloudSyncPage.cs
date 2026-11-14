@@ -101,6 +101,12 @@ internal sealed class CloudSyncPage : UserControl
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         row.Children.Add(signIn);
         row.Children.Add(signOut);
+        var link = new Button { Content = "Link this company to the cloud", MinHeight = O.Ui.SuiteScale.ControlMinHeight };
+        var syncNow = new Button { Content = "Sync company now", MinHeight = O.Ui.SuiteScale.ControlMinHeight };
+        link.Click += async (_, _) => await CompanySyncAsync(link: true).ConfigureAwait(true);
+        syncNow.Click += async (_, _) => await CompanySyncAsync(link: false).ConfigureAwait(true);
+        row.Children.Add(link);
+        row.Children.Add(syncNow);
         box.Children.Add(email);
         box.Children.Add(password);
         box.Children.Add(row);
@@ -144,6 +150,43 @@ internal sealed class CloudSyncPage : UserControl
             return;
         }
         RefreshAccount();
+    }
+
+    /// <summary>Links the open company file to a cloud company (owner only), or runs one pass: push local changes, then pull the cloud's.</summary>
+    async Task CompanySyncAsync(bool link)
+    {
+        var session = _sessions.Load(CompanyKey);
+        var auth = Environment.GetEnvironmentVariable("NEON_AUTH_BASE_URL");
+        var api = Environment.GetEnvironmentVariable("NEON_DATA_API_URL");
+        if (session is null || string.IsNullOrWhiteSpace(auth) || string.IsNullOrWhiteSpace(api))
+        {
+            _shell.Problem("Sign in to the cloud first, and set NEON_AUTH_BASE_URL and NEON_DATA_API_URL in neon.env.");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_shell.CompanyUuid))
+        {
+            _shell.Problem("This company file has no company id yet; open it once in the current MynaHub.");
+            return;
+        }
+        _account.Text = link ? "Linking this company to the cloud…" : "Syncing the company…";
+        try
+        {
+            using var authClient = new CloudAuthClient(auth);
+            using var data = new HubDataApi(api, ct => authClient.GetAccessTokenAsync(session, ct));
+            var engine = new HubSyncEngine(_shell.Call, data);
+            if (link)
+                await engine.LinkAsync(_shell.CompanyUuid, _shell.CompanyName).ConfigureAwait(true);
+            var r = await engine.RunOnceAsync().ConfigureAwait(true);
+            _account.Text = $"Synced: sent {r.Pushed + r.Merged}, received {r.Pulled}"
+                + (r.RejectedOlder > 0 ? $", {r.RejectedOlder} older edit(s) kept in the cloud conflict list" : "")
+                + (r.Forbidden > 0 ? $", {r.Forbidden} change(s) your role may not send" : "")
+                + (r.Complete ? "." : ". Some changes are still waiting; sync again.");
+        }
+        catch (Exception ex) when (ex is CloudAuthException or HubApiException or HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            RefreshAccount();
+            _shell.Problem(ex is HttpRequestException or TaskCanceledException ? "Could not reach the cloud. Your changes stay on this PC and are sent next time." : ex.Message);
+        }
     }
 
     async Task CloudSignOutAsync()
