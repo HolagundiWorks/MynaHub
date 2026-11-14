@@ -50,7 +50,27 @@ public sealed class HubDataApi : IHubApi, IDisposable
             $"record?company_id=eq.{Uri.EscapeDataString(companyId)}&seq=gt.{fromSeq}&order=seq.asc&limit={limit}&select=kind,sync_id,rev,seq,deleted,body", null, ct))?.AsArray()
         ?? new JsonArray();
 
+    // Observed on dev: a token is sometimes accepted before the database can tell who it belongs to ("not signed in", or 401). A new token and a
+    // short wait fixes it, so a request is tried up to three times for exactly that and nothing else.
     async Task<JsonNode?> SendAsync(HttpMethod method, string path, JsonNode? body, CancellationToken ct)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return await SendOnceAsync(method, path, body, ct);
+            }
+            catch (HubApiException e) when (attempt < 3 && (e.Unauthorized || e.Message.Contains("not signed in", StringComparison.OrdinalIgnoreCase)))
+            {
+                await Task.Delay(RetryDelay * attempt, ct);
+            }
+        }
+    }
+
+    /// <summary>The wait before a retry (times the attempt number); tests set it to zero.</summary>
+    public TimeSpan RetryDelay { get; init; } = TimeSpan.FromSeconds(1.5);
+
+    async Task<JsonNode?> SendOnceAsync(HttpMethod method, string path, JsonNode? body, CancellationToken ct)
     {
         using var req = new HttpRequestMessage(method, path);
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await _token(ct));

@@ -15,7 +15,7 @@
 - **MynaCAD and MynaOps are installed together and share one local `.osp` project file per project** (SQLite). MynaCAD writes the take-off into it; MynaOps reads it. Changes to the `.osp` format are additive only (new meta keys or tables).
 - **MynaHub is independent of both.** It starts them by path and passes nothing: no sign-in, no ticket, no project. Project data reaches the company database only through MynaOps's CSV export, imported in MynaHub.
 - **The AI agent** (Olmo 3 7B through `llama-server`, loopback `127.0.0.1:8742`) is hosted by MynaOps, in a window or headless (`O-CoreOp.exe --ai-host`), and serves MynaOps and MynaCAD. MynaCAD starts the host when none answers.
-- **Cloud sync (Neon)** belongs to MynaHub only. MynaCAD and MynaOps never hold cloud keys. Neon work is paused for now.
+- **Cloud sync (Neon)** belongs to MynaHub only. MynaCAD and MynaOps never hold cloud keys. Company sync of clients, projects and tasks between MynaHub and MynaHub Mobile (the Android app) through Neon is built for a Neon dev branch and not yet released; see `docs/hub-sync-design.md`.
 
 ## Installers
 

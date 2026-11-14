@@ -162,4 +162,28 @@ public class HubSyncEngineTests
         Assert.Equal("not a member of this company", ex.Message);
         Assert.Equal("hub", stub.Seen[1].Headers.GetValues("Content-Profile").Single());
     }
+
+    [Fact]
+    public async Task A_not_signed_in_answer_is_retried_with_a_fresh_token_and_then_succeeds()
+    {
+        var calls = 0;
+        var tokens = 0;
+        var stub = new Stub(_ => ++calls < 3
+            ? new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent("{\"message\":\"not signed in\"}", Encoding.UTF8, "application/json") }
+            : new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("[]", Encoding.UTF8, "application/json") });
+        using var api = new HubDataApi("https://api.example.test/rest/v1", _ => Task.FromResult("t" + ++tokens), stub) { RetryDelay = TimeSpan.Zero };
+        await api.PullAsync("co-1", 0, 10, CancellationToken.None);
+        Assert.Equal(3, calls);
+        Assert.Equal(3, tokens);
+    }
+
+    [Fact]
+    public async Task Other_refusals_are_not_retried()
+    {
+        var calls = 0;
+        var stub = new Stub(_ => { calls++; return new HttpResponseMessage(HttpStatusCode.Forbidden) { Content = new StringContent("{\"message\":\"not a member of this company\"}", Encoding.UTF8, "application/json") }; });
+        using var api = new HubDataApi("https://api.example.test/rest/v1", _ => Task.FromResult("t"), stub) { RetryDelay = TimeSpan.Zero };
+        await Assert.ThrowsAsync<HubApiException>(() => api.PushAsync("co-1", new JsonArray(), CancellationToken.None));
+        Assert.Equal(1, calls);
+    }
 }

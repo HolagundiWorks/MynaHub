@@ -15,6 +15,66 @@ void Check(string name, bool ok)
     if (!ok) failures++;
 }
 
+// Desktop to cloud to phone to desktop, in three steps around a run of the Android sync tests (see docs/hub-sync-design.md section 15):
+//   e2e1 <dir>  : the owner's company file A sends records to a new cloud company and adds the phone account (MYNA_PHONE_EMAIL) as a member
+//   (Android)   : the phone's sync code joins that company, receives them, edits some and sends back
+//   e2e3 <dir>  : A syncs again and checks what the phone did
+if (args.Length == 2 && args[0] is "e2e1" or "e2e3")
+{
+    var dir = args[1];
+    Directory.CreateDirectory(dir);
+    using var authE = new CloudAuthClient(authUrl);
+    var sessionE = await authE.SignInAsync(email, password);
+    using var apiE = new HubDataApi(apiUrl, ct => authE.GetAccessTokenAsync(sessionE, ct));
+    var fileA = Path.Combine(dir, "A", "A.osas");
+    using var sA = new AdmsSession(Path.Combine(dir, "A"));
+    var eA = new HubSyncEngine(sA.Call, apiE);
+    if (args[0] == "e2e1")
+    {
+        Directory.CreateDirectory(Path.Combine(dir, "A"));
+        sA.CreateCompany(fileA, "E2E A", "owner", "correct horse battery", "correct horse battery");
+        sA.Login("owner", "correct horse battery");
+        var cl = sA.Call("client_save", new { client = new { id = (long?)null, name = "E2E Acme", contact_person = "", email = "", phone = "111", address = "Pune", pan = "", gstin = "" } }).GetInt64();
+        var pr = sA.Call("project_save", new { project = new { id = (long?)null, client_id = cl, code = "E2E-1", name = "E2E Tower", site_address = "Baner", status = "active" } }).GetInt64();
+        sA.Call("task_save", new { input = new { id = (long?)null, project_id = pr, title = "E2E desktop task", notes = "", status = "todo", position = 1, due_date = "2026-03-01" } });
+        sA.Call("task_save", new { input = new { id = (long?)null, project_id = pr, title = "E2E to edit", notes = "", status = "todo", position = 2, due_date = "" } });
+        var company = "e2e-" + Guid.NewGuid().ToString("N")[..12];
+        await eA.LinkAsync(company, "E2E company");
+        var r1 = await eA.RunOnceAsync();
+        Console.WriteLine((r1.Pushed >= 4 && r1.Complete ? "PASS " : "FAIL ") + "desktop sent the company to the cloud");
+        var phoneEmail = Need("MYNA_PHONE_EMAIL");
+        using (var http = new HttpClient { BaseAddress = new Uri(apiUrl.TrimEnd('/') + "/") })
+        {
+            var req = new HttpRequestMessage(HttpMethod.Post, "rpc/set_member")
+            {
+                Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(new { p_company = company, p_email = phoneEmail, p_role = "member" }), System.Text.Encoding.UTF8, "application/json"),
+            };
+            req.Headers.Add("Authorization", "Bearer " + await authE.GetAccessTokenAsync(sessionE));
+            req.Headers.Add("Content-Profile", "hub");
+            var res = await http.SendAsync(req);
+            Console.WriteLine((res.IsSuccessStatusCode ? "PASS " : "FAIL ") + "the owner added the phone account as a member");
+            if (!res.IsSuccessStatusCode) return 1;
+        }
+        File.WriteAllText(Path.Combine(dir, "company.txt"), company);
+        Console.WriteLine("cloud company written to " + Path.Combine(dir, "company.txt"));
+        return 0;
+    }
+    sA.OpenCompany(fileA);
+    sA.Login("owner", "correct horse battery");
+    var r3 = await eA.RunOnceAsync();
+    var tasks = sA.Call("task_list", new { project_id = (long?)null });
+    string St(string title) => tasks.EnumerateArray().FirstOrDefault(t => t.GetProperty("title").GetString() == title).ValueKind == System.Text.Json.JsonValueKind.Undefined ? "(missing)"
+        : tasks.EnumerateArray().First(t => t.GetProperty("title").GetString() == title).GetProperty("status").GetString()!;
+    var failed = 0;
+    void C(string name, bool ok) { Console.WriteLine((ok ? "PASS " : "FAIL ") + name); if (!ok) failed++; }
+    C("desktop received the phone's pass", r3.Pulled >= 3 && r3.Complete);
+    C("a task the phone finished is done on the desktop", St("E2E to edit") == "done");
+    C("a task the phone added arrived on the desktop", St("E2E phone task") == "todo");
+    C("the phone's client edit arrived on the desktop", sA.Call("client_list", new { include_archived = false }).EnumerateArray().Any(c => c.GetProperty("phone").GetString() == "777"));
+    Console.WriteLine($"{failed} failure(s)");
+    return failed;
+}
+
 var root = Path.Combine(Path.GetTempPath(), "adms-synccheck-" + Environment.ProcessId);
 Directory.CreateDirectory(root);
 try
