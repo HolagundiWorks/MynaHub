@@ -24,6 +24,7 @@ pub mod refs;
 pub mod share;
 pub mod schema;
 pub mod store;
+pub mod sync;
 pub mod subcontracts;
 pub mod tasks;
 pub mod tds26as;

@@ -41,6 +41,7 @@ pub const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0035_project_workspace.sql"),
     include_str!("../migrations/0036_project_code_settings.sql"),
     include_str!("../migrations/0037_project_code_lock.sql"),
+    include_str!("../migrations/0038_sync_wave1.sql"),
 ];
 
 /// The schema version this build expects.
