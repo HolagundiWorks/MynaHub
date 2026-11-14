@@ -16,6 +16,7 @@ public static class NeonEnvFile
         "AWS_REGION",
         "S3_BUCKET",
         "NEON_BRANCH",
+        "NEON_AUTH_BASE_URL",
     ];
 
     public static string DefaultPath => SuiteWire.LocalPath("neon.env");

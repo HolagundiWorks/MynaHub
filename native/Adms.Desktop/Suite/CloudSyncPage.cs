@@ -34,12 +34,12 @@ internal sealed class CloudSyncPage : UserControl
         page.Children.Add(new TextBlock
         {
             Text = "Cloud sync uses service credentials in %LocalAppData%\\O-Studio\\neon.env (Postgres + Object Storage from neon deploy). "
-                   + "That is separate from Neon Auth sign-in — there is no login screen here yet; use an env file or paste keys from the Neon Console. "
-                   + "Your Downloads storage-only export still needs DATABASE_URL from the full branch env.",
+                   + "The cloud account below is separate: it proves who you are to the cloud and never replaces your company sign-in, which keeps working offline.",
             Style = Resource("SecondaryStyle"),
             TextWrapping = TextWrapping.Wrap,
         });
         page.Children.Add(_status);
+        page.Children.Add(BuildAccountSection());
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         var loadEnv = new Button { Content = "Load env file…", MinHeight = O.Ui.SuiteScale.ControlMinHeight };
@@ -75,6 +75,88 @@ internal sealed class CloudSyncPage : UserControl
             _status.Text = SyncLine();
         };
         Unloaded += (_, _) => CloudSyncHub.LogLine -= _onLog;
+    }
+
+    readonly TextBlock _account = new() { TextWrapping = TextWrapping.Wrap, Style = Resource("BodyStyle") };
+    readonly CloudSessionStore _sessions = new();
+
+    string CompanyKey => string.IsNullOrWhiteSpace(_shell.CompanyUuid) ? _shell.CompanyPath : _shell.CompanyUuid;
+
+    UIElement BuildAccountSection()
+    {
+        var box = new StackPanel { Spacing = 8 };
+        box.Children.Add(new TextBlock { Text = "Cloud account", Style = Resource("SectionTitleStyle") });
+        box.Children.Add(_account);
+        var email = new TextBox { Header = "Cloud account email", MinHeight = O.Ui.SuiteScale.ControlMinHeight, MaxWidth = 360, HorizontalAlignment = HorizontalAlignment.Left };
+        var password = new PasswordBox { Header = "Cloud account password", MinHeight = O.Ui.SuiteScale.ControlMinHeight, MaxWidth = 360, HorizontalAlignment = HorizontalAlignment.Left };
+        var signIn = new Button { Content = "Sign in to the cloud", MinHeight = O.Ui.SuiteScale.ControlMinHeight };
+        var signOut = new Button { Content = "Sign out of the cloud", MinHeight = O.Ui.SuiteScale.ControlMinHeight };
+        signIn.Click += async (_, _) =>
+        {
+            var pw = password.Password;
+            password.Password = "";
+            await CloudSignInAsync(email.Text.Trim(), pw).ConfigureAwait(true);
+        };
+        signOut.Click += async (_, _) => await CloudSignOutAsync().ConfigureAwait(true);
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        row.Children.Add(signIn);
+        row.Children.Add(signOut);
+        box.Children.Add(email);
+        box.Children.Add(password);
+        box.Children.Add(row);
+        RefreshAccount();
+        return box;
+    }
+
+    void RefreshAccount()
+    {
+        var info = _sessions.Info(CompanyKey);
+        _account.Text = info is null || _sessions.Load(CompanyKey) is null
+            ? "Not signed in to the cloud. Everything on this PC works as before; nothing is synced under a cloud account yet."
+            : $"Signed in to the cloud as {info.Email}, linked by {info.LocalUser}. Your company sign-in is separate and works offline.";
+    }
+
+    async Task CloudSignInAsync(string email, string password)
+    {
+        var url = Environment.GetEnvironmentVariable("NEON_AUTH_BASE_URL");
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            _shell.Problem("NEON_AUTH_BASE_URL is not set. Add it to neon.env (Load env file) first.");
+            return;
+        }
+        if (email.Length == 0 || password.Length == 0)
+        {
+            _shell.Problem("Enter the cloud account email and password.");
+            return;
+        }
+        _account.Text = "Signing in to the cloud…";
+        try
+        {
+            using var client = new CloudAuthClient(url);
+            var session = await client.SignInAsync(email, password).ConfigureAwait(true);
+            await client.GetAccessTokenAsync(session).ConfigureAwait(true); // proves the session before it is kept
+            _sessions.Save(CompanyKey, session, _shell.User);
+        }
+        catch (Exception ex) when (ex is CloudAuthException or HttpRequestException or TaskCanceledException)
+        {
+            RefreshAccount();
+            _shell.Problem(ex is CloudAuthException ? ex.Message : "Could not reach the cloud. Your company sign-in is not affected.");
+            return;
+        }
+        RefreshAccount();
+    }
+
+    async Task CloudSignOutAsync()
+    {
+        var session = _sessions.Load(CompanyKey);
+        var url = Environment.GetEnvironmentVariable("NEON_AUTH_BASE_URL");
+        if (session is not null && !string.IsNullOrWhiteSpace(url))
+        {
+            using var client = new CloudAuthClient(url);
+            try { await client.SignOutAsync(session).ConfigureAwait(true); } catch (Exception ex) when (ex is CloudAuthException or TaskCanceledException) { }
+        }
+        _sessions.Clear(CompanyKey);
+        RefreshAccount();
     }
 
     static Style Resource(string key) => (Style)Application.Current.Resources[key];

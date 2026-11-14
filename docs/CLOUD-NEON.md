@@ -1,5 +1,7 @@
 # MynaHub and Neon (cloud sync)
 
+> **2026-11-15:** the cloud account login (Neon Auth) and the company sync between MynaHub and MynaHub Mobile are designed in [hub-sync-design.md](hub-sync-design.md). The project there is `mynahub` (the org and project ids below are the earlier, unrelated test project).
+
 **Project files stay on this PC (decided 2026-11-08).** MynaCAD and MynaOps share the local `.osp`; nothing in it is pushed to Neon. Only MynaHub is synced, and project data reaches the company database only through the CSV that MynaOps exports and MynaHub imports. Pushing the project file itself is off; `OSAS_PUSH_PROJECT_FILES=1` turns it back on for a machine that should do it (`Osas.Core.ProjectFilePolicy`).
 
 The rest of this page describes the opt-in mode. Cloud sync for `.osp` project files was **MynaHub only** — see [ODP-PROJECT-FILE-AND-SYNC.md](ODP-PROJECT-FILE-AND-SYNC.md). MynaCAD and MynaOps keep opening the local `.osp`; they never store Neon keys.

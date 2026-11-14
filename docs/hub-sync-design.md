@@ -202,3 +202,14 @@ Waves 3 and 4 (money, ledger, files) are the largest and riskiest; wave 1 gives 
 8. **D8 Safety:** enable snapshots/backups on the project; keep `production` empty until Stage 4 passes.
 9. **D9 Android repo:** a new branch (name proposed `mynahub-mobile-sync`) cut from `mynahub-mobile-rebrand` tip `a8d5a23`; keep the app id `com.holagundi.archiman` and package names.
 10. **D10 Scope of wave 1:** confirm clients, projects, stages and tasks as the first loop.
+
+## 13. Decisions taken and Stage 1 status (2026-11-15)
+
+The owner accepted all recommendations D1 to D10. Created in Neon (organization `org-floral-sun-23006249`): project `mynahub` (`falling-sky-24757585`, `aws-ap-southeast-1`, Postgres 18), default branch `production` (empty), branch `dev` (`br-weathered-hill-aonxt3ks`) with Neon Auth (Managed Better Auth, email + password) enabled. No bucket, role, Data API or snapshot yet.
+
+**Stage 1 (desktop login), what exists and what was run:**
+- `native/Adms.Cloud/CloudAuthClient.cs` (email + password sign-in, access token from the `set-auth-jwt` header, sign-out; https only) and `CloudSessionStore.cs` (session cookies sealed with DPAPI, per company, in `%LOCALAPPDATA%\O-Studio\cloud-auth.json`).
+- Suite > Cloud sync has a Cloud account section (sign in, sign out). The address comes from `NEON_AUTH_BASE_URL` in `neon.env` (a public endpoint; now kept when `neon.env` is merged).
+- Deviation from section 3.3: the link between the cloud account and the local user is stored in `cloud-auth.json` (field `LocalUser`), not in a `cloud_identity` company-file table. The table arrives with Stage 2's migration if still wanted. Offline: nothing in company sign-in reads this file.
+- Run: `dotnet test native/Osas.Core.Tests -p:Platform=x64` filtered to `CloudAuthTests` (8 tests, fake HTTP, fake sealing, plus one live test against `dev` with a disposable account) and the desktop Release build. **Not run:** the WinUI panel by hand (no screenshot or click-through), the DPAPI sealing on its own (tests use a stand-in), the Google provider (not configured; shared Google provider is listed by Neon but unused).
+- **Open finding:** `dev` Auth currently allows sign-up by anyone who knows the endpoint, without email verification. Stage 2 must make membership (not just a valid token) the gate through RLS, and sign-up should be switched off or invite-only before production (owner-only invites, D3).
