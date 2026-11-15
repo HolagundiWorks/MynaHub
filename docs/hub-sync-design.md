@@ -13,7 +13,7 @@ Fixed by the owner (2026-11-11): MynaHub keeps every login and its own company d
 | Existing Neon code | `native/Adms.Cloud` pushes whole `.osp` snapshots (`osp_project`, `osp_project_revision`, `osp_markup`, S3 `uploads`) with a service connection string from `%LOCALAPPDATA%\OSAS\neon.env`; **off by default** since 2026-11-08 (`ProjectFilePolicy`). `neon.ts` declares `auth: true`, buckets `uploads` and `assets`, a `hello` function and Realtime; `cloud/src/auth-smoke.ts` already exercises Neon Auth (Managed Better Auth, email + password). The sync model below is **new**; the `.osp` push stays as is. |
 | Android (MynaHub Mobile) | Kotlin, Compose, Hilt, **Room schema 33**, app id `com.holagundi.archiman` kept, `INTERNET` permission already present. 60+ entities. Ids are `Long autoGenerate`; times are epoch millis `Long`; most entities have `createdAt`, few have `updatedAt`; no sync columns, no network stack (no OkHttp/Ktor/WorkManager in the app module). Local users (`local_users`) have **no password** (username, role, active), the phone has no password-based login today. The README says "the phone is the system of record". |
 | Overlap with the company file | Clients, projects (code, status, site, dates), tasks, invoices, receipts, fee proposals, enquiries, permits, time entries, letters, ledger accounts / journals / periods (slice 1 just added), company profile, local users, finance records. Phone-only: drawings, site visits and issues, measurements and the Measurement Book, RCC members, rate book, schedules, Wi-Fi portal, Siteman. Desktop-only: payroll, bank import, 26AS, templates, boards, Falcon CSV import, approvals. |
-| Neon (MCP, read) | The connected account has one organization (`org-floral-sun-23006249`, plan free, created 2026-11-14) and **zero projects**. The org and project named in `CLOUD-NEON.md` (`org-soft-meadow-34349055`, `delicate-butterfly-16013319`) are **not visible** through this connection. So either that project belongs to another account, or it was removed. Decision D1. |
+| Neon (MCP, read) | The connected account has one organization (the owner's Neon organization, plan free, created 2026-11-14) and **zero projects**. The org and project named in `CLOUD-NEON.md` (`org-soft-meadow-34349055`, `delicate-butterfly-16013319`) are **not visible** through this connection. So either that project belongs to another account, or it was removed. Decision D1. |
 
 Not verified (not run): any Neon behaviour of Auth, RLS, Data API or Object Storage on the free plan; the contents of an existing Neon project; anything on the phone at run time.
 
@@ -136,7 +136,7 @@ Phone-drafted money: a phone may create an invoice **draft** with a client-side 
 
 | Resource | Proposal |
 |---|---|
-| Organization | Existing `org-floral-sun-23006249` (read via MCP, free plan), or the org in `CLOUD-NEON.md` (D1) |
+| Organization | Existing the owner's Neon organization (read via MCP, free plan), or the org in `CLOUD-NEON.md` (D1) |
 | Project | One, `mynahub` (region near India, e.g. `aws-ap-southeast-1` as the doc suggests) |
 | Branches | `production` (default, no experiments), `dev` (all Stage 1 to 3 work, from `production`; auto-expire policy from `neon.ts` removed for `dev` so it persists), short-lived `test-<n>` for RLS tests |
 | Database | `neondb` default; schema `hub` for sync tables |
@@ -192,7 +192,7 @@ Waves 3 and 4 (money, ledger, files) are the largest and riskiest; wave 1 gives 
 
 ## 12. Decisions the owner must make
 
-1. **D1 Neon account and project.** The connected account (`org-floral-sun-23006249`) has no project, and the org/project in `CLOUD-NEON.md` is not visible. Which account is the product's? OK to create a new project `mynahub` in region `aws-ap-southeast-1` (free plan limits unchecked)? Or relink the old one?
+1. **D1 Neon account and project.** The connected account (the owner's Neon organization) has no project, and the org/project in `CLOUD-NEON.md` is not visible. Which account is the product's? OK to create a new project `mynahub` in region `aws-ap-southeast-1` (free plan limits unchecked)? Or relink the old one?
 2. **D2 Client access path:** Neon Data API with RLS (recommended), a Neon Function as sync API, or something else.
 3. **D3 Sign-in providers:** email + password only, or add Google; may phones and desktops use the same cloud account; who may invite members (owner only, recommended).
 4. **D4 Role mapping:** keep the five desktop roles in the cloud; is a phone-only `member` role (no finance) wanted?
@@ -205,7 +205,7 @@ Waves 3 and 4 (money, ledger, files) are the largest and riskiest; wave 1 gives 
 
 ## 13. Decisions taken and Stage 1 status (2026-11-15)
 
-The owner accepted all recommendations D1 to D10. Created in Neon (organization `org-floral-sun-23006249`): project `mynahub` (`falling-sky-24757585`, `aws-ap-southeast-1`, Postgres 18), default branch `production` (empty), branch `dev` (`br-weathered-hill-aonxt3ks`) with Neon Auth (Managed Better Auth, email + password) enabled. No bucket, role, Data API or snapshot yet.
+The owner accepted all recommendations D1 to D10. Created in the owner's Neon organization: project `mynahub` (region `aws-ap-southeast-1`, Postgres 18), default branch `production` (empty), branch `dev` with Neon Auth (Managed Better Auth, email + password) enabled. No bucket, role, Data API or snapshot yet.
 
 **Stage 1 (desktop login), what exists and what was run:**
 - `native/Adms.Cloud/CloudAuthClient.cs` (email + password sign-in, access token from the `set-auth-jwt` header, sign-out; https only) and `CloudSessionStore.cs` (session cookies sealed with DPAPI, per company, in `%LOCALAPPDATA%\O-Studio\cloud-auth.json`).
