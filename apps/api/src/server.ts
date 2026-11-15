@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { buildApp } from "./app.js";
+import { createAuth } from "./auth.js";
 import { ConfigError, loadConfig } from "./config.js";
 import { connect } from "./db/client.js";
 import { shippedMigrations } from "./health.js";
@@ -22,6 +23,8 @@ const journal = fileURLToPath(new URL("../drizzle/meta/_journal.json", import.me
 const app = await buildApp({
   config,
   health: database.health,
+  db: database.db,
+  auth: createAuth(database.db, config),
   expectedMigrations: shippedMigrations(journal),
   version: VERSION,
 });

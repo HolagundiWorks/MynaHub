@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import rateLimit from "@fastify/rate-limit";
 import swagger from "@fastify/swagger";
 import Fastify, { type FastifyInstance } from "fastify";
 import {
@@ -7,14 +8,20 @@ import {
   serializerCompiler,
   validatorCompiler,
 } from "fastify-type-provider-zod";
+import type { Auth } from "./auth.js";
 import type { Config } from "./config.js";
+import type { Db } from "./db/types.js";
 import { AppError, body } from "./errors.js";
 import type { DbHealth } from "./health.js";
+import { authRoutes } from "./routes/auth-mount.js";
 import { healthRoutes } from "./routes/health.js";
+import { v1Routes } from "./routes/v1.js";
 
 export interface AppDeps {
   config: Config;
   health: DbHealth;
+  db: Db;
+  auth: Auth;
   /** How many migrations this build expects the database to have. */
   expectedMigrations: number;
   version: string;
@@ -63,7 +70,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   });
   app.setNotFoundHandler((req, reply) => reply.status(404).send(body("NOT_FOUND", "No such route.", req.id)));
 
+  await app.register(rateLimit, { global: false });
   await app.register(healthRoutes, deps);
+  await app.register(authRoutes, { auth: deps.auth, config: deps.config });
+  await app.register(v1Routes, deps);
 
   app.get("/openapi.json", { schema: { hide: true } }, async () => app.swagger());
   return app;

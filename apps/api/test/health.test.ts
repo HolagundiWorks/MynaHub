@@ -8,6 +8,7 @@ const config = loadConfig({
   NODE_ENV: "test",
   PUBLIC_API_URL: "https://api.company.example",
   DATABASE_URL: "postgresql://u:p@db.example/x",
+  BETTER_AUTH_SECRET: "x".repeat(40),
   LOG_LEVEL: "silent",
 });
 
@@ -21,6 +22,8 @@ async function make(health: Partial<DbHealth> = {}, expectedMigrations = 2) {
   app = await buildApp({
     config,
     expectedMigrations,
+    db: {} as never,
+    auth: {} as never,
     version: "9.9.9",
     health: { ping: async () => {}, appliedMigrations: async () => 2, ...health },
   });

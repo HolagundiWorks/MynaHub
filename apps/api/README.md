@@ -2,7 +2,7 @@
 
 The company-owned backend of the Myna platform (see `docs/hub-platform-plan.md`). It sits in front of the company's own Neon PostgreSQL; MynaHub and MynaHub Mobile talk to it, never to the database. HolagundiWorks runs no part of it.
 
-**Status: Phase 1 (backend foundation).** What exists: configuration loader, `/health` and `/health/ready`, request ids and one error format, OpenAPI 3.1 at `/openapi.json`, the first schema (organisations, memberships, roles, permissions, projects, audit events) as versioned migrations, a Dockerfile and a CI workflow. **Not built yet:** authentication (Phase 2), authorization and row level security (Phase 3), sync (Phases 4 to 6), files, any business endpoint.
+**Status: Phase 2 (authentication) built; see the limits below.** What exists: configuration loader, `/health` and `/health/ready`, request ids and one error format, OpenAPI 3.1 at `/openapi.json`, the schema (organisations, memberships, roles, permissions, projects, audit events, invitations, one-time setup tokens, and Better Auth's tables in the `auth` schema) as versioned migrations, a Dockerfile and a CI workflow, and the identity layer: self-managed Better Auth 1.7.25 (email and password, bearer tokens, two-factor), a one-time bootstrap, invitations, member suspension, sessions and a membership check on every protected request. **Not built yet:** the full permission catalogue and row level security (Phase 3), sync (Phases 4 to 6), files, any project or task endpoint.
 
 ## Run it
 
@@ -34,6 +34,32 @@ CREATE ROLE myna_runtime LOGIN PASSWORD '<a long random password>';
 ```
 
 The runtime role can read and write data tables, can only insert and read `audit.events`, and owns nothing. If you create it after migrating, run the grants at the end of `drizzle/0001_guards.sql` by hand.
+
+## First start: create the company and its administrator
+
+No default account exists and public sign-up is off. After migrating:
+
+```bash
+npm run bootstrap:token            # prints a one-time setup token ONCE (valid 60 minutes, single use)
+```
+
+Then, from the person who will own the company:
+
+```bash
+curl -X POST https://api.company.example/v1/bootstrap -H "content-type: application/json" -d '{
+  "setupToken": "<the token>", "organizationName": "Sample Architects", "slug": "sample-architects",
+  "adminName": "Asha Owner", "adminEmail": "owner@company.example", "adminPassword": "<12 or more characters>" }'
+```
+
+This creates the organisation, the seven default roles and the Owner, and closes bootstrap for good (a second attempt, even with a fresh token, is refused). The Owner then signs in (`POST /api/auth/sign-in/email`), **turns on two-factor** (`POST /api/auth/two-factor/enable`, then `/two-factor/verify-totp`; verifying issues a new session token, so keep the one in the response), and can invite people: `POST /v1/invitations` returns a single-use token **once**; the person sends it to `POST /v1/invitations/accept` with their name and a password. Invitations last 7 days and can be revoked. `POST /v1/members/{id}/suspend` ends that person's sessions immediately.
+
+### Limits of this phase (read before relying on it)
+
+- **No email is sent.** The invitation token is shown to the administrator, who must pass it on. Email delivery and email verification arrive with the setup wizard (Phase 7); until then possession of the token is the only proof of identity.
+- **Rate limits** (sign-in, two-factor, bootstrap, accept) are configured but switched off in the test environment, so they have **not been tested**; the store is in memory, so each container counts separately.
+- **One company per deployment**; every request resolves the single organisation.
+- Roles are assigned only at invitation; there is no screen or endpoint to change a role yet (Phase 3).
+- Tested on PostgreSQL compiled to WebAssembly (PGlite). The node-postgres path, the migrate command and Better Auth over a real server are exercised only by the CI workflow, which has not run yet.
 
 ## Checks
 

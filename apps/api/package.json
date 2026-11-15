@@ -17,10 +17,13 @@
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "bootstrap:token": "node dist/bootstrap-cli.js"
   },
   "dependencies": {
+    "@fastify/rate-limit": "^11.2.2",
     "@fastify/swagger": "^9.9.4",
+    "better-auth": "1.7.25",
     "drizzle-orm": "^0.45.4",
     "fastify": "^5.12.8",
     "fastify-plugin": "^6.0.1",
@@ -39,5 +42,10 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.2",
     "vitest": "^5.1.0"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.0"
+    }
   }
 }

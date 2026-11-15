@@ -37,25 +37,26 @@ jobs:
         run: npm run lint
       - name: Types
         run: npm run typecheck
-      - name: Tests (migrations on PGlite, API behaviour)
+      - name: Tests (migrations on PGlite, identity and API behaviour)
         run: npm test
       - name: Build
         run: npm run build
       - name: Dependency vulnerabilities (production dependencies)
         run: npm audit --omit=dev --audit-level=high
-      - name: Migrate a fresh Postgres with the built CLI, then check readiness
+      - name: Real server and real Postgres (migrate twice, first start end to end)
         env:
           NODE_ENV: development
           PUBLIC_API_URL: http://127.0.0.1:3000
           DATABASE_URL: postgresql://postgres:ci-only-password@127.0.0.1:5432/myna
           DIRECT_DATABASE_URL: postgresql://postgres:ci-only-password@127.0.0.1:5432/myna
           HOST: 127.0.0.1
+          BETTER_AUTH_SECRET: ci-only-secret-ci-only-secret-ci-only-0000
           LOG_LEVEL: warn
         run: |
           npm run migrate
           npm run migrate   # a second run must change nothing
           node dist/server.js &
           for i in $(seq 1 20); do curl -fsS http://127.0.0.1:3000/health && break; sleep 1; done
-          curl -fsS http://127.0.0.1:3000/health/ready
+          bash scripts/ci-smoke.sh
       - name: Container image builds
         run: docker build -t myna-api:ci .

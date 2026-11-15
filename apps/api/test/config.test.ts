@@ -4,6 +4,7 @@ import { ConfigError, loadConfig } from "../src/config.js";
 const good = {
   PUBLIC_API_URL: "https://api.company.example",
   DATABASE_URL: "postgresql://myna_runtime:s3cretvalue@ep-x.example/neondb",
+  BETTER_AUTH_SECRET: "0123456789abcdef0123456789abcdef0123",
 };
 
 describe("loadConfig", () => {
@@ -46,6 +47,34 @@ describe("loadConfig", () => {
     expect(
       loadConfig({ ...good, NODE_ENV: "development", PUBLIC_API_URL: "http://localhost:3000" }).NODE_ENV,
     ).toBe("development");
+  });
+
+  it("requires a signing secret of at least 32 characters and never echoes it", () => {
+    expect(() => loadConfig({ ...good, BETTER_AUTH_SECRET: undefined })).toThrow(/BETTER_AUTH_SECRET/);
+    try {
+      loadConfig({ ...good, BETTER_AUTH_SECRET: "too-short-secret" });
+      expect.unreachable();
+    } catch (e) {
+      expect((e as ConfigError).message).toContain("BETTER_AUTH_SECRET");
+      expect((e as ConfigError).message).not.toContain("too-short-secret");
+    }
+  });
+
+  it("refuses the placeholder secret copied from .env.example", () => {
+    expect(() => loadConfig({ ...good, BETTER_AUTH_SECRET: "CHANGE_ME_TO_A_LONG_RANDOM_VALUE" })).toThrow(
+      /placeholder/,
+    );
+  });
+
+  it("reads trusted origins as a list and requires administrator MFA by default", () => {
+    const c = loadConfig({
+      ...good,
+      TRUSTED_ORIGINS: "https://hub.company.example, https://m.company.example,",
+    });
+    expect(c.TRUSTED_ORIGINS).toEqual(["https://hub.company.example", "https://m.company.example"]);
+    expect(loadConfig(good).TRUSTED_ORIGINS).toEqual([]);
+    expect(loadConfig(good).REQUIRE_ADMIN_MFA).toBe(true);
+    expect(loadConfig({ ...good, REQUIRE_ADMIN_MFA: "false" }).REQUIRE_ADMIN_MFA).toBe(false);
   });
 
   it("rejects a bad port and a bad log level", () => {

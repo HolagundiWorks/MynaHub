@@ -16,6 +16,26 @@ const schema = z.object({
   DATABASE_URL: url,
   /** Migration connection: the schema owner. Used only by the migrate command, never by the running server. */
   DIRECT_DATABASE_URL: url.optional(),
+  /** Signs and encrypts sessions and two-factor secrets. At least 32 characters; generate one with: openssl rand -base64 32. Never reuse it elsewhere. */
+  BETTER_AUTH_SECRET: z
+    .string()
+    .min(32, "must be at least 32 characters")
+    .refine((v) => !/change_?me/i.test(v), "is still the placeholder from .env.example"),
+  /** Extra origins allowed to call the auth routes with cookies (for example the MynaHub web origin), comma separated. The API address is always trusted. */
+  TRUSTED_ORIGINS: z
+    .string()
+    .optional()
+    .transform((v) =>
+      (v ?? "")
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean),
+    ),
+  /** Administrators must have two-factor authentication before they may use administrative endpoints (guidelines section 6.4). */
+  REQUIRE_ADMIN_MFA: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 });
 

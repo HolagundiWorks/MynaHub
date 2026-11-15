@@ -31,10 +31,10 @@ afterAll(async () => {
 });
 
 describe("migrations", () => {
-  it("create every table of phase 1 in its own schema", async () => {
+  it("create every table of phases 1 and 2 in its own schema", async () => {
     const rows = await q(
       `select table_schema || '.' || table_name as t from information_schema.tables
-       where table_schema in ('core','access','studio','audit') order by 1`,
+       where table_schema in ('core','access','studio','audit','auth') order by 1`,
     );
     expect(rows.map((r) => r.t)).toEqual([
       "access.membership_roles",
@@ -42,6 +42,13 @@ describe("migrations", () => {
       "access.role_permissions",
       "access.roles",
       "audit.events",
+      "auth.account",
+      "auth.session",
+      "auth.two_factor",
+      "auth.user",
+      "auth.verification",
+      "core.bootstrap_tokens",
+      "core.invitations",
       "core.memberships",
       "core.organizations",
       "studio.projects",
