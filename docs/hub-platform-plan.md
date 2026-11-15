@@ -136,3 +136,18 @@ The owner approved the recommendations D1 to D9. **D10:** the reference host is 
 **Not done / not verified:** email delivery and verification (Phase 7); the rate limits (configured, never tested); the node-postgres path, `npm run migrate` and `npm run bootstrap:token` against a real PostgreSQL server (no Postgres or Docker here; CI is meant to cover it and has not run); the Docker image; a role-change endpoint and the full permission catalogue (Phase 3); invitation acceptance by someone who already has an account (refused for now).
 
 **Next: Phase 3 (authorization).** Permission catalogue package, the five desktop role templates alongside the guidelines' seven, custom roles, resource-level policy checks, and the per-transaction organisation context for row level security, each with cross-organisation and escalation tests.
+
+## BYON setup CLI (2026-11-15)
+
+`apps/api` now includes `npm run setup -- init|check|apply`; see
+[byo-neon.md](byo-neon.md). It creates a new local environment with a random
+signing secret without overwriting existing settings, validates matching
+owner/runtime connection targets and least privilege, applies the shipped
+migrations on explicit `apply`, grants read-only readiness metadata access, and
+reports whether first-admin bootstrap is still needed. Applied migration hashes
+must match this build; setup does not reset data or reopen bootstrap.
+
+This is operator tooling, not completion of Phase 7. Cloud provisioning, a
+graphical wizard, hosting, email and client API cutover remain pending. The
+existing dev Data API path is retained. Verification and limits are recorded in
+the BYON guide.

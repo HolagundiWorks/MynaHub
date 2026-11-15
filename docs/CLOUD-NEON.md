@@ -1,5 +1,9 @@
 # MynaHub and Neon (cloud sync)
 
+For the approved company-owned Myna API setup, use [byo-neon.md](byo-neon.md).
+This page describes the legacy connector and its development smoke tests.
+The setup CLI does not enable desktop/mobile API sync; client cutover is pending.
+
 > **2026-11-15:** the cloud account login (Neon Auth) and the company sync between MynaHub and MynaHub Mobile are designed in [hub-sync-design.md](hub-sync-design.md). The project there is `mynahub` (the org and project ids below are the earlier, unrelated test project).
 
 **Project files stay on this PC (decided 2026-11-08).** MynaCAD and MynaOps share the local `.osp`; nothing in it is pushed to Neon. Only MynaHub is synced, and project data reaches the company database only through the CSV that MynaOps exports and MynaHub imports. Pushing the project file itself is off; `OSAS_PUSH_PROJECT_FILES=1` turns it back on for a machine that should do it (`Osas.Core.ProjectFilePolicy`).

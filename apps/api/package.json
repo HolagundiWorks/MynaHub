@@ -18,7 +18,8 @@
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "test": "vitest run",
-    "bootstrap:token": "node dist/bootstrap-cli.js"
+    "bootstrap:token": "node dist/bootstrap-cli.js",
+    "setup": "node --env-file-if-exists=.env dist/setup-cli.js"
   },
   "dependencies": {
     "@fastify/rate-limit": "^11.2.2",

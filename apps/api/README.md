@@ -6,6 +6,12 @@ The company-owned backend of the Myna platform (see `docs/hub-platform-plan.md`)
 
 ## Run it
 
+For a new company-owned Neon deployment, follow [the BYON setup guide](../../docs/byo-neon.md).
+The `setup` CLI creates a local configuration with a random signing secret (`init`),
+validates the two database roles and migration history without writes (`check`),
+or applies shipped migrations and grants read-only readiness access (`apply`).
+It does not provision cloud resources or switch the existing desktop/mobile clients to this API.
+
 Needs Node 22 or newer and a PostgreSQL database (Neon).
 
 ```bash
@@ -15,6 +21,10 @@ npm run build
 npm run migrate             # with DIRECT_DATABASE_URL (the schema owner)
 npm start                   # with DATABASE_URL (the runtime role)
 ```
+
+These commands expect variables injected by the host. For a local `.env`, use
+`node --env-file=.env dist/server.js` and `node --env-file=.env dist/bootstrap-cli.js`.
+`npm run setup` loads `.env` itself (existing process variables take precedence).
 
 | Variable                                | Needed                | Meaning                                                                |
 | --------------------------------------- | --------------------- | ---------------------------------------------------------------------- |
@@ -33,7 +43,7 @@ Create the runtime role **before** migrating, so the migration can grant it data
 CREATE ROLE myna_runtime LOGIN PASSWORD '<a long random password>';
 ```
 
-The runtime role can read and write data tables, can only insert and read `audit.events`, and owns nothing. If you create it after migrating, run the grants at the end of `drizzle/0001_guards.sql` by hand.
+The runtime role can read and write data tables, can only insert and read `audit.events`, and owns nothing. Create it before migrating so all shipped grants apply. If it already exists without those grants, review both `drizzle/0001_guards.sql` and `drizzle/0004_phase2_guards.sql` with the schema owner. `npm run setup -- apply` additionally grants `USAGE` on `drizzle` and `SELECT` on its migration journal, which `/health/ready` needs. It never grants writes to that journal.
 
 ## First start: create the company and its administrator
 

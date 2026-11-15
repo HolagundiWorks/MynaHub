@@ -1,4 +1,114 @@
-# Bring your own Neon (setting up cloud sync for your practice)
+# Bring your own Neon (company-owned API setup)
+
+Status: **API setup CLI implemented; desktop/mobile API cutover is pending.**
+This is the setup path for the approved [platform plan](hub-platform-plan.md):
+each practice owns its Neon database and hosts its Myna API container. Self-managed
+Better Auth runs inside that API. Clients will use the company's API address and
+their own sessions. Neon-managed Auth and the Data API are not required for this path.
+
+The API currently implements authentication. Authorization, business endpoints,
+API sync and client cutover remain separate phases. Setting up this backend does
+not enable the current clients to sync through it. Keep the existing dev `hub.*`
+schema and accounts until cutover is verified; this tool never drops them.
+
+## Set up the backend
+
+1. Create your own Neon project and a development branch. Use a dedicated database
+   for this API. Copy the schema owner's **direct** PostgreSQL connection URL into
+   your password manager. No Neon management API key is needed by the setup CLI.
+2. In the branch's SQL Editor, create the runtime role with a generated password:
+
+   ```sql
+   CREATE ROLE myna_runtime LOGIN PASSWORD '<a new random password>';
+   ```
+
+   Create it through SQL, rather than as an administrator through the console.
+   It must have no role memberships, administrative privileges or object ownership.
+   Copy a connection URL for this role and the same endpoint/database; a pooled
+   runtime URL is supported. Require TLS (`sslmode=require` or `verify-full`) in
+   both URLs. The owner URL must not use the `-pooler` host.
+   See Neon's [role privileges](https://neon.com/docs/manage/roles) and
+   [connection pooling](https://neon.com/docs/connect/connection-pooling).
+3. From `apps/api`, install the locked dependencies and build:
+
+   ```sh
+   npm ci
+   npm run build
+   npm run setup -- init
+   ```
+
+   `init` creates `.env` with a new 48-byte random signing secret and placeholders
+   for the URLs. It refuses to overwrite an existing file. Set `PUBLIC_API_URL`
+   to your future HTTPS API address, `DATABASE_URL` to the runtime URL and
+   `DIRECT_DATABASE_URL` to the schema-owner URL. Edit these privately; never
+   paste them into chat, logs or source control. Keep `REQUIRE_ADMIN_MFA=true`.
+   Restrict file access to the operator's OS account (Unix creation mode is 0600;
+   on Windows check the directory/file ACL). Existing process variables override
+   `.env`, so clear stale settings before setup.
+4. Back up an existing database before applying migrations, then run:
+
+   ```sh
+   npm run setup -- apply
+   npm run setup -- check
+   ```
+
+   `apply` first validates the connection targets and runtime role. It rejects
+   changed or unknown applied migration hashes before running the shipped
+   migrations. It grants the runtime role read-only access to the migration
+   journal for readiness, then checks table access and account state. Repeating
+   it preserves existing company accounts and the signing secret. It does not
+   create roles, rotate passwords, mint tokens, reset data or provision Neon.
+   `check` runs only catalog/data reads and never applies migrations or grants.
+   Both commands return exit code 2 on failure and suppress private database
+   error details. If a migration fails, inspect privately; earlier migrations
+   may already be applied. There is no automatic rollback or reset.
+5. Deploy the built API behind HTTPS using the [API README](../apps/api/README.md)
+   and Dockerfile. Inject runtime settings only: **omit `DIRECT_DATABASE_URL`**
+   from the running server. Keep the signing secret stable in your host's secret
+   store. To run setup in the container, inject both URLs into a separate,
+   short-lived job and run `node dist/setup-cli.js apply` (or `check`).
+6. Generate a first-admin token in a private operator terminal:
+
+   ```sh
+   node --env-file=.env dist/bootstrap-cli.js
+   ```
+
+   The token is intentionally shown once. Submit it with company/admin details
+   to `POST /v1/bootstrap` over HTTPS, following the API README. Then sign in,
+   enable and verify two-factor authentication, and invite employees. Keep the
+   replacement session token returned after two-factor verification. Re-running
+   setup reports an existing company; it does not reopen bootstrap.
+7. Verify `/health/ready`, first-admin sign-in, MFA and invitation acceptance on
+   your deployment. Do not configure the released desktop/phone to use this API
+   yet: their transports still use the legacy endpoints. The planned runtime
+   company-address setting is described in the Android repo's
+   `docs/platform-migration.md`.
+
+If a role check fails, review privileges privately with the schema owner. On
+older PostgreSQL databases, `PUBLIC` may have `CREATE` on the public schema;
+remove it only after checking who else uses that dedicated database. Setup
+deliberately refuses such a role and never revokes another application's access.
+If a schema was migrated before creating `myna_runtime`, review the shipped
+grants described in the API README; re-running migrations will not replay them.
+
+## Verification and limits
+
+Setup tests use PGlite for real PostgreSQL catalog, grants and migration-hash
+checks, plus configuration and exclusive-file-creation tests. Real PostgreSQL
+CI now runs `setup apply` twice, `check`, readiness and the first-admin flow with
+the restricted runtime role. That workflow has not been run in this session.
+Run locally: 91 tests passed, including the CLI initialization/overwrite smoke
+test; lint, type checking and build passed. Formatting was checked with
+`npm run format -- --end-of-line auto` because this Windows checkout has CRLF
+line endings; the unqualified formatting check rejects those existing endings.
+No live Neon project, Docker deployment or Android device was exercised for this
+change. Neon project provisioning, a graphical wizard, reference hosting,
+email delivery and desktop/mobile API cutover are still pending.
+
+## Legacy dev sync setup (Neon-managed Auth and Data API)
+
+The following checklist documents the existing dev sync proof. It is retained
+for that path and must not be used to configure the new Myna API.
 
 Status: **a guide plus two helpers, not a one-click installer.** Written 2026-11-15 from what was done by hand on the maintainer's Neon dev project. MynaHub is open source and has **no shared cloud**: every practice creates its own Neon project and owns it. Nothing in this repository points at anyone's project; the only things MynaHub needs from you are two **public** web addresses. No database password, API key or token is ever put in the app or committed.
 
