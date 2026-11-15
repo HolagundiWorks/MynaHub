@@ -1,0 +1,61 @@
+name: Myna API
+
+on:
+  push:
+    branches: [master]
+    paths: ["apps/api/**", ".github/workflows/api.yml"]
+  pull_request:
+    paths: ["apps/api/**", ".github/workflows/api.yml"]
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    # A throwaway Postgres for the real-database steps. No company credentials are ever used by this workflow.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: myna
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+      - run: npm ci
+      - name: Formatting
+        run: npm run format
+      - name: Lint
+        run: npm run lint
+      - name: Types
+        run: npm run typecheck
+      - name: Tests (migrations on PGlite, API behaviour)
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Dependency vulnerabilities (production dependencies)
+        run: npm audit --omit=dev --audit-level=high
+      - name: Migrate a fresh Postgres with the built CLI, then check readiness
+        env:
+          NODE_ENV: development
+          PUBLIC_API_URL: http://127.0.0.1:3000
+          DATABASE_URL: postgresql://postgres:ci-only-password@127.0.0.1:5432/myna
+          DIRECT_DATABASE_URL: postgresql://postgres:ci-only-password@127.0.0.1:5432/myna
+          HOST: 127.0.0.1
+          LOG_LEVEL: warn
+        run: |
+          npm run migrate
+          npm run migrate   # a second run must change nothing
+          node dist/server.js &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:3000/health && break; sleep 1; done
+          curl -fsS http://127.0.0.1:3000/health/ready
+      - name: Container image builds
+        run: docker build -t myna-api:ci .

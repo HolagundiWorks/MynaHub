@@ -100,3 +100,23 @@ Each phase ends with something that runs and is tested; nothing moves to the nex
 | D8 | App name stays MynaHub Mobile | Yes |
 | D9 | Mobile keeps its offline queue but release 1 limits it to the cloud scope above | Yes |
 | D10 | Which reference host(s) to document for the container (for example one managed container host) | Your choice |
+
+## 9. Decisions taken (2026-11-15) and Phase 1 status
+
+The owner approved the recommendations D1 to D9. **D10:** the reference host is chosen in Phase 7; until then the container is described generically (any host that runs a Docker image, with HTTPS in front).
+
+**Phase 1 (backend foundation), built in `apps/api`** (see its README). What was run:
+- `npm run format`, `npm run lint`, `npm run typecheck`, `npm test` (28 tests: configuration, health and request handling, and the SQL migrations on a real PostgreSQL engine compiled to WebAssembly, PGlite), `npm run build`, `npm audit --omit=dev` (0 vulnerabilities): all passed.
+- The built server, started as a real process: missing configuration exits with code 2 and names the variables only; `/health` answers; `/health/ready` returns 503 `DATABASE_UNAVAILABLE` for an unreachable database without leaking the password; `/openapi.json` is OpenAPI 3.1 and lists the routes.
+
+**What the schema has:** `core.organizations`, `core.memberships`, `access.roles`, `access.permissions`, `access.role_permissions`, `access.membership_roles`, `studio.projects` (UUID, organisation scope, `version`, `deleted_at`, status and version constraints), `audit.events` (append-only: update, delete and truncate are refused by triggers). Two migrations, additive. The runtime role `myna_runtime` is granted data access only if it exists when migrating.
+
+**Not run, so not claimed:** the Dockerfile and the container health check (no Docker on this machine); the CI workflow `.github/workflows/api.yml` (it has never executed); the node-postgres connection path and the migrate command against a real Postgres server (the tests use PGlite; CI is meant to cover the real server); anything against a real Neon project. The base image is pinned by tag, not by digest.
+
+**Deviations from the plan, on purpose:**
+- `packages/api-contracts` is not a separate package yet: the contract is the Zod schemas plus `/openapi.json` inside `apps/api`. It becomes a package when the Android and desktop clients first consume it (Phase 4 and 5).
+- The `sync` schema and its tables (operation receipts, change feed) are added with the sync work (Phase 4 to 6), not now; migrations are additive so nothing is lost by waiting.
+- Row level security is not enabled yet: it needs the per-transaction organisation context designed with the authorization engine (Phase 3). Until then the API has no business endpoints, so nothing is exposed.
+- Node 24 is installed here; the container and CI target Node 22 (the current LTS line named in the guidelines). The package accepts Node 22 or newer. Dependency versions are whatever npm resolved today (for example Zod 4, TypeScript 6, Vitest 5) and are pinned by the lockfile.
+
+**Next: Phase 2 (authentication).** Before any code, pin the Better Auth version and read that version's documentation (guidelines section 19.4); then the bootstrap token, first administrator, invitations, sessions and MFA, each with the security tests listed in the plan.
