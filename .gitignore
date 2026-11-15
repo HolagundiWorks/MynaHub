@@ -45,3 +45,6 @@ installer/suite-tools/
 docs/testing/.local/
 docs/testing/evidence/**/*.zip
 docs/testing/evidence/**/*.exe
+
+# Demo company credentials (fictional, but still not for git)
+demo-credentials.txt

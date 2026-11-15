@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Creates a sample company file for trying MynaHub: fictional firm, one demo user per role, clients, projects, stages and tasks.
+       Run it with dotnet run on this project (Release, Platform x64) and the arguments out FOLDER and optionally cloud, as described at the
+       top of Program.cs. Needs the engine DLL (see Adms.Interop). Everything it writes is fictional; passwords are generated per run. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Adms.DemoCompany</RootNamespace>
+    <EngineProfile Condition="'$(EngineProfile)' == ''">release</EngineProfile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Adms.Interop\Adms.Interop.csproj" />
+    <ProjectReference Include="..\Adms.Cloud\Adms.Cloud.csproj" />
+  </ItemGroup>
+</Project>
