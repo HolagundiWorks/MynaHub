@@ -31,10 +31,11 @@ limit. These are safeguards, not a production load-test result.
 
 This uses the existing authenticated API and PostgreSQL driver. Migration 0008
 adds studio.project_tasks with a composite same-company project foreign key,
-bounded fields, status/priority checks and SELECT-only runtime RLS. Runtime
-INSERT/UPDATE/DELETE/TRUNCATE are denied. There is no task mutation API yet.
+bounded fields and status/priority checks. Migration 0009 adds scoped online
+INSERT/UPDATE policies and immutable retry receipts; runtime DELETE/TRUNCATE
+and task identity updates remain denied. See [task mutations](task-mutations.md).
 No new Neon service, public sealed SQL query or client database key is
-introduced. Responses use no-store. The capabilities projects.live and tasks.live are published
+introduced. Responses use no-store. The capabilities projects.live, tasks.live and tasks.edit are published
 in the connection contract; the new Mobile connection requires it.
 
 Mobile retains only its encrypted login credential. All company rows, identity,
@@ -42,7 +43,7 @@ permissions and draft values stay in memory and clear on disconnect/leaving.
 Online edits still use current server authorization and optimistic concurrency.
 Previous offline implementations were removed at the owner's explicit request.
 
-132 API tests passed, plus lint, type checking and build. 176 Android JVM tests
+140 API tests passed, plus lint, type checking and build. 180 Android JVM tests
 and debug/test APK builds passed. Live Neon/physical-device tests verified
 another session's edits, restoration, assignment removal/restoration and revoked
 session refusal. The device checked credential-only persisted fields and retired
@@ -57,7 +58,11 @@ The physical API Dev build read both demo tasks and checked credential-only
 persistence. A Neon title/status change appeared automatically on the open
 task screen; original task details were restored afterward.
 
-Current coverage is project pages, read-only selected-project tasks and role/permission changes. Other business
+Current coverage is live project/task pages, online project/task edits and role/permission changes. Other business
 entities and native desktop API integration remain pending. Complete metadata
 RLS, public HTTPS deployment, release installation and production scale have
 not been verified. Existing local practice data is preserved.
+
+## Live client contacts
+
+Show company clients opens a read-only, 25-row contact page through the same live connection. Company-wide readers see company contacts; assigned readers see contacts linked to their assigned readable projects. Next/Previous changes the contact cursor. Contacts clear with connection/access loss, backgrounding or leaving. No contacts are saved locally. Organization-scoped client creation/editing and confirmed deletion are available online; project linking also checks current project write scope.

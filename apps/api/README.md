@@ -2,14 +2,16 @@
 
 The company-owned backend of the Myna platform (see `docs/hub-platform-plan.md`). It sits in front of the company's own Neon PostgreSQL; MynaHub and MynaHub Mobile talk to it, never to the database. HolagundiWorks runs no part of it.
 
-**Status: authentication, project authorization, online edits, live Mobile projects and read-only tasks built.**
+**Status: authentication, project authorization, live Mobile projects/tasks and online project/task edits built.**
 Authentication, bootstrap/invitations, sessions and administrator MFA are joined
 by custom role management, system templates, scoped project reads and project
 assignments, with transaction-local project RLS. Authorized online edits add
 expected-version checks and immutable retry receipts. See
 [project-authorization.md](../../docs/project-authorization.md) for the endpoint
 matrix, role scopes and verification, and [project edits](../../docs/project-edits.md).
-Metadata-table RLS, other live entity APIs, project creation/deletion, desktop
+Project creation and confirmed deletion are implemented with version checks,
+immutable receipts and tombstones. See [project lifecycle](../../docs/project-lifecycle.md).
+Metadata-table RLS, other live entity APIs, desktop
 integration and files remain pending; this is not full Phase 3 completion.
 
 ## Run it
@@ -27,8 +29,10 @@ sessions, two-factor, project reads and online edits). The public contract artif
 `contracts/mobile-connection-v1.json`; its test must match the shipped metadata.
 The Android client consumes this contract. Project reads are assignment-scoped;
 Mobile subscribes to `GET /v1/mobile/projects/live` for automatic authorized
-project updates and selected-project task pages. Tasks inherit project access
-and remain read-only; task creation/editing is pending. See [live projects](../../docs/mobile-live-projects.md). Mobile
+project updates and selected-project task pages. Task creation/editing requires
+tasks.write and current project access, with idempotent retry and version-conflict
+review. See [task mutations](../../docs/task-mutations.md) and
+[live projects](../../docs/mobile-live-projects.md). Mobile
 backup/restore and offline company storage are removed by the owner's decision.
 Other business APIs and desktop integration remain pending.
 
@@ -53,7 +57,7 @@ These commands expect variables injected by the host. For a local `.env`, use
 | `DIRECT_DATABASE_URL`                   | for `npm run migrate` | Schema owner connection; keep it out of the server's environment       |
 | `PORT`, `HOST`, `LOG_LEVEL`, `NODE_ENV` | no                    | Defaults 3000, 0.0.0.0, info, production                               |
 
-The server refuses to start on a missing or invalid value and names the variable, never its value.
+The server refuses to start on a missing or invalid value and names the variable, never its value. It also refuses an environment containing `DIRECT_DATABASE_URL` and verifies that the connected runtime role has no ownership, elevated privileges or inherited roles before listening. Keep migration settings in the operator environment; inject only runtime settings into the server.
 
 ### Two database roles (guidelines section 7.5)
 
@@ -102,3 +106,5 @@ npm run format && npm run lint && npm run typecheck && npm test
 ## Changing the schema
 
 Edit `src/db/schema/*.ts`, run `npm run db:generate`, review the SQL in `drizzle/`, and add a test. Migrations are additive; never edit an applied one. Hand-written SQL goes in a `--custom` migration (`npx drizzle-kit generate --custom --name=...`).
+
+Company site records now support scoped live instruction/inspection/snag pages, online creation/editing and confirmed deletion. See [site records](../../docs/site-records.md). Private project attachments are implemented and demo verified; production rollout remains pending. See [attachments](../../docs/project-attachments.md).

@@ -56,7 +56,17 @@ describe("health", () => {
         "projects.read",
         "projects.edit",
         "projects.live",
+        "projects.create",
+        "projects.delete",
         "tasks.live",
+        "tasks.edit",
+        "clients.live",
+        "clients.edit",
+        "tasks.actions",
+        "sites.live",
+        "sites.edit",
+        "files.live",
+        "files.upload",
       ],
     });
     const spec = (await a.inject("/openapi.json")).json();

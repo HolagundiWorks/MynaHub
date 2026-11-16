@@ -4,7 +4,7 @@ import type { Db } from "../db/types.js";
 import type { Principal } from "../principal.js";
 import { withProjectContext } from "./context.js";
 
-/** Same project scope as project details. No mutation or local-practice import surface. */
+/** Reads within project scope; online mutations live in task-mutations.ts. No local-practice import. */
 export function listProjectTasks(db: Db, by: Principal, projectId: string, after?: string) {
   return withProjectContext(db, by, async (tx) => {
     const rows = await tx
@@ -17,6 +17,7 @@ export function listProjectTasks(db: Db, by: Principal, projectId: string, after
         status: projectTasks.status,
         priority: projectTasks.priority,
         version: projectTasks.version,
+        assignees: sql<{ membershipId: string; name: string }[]>`studio.task_assignees(${projectTasks.id})`,
       })
       .from(projectTasks)
       .where(

@@ -61,13 +61,25 @@ describe("bootstrap", () => {
     expect(body.roles).toEqual(["Owner"]);
     expect(body.permissions).toEqual([
       "audit.read",
+      "clients.delete",
+      "clients.read",
+      "clients.write",
+      "files.delete",
+      "files.write",
       "organization.members.manage",
       "organization.read",
       "projects.assign",
+      "projects.create",
+      "projects.delete",
       "projects.read",
       "projects.write",
       "roles.manage",
       "roles.read",
+      "sites.delete",
+      "sites.write",
+      "tasks.assign",
+      "tasks.delete",
+      "tasks.write",
     ]);
     expect(body.organization.name).toBe("Sample Architects");
   });

@@ -36,6 +36,32 @@ const schema = z.object({
     .enum(["true", "false"])
     .default("true")
     .transform((v) => v === "true"),
+  ATTACHMENTS_BUCKET: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/)
+    .optional(),
+  AWS_ENDPOINT_URL_S3: z
+    .url()
+    .refine((value) => {
+      try {
+        const u = new URL(value);
+        return (
+          u.protocol === "https:" &&
+          /^br-[a-z0-9-]+\.storage\.[a-z0-9.-]+\.neon\.tech$/.test(u.hostname) &&
+          !u.username &&
+          !u.password &&
+          !u.search &&
+          !u.hash &&
+          (u.pathname === "/" || u.pathname === "")
+        );
+      } catch {
+        return false;
+      }
+    }, "must be a branch Neon HTTPS storage endpoint")
+    .optional(),
+  AWS_REGION: z.string().min(1).optional(),
+  AWS_ACCESS_KEY_ID: z.string().min(1).optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
 });
 
@@ -57,5 +83,23 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (config.NODE_ENV === "production" && !config.PUBLIC_API_URL.startsWith("https://")) {
     throw new ConfigError(["PUBLIC_API_URL: must be https in production"]);
   }
+  if (
+    config.ATTACHMENTS_BUCKET &&
+    (!config.AWS_ENDPOINT_URL_S3 ||
+      !config.AWS_REGION ||
+      !config.AWS_ACCESS_KEY_ID ||
+      !config.AWS_SECRET_ACCESS_KEY)
+  )
+    throw new ConfigError([
+      "ATTACHMENTS_BUCKET: requires AWS_ENDPOINT_URL_S3, AWS_REGION, AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY",
+    ]);
   return Object.freeze(config);
+}
+
+/** Operator commands may hold migration credentials; a serving process must not. */
+export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env): Config {
+  if (env.DIRECT_DATABASE_URL !== undefined) {
+    throw new ConfigError(["DIRECT_DATABASE_URL: remove migration credentials from the server environment"]);
+  }
+  return loadConfig(env);
 }

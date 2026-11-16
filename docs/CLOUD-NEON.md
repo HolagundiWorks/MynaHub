@@ -2,7 +2,9 @@
 
 For the approved company-owned Myna API setup, use [byo-neon.md](byo-neon.md).
 This page describes the legacy connector and its development smoke tests.
-The setup CLI does not enable desktop/mobile API sync; client cutover is pending.
+Mobile now uses the company API for live projects/tasks and online project edits.
+Desktop API integration is pending. This legacy page is not new-company setup
+guidance; see [current implementation](current-implementation.md).
 
 > **2026-11-15:** the cloud account login (Neon Auth) and the company sync between MynaHub and MynaHub Mobile are designed in [hub-sync-design.md](hub-sync-design.md). The project there is `mynahub` (the org and project ids below are the earlier, unrelated test project).
 

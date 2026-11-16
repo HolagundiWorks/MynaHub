@@ -8,6 +8,18 @@ export const PERMISSIONS = {
   projectsRead: "projects.read",
   projectsAssign: "projects.assign",
   projectsWrite: "projects.write",
+  projectsCreate: "projects.create",
+  projectsDelete: "projects.delete",
+  tasksWrite: "tasks.write",
+  filesWrite: "files.write",
+  filesDelete: "files.delete",
+  sitesWrite: "sites.write",
+  sitesDelete: "sites.delete",
+  tasksAssign: "tasks.assign",
+  tasksDelete: "tasks.delete",
+  clientsRead: "clients.read",
+  clientsWrite: "clients.write",
+  clientsDelete: "clients.delete",
 } as const;
 export const PERMISSION_CATALOGUE = Object.values(PERMISSIONS).map((key) => ({
   key,
@@ -20,12 +32,24 @@ export const PERMISSION_CATALOGUE = Object.values(PERMISSIONS).map((key) => ({
     "projects.read": "Read projects within the role's scope",
     "projects.assign": "Manage assignments for projects within the role's scope",
     "projects.write": "Edit project details within the role's scope",
+    "projects.create": "Create company projects with organization scope",
+    "projects.delete": "Remove projects from live company views within the role's scope",
+    "tasks.write": "Create and edit tasks within the project's scope",
+    "files.write": "Upload files within project scope",
+    "files.delete": "Remove files from live project views",
+    "sites.write": "Create and edit project site records",
+    "sites.delete": "Remove site records from live project views",
+    "tasks.assign": "Manage task assignees within project scope",
+    "tasks.delete": "Remove tasks from live views within project scope",
+    "clients.read": "Read client contacts within company or assigned-project scope",
+    "clients.write": "Create and edit company clients and link them to writable projects",
+    "clients.delete": "Delete unused company clients with organization scope",
   }[key],
   resourceType: key.startsWith("organization.") ? "organization" : key.split(".")[0]!,
 }));
 
 export type RoleScope = "organization" | "assigned";
-const read = [PERMISSIONS.organizationRead, PERMISSIONS.projectsRead];
+const read = [PERMISSIONS.organizationRead, PERMISSIONS.projectsRead, PERMISSIONS.clientsRead];
 export const ROLE_TEMPLATES: {
   name: string;
   description: string;
@@ -47,7 +71,18 @@ export const ROLE_TEMPLATES: {
   {
     name: "Project Manager",
     description: "Manage assigned projects and their team",
-    permissions: [...read, PERMISSIONS.projectsAssign, PERMISSIONS.projectsWrite],
+    permissions: [
+      ...read,
+      PERMISSIONS.projectsAssign,
+      PERMISSIONS.projectsWrite,
+      PERMISSIONS.tasksWrite,
+      PERMISSIONS.filesWrite,
+      PERMISSIONS.filesDelete,
+      PERMISSIONS.sitesWrite,
+      PERMISSIONS.sitesDelete,
+      PERMISSIONS.tasksAssign,
+      PERMISSIONS.tasksDelete,
+    ],
     scope: "assigned",
   },
   {
@@ -56,13 +91,32 @@ export const ROLE_TEMPLATES: {
     permissions: read,
     scope: "assigned",
   },
-  { name: "Site Supervisor", description: "Read assigned site work", permissions: read, scope: "assigned" },
+  {
+    name: "Site Supervisor",
+    description: "Read projects and record assigned site work",
+    permissions: [...read, PERMISSIONS.sitesWrite, PERMISSIONS.filesWrite],
+    scope: "assigned",
+  },
   { name: "Staff", description: "Read assigned company work", permissions: read, scope: "assigned" },
   { name: "Viewer", description: "Read assigned projects", permissions: read, scope: "assigned" },
   {
     name: "Principal",
     description: "Practice-wide project oversight",
-    permissions: [...read, PERMISSIONS.rolesRead, PERMISSIONS.projectsAssign, PERMISSIONS.projectsWrite],
+    permissions: [
+      ...read,
+      PERMISSIONS.clientsWrite,
+      PERMISSIONS.rolesRead,
+      PERMISSIONS.projectsAssign,
+      PERMISSIONS.projectsWrite,
+      PERMISSIONS.projectsCreate,
+      PERMISSIONS.tasksWrite,
+      PERMISSIONS.filesWrite,
+      PERMISSIONS.filesDelete,
+      PERMISSIONS.sitesWrite,
+      PERMISSIONS.sitesDelete,
+      PERMISSIONS.tasksAssign,
+      PERMISSIONS.tasksDelete,
+    ],
     scope: "organization",
   },
   {
@@ -73,8 +127,8 @@ export const ROLE_TEMPLATES: {
   },
   {
     name: "Document editor",
-    description: "Read assigned project context",
-    permissions: read,
+    description: "Manage files in assigned projects",
+    permissions: [...read, PERMISSIONS.filesWrite],
     scope: "assigned",
   },
   {

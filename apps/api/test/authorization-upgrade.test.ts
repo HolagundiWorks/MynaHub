@@ -65,7 +65,7 @@ it("upgrades a populated phase-2 company without replacing users, roles or proje
       ).rows,
     ).toHaveLength(1);
     expect((await pg.query("select count(*)::int as n from drizzle.__drizzle_migrations")).rows).toEqual([
-      { n: 9 },
+      { n: 16 },
     ]);
   } finally {
     await pg.close();

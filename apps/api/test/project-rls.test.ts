@@ -66,7 +66,112 @@ async function runtime(run: () => Promise<void>, who = member, user = "staff", o
   }
 }
 describe("runtime project row security", () => {
-  it("enforces task scope and denies every runtime task mutation", async () => {
+  it("scopes client contacts by actual assignments and gives runtime SELECT only", async () => {
+    const clientA = "c1000000-0000-4000-8000-000000000001",
+      clientB = "c1000000-0000-4000-8000-000000000002",
+      clientForeign = "c1000000-0000-4000-8000-000000000003";
+    await pg.query(
+      "insert into studio.clients(id,organization_id,name) values($1,$4,'Visible client'),($2,$4,'Unassigned client'),($3,$5,'Foreign client')",
+      [clientA, clientB, clientForeign, orgA, orgB],
+    );
+    await pg.query("update studio.projects set client_id=$1 where id=$2", [clientA, projectA]);
+    await pg.query("update studio.projects set client_id=$1 where id=$2", [clientB, projectB]);
+    await runtime(async () => expect((await pg.query("select id from studio.clients")).rows).toEqual([]));
+    await pg.query(
+      "insert into access.role_permissions(role_id,permission_key) values($1,'clients.read'),($2,'clients.read')",
+      [role, admin],
+    );
+    try {
+      await runtime(async () =>
+        expect((await pg.query("select id from studio.clients")).rows).toEqual([{ id: clientA }]),
+      );
+      await runtime(
+        async () =>
+          expect((await pg.query("select id from studio.clients order by id")).rows).toEqual([
+            { id: clientA },
+            { id: clientB },
+          ]),
+        manager,
+        "manager",
+      );
+      await runtime(
+        async () => expect((await pg.query("select id from studio.clients")).rows).toEqual([]),
+        "",
+      );
+      for (const query of [
+        "update studio.clients set name='Changed'",
+        "delete from studio.clients",
+        "truncate studio.clients",
+        "insert into studio.clients(organization_id,name) values('" + orgA + "','New')",
+        "update studio.projects set client_id=client_id",
+      ]) {
+        await runtime(async () => {
+          await expect(pg.exec(query)).rejects.toThrow(/permission denied/i);
+        });
+      }
+    } finally {
+      await pg.query(
+        "delete from access.role_permissions where role_id in ($1,$2) and permission_key='clients.read'",
+        [role, admin],
+      );
+    }
+  });
+  it("uses scoped lifecycle functions without granting raw project insert/delete or tombstone writes", async () => {
+    await pg.query(
+      "insert into access.role_permissions(role_id,permission_key) values($1,'projects.create'),($1,'projects.delete')",
+      [admin],
+    );
+    try {
+      await runtime(async () =>
+        expect(
+          (
+            await pg.query(
+              "select * from studio.create_company_project('a1000000-0000-4000-8000-000000000001','Denied','','active')",
+            )
+          ).rows,
+        ).toEqual([]),
+      );
+      await runtime(
+        async () => {
+          const id = "a1000000-0000-4000-8000-000000000002";
+          expect(
+            (
+              await pg.query("select * from studio.create_company_project($1,'Created safely','','active')", [
+                id,
+              ])
+            ).rows,
+          ).toMatchObject([{ id, version: 1 }]);
+          expect(
+            (await pg.query("select * from studio.delete_company_project($1,2)", [id])).rows,
+          ).toMatchObject([{ outcome: "conflict", version: 1 }]);
+          expect(
+            (await pg.query("select * from studio.delete_company_project($1,1)", [id])).rows,
+          ).toMatchObject([{ outcome: "deleted", version: 2 }]);
+          expect((await pg.query("select id from studio.projects where id=$1", [id])).rows).toEqual([]);
+          expect((await pg.query("select * from studio.delete_company_project($1,2)", [id])).rows).toEqual(
+            [],
+          );
+        },
+        manager,
+        "manager",
+      );
+      await runtime(
+        async () => {
+          await expect(pg.exec("update studio.projects set deleted_at=now()")).rejects.toThrow(
+            /permission denied/i,
+          );
+        },
+        manager,
+        "manager",
+      );
+    } finally {
+      await pg.query(
+        "delete from access.role_permissions where role_id=$1 and permission_key in ('projects.create','projects.delete')",
+        [admin],
+      );
+    }
+  });
+  it("enforces task scope and denies task mutations without tasks.write", async () => {
     await pg.query(
       "insert into studio.project_tasks(organization_id,project_id,title) values($1,$2,'Visible'),($1,$3,'Unassigned'),($4,$5,'Foreign')",
       [orgA, projectA, projectB, orgB, foreign],
@@ -85,7 +190,6 @@ describe("runtime project row security", () => {
       "",
     );
     for (const query of [
-      "update studio.project_tasks set title='Changed'",
       "delete from studio.project_tasks",
       "insert into studio.project_tasks(organization_id,project_id,title) values('" +
         orgA +
@@ -95,8 +199,68 @@ describe("runtime project row security", () => {
       "truncate studio.project_tasks",
     ]) {
       await runtime(async () => {
-        await expect(pg.exec(query)).rejects.toThrow(/permission denied/i);
+        await expect(pg.exec(query)).rejects.toThrow(/permission denied|row-level security/i);
       });
+    }
+    await runtime(async () => {
+      expect((await pg.query("update studio.project_tasks set title='Changed' returning id")).rows).toEqual(
+        [],
+      );
+    });
+  });
+  it("allows task writes only within assigned scope and protects task identity columns", async () => {
+    await pg.query("insert into access.role_permissions(role_id,permission_key) values($1,'tasks.write')", [
+      role,
+    ]);
+    try {
+      await runtime(async () => {
+        const row = await pg.query(
+          "insert into studio.project_tasks(organization_id,project_id,title) values($1,$2,'New task') returning id",
+          [orgA, projectA],
+        );
+        const id = (row.rows[0] as { id: string }).id;
+        expect(
+          (
+            await pg.query(
+              "update studio.project_tasks set status='completed',version=2 where id=$1 returning status,version",
+              [id],
+            )
+          ).rows,
+        ).toEqual([{ status: "completed", version: 2 }]);
+      });
+      for (const [org, project] of [
+        [orgA, projectB],
+        [orgB, foreign],
+      ]) {
+        await runtime(async () => {
+          await expect(
+            pg.query(
+              "insert into studio.project_tasks(organization_id,project_id,title) values($1,$2,'Forbidden')",
+              [org, project],
+            ),
+          ).rejects.toThrow(/row-level security/i);
+        });
+      }
+      for (const column of ["id", "organization_id", "project_id", "deleted_at"]) {
+        await runtime(async () => {
+          await expect(pg.exec("update studio.project_tasks set " + column + "=" + column)).rejects.toThrow(
+            /permission denied/i,
+          );
+        });
+      }
+      await runtime(async () => {
+        await expect(
+          pg.query(
+            "insert into studio.project_tasks(organization_id,project_id,title,version) values($1,$2,'Wrong version',2)",
+            [orgA, projectA],
+          ),
+        ).rejects.toThrow(/row-level security/i);
+      });
+    } finally {
+      await pg.query(
+        "delete from access.role_permissions where role_id=$1 and permission_key='tasks.write'",
+        [role],
+      );
     }
   });
   it("defaults to no rows when context is missing", async () => {
@@ -150,7 +314,7 @@ describe("runtime project row security", () => {
     await runtime(async () => {
       await expect(
         pg.query("insert into studio.project_assignments values($1,$2,$3)", [orgA, projectA, manager]),
-      ).rejects.toThrow(/row.level security/i);
+      ).rejects.toThrow(/row.level security|permission denied/i);
     });
   });
   it("blocks project creation and leaves project mutation unavailable to runtime", async () => {
@@ -159,7 +323,7 @@ describe("runtime project row security", () => {
         pg.query("insert into studio.projects(organization_id,name,created_by) values($1,'No','staff')", [
           orgA,
         ]),
-      ).rejects.toThrow(/row.level security/i);
+      ).rejects.toThrow(/row.level security|permission denied/i);
     });
     await runtime(
       async () =>
@@ -168,7 +332,11 @@ describe("runtime project row security", () => {
       "manager",
     );
     await runtime(
-      async () => expect((await pg.query("delete from studio.projects returning id")).rows).toHaveLength(0),
+      async () => {
+        await expect(pg.query("delete from studio.projects returning id")).rejects.toThrow(
+          /permission denied/i,
+        );
+      },
       manager,
       "manager",
     );

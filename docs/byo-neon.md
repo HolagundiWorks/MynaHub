@@ -1,15 +1,16 @@
 # Bring your own Neon (company-owned API setup)
 
-Status: **API setup CLI implemented; desktop/mobile API cutover is pending.**
+Status: **API setup and live Mobile projects/tasks implemented; desktop API integration and production deployment pending.**
 This is the setup path for the approved [platform plan](hub-platform-plan.md):
 each practice owns its Neon database and hosts its Myna API container. Self-managed
-Better Auth runs inside that API. Clients will use the company's API address and
+Better Auth runs inside that API. Mobile uses the company's API address and
 their own sessions. Neon-managed Auth and the Data API are not required for this path.
 
-The API currently implements authentication. Authorization, business endpoints,
-API sync and client cutover remain separate phases. Setting up this backend does
-not enable the current clients to sync through it. Keep the existing dev `hub.*`
-schema and accounts until cutover is verified; this tool never drops them.
+The API implements authentication, role management, scoped projects, versioned
+online project/task edits and live Mobile reads. Task deletion, other business
+entities and desktop integration remain pending. Setup does not migrate existing
+local practice data or enable the desktop connector. Existing legacy data is not
+dropped. See [current implementation](current-implementation.md).
 
 ## Set up the backend
 

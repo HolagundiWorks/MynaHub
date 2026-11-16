@@ -51,10 +51,20 @@ describe("migrations", () => {
       "core.invitations",
       "core.memberships",
       "core.organizations",
+      "studio.attachment_receipts",
+      "studio.attachments",
+      "studio.client_mutation_receipts",
+      "studio.clients",
       "studio.project_assignments",
       "studio.project_edit_receipts",
+      "studio.project_lifecycle_receipts",
       "studio.project_tasks",
       "studio.projects",
+      "studio.site_mutation_receipts",
+      "studio.site_records",
+      "studio.task_action_receipts",
+      "studio.task_assignments",
+      "studio.task_mutation_receipts",
     ]);
   });
 

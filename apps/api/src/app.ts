@@ -1,3 +1,8 @@
+import type { AttachmentStore } from "./attachment-store.js";
+import { attachmentRoutes } from "./routes/attachments.js";
+import { siteRecordRoutes } from "./routes/site-records.js";
+import { taskActionRoutes } from "./routes/task-actions.js";
+import { clientMutationRoutes } from "./routes/client-mutations.js";
 import { randomUUID } from "node:crypto";
 import rateLimit from "@fastify/rate-limit";
 import swagger from "@fastify/swagger";
@@ -18,8 +23,12 @@ import { healthRoutes } from "./routes/health.js";
 import { v1Routes } from "./routes/v1.js";
 import { authorizationRoutes } from "./routes/authorization.js";
 import { liveProjectRoutes } from "./routes/live-projects.js";
+import { taskRoutes } from "./routes/tasks.js";
+import { projectLifecycleRoutes } from "./routes/project-lifecycle.js";
+import { clientRoutes } from "./routes/clients.js";
 
 export interface AppDeps {
+  storage?: AttachmentStore;
   config: Config;
   health: DbHealth;
   db: Db;
@@ -80,6 +89,13 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(v1Routes, deps);
   await app.register(authorizationRoutes, deps);
   await app.register(liveProjectRoutes, deps);
+  await app.register(taskRoutes, deps);
+  await app.register(siteRecordRoutes, deps);
+  await app.register(attachmentRoutes, deps);
+  await app.register(taskActionRoutes, deps);
+  await app.register(projectLifecycleRoutes, deps);
+  await app.register(clientRoutes, deps);
+  await app.register(clientMutationRoutes, deps);
 
   app.get("/openapi.json", { schema: { hide: true } }, async () => app.swagger());
   return app;

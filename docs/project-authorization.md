@@ -1,6 +1,6 @@
 # Company project authorization
 
-Status: project reads, role management and online edits, 2026-11-15. This is not completion
+Status: project/task reads, role management and online writes, 2026-11-16. This is not completion
 of platform Phase 3 or the sync protocol. Finance stays in the desktop company file.
 
 ## Current API
@@ -12,16 +12,34 @@ of platform Phase 3 or the sync protocol. Finance stays in the desktop company f
 | POST /v1/roles, PATCH /v1/roles/{id} | Organization-scoped roles.manage, fresh session, administrator MFA |
 | PUT /v1/members/{id}/roles | Same role-management authority |
 | GET /v1/projects, GET /v1/projects/{id} | projects.read plus scope/assignment check |
+| POST /v1/projects | Organization-scoped projects.create and projects.read |
+| DELETE /v1/projects/{id} | projects.delete plus project read scope, fresh session, exact DELETE confirmation and expected revision |
 | GET /v1/mobile/projects/live | Active member; project rows require projects.read and current project scope |
 | PATCH /v1/projects/{id} | projects.write and projects.read within project scope; expected revision and operation ID required |
+| POST /v1/projects/{projectId}/tasks | tasks.write and projects.read within project scope; stable task and operation UUIDs |
+| PATCH /v1/projects/{projectId}/tasks/{taskId} | Same task authority; expected revision and operation UUID |
+| GET /v1/clients, GET /v1/clients/{id} | clients.read within organization or actual assigned-project scope |
+| POST/PATCH /v1/clients | Organization-scoped clients.write and clients.read; stable operation, expected revision for edits |
+| DELETE /v1/clients/{id} | Organization-scoped clients.delete/write/read, fresh login, administrator MFA and DELETE confirmation; active project links must be removed first |
+| GET/PUT /v1/projects/{id}/client | Organization-scoped client write/read plus current project read/write scope |
+| PUT /v1/projects/{projectId}/tasks/{taskId}/assignees | tasks.assign plus current project read scope; active eligible members only |
+| DELETE /v1/projects/{projectId}/tasks/{taskId} | tasks.delete plus current project read scope, fresh login and DELETE confirmation |
+| GET /v1/projects/{projectId}/site-records | Current project read scope |
+| POST/PATCH site-records | sites.write plus current project read scope |
+| DELETE site-records | sites.delete plus current project read scope, fresh login and DELETE confirmation |
+| GET project files/content | Current project read scope; content hash and private storage checks |
+| POST project files | files.write plus current project read scope |
+| DELETE project files | files.delete plus current project read scope, fresh login and DELETE confirmation |
 | PUT /v1/projects/{id}/assignments/{membershipId} | projects.assign within that project's scope |
 | DELETE /v1/projects/{id}/assignments/{membershipId} | Same assignment authority |
 
 Reads return project id, code, name, status and version only. Collection requests
 default to 50 rows, cap at 100, and use an `after` UUID page key; `nextCursor` is
 null at the end. This page key is not the future opaque synchronization cursor.
-There are no project create/delete endpoints, task endpoints or offline sync.
-See [project edits](project-edits.md) for update/conflict/retry behavior.
+Task assignees and confirmed deletion are implemented; company offline sync is intentionally excluded.
+See [project edits](project-edits.md) and [task mutations](task-mutations.md)
+for versioned update/conflict/retry behavior.
+See [project lifecycle](project-lifecycle.md) for creation and deletion guarantees.
 
 ## Roles and delegation
 
@@ -44,7 +62,7 @@ Custom roles have a name, description, scope and a bounded list of known
 permissions. A role administrator cannot grant a permission or a wider scope
 than they hold for that specific permission. Organization-wide role management
 does not widen a separately assigned-project read permission. Company
-administration permissions require organization scope; project assignment needs
+administration permissions require organization scope; project and task writes need
 project read permission. Invitation-based assignment has the same delegation
 check. Only an actual Owner may assign Owner or alter an Owner's roles. The final
 active Owner cannot be demoted. Organization advisory locks serialize role and
@@ -89,8 +107,7 @@ Clients never receive database credentials.
 
 ## Verification
 
-API suite: 124 tests passed (configuration/authentication/setup plus authorization,
-RLS and upgrade checks), lint/type checking/build passed. PGlite ran real PostgreSQL
+API suite: 184 tests passed through client/task/site mutations and private attachments; lint/type checking/build passed. PGlite ran real PostgreSQL
 policies as `myna_runtime`: missing/mismatched context denies access, assignments
 scope reads, field writes and business writes are refused, cross-company links are
 rejected, suspension removes access, and context clears on the next transaction.
@@ -102,3 +119,5 @@ immutable system roles, blocked Administrator-to-Owner escalation and final-Owne
 demotion. The runtime driver also verified context cleanup on the same pooled
 connection. Production stayed empty; the separate development company was not
 migrated by this slice. Test credentials remain in ignored local files.
+
+Client write/delete permissions require organization scope. Site Supervisor can record site work and upload project files within assigned scope; Document editor can upload assigned project files. These permissions do not grant task/project/client editing. See [client contacts](client-contacts.md), [site records](site-records.md), [task mutations](task-mutations.md) and [private attachments](project-attachments.md).

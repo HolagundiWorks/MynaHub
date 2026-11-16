@@ -1,3 +1,4 @@
+import { createAttachmentStore } from "./attachment-store.js";
 import { fileURLToPath } from "node:url";
 import { ConfigError, loadConfig } from "./config.js";
 import { initializeEnvironment, setupDatabase, SetupError } from "./setup.js";
@@ -10,19 +11,31 @@ try {
       "Created .env with a new signing secret. Fill the public API URL and both database URLs privately. Protect this file with your OS account permissions.\n",
     );
   } else if (mode === "check" || mode === "apply") {
+    const config = loadConfig();
     const state = await setupDatabase(
-      loadConfig(),
+      config,
       fileURLToPath(new URL("../drizzle", import.meta.url)),
       mode === "apply",
     );
     process.stdout.write("Database roles, table grants, migration hashes and readiness access passed.\n");
+    const storage = createAttachmentStore(config);
+    if (storage) {
+      try {
+        await storage.check();
+      } catch {
+        throw new SetupError(
+          "Private attachment storage is unavailable or public. Check the branch, bucket and scoped credential.",
+        );
+      }
+      process.stdout.write("Configured private attachment storage passed its access check.\n");
+    }
     process.stdout.write(
       state === "bootstrap"
         ? "Next: generate a one-time token with bootstrap:token, then create the first administrator through POST /v1/bootstrap.\n"
         : "Company already configured. Bootstrap stays closed; existing accounts and secrets were preserved.\n",
     );
     process.stdout.write(
-      "Deploy the API behind HTTPS. Client migration to this API is still pending; see docs/hub-platform-plan.md.\n",
+      "Deploy the API behind HTTPS. Mobile uses this API online; native desktop integration remains pending. See docs/hub-platform-plan.md.\n",
     );
   } else {
     throw new SetupError(

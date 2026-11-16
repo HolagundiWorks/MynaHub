@@ -1,3 +1,4 @@
+import type { AttachmentStore } from "../src/attachment-store.js";
 import { createHmac } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
@@ -32,7 +33,10 @@ export interface TestApp {
 }
 
 /** The real API, real migrations and real Better Auth on an in-memory PostgreSQL (PGlite). Each call is a fresh, empty company. */
-export async function makeTestApp(env: Record<string, string> = {}): Promise<TestApp> {
+export async function makeTestApp(
+  env: Record<string, string> = {},
+  storage?: AttachmentStore,
+): Promise<TestApp> {
   const pg = new PGlite();
   const db = drizzle(pg, { schema });
   await migrate(db, { migrationsFolder: folder });
@@ -48,6 +52,7 @@ export async function makeTestApp(env: Record<string, string> = {}): Promise<Tes
   const auth = createAuth(db as never, config);
   const app = await buildApp({
     config,
+    storage,
     db: db as unknown as Db,
     auth,
     version: "test",

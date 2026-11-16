@@ -1,10 +1,12 @@
 # MynaHub
 
-MynaHub is the office app and suite hub. The suite is MynaHub (office and company file, orange), MynaOps (quantities, estimates and billing, blue), MynaCAD (drafting, black) and Myna3D (3D form, planned); Myna is the name of the suite. MynaHub holds every login (company sign-in, users, roles) and the company file; it has no AI (the AI agent runs in MynaOps for MynaOps and MynaCAD). Some code identifiers keep older spellings, such as the `aos` / `aqc` session strings and the `AOSENC1` file marker, because files already use them.
+MynaHub is the office and company application in the Myna family. MynaHub and its Android companion, **MynaHub Mobile**, use the Ember identity. MynaHub has no AI or launcher. Existing identifiers such as O-Studio, OSAS, Adms and the AOSENC1 file marker remain for compatibility.
+
+See [current implementation](docs/current-implementation.md) and [branding](docs/BRANDING.md).
 
 > **The suite:** names, roles, file formats, toolbars of every app and how they link in real time are in [docs/SUITE.md](docs/SUITE.md).
 
-Offline Windows desktop app for an architectural practice. Clients, projects, letters, invoices, and the accounts live in one company file. MynaHub also chooses that company file, holds the admin password, launches sibling apps with one-time tickets, and approves estimates and running bills shared from MynaOps. A separate **OSAS.exe** hub is deprecated. Developed by Human Centric Works.
+The Windows desktop app keeps practice records in its existing local company file. The company-owned Myna API now handles authentication, roles, scoped projects, online edits and live Mobile project/task reads. Native desktop API integration remains pending. MynaOps and MynaCAD keep their independent local project workflow. Developed by Human Centric Works.
 
 **License:** [AGPL-3.0](LICENSE) (Community) or [Commercial](LICENSING.md) · see also [NOTICE](NOTICE)
 
@@ -12,7 +14,7 @@ Help for daily work is in [docs/help](docs/help/Home.md). Merge decision: [docs/
 
 ## Company file
 
-Each practice is one `.adms` file. Copying or backing up that file moves the company with it. MynaHub checks the file before opening it, locks it while it is open, and keeps a copy before a schema upgrade. An ordinary company file is a SQLite database and is not encrypted. The engine can also protect a file at rest: a protected file starts with `AOSENC1` and holds a random file key wrapped once with the owner's password and once with the recovery code, and backups of a protected file are sealed the same way. Losing both the password and the recovery code means the file cannot be opened.
+New desktop company files use `.osas`; the file picker also accepts legacy `.adms` and `.aorms` files. Copying or backing up that file moves the company with it. MynaHub checks the file before opening it, locks it while it is open, and keeps a copy before a schema upgrade. An ordinary company file is a SQLite database and is not encrypted. The engine can also protect a file at rest: a protected file starts with `AOSENC1` and holds a random file key wrapped once with the owner's password and once with the recovery code, and backups of a protected file are sealed the same way. Losing both the password and the recovery code means the file cannot be opened.
 
 Sign-in uses the admin password. The password needs 12 or more characters. A recovery code is shown once when the company is created, and a new code is shown once whenever the password is reset.
 
@@ -75,7 +77,7 @@ connection, scoped project reads and authorized online edits are implemented;
 desktop and offline business-sync migration are pending.
 The following describes the legacy cloud connector.
 
-MynaHub will sync `.osp` project files through **Neon** (Postgres + Object Storage); only Studio holds cloud credentials. **Setup:** [docs/CLOUD-NEON.md](docs/CLOUD-NEON.md). **In the app:** Suite → **Cloud sync** (or `npm run verify` for a headless smoke test).
+For a new company-owned backend, use [BYON setup](docs/byo-neon.md) and [the current platform status](docs/hub-platform-plan.md). Mobile uses the company API; its company rows are live-only. The desktop legacy connector is separate. This implementation does not upload MynaCAD/MynaOps project files.
 
 ## Licensing
 

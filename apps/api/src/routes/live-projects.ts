@@ -1,3 +1,10 @@
+import { attachmentPage } from "../attachment-contract.js";
+import { listAttachments } from "../authz/attachments.js";
+import { sitePage } from "../site-contract.js";
+import { listSiteRecords } from "../authz/site-records.js";
+import { taskCandidates } from "../authz/task-actions.js";
+import { taskCandidatePage } from "../task-action-contract.js";
+import { taskView } from "../task-contract.js";
 import { createHash } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import type { FastifyPluginAsync } from "fastify";
@@ -11,6 +18,8 @@ import { AppError, errorBody } from "../errors.js";
 import { createGuards } from "../principal.js";
 import { roleNames } from "../organization.js";
 import { projectView } from "../project-edit-contract.js";
+import { listClients } from "../authz/clients.js";
+import { clientPage } from "../client-contract.js";
 
 /** Bounded long-poll. Every check reauthenticates and re-queries the caller's current RLS scope. */
 export const liveProjectRoutes: FastifyPluginAsync<AppDeps> = async (app, deps) => {
@@ -36,8 +45,16 @@ export const liveProjectRoutes: FastifyPluginAsync<AppDeps> = async (app, deps) 
             .regex(/^[a-f0-9]{64}$/)
             .optional(),
           after: z.uuid().optional(),
+          fileProjectId: z.uuid().optional(),
+          fileAfter: z.uuid().optional(),
+          siteProjectId: z.uuid().optional(),
+          siteAfter: z.uuid().optional(),
           taskProjectId: z.uuid().optional(),
           taskAfter: z.uuid().optional(),
+          assignees: z.enum(["true"]).optional(),
+          assigneeAfter: z.uuid().optional(),
+          clients: z.enum(["true"]).optional(),
+          clientAfter: z.uuid().optional(),
         }),
         response: {
           200: z.object({
@@ -46,22 +63,15 @@ export const liveProjectRoutes: FastifyPluginAsync<AppDeps> = async (app, deps) 
             nextCursor: z.uuid().nullable(),
             roles: z.array(z.string()),
             permissions: z.array(z.string()),
+            filePage: attachmentPage.nullable(),
+            sitePage: sitePage.nullable(),
+            assigneePage: taskCandidatePage.nullable(),
+            clientPage: clientPage.nullable(),
             taskPage: z
               .object({
                 projectId: z.uuid(),
                 nextCursor: z.uuid().nullable(),
-                tasks: z.array(
-                  z.object({
-                    id: z.uuid(),
-                    projectId: z.uuid(),
-                    title: z.string(),
-                    description: z.string(),
-                    dueAt: z.iso.datetime().nullable(),
-                    status: z.enum(["open", "in_progress", "completed", "cancelled"]),
-                    priority: z.enum(["low", "normal", "high", "urgent"]),
-                    version: z.number().int().positive(),
-                  }),
-                ),
+                tasks: z.array(taskView),
               })
               .nullable(),
           }),
@@ -95,6 +105,25 @@ export const liveProjectRoutes: FastifyPluginAsync<AppDeps> = async (app, deps) 
             : { projects: [], nextCursor: null };
           const snapshot = {
             ...page,
+            filePage:
+              req.query.fileProjectId && page.projects.some((p) => p.id === req.query.fileProjectId)
+                ? await listAttachments(deps.db, by, req.query.fileProjectId, req.query.fileAfter)
+                : null,
+            sitePage:
+              req.query.siteProjectId && page.projects.some((p) => p.id === req.query.siteProjectId)
+                ? await listSiteRecords(deps.db, by, req.query.siteProjectId, req.query.siteAfter)
+                : null,
+            assigneePage:
+              req.query.assignees === "true" &&
+              req.query.taskProjectId &&
+              by.permissions.has(PERMISSIONS.tasksAssign) &&
+              page.projects.some((p) => p.id === req.query.taskProjectId)
+                ? await taskCandidates(deps.db, by, req.query.taskProjectId, req.query.assigneeAfter)
+                : null,
+            clientPage:
+              req.query.clients === "true" && by.permissions.has(PERMISSIONS.clientsRead)
+                ? await listClients(deps.db, by, req.query.clientAfter)
+                : null,
             // Only a project on this currently authorized page can expose its task page.
             taskPage:
               req.query.taskProjectId && page.projects.some((row) => row.id === req.query.taskProjectId)
@@ -110,8 +139,16 @@ export const liveProjectRoutes: FastifyPluginAsync<AppDeps> = async (app, deps) 
                 by.userId,
                 by.membershipId,
                 req.query.after ?? null,
+                req.query.fileProjectId ?? null,
+                req.query.fileAfter ?? null,
+                req.query.siteProjectId ?? null,
+                req.query.siteAfter ?? null,
                 req.query.taskProjectId ?? null,
                 req.query.taskAfter ?? null,
+                req.query.assignees ?? null,
+                req.query.assigneeAfter ?? null,
+                req.query.clients ?? null,
+                req.query.clientAfter ?? null,
                 snapshot,
               ]),
             )

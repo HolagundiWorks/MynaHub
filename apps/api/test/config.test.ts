@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConfigError, loadConfig } from "../src/config.js";
+import { ConfigError, loadConfig, loadRuntimeConfig } from "../src/config.js";
 
 const good = {
   PUBLIC_API_URL: "https://api.company.example",
@@ -8,6 +8,19 @@ const good = {
 };
 
 describe("loadConfig", () => {
+  it("keeps migration credentials available to setup but refuses them in the serving process", () => {
+    const owner = "postgresql://owner:private-owner-value@ep-x.example/neondb";
+    expect(loadConfig({ ...good, DIRECT_DATABASE_URL: owner }).DIRECT_DATABASE_URL).toBe(owner);
+    for (const value of [owner, ""]) {
+      expect(() => loadRuntimeConfig({ ...good, DIRECT_DATABASE_URL: value })).toThrow(/DIRECT_DATABASE_URL/);
+      try {
+        loadRuntimeConfig({ ...good, DIRECT_DATABASE_URL: value });
+      } catch (error) {
+        expect((error as Error).message).not.toContain("private-owner-value");
+      }
+    }
+    expect(loadRuntimeConfig(good).DATABASE_URL).toBe(good.DATABASE_URL);
+  });
   it("accepts a minimal valid environment and applies defaults", () => {
     const c = loadConfig(good);
     expect(c.PORT).toBe(3000);

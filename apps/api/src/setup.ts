@@ -139,9 +139,19 @@ export async function checkRuntimeAccess(db: SetupQuery): Promise<void> {
     "access.role_permissions",
     "access.membership_roles",
     "studio.projects",
+    "studio.attachments",
+    "studio.attachment_receipts",
+    "studio.clients",
+    "studio.client_mutation_receipts",
     "studio.project_assignments",
     "studio.project_edit_receipts",
+    "studio.project_lifecycle_receipts",
     "studio.project_tasks",
+    "studio.site_records",
+    "studio.site_mutation_receipts",
+    "studio.task_mutation_receipts",
+    "studio.task_action_receipts",
+    "studio.task_assignments",
     "audit.events",
     "auth.user",
     "auth.account",
@@ -155,15 +165,43 @@ export async function checkRuntimeAccess(db: SetupQuery): Promise<void> {
       (row) =>
         row.usage !== true ||
         row.read !== true ||
-        row.insert !== (row.name !== "project_tasks") ||
+        row.insert !==
+          (row.name !== "projects" &&
+            row.name !== "clients" &&
+            row.name !== "task_assignments" &&
+            row.name !== "site_records" &&
+            row.name !== "attachments") ||
         row.truncate !== false ||
         row.update !==
           (row.schema !== "audit" &&
             row.name !== "project_edit_receipts" &&
+            row.name !== "project_lifecycle_receipts" &&
+            row.name !== "client_mutation_receipts" &&
+            row.name !== "task_mutation_receipts" &&
+            row.name !== "task_action_receipts" &&
+            row.name !== "site_records" &&
+            row.name !== "site_mutation_receipts" &&
+            row.name !== "attachments" &&
+            row.name !== "attachment_receipts" &&
+            row.name !== "task_assignments" &&
             row.name !== "projects" &&
+            row.name !== "clients" &&
             row.name !== "project_tasks") ||
         row.delete !==
-          (row.schema !== "audit" && row.name !== "project_edit_receipts" && row.name !== "project_tasks"),
+          (row.schema !== "audit" &&
+            row.name !== "project_edit_receipts" &&
+            row.name !== "project_lifecycle_receipts" &&
+            row.name !== "client_mutation_receipts" &&
+            row.name !== "projects" &&
+            row.name !== "clients" &&
+            row.name !== "task_mutation_receipts" &&
+            row.name !== "task_action_receipts" &&
+            row.name !== "site_records" &&
+            row.name !== "site_mutation_receipts" &&
+            row.name !== "attachments" &&
+            row.name !== "attachment_receipts" &&
+            row.name !== "task_assignments" &&
+            row.name !== "project_tasks"),
     )
   ) {
     throw new SetupError(
@@ -182,6 +220,33 @@ export async function checkRuntimeAccess(db: SetupQuery): Promise<void> {
     throw new SetupError("Runtime project column permissions do not match the shipped grants.");
   }
   // This is the same read used by /health/ready; USAGE alone is insufficient.
+  const lifecycleFunctions = await db.query(`select p.proname as name,p.prosecdef as definer,
+    has_function_privilege(p.oid,'EXECUTE') as executable,
+    exists(select 1 from aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a where a.grantee=0 and a.privilege_type='EXECUTE') as public_execute
+    from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='studio'
+    and p.proname in ('organization_permission','project_delete_allowed','create_company_project','delete_company_project','client_allowed','client_action_allowed','mutate_company_client','task_member_eligible','task_assignees','task_action_allowed','mutate_task_action','site_action_allowed','mutate_site_record','file_action_allowed','file_id_reserved','register_attachment','delete_attachment')`);
+  if (
+    lifecycleFunctions.rows.length !== 17 ||
+    lifecycleFunctions.rows.some(
+      (row) => row.definer !== true || row.executable !== true || row.public_execute !== false,
+    )
+  ) {
+    throw new SetupError("Project lifecycle function permissions are incomplete or public.");
+  }
+  const taskColumns = await db.query(`select attname as name,
+    has_column_privilege('studio.project_tasks', attname, 'UPDATE') as writable
+    from pg_attribute where attrelid='studio.project_tasks'::regclass and attnum > 0 and not attisdropped`);
+  if (
+    taskColumns.rows.some(
+      (row) =>
+        row.writable !==
+        ["title", "description", "due_at", "status", "priority", "version", "updated_at"].includes(
+          String(row.name),
+        ),
+    )
+  ) {
+    throw new SetupError("Runtime task column permissions do not match the shipped grants.");
+  }
   await db.query("select count(*) from drizzle.__drizzle_migrations");
   const journal = await db.query(`select
     has_table_privilege('drizzle.__drizzle_migrations', 'INSERT') or

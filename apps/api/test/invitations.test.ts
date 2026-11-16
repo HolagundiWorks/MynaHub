@@ -33,7 +33,7 @@ describe("invitations", () => {
     const s = await signIn(t.app, "staff@company.example", "a long enough passphrase 1");
     const me = (await t.app.inject({ url: "/v1/me", headers: s.headers })).json();
     expect(me.roles).toEqual(["Staff"]);
-    expect(me.permissions).toEqual(["organization.read", "projects.read"]);
+    expect(me.permissions).toEqual(["clients.read", "organization.read", "projects.read"]);
 
     const list = await t.app.inject({ url: "/v1/invitations", headers: c.session.headers });
     const row = list.json().find((r: { id: string }) => r.id === invitationId);

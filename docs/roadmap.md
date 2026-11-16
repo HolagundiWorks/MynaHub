@@ -1,5 +1,9 @@
 # Roadmap: MynaHub and MynaOps
 
+Historical roadmap written in October 2026. Its open items are not a fresh
+implementation audit. For current Hub/API/Mobile status use
+[current implementation](current-implementation.md). CAD/Ops work is maintained separately.
+
 Written 2026-10-19. It covers the two apps that exist today, MynaHub (office and projects) and MynaOps (quantities, estimates and billing). MynaCAD is separate; its hand-off is in the OSAS repository (`docs/handoff-o-draft-rebrand.md`).
 
 Each item says how we know it is open. **Checked** means it was looked at in the code or by running the app. **Not tested** means nobody has tried it.

@@ -57,7 +57,7 @@ jobs:
           npm run setup -- apply
           npm run setup -- apply   # repeat must preserve the schema and account state
           npm run setup -- check
-          node dist/server.js &
+          env -u DIRECT_DATABASE_URL node dist/server.js &
           for i in $(seq 1 20); do curl -fsS http://127.0.0.1:3000/health && break; sleep 1; done
           bash scripts/ci-smoke.sh
           npm run setup -- check   # bootstrap now stays closed

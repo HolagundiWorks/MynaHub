@@ -11,6 +11,7 @@ import { PERMISSIONS } from "./authz/catalogue.js";
 export const ADMIN_PERMISSIONS: ReadonlySet<string> = new Set([
   PERMISSIONS.membersManage,
   PERMISSIONS.rolesManage,
+  PERMISSIONS.clientsDelete,
 ]);
 
 export const OWNER_ROLE = "Owner";

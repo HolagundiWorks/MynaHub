@@ -167,6 +167,37 @@ describe("setup checks against PostgreSQL catalogs (PGlite)", () => {
       await db.exec("RESET ROLE; REVOKE UPDATE ON drizzle.__drizzle_migrations FROM myna_runtime");
     }
   });
+  it("refuses PUBLIC execution of project lifecycle functions", async () => {
+    await db.exec(
+      "GRANT EXECUTE ON FUNCTION studio.delete_company_project(uuid,integer) TO PUBLIC; SET ROLE myna_runtime",
+    );
+    try {
+      await expect(checkRuntimeAccess(db)).rejects.toThrow(/function permissions/);
+    } finally {
+      await db.exec(
+        "RESET ROLE; REVOKE EXECUTE ON FUNCTION studio.delete_company_project(uuid,integer) FROM PUBLIC",
+      );
+    }
+  });
+  it("refuses task identity updates and mutable task receipts", async () => {
+    for (const [grant, revoke] of [
+      [
+        "GRANT UPDATE(project_id) ON studio.project_tasks TO myna_runtime",
+        "REVOKE UPDATE(project_id) ON studio.project_tasks FROM myna_runtime",
+      ],
+      [
+        "GRANT DELETE ON studio.task_mutation_receipts TO myna_runtime",
+        "REVOKE DELETE ON studio.task_mutation_receipts FROM myna_runtime",
+      ],
+    ]) {
+      await db.exec(grant + "; SET ROLE myna_runtime");
+      try {
+        await expect(checkRuntimeAccess(db)).rejects.toThrow(/permissions/);
+      } finally {
+        await db.exec("RESET ROLE; " + revoke);
+      }
+    }
+  });
   it("refuses project identity updates and mutable edit receipts", async () => {
     await db.exec("GRANT UPDATE(organization_id) ON studio.projects TO myna_runtime; SET ROLE myna_runtime");
     try {

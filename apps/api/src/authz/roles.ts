@@ -85,19 +85,48 @@ function validateDelegation(
     throw denied();
   if (
     input.scope === "assigned" &&
-    input.permissions.some((key) => key === PERMISSIONS.rolesManage || key === PERMISSIONS.membersManage)
+    input.permissions.some(
+      (key) =>
+        key === PERMISSIONS.rolesManage ||
+        key === PERMISSIONS.membersManage ||
+        key === PERMISSIONS.projectsCreate ||
+        key === PERMISSIONS.clientsWrite ||
+        key === PERMISSIONS.clientsDelete,
+    )
   )
     throw new AppError(400, "INVALID_SCOPE", "Company administration requires organization scope.");
   if (
-    (input.permissions.includes(PERMISSIONS.projectsAssign) ||
-      input.permissions.includes(PERMISSIONS.projectsWrite)) &&
+    (input.permissions.includes(PERMISSIONS.clientsWrite) ||
+      input.permissions.includes(PERMISSIONS.clientsDelete)) &&
+    !input.permissions.includes(PERMISSIONS.clientsRead)
+  )
+    throw new AppError(400, "INVALID_PERMISSIONS", "Client changes need client read permission.");
+  if (
+    input.permissions.includes(PERMISSIONS.clientsDelete) &&
+    !input.permissions.includes(PERMISSIONS.clientsWrite)
+  )
+    throw new AppError(400, "INVALID_PERMISSIONS", "Client deletion needs client write permission.");
+  if (
+    input.scope === "assigned" &&
+    input.permissions.includes(PERMISSIONS.clientsRead) &&
     !input.permissions.includes(PERMISSIONS.projectsRead)
   )
-    throw new AppError(
-      400,
-      "INVALID_PERMISSIONS",
-      "Project assignment and editing need project read permission.",
-    );
+    throw new AppError(400, "INVALID_PERMISSIONS", "Assigned client reads need project read permission.");
+  if (
+    (input.permissions.includes(PERMISSIONS.projectsAssign) ||
+      input.permissions.includes(PERMISSIONS.projectsWrite) ||
+      input.permissions.includes(PERMISSIONS.projectsCreate) ||
+      input.permissions.includes(PERMISSIONS.projectsDelete) ||
+      input.permissions.includes(PERMISSIONS.tasksWrite) ||
+      input.permissions.includes(PERMISSIONS.tasksAssign) ||
+      input.permissions.includes(PERMISSIONS.tasksDelete) ||
+      input.permissions.includes(PERMISSIONS.sitesWrite) ||
+      input.permissions.includes(PERMISSIONS.sitesDelete) ||
+      input.permissions.includes(PERMISSIONS.filesWrite) ||
+      input.permissions.includes(PERMISSIONS.filesDelete)) &&
+    !input.permissions.includes(PERMISSIONS.projectsRead)
+  )
+    throw new AppError(400, "INVALID_PERMISSIONS", "Project and task changes need project read permission.");
 }
 
 export async function listRoles(db: Db, organizationId: string) {
