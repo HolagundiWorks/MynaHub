@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { AppDeps } from "../app.js";
 import { body, errorBody } from "../errors.js";
+import { MOBILE_CONNECTION } from "../mobile-contract.js";
 
 const live = z.object({ status: z.literal("ok"), service: z.literal("myna-api"), version: z.string() });
 const ready = z.object({
@@ -13,6 +14,26 @@ const ready = z.object({
 
 export const healthRoutes: FastifyPluginAsync<AppDeps> = async (app, deps) => {
   const typed = app.withTypeProvider<ZodTypeProvider>();
+
+  typed.get(
+    "/v1/mobile/connection",
+    {
+      schema: {
+        tags: ["mobile"],
+        summary: "Discover mobile compatibility and the company authentication path",
+        response: {
+          200: z.object({
+            service: z.literal("myna-api"),
+            apiVersion: z.literal(1),
+            minimumVersionCode: z.number().int(),
+            authBasePath: z.string(),
+            capabilities: z.array(z.string()),
+          }),
+        },
+      },
+    },
+    async () => MOBILE_CONNECTION,
+  );
 
   // Liveness: the process is up. Does not touch the database, so a database outage does not restart the container.
   typed.get("/health", { schema: { response: { 200: live }, tags: ["health"] } }, async () => ({

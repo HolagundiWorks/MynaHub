@@ -139,6 +139,9 @@ export async function checkRuntimeAccess(db: SetupQuery): Promise<void> {
     "access.role_permissions",
     "access.membership_roles",
     "studio.projects",
+    "studio.project_assignments",
+    "studio.project_edit_receipts",
+    "studio.project_tasks",
     "audit.events",
     "auth.user",
     "auth.account",
@@ -152,15 +155,31 @@ export async function checkRuntimeAccess(db: SetupQuery): Promise<void> {
       (row) =>
         row.usage !== true ||
         row.read !== true ||
-        row.insert !== true ||
+        row.insert !== (row.name !== "project_tasks") ||
         row.truncate !== false ||
-        row.update !== (row.schema !== "audit") ||
-        row.delete !== (row.schema !== "audit"),
+        row.update !==
+          (row.schema !== "audit" &&
+            row.name !== "project_edit_receipts" &&
+            row.name !== "projects" &&
+            row.name !== "project_tasks") ||
+        row.delete !==
+          (row.schema !== "audit" && row.name !== "project_edit_receipts" && row.name !== "project_tasks"),
     )
   ) {
     throw new SetupError(
       "Runtime table permissions or schema are incomplete. Create the runtime role before migrations; review the shipped grants.",
     );
+  }
+  const columns = await db.query(`select attname as name,
+    has_column_privilege('studio.projects', attname, 'UPDATE') as writable
+    from pg_attribute where attrelid='studio.projects'::regclass and attnum > 0 and not attisdropped`);
+  if (
+    columns.rows.some(
+      (row) =>
+        row.writable !== ["name", "code", "status", "version", "updated_at"].includes(String(row.name)),
+    )
+  ) {
+    throw new SetupError("Runtime project column permissions do not match the shipped grants.");
   }
   // This is the same read used by /health/ready; USAGE alone is insufficient.
   await db.query("select count(*) from drizzle.__drizzle_migrations");

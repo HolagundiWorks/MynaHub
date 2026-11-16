@@ -8,6 +8,7 @@ import { accountExists, createCredentialUser, removeUserQuietly } from "./identi
 import { OWNER_ROLE, roleNames } from "./organization.js";
 import type { Principal } from "./principal.js";
 import { hashToken, newToken } from "./tokens.js";
+import { assertInvitationRole } from "./authz/roles.js";
 
 export const INVITATION_DAYS = 7;
 
@@ -24,12 +25,7 @@ export async function createInvitation(
   requestId: string,
 ) {
   const email = input.email.toLowerCase();
-  const [role] = await db
-    .select({ id: roles.id, name: roles.name })
-    .from(roles)
-    .where(and(eq(roles.id, input.roleId), eq(roles.organizationId, by.organizationId)))
-    .limit(1);
-  if (!role) throw new AppError(404, "ROLE_NOT_FOUND", "That role does not exist.");
+  const role = await assertInvitationRole(db, by, input.roleId);
   // Only an Owner can make another Owner: an administrator cannot promote anyone (or themselves) beyond their own authority.
   if (role.name === OWNER_ROLE && !(await roleNames(db, by.membershipId)).includes(OWNER_ROLE)) {
     throw new AppError(403, "PERMISSION_DENIED", "Only an Owner can invite an Owner.");

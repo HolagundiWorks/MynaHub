@@ -1,4 +1,5 @@
-import { boolean, index, pgSchema, primaryKey, text, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, pgSchema, primaryKey, text, uuid, uniqueIndex, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { memberships, organizations } from "./core.js";
 
 export const access = pgSchema("access");
@@ -20,8 +21,13 @@ export const roles = access.table(
     name: text("name").notNull(),
     description: text("description").notNull().default(""),
     isSystemRole: boolean("is_system_role").notNull().default(false),
+    scope: text("scope").$type<"organization" | "assigned">().notNull().default("assigned"),
   },
-  (t) => [index("roles_org_name_idx").on(t.organizationId, t.name)],
+  (t) => [
+    index("roles_org_name_idx").on(t.organizationId, t.name),
+    uniqueIndex("roles_org_name_unique").on(t.organizationId, t.name),
+    check("roles_scope_check", sql`${t.scope} in ('organization', 'assigned')`),
+  ],
 );
 
 export const rolePermissions = access.table(

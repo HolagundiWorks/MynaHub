@@ -51,6 +51,9 @@ describe("migrations", () => {
       "core.invitations",
       "core.memberships",
       "core.organizations",
+      "studio.project_assignments",
+      "studio.project_edit_receipts",
+      "studio.project_tasks",
       "studio.projects",
     ]);
   });

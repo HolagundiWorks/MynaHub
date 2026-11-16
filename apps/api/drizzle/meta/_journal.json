@@ -36,6 +36,34 @@
       "when": 1794714586534,
       "tag": "0004_phase2_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794737889289,
+      "tag": "0005_project_authorization",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794737945501,
+      "tag": "0006_project_policies",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794753298418,
+      "tag": "0007_project_edits",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794822284214,
+      "tag": "0008_live_project_tasks",
+      "breakpoints": true
     }
   ]
 }

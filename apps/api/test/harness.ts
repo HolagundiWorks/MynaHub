@@ -52,6 +52,7 @@ export async function makeTestApp(env: Record<string, string> = {}): Promise<Tes
     auth,
     version: "test",
     expectedMigrations: shippedMigrations(journal),
+    liveTiming: { waitMs: 250, tickMs: 20 },
     health: {
       ping: async () => void (await pg.query("select 1")),
       appliedMigrations: async () =>

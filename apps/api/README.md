@@ -2,7 +2,15 @@
 
 The company-owned backend of the Myna platform (see `docs/hub-platform-plan.md`). It sits in front of the company's own Neon PostgreSQL; MynaHub and MynaHub Mobile talk to it, never to the database. HolagundiWorks runs no part of it.
 
-**Status: Phase 2 (authentication) built; see the limits below.** What exists: configuration loader, `/health` and `/health/ready`, request ids and one error format, OpenAPI 3.1 at `/openapi.json`, the schema (organisations, memberships, roles, permissions, projects, audit events, invitations, one-time setup tokens, and Better Auth's tables in the `auth` schema) as versioned migrations, a Dockerfile and a CI workflow, and the identity layer: self-managed Better Auth 1.7.25 (email and password, bearer tokens, two-factor), a one-time bootstrap, invitations, member suspension, sessions and a membership check on every protected request. **Not built yet:** the full permission catalogue and row level security (Phase 3), sync (Phases 4 to 6), files, any project or task endpoint.
+**Status: authentication, project authorization, online edits, live Mobile projects and read-only tasks built.**
+Authentication, bootstrap/invitations, sessions and administrator MFA are joined
+by custom role management, system templates, scoped project reads and project
+assignments, with transaction-local project RLS. Authorized online edits add
+expected-version checks and immutable retry receipts. See
+[project-authorization.md](../../docs/project-authorization.md) for the endpoint
+matrix, role scopes and verification, and [project edits](../../docs/project-edits.md).
+Metadata-table RLS, other live entity APIs, project creation/deletion, desktop
+integration and files remain pending; this is not full Phase 3 completion.
 
 ## Run it
 
@@ -10,7 +18,19 @@ For a new company-owned Neon deployment, follow [the BYON setup guide](../../doc
 The `setup` CLI creates a local configuration with a random signing secret (`init`),
 validates the two database roles and migration history without writes (`check`),
 or applies shipped migrations and grants read-only readiness access (`apply`).
-It does not provision cloud resources or switch the existing desktop/mobile clients to this API.
+It does not provision cloud resources or switch the desktop/legacy business-sync transports to this API.
+
+Mobile account integration discovers `/v1/mobile/connection` before sending
+credentials. It returns API version 1, minimum app version code 8, the actual
+Better Auth base path and implemented capabilities (identity, invitations,
+sessions, two-factor, project reads and online edits). The public contract artifact is
+`contracts/mobile-connection-v1.json`; its test must match the shipped metadata.
+The Android client consumes this contract. Project reads are assignment-scoped;
+Mobile subscribes to `GET /v1/mobile/projects/live` for automatic authorized
+project updates and selected-project task pages. Tasks inherit project access
+and remain read-only; task creation/editing is pending. See [live projects](../../docs/mobile-live-projects.md). Mobile
+backup/restore and offline company storage are removed by the owner's decision.
+Other business APIs and desktop integration remain pending.
 
 Needs Node 22 or newer and a PostgreSQL database (Neon).
 
@@ -61,15 +81,15 @@ curl -X POST https://api.company.example/v1/bootstrap -H "content-type: applicat
   "adminName": "Asha Owner", "adminEmail": "owner@company.example", "adminPassword": "<12 or more characters>" }'
 ```
 
-This creates the organisation, the seven default roles and the Owner, and closes bootstrap for good (a second attempt, even with a fresh token, is refused). The Owner then signs in (`POST /api/auth/sign-in/email`), **turns on two-factor** (`POST /api/auth/two-factor/enable`, then `/two-factor/verify-totp`; verifying issues a new session token, so keep the one in the response), and can invite people: `POST /v1/invitations` returns a single-use token **once**; the person sends it to `POST /v1/invitations/accept` with their name and a password. Invitations last 7 days and can be revoked. `POST /v1/members/{id}/suspend` ends that person's sessions immediately.
+This creates the organisation, eleven system role templates and the Owner, and closes bootstrap for good (a second attempt, even with a fresh token, is refused). The Owner then signs in (`POST /api/auth/sign-in/email`), **turns on two-factor** (`POST /api/auth/two-factor/enable`, then `/two-factor/verify-totp`; verifying issues a new session token, so keep the one in the response), and can invite people: `POST /v1/invitations` returns a single-use token **once**; the person sends it to `POST /v1/invitations/accept` with their name and a password. Invitations last 7 days and can be revoked. `POST /v1/members/{id}/suspend` ends that person's sessions immediately.
 
 ### Limits of this phase (read before relying on it)
 
 - **No email is sent.** The invitation token is shown to the administrator, who must pass it on. Email delivery and email verification arrive with the setup wizard (Phase 7); until then possession of the token is the only proof of identity.
-- **Rate limits** (sign-in, two-factor, bootstrap, accept) are configured but switched off in the test environment, so they have **not been tested**; the store is in memory, so each container counts separately.
+- **Rate limits** are configured and a live oversized sign-in batch was refused with 429. Full rate-limit/proxy behavior remains unverified; the store is in memory, so each container counts separately.
 - **One company per deployment**; every request resolves the single organisation.
-- Roles are assigned only at invitation; there is no screen or endpoint to change a role yet (Phase 3).
-- Tested on PostgreSQL compiled to WebAssembly (PGlite). The node-postgres path, the migrate command and Better Auth over a real server are exercised only by the CI workflow, which has not run yet.
+- Roles can be assigned at invitation and through the protected role-management endpoints; owner management screens are still pending.
+- Automated tests use PGlite. Manual checks also passed setup/migrations, authentication, scoped project reads and runtime RLS on the real Neon demo branch; see the authorization guide. The CI workflow and Docker deployment have not run here.
 
 ## Checks
 

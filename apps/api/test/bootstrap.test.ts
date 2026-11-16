@@ -36,13 +36,17 @@ describe("public registration", () => {
 });
 
 describe("bootstrap", () => {
-  it("creates the company, its seven default roles and an active Owner, then the Owner can sign in", async () => {
+  it("creates the company, cloud and desktop system templates and an active Owner", async () => {
     t = await makeTestApp();
     const c = await bootstrapCompany(t);
     expect(Object.keys(c.roleId).sort()).toEqual(
       [
         "Administrator",
         "Architect / Engineer",
+        "Principal",
+        "Accounts",
+        "Document editor",
+        "Auditor",
         "Owner",
         "Project Manager",
         "Site Supervisor",
@@ -55,7 +59,16 @@ describe("bootstrap", () => {
     const body = me.json();
     expect(body.user.email).toBe(ADMIN.email);
     expect(body.roles).toEqual(["Owner"]);
-    expect(body.permissions).toEqual(["audit.read", "organization.members.manage", "organization.read"]);
+    expect(body.permissions).toEqual([
+      "audit.read",
+      "organization.members.manage",
+      "organization.read",
+      "projects.assign",
+      "projects.read",
+      "projects.write",
+      "roles.manage",
+      "roles.read",
+    ]);
     expect(body.organization.name).toBe("Sample Architects");
   });
 

@@ -1,6 +1,12 @@
 # Myna platform: implementation plan (against the Developer Guidelines v1.0)
 
-Status: **plan for the owner's decision, 2026-11-15. No code was changed for this plan.** The guidelines (`DEVELOPER_GUIDELINES.md`, §19.1) ask for an inspection and a plan before architectural change; this is that.
+Current Mobile policy, confirmed by the owner on **2026-11-16**: **live API sync only; no local backup/restore, offline company snapshots or persisted drafts**.
+
+Mobile now receives live authorized project pages and saves edits online. Only
+its encrypted login credential is retained. Historical offline-cache/draft
+entries below are superseded and their implementation has been removed. The
+remaining work is expanding live API coverage and desktop integration, not an
+offline Mobile queue. The original inspection and implementation journal follow.
 
 **What was inspected.** MynaHub at `e5b582f` (office-core engine, `native/Adms.Cloud`, `cloud/`, `cloud/sql`, the desktop Cloud sync page) and the Android app in the ArchiMan repository on `mynahub-mobile-sync` (`bfead81`, `6eb82dd`; the product is named **MynaHub Mobile**, the guidelines' "Myno Mobile" appears nowhere). MynaOps and MynaCAD were not inspected; they stay out of the cloud (SUITE.md). The Neon project `mynahub` (dev branch only) was read and changed through Neon's tools. Nothing below was run against a design that does not yet exist.
 
@@ -151,3 +157,114 @@ This is operator tooling, not completion of Phase 7. Cloud provisioning, a
 graphical wizard, hosting, email and client API cutover remain pending. The
 existing dev Data API path is retained. Verification and limits are recorded in
 the BYON guide.
+
+**Live Neon dev verification (2026-11-15):** a fresh `mynahub` project and `dev`
+branch were provisioned through MCP. Setup apply passed twice, read-only setup
+check passed, and the built API's readiness and unauthenticated request gates
+passed against real Neon using `myna_runtime`. With the owner's confirmation,
+created the first development Owner and verified password sign-in, role access,
+MFA enforcement before enrollment, bootstrap closure and session revocation.
+Production has no application tables. Actual MFA enrollment and invitations
+remain unverified on live Neon. See the BYON guide's live
+verification section for the exact checks and remaining limits. This verifies
+database connectivity and setup; it does not verify the rest of Phase 2 against
+a live server or complete client cutover.
+
+**Demo fixtures (2026-11-15):** a separate `demo` branch cloned from empty
+production has a fictional company, seven active role-based users (administrators
+with TOTP) and four project fixtures. Live handler/Neon checks passed for all seven
+sign-ins and administrative access boundaries in separate batches; rate limits
+remained enabled and rejected an oversized batch. The existing desktop demo
+generator also produced a separate `.osas`, five local users, three clients,
+four projects and nine tasks, verified through the native engine. Secrets and
+fixture files remain ignored locally. See the BYON guide for limits: these are
+separate local/cloud accounts, not completed desktop/mobile API integration.
+
+**Mobile account connection slice (2026-11-15):** added public versioned
+connection metadata at `/v1/mobile/connection`, published in OpenAPI and a tested
+JSON artifact. Hub Mobile has a runtime company address and a typed client for
+identity, invitations, MFA, permissions and sessions. This implements the account
+portion of client cutover only. No project, task, file or sync endpoint was added;
+the old Neon sync path remains separate until M3. Mobile verification and device
+limits are recorded in its `docs/platform-migration.md`.
+
+**Verification:** API lint, type checking, build and 92 tests passed. The mobile
+branch passed 155 JVM tests, debug APK and device-test builds. Live Android checks
+against the demo API/Neon passed account connection, Staff sign-in, Keystore
+restore, permissions, session listing/revocation and Administrator MFA. The
+signed-in company screen was visually inspected after process exit. Public HTTPS
+hosting, a release installation and business sync remain unverified/not built.
+
+## Project authorization and read slice (2026-11-15)
+
+Added the current seven-key permission catalogue, eleven system templates with
+organization/assignment scope, custom role management and direct member-role
+assignment. Both direct assignment and invitations reject privilege escalation;
+Owner changes and last-Owner protection are enforced. Project collection/detail
+reads and assignment endpoints use explicit company/resource checks and
+transaction-local PostgreSQL RLS. See [project-authorization.md](project-authorization.md).
+
+113 API tests, lint, type checking and build passed. Real Neon demo checks passed
+scope/assignment removal, role safety and pooled-context isolation; populated
+Phase 2 upgrades were tested with real PostgreSQL in PGlite. Only the demo branch
+was migrated. Mobile's implemented read-only project view consumes these endpoints;
+business writes/sync and complete metadata-table RLS remain pending. This is a
+bounded Phase 3/read slice, not completion of Phases 3 to 6.
+
+**Additional real-device security verification:** on the isolated Android API Dev
+installation, removing the demo Staff assignment immediately returned an empty
+project collection without signing the account out. Suspending that member
+refused the next read and cleared the sealed session across service recreation.
+Local database rows were unchanged. Assignment and membership were restored, and
+a fresh sign-in/assigned read passed. This checks the account service, not
+automated removal of an already rendered screen or future synchronized records.
+
+## Versioned online project edits (2026-11-15)
+
+Added projects.write, scoped PATCH of project name/code/status, expected-version
+conflicts returning both versions, immutable actor-scoped receipts and atomic
+audit/update/retry behavior. Mobile has an explicit online editor with frozen
+retry payloads and conflict review. See [project-edits.md](project-edits.md).
+This begins the write protocol without implementing offline queues, change
+feeds, task/file sync or project creation/deletion.
+
+124 API and 166 mobile JVM tests passed; backend lint/type checking/build/format
+and Android debug/test APK builds passed. Live Neon demo and physical-device
+save/retry/conflict checks passed. The editor and real conflict screen were
+visually verified. Original demo details were restored and reloaded, preserving
+revision history. Only demo was migrated; production and the separate development
+company remain unchanged by this slice. Public HTTPS/release rollout remains
+unverified; complete metadata RLS and data sync remain pending.
+
+## Mobile pending-edit recovery (2026-11-15)
+
+Mobile can keep one project edit sealed with its account, bound to API origin,
+company and user. An edit and submitted marker commit before any write request;
+reopening offers review and unchanged retry without sending automatically.
+Conflicts survive reopening and require explicit review. Sign-out or confirmed
+access loss clears the saved edit; account refresh checks saved-project
+visibility. This does not implement Room business sync or a background queue.
+
+178 Android JVM tests and debug/test APK builds passed. A physical-device run
+staged an edit, disconnected the API link, attempted a send, force-stopped the
+app and recovered it from Keystore-backed storage. The offline banner and
+restored editor were visually checked. Explicit retry/replay and restoration
+passed, and the pending edit cleared. Neon stayed unchanged until retry;
+original demo details were restored afterward. No backend code or migration
+changed in this step.
+
+## Mobile offline project summaries (2026-11-16)
+
+Mobile now seals the latest authorized first page (up to 25 summaries) with
+its account, labeling offline source and last-checked time. Extra pages remain
+online-only. Successful identity refresh replaces the previous snapshot's
+scope; confirmed access loss clears it. Project edits invalidate old summaries
+and successful saves reload a fresh page. Room practice records remain separate.
+
+192 Android JVM tests and debug/test APK builds passed. The physical phone
+restored Staff's single assigned project after force-stop with the API link
+disconnected; the offline screen was visually checked. Suspension then purged
+the cache/session, and offline reopening could not resurrect them. Demo Staff
+and the API link were restored, with a fresh scoped cache. No backend code or
+migration changed; complete offline business sync and release deployment remain
+pending.

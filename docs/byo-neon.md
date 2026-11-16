@@ -101,9 +101,68 @@ Run locally: 91 tests passed, including the CLI initialization/overwrite smoke
 test; lint, type checking and build passed. Formatting was checked with
 `npm run format -- --end-of-line auto` because this Windows checkout has CRLF
 line endings; the unqualified formatting check rejects those existing endings.
-No live Neon project, Docker deployment or Android device was exercised for this
-change. Neon project provisioning, a graphical wizard, reference hosting,
+The initial implementation did not exercise a live Neon project. The live
+development setup below was verified subsequently. Docker deployment, a
+graphical wizard, automated Neon project provisioning, reference hosting,
 email delivery and desktop/mobile API cutover are still pending.
+
+### Live development setup verification (2026-11-15)
+
+Using the Neon MCP connection, created a fresh `mynahub` project (PostgreSQL 18,
+AWS Singapore), an empty `production` branch and a `dev` branch. On `dev` only,
+created `myna_runtime` through SQL, saved generated credentials in the ignored
+local API environment, and ran `setup apply` twice followed by `setup check`.
+All passed: migration hashes, runtime-role isolation, table permissions and
+read-only access to readiness metadata. The owner uses the direct endpoint;
+the runtime uses its pooled counterpart. Both use `sslmode=verify-full`.
+
+Started the built API on loopback with the runtime credential and without the
+schema-owner variable in its process environment. `/health` and `/health/ready`
+returned 200 (database OK, migrations current); `/v1/me` without a session
+returned 401; `/openapi.json` returned 200 with OpenAPI 3.1.0. Stopped that local
+smoke-test server afterward. Confirmed through MCP that `production` still has
+zero application tables and `dev` has the five API schemas plus the migration
+journal. No Neon-managed Auth or Data API was enabled.
+
+Subsequently, with the owner's confirmation, created the first development
+company and Owner through the running API with a one-time bootstrap token.
+Verified password sign-in and the authenticated Owner role, administrative
+requests blocked with `MFA_REQUIRED` before enrollment, refusal to mint another
+bootstrap token, and sign-out revoking the verification session. The generated
+password was saved only in the ignored local `.env.owner.json`; no email was
+sent. Personal account details and credentials are intentionally absent here.
+
+Actual MFA enrollment and second-factor sign-in, invitations, Docker, public
+HTTPS hosting and Android-device use have not been exercised against live Neon.
+The account rejected an explicit custom suspend interval, so project creation
+kept the account's default instead.
+
+### Separate demo fixtures (2026-11-15)
+
+Created a dedicated `demo` branch from empty production, not from the development
+company. Its **Sample Architects (Demo)** company has one active account for each
+of the seven current cloud role templates and four fictional project fixtures.
+Accounts were created through bootstrap/invitation handlers backed by real Neon.
+Verified each role's sign-in, identity and administrative permission boundary.
+Owner and Administrator enrolled and verified TOTP; bootstrap is closed. Passwords,
+TOTP setup URIs and backup codes are only in the ignored local
+`apps/api/.env.demo-credentials.json`; branch settings are in `.env.demo`.
+
+Sign-in limits stayed enabled: a large batch hit HTTP 429; remaining users passed
+in a smaller batch. Injected API requests also reported a shared IP bucket when
+no client IP was available. Trusted proxy/IP handling needs verification with the
+chosen real host; this fixture run does not establish production rate limiting.
+The four projects were seeded directly as database fixtures because business
+project routes are not implemented yet.
+
+Also ran the existing `Adms.DemoCompany` generator locally without legacy cloud
+sync. It created a desktop `.osas` with five local role users, three clients, four
+projects, nine tasks, stages and a fee proposal. Native-engine checks passed for
+all five logins and project access, the fixture counts, and denial of accounting
+periods to the document editor. The desktop window was not driven. The local and
+cloud credentials are separate and the new API is not wired into desktop/mobile.
+Artifacts and start instructions are under ignored
+`docs/testing/.local/mynahub-demo/`; nothing confidential belongs in source control.
 
 ## Legacy dev sync setup (Neon-managed Auth and Data API)
 
@@ -152,3 +211,7 @@ One Neon project of yours holding: Neon Auth (the cloud accounts), the Neon Data
 ## What was verified, and how
 
 On the maintainer's dev branch, in the same order as above (project, branch, Auth, Data API, schema file, sign-up off): schema applied; 22 isolation checks (`cloud/sql/tests/rls-check.ps1`); two company files plus a phone-side run syncing through it (`native/Adms.SyncCheck`). `check-neon.ps1` was run against that branch (all checks passed). The Neon console steps (1 to 3, 6) were done through Neon's own management tools, not by clicking the console, so button names there may differ from the words above. A brand-new third-party project was **not** set up from this guide end to end.
+
+## Company API project authorization (2026-11-15)
+
+The demo branch now includes migrations 0005 through 0007 for scoped project reads, assignments, role management and versioned online edits. See [project authorization](project-authorization.md) and [project edits](project-edits.md) for permissions, runtime RLS boundaries and verification. Production remains uninitialized; the development branch still requires these migrations before using the updated API. Mobile supports assigned summaries and authorized online edits; offline sync remains pending.

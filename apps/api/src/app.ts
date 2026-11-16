@@ -16,6 +16,8 @@ import type { DbHealth } from "./health.js";
 import { authRoutes } from "./routes/auth-mount.js";
 import { healthRoutes } from "./routes/health.js";
 import { v1Routes } from "./routes/v1.js";
+import { authorizationRoutes } from "./routes/authorization.js";
+import { liveProjectRoutes } from "./routes/live-projects.js";
 
 export interface AppDeps {
   config: Config;
@@ -25,6 +27,8 @@ export interface AppDeps {
   /** How many migrations this build expects the database to have. */
   expectedMigrations: number;
   version: string;
+  /** Test-only timing override; deployment uses bounded 20-second waits and one-second checks. */
+  liveTiming?: { waitMs: number; tickMs: number };
 }
 
 /** Builds the API. Everything it needs is passed in, so tests can run it without a network or a real database. */
@@ -74,6 +78,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(healthRoutes, deps);
   await app.register(authRoutes, { auth: deps.auth, config: deps.config });
   await app.register(v1Routes, deps);
+  await app.register(authorizationRoutes, deps);
+  await app.register(liveProjectRoutes, deps);
 
   app.get("/openapi.json", { schema: { hide: true } }, async () => app.swagger());
   return app;

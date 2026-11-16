@@ -70,8 +70,10 @@ The installer is built with `installer/build.ps1` (release engine, self-containe
 ### Cloud sync (Neon)
 
 New company-owned backend setup: [Bring your own Neon](docs/byo-neon.md)
-(`apps/api`, setup CLI, self-managed authentication). Desktop/mobile migration
-to this API is pending; the following describes the legacy cloud connector.
+(`apps/api`, setup CLI, self-managed authentication). Mobile company-account
+connection, scoped project reads and authorized online edits are implemented;
+desktop and offline business-sync migration are pending.
+The following describes the legacy cloud connector.
 
 MynaHub will sync `.osp` project files through **Neon** (Postgres + Object Storage); only Studio holds cloud credentials. **Setup:** [docs/CLOUD-NEON.md](docs/CLOUD-NEON.md). **In the app:** Suite → **Cloud sync** (or `npm run verify` for a headless smoke test).
 

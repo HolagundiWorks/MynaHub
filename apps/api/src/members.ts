@@ -7,6 +7,7 @@ import { AppError } from "./errors.js";
 import { revokeAllSessions } from "./identity.js";
 import { activeOwnerCount, OWNER_ROLE, roleNames } from "./organization.js";
 import type { Principal } from "./principal.js";
+import { lockOrganization } from "./authz/context.js";
 
 export async function listMembers(db: Db, organizationId: string) {
   const rows = await db
@@ -63,20 +64,21 @@ export async function suspendMember(
   requestId: string,
 ) {
   const { db, auth } = deps;
-  const m = await target(db, by, membershipId);
-  if (m.userId === by.userId)
-    throw new AppError(409, "CANNOT_SUSPEND_SELF", "You cannot suspend your own account.");
-  const targetRoles = await roleNames(db, m.id);
-  if (targetRoles.includes(OWNER_ROLE)) {
-    if (!(await roleNames(db, by.membershipId)).includes(OWNER_ROLE)) {
-      throw new AppError(403, "PERMISSION_DENIED", "Only an Owner can suspend an Owner.");
+  const userId = await db.transaction(async (tx) => {
+    await lockOrganization(tx, by.organizationId);
+    const m = await target(tx, by, membershipId);
+    if (m.userId === by.userId)
+      throw new AppError(409, "CANNOT_SUSPEND_SELF", "You cannot suspend your own account.");
+    const targetRoles = await roleNames(tx, m.id);
+    if (targetRoles.includes(OWNER_ROLE)) {
+      if (!(await roleNames(tx, by.membershipId)).includes(OWNER_ROLE)) {
+        throw new AppError(403, "PERMISSION_DENIED", "Only an Owner can suspend an Owner.");
+      }
+      if (m.status === "active" && (await activeOwnerCount(tx, by.organizationId)) <= 1) {
+        throw new AppError(409, "LAST_OWNER", "The last Owner cannot be suspended.");
+      }
     }
-    if (m.status === "active" && (await activeOwnerCount(db, by.organizationId)) <= 1) {
-      throw new AppError(409, "LAST_OWNER", "The last Owner cannot be suspended.");
-    }
-  }
-  if (m.status === "suspended") return;
-  await db.transaction(async (tx) => {
+    if (m.status === "suspended") return m.userId;
     await tx
       .update(memberships)
       .set({ status: "suspended", updatedAt: new Date() })
@@ -89,14 +91,16 @@ export async function suspendMember(
       resourceId: m.id,
       requestId,
     });
+    return m.userId;
   });
-  await revokeAllSessions(auth, m.userId);
+  await revokeAllSessions(auth, userId);
 }
 
 export async function reactivateMember(db: Db, by: Principal, membershipId: string, requestId: string) {
-  const m = await target(db, by, membershipId);
-  if (m.status === "active") return;
   await db.transaction(async (tx) => {
+    await lockOrganization(tx, by.organizationId);
+    const m = await target(tx, by, membershipId);
+    if (m.status === "active") return;
     await tx
       .update(memberships)
       .set({ status: "active", updatedAt: new Date() })

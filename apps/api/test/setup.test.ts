@@ -167,4 +167,18 @@ describe("setup checks against PostgreSQL catalogs (PGlite)", () => {
       await db.exec("RESET ROLE; REVOKE UPDATE ON drizzle.__drizzle_migrations FROM myna_runtime");
     }
   });
+  it("refuses project identity updates and mutable edit receipts", async () => {
+    await db.exec("GRANT UPDATE(organization_id) ON studio.projects TO myna_runtime; SET ROLE myna_runtime");
+    try {
+      await expect(checkRuntimeAccess(db)).rejects.toThrow(/column permissions/);
+    } finally {
+      await db.exec("RESET ROLE; REVOKE UPDATE(organization_id) ON studio.projects FROM myna_runtime");
+    }
+    await db.exec("GRANT DELETE ON studio.project_edit_receipts TO myna_runtime; SET ROLE myna_runtime");
+    try {
+      await expect(checkRuntimeAccess(db)).rejects.toThrow(/permissions/);
+    } finally {
+      await db.exec("RESET ROLE; REVOKE DELETE ON studio.project_edit_receipts FROM myna_runtime");
+    }
+  });
 });

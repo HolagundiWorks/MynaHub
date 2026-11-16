@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { fromNodeHeaders } from "better-auth/node";
 import type { Auth } from "../auth.js";
 import type { Config } from "../config.js";
+import { AUTH_BASE_PATH } from "../mobile-contract.js";
 
 const SKIP_HEADERS = new Set([
   "set-cookie",
@@ -24,7 +25,7 @@ export const authRoutes: FastifyPluginAsync<{ auth: Auth; config: Config }> = as
 
   app.route({
     method: ["GET", "POST"],
-    url: "/api/auth/*",
+    url: `${AUTH_BASE_PATH}/*`,
     schema: { hide: true },
     handler: async (req, reply) => {
       // Build the URL from the configured public address, never from the Host header a client sent.

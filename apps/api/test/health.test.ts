@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "../src/app.js";
 import { loadConfig } from "../src/config.js";
@@ -31,6 +32,37 @@ async function make(health: Partial<DbHealth> = {}, expectedMigrations = 2) {
 }
 
 describe("health", () => {
+  it("advertises only implemented mobile capabilities, without database or account access", async () => {
+    const a = await make({
+      ping: async () => {
+        throw new Error("offline");
+      },
+    });
+    const response = await a.inject("/v1/mobile/connection");
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(
+      JSON.parse(readFileSync(new URL("../contracts/mobile-connection-v1.json", import.meta.url), "utf8")),
+    );
+    expect(response.json()).toEqual({
+      service: "myna-api",
+      apiVersion: 1,
+      minimumVersionCode: 8,
+      authBasePath: "/api/auth",
+      capabilities: [
+        "identity",
+        "invitations",
+        "sessions",
+        "two-factor",
+        "projects.read",
+        "projects.edit",
+        "projects.live",
+        "tasks.live",
+      ],
+    });
+    const spec = (await a.inject("/openapi.json")).json();
+    expect(spec.paths["/v1/mobile/connection"]).toBeDefined();
+    expect(response.json().capabilities).not.toContain("sync");
+  });
   it("answers liveness without touching the database", async () => {
     const a = await make({
       ping: async () => {

@@ -2,6 +2,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { bearer, twoFactor } from "better-auth/plugins";
 import type { BetterAuthOptions } from "better-auth";
 import type { Config } from "./config.js";
+import { AUTH_BASE_PATH } from "./mobile-contract.js";
 
 type DrizzleDb = Parameters<typeof drizzleAdapter>[0];
 
@@ -15,6 +16,7 @@ export function buildAuthOptions(db: DrizzleDb, config: Config): BetterAuthOptio
   return {
     appName: "Myna",
     baseURL: config.PUBLIC_API_URL,
+    basePath: AUTH_BASE_PATH,
     secret: config.BETTER_AUTH_SECRET,
     trustedOrigins: [config.PUBLIC_API_URL, ...config.TRUSTED_ORIGINS],
     database: drizzleAdapter(db, { provider: "pg", schemaName: "auth" }),
