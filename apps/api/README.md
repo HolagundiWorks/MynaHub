@@ -108,3 +108,7 @@ npm run format && npm run lint && npm run typecheck && npm test
 Edit `src/db/schema/*.ts`, run `npm run db:generate`, review the SQL in `drizzle/`, and add a test. Migrations are additive; never edit an applied one. Hand-written SQL goes in a `--custom` migration (`npx drizzle-kit generate --custom --name=...`).
 
 Company site records now support scoped live instruction/inspection/snag pages, online creation/editing and confirmed deletion. See [site records](../../docs/site-records.md). Private project attachments are implemented and demo verified; production rollout remains pending. See [attachments](../../docs/project-attachments.md).
+
+## Neon Functions hosting
+
+The Fetch entry and `npm run build:function` prepare this API for Neon Functions. Publication is deferred at the owner's request; see [deployment preparation](../../docs/neon-functions.md) for branch binding, private environment generation and remaining production checks.

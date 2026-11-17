@@ -12,7 +12,7 @@ Mobile keeps only encrypted login credentials and public connection settings. Id
 
 Complete metadata-table RLS, native desktop API integration, public HTTPS deployment, production load/retention/reconciliation checks, signed release installation and store rollout remain pending. Other local fieldwork modules (daily reports, detailed issue histories and permits) are not silently mapped into shared site records. Production and real-owner development were not migrated.
 
-Verification through private attachments: 185 API tests, lint/types/build; 208 Android unit tests and app/test APK builds; isolated Neon runtime/grant checks before demo migrations; physical-phone company, task, client, site and private file workflows. Interactive file-picker QA is awaiting the phone's Samsung biometric/pattern unlock. Demo uses migrations 0000–0015. Original demo projects/clients/tasks were preserved.
+Verification through private attachments: 191 API tests, lint/types/build; 210 Android unit tests and app/test APK builds; isolated Neon runtime/grant checks before demo migrations; physical-phone company, task, client, site and private file workflows. Interactive owner-unlock, file selection, upload and text viewing passed after fixing callback ownership across AppLockGate. The exact fictional test file was removed with a fresh demo session. Demo uses migrations 0000–0015. Original demo projects/clients/tasks were preserved.
 
 ## Documentation map
 
@@ -27,3 +27,5 @@ Verification through private attachments: 185 API tests, lint/types/build; 208 A
 Legacy desktop connector identifiers remain for compatibility. Retained .gitkeep files preserve intentional empty directories. Credentials, signing material, company files and installed application records are not cleanup outputs.
 
 The API server refuses migration-owner credentials in its environment and checks the connected runtime role before listening. A separate demo process passed both rejection and limited-role startup checks on 2026-11-17.
+
+Neon Functions hosting is selected. Its Fetch adapter and deployment bundle are prepared and verified locally against demo; publication is deferred at the owner's request. See [deployment preparation](neon-functions.md). API checks now total 191 tests.

@@ -26,11 +26,11 @@ One authenticated long poll carries selected pages, current roles and permission
 3. Public HTTPS hosting and deployment, production load checks and storage retention/orphan reconciliation.
 4. Signed release installation and store rollout.
 
-The hosting provider/domain is awaiting an owner decision. Interactive file-picker verification is awaiting Samsung's biometric/pattern unlock on the phone; programmatic upload/view/deletion and isolated-renderer checks passed. Backups/offline company storage are an explicit exclusion and must not be restored from old plans. Desktop company-file backup policy is separate.
+Neon Functions is selected; its adapter and bundle are prepared, with publication deferred at the owner's request. The custom domain remains pending. See [deployment preparation](neon-functions.md). Interactive picker/upload/text-view verification passed after owner unlock and the callback fix. Deletion correctly required a fresh session; the exact fictional file was removed and became unreadable. Isolated-renderer checks also passed. Backups/offline company storage are an explicit exclusion and must not be restored from old plans. Desktop company-file backup policy is separate.
 
 ## Verification and environments
 
-185 API tests, API lint/types/build, 208 Android unit tests and app/test APK builds passed through private attachments. Physical-device checks covered live access changes, credential-only storage, project/client/task/site mutations, conflicts/retries, retired backup routes, private TXT/PNG/PDF uploads/viewing/deletion and isolated memory-only rendering. Runtime dependency audit reported no known vulnerabilities.
+191 API tests, API lint/types/build, 210 Android unit tests and app/test APK builds passed through private attachments. Physical-device checks covered live access changes, credential-only storage, project/client/task/site mutations, conflicts/retries, retired backup routes, private TXT/PNG/PDF uploads/viewing/deletion and isolated memory-only rendering. Runtime dependency audit reported no known vulnerabilities.
 
 Migrations 0008–0015 were checked on the expiring demo-derived Neon verification branch before application to demo. Protected runtime-role checks covered grants, scope, concurrent writes, immutable receipts and retained deletion. Demo uses sixteen applied migrations; original demo projects/clients/tasks remain intact. Production and the real-owner development branch were not migrated.
 

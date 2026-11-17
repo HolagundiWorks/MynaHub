@@ -11,8 +11,13 @@ export interface Database {
 }
 
 /** A pooled connection with the runtime credentials. No schema changes are made through it. */
-export function connect(url: string): Database {
-  const pool = new pg.Pool({ connectionString: url, max: 10, idleTimeoutMillis: 30_000 });
+export function connect(url: string, max = 10): Database {
+  const pool = new pg.Pool({
+    connectionString: url,
+    max,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 15000,
+  });
   const db = drizzle(pool, { schema });
   return {
     db,

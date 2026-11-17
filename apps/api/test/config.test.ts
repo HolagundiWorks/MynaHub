@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConfigError, loadConfig, loadRuntimeConfig } from "../src/config.js";
+import { ConfigError, loadConfig, loadRuntimeConfig, loadFunctionConfig } from "../src/config.js";
 
 const good = {
   PUBLIC_API_URL: "https://api.company.example",
@@ -8,6 +8,31 @@ const good = {
 };
 
 describe("loadConfig", () => {
+  it("binds Function credentials to the injected branch and refuses owner roles or TLS overrides", () => {
+    const runtime =
+      "postgresql://myna_runtime:private-runtime-value@ep-demo-pooler.neon.tech/neondb?sslmode=require";
+    const injected = "postgresql://owner:private-owner-value@ep-demo.neon.tech/neondb?sslmode=require";
+    const env = { ...good, DATABASE_URL: injected, MYNA_RUNTIME_DATABASE_URL: runtime };
+    expect(loadFunctionConfig(env).DATABASE_URL).toBe(runtime);
+    for (const changes of [
+      { MYNA_RUNTIME_DATABASE_URL: undefined },
+      { MYNA_RUNTIME_DATABASE_URL: injected },
+      { DATABASE_URL: injected.replace("ep-demo.", "ep-other.") },
+      { DATABASE_URL: injected.replace("/neondb?", "/other?") },
+      { MYNA_RUNTIME_DATABASE_URL: runtime.replace("sslmode=require", "sslmode=disable") },
+      { MYNA_RUNTIME_DATABASE_URL: runtime + "&ssl=no-verify" },
+      { DIRECT_DATABASE_URL: injected },
+    ]) {
+      try {
+        loadFunctionConfig({ ...env, ...changes });
+        expect.unreachable();
+      } catch (error) {
+        expect(error).toBeInstanceOf(ConfigError);
+        expect((error as Error).message).not.toContain("private-runtime-value");
+        expect((error as Error).message).not.toContain("private-owner-value");
+      }
+    }
+  });
   it("keeps migration credentials available to setup but refuses them in the serving process", () => {
     const owner = "postgresql://owner:private-owner-value@ep-x.example/neondb";
     expect(loadConfig({ ...good, DIRECT_DATABASE_URL: owner }).DIRECT_DATABASE_URL).toBe(owner);

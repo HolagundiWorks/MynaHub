@@ -103,3 +103,30 @@ export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env): Config 
   }
   return loadConfig(env);
 }
+
+/** Explicit restricted credentials must still address the branch that hosts this Function. */
+export function loadFunctionConfig(env: NodeJS.ProcessEnv = process.env): Config {
+  try {
+    const runtime = new URL(env.MYNA_RUNTIME_DATABASE_URL ?? "");
+    const injected = new URL(env.DATABASE_URL ?? "");
+    if (
+      !["postgres:", "postgresql:"].includes(runtime.protocol) ||
+      !["postgres:", "postgresql:"].includes(injected.protocol) ||
+      decodeURIComponent(runtime.username) !== "myna_runtime" ||
+      !runtime.password ||
+      runtime.hostname.replace("-pooler.", ".") !== injected.hostname.replace("-pooler.", ".") ||
+      runtime.port !== injected.port ||
+      runtime.pathname !== injected.pathname ||
+      !["require", "verify-full"].includes(runtime.searchParams.get("sslmode") ?? "") ||
+      ["ssl", "sslcert", "sslkey", "sslrootcert", "uselibpqcompat"].some((key) =>
+        runtime.searchParams.has(key),
+      )
+    )
+      throw new Error();
+  } catch {
+    throw new ConfigError([
+      "MYNA_RUNTIME_DATABASE_URL: must use myna_runtime on the injected branch database with TLS",
+    ]);
+  }
+  return loadRuntimeConfig({ ...env, DATABASE_URL: env.MYNA_RUNTIME_DATABASE_URL });
+}

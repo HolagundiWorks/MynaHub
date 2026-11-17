@@ -19,12 +19,14 @@
     "format:write": "prettier --write .",
     "test": "vitest run",
     "bootstrap:token": "node dist/bootstrap-cli.js",
-    "setup": "node --env-file-if-exists=.env dist/setup-cli.js"
+    "setup": "node --env-file-if-exists=.env dist/setup-cli.js",
+    "build:function": "node scripts/build-function.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1169.0",
     "@fastify/rate-limit": "^11.2.2",
     "@fastify/swagger": "^9.9.4",
+    "@neon/functions": "^0.11.0",
     "better-auth": "1.7.25",
     "drizzle-orm": "^0.45.4",
     "fastify": "^5.12.8",
@@ -35,9 +37,12 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.16",
+    "@neon/config": "^1.14.1",
+    "@neon/config-runtime": "^1.12.4",
     "@types/node": "^26.6.6",
     "@types/pg": "^8.23.1",
     "drizzle-kit": "^0.31.11",
+    "esbuild": "^0.28.2",
     "eslint": "^10.15.0",
     "prettier": "^3.10.1",
     "tsx": "^4.23.15",
